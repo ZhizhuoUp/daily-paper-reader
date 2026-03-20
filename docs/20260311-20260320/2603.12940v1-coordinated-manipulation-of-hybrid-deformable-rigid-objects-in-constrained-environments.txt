@@ -1,0 +1,1047 @@
+Title: Coordinated Manipulation of Hybrid Deformable-Rigid Objects in Constrained Environments
+
+URL Source: https://arxiv.org/pdf/2603.12940v1
+
+Published Time: Mon, 16 Mar 2026 01:12:07 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+> JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 1
+
+# Coordinated Manipulation of Hybrid Deformable-Rigid Objects in Constrained Environments 
+
+Anees Peringal , Anup Teejo Mathew , Panagiotis Liatsis , Federico Renda 
+
+Abstract —Coordinated robotic manipulation of deformable linear objects (DLOs), such as ropes and cables, has been widely studied; however, handling hybrid assemblies composed of both deformable and rigid elements in constrained environ-ments remains challenging. This work presents a quasi-static optimization-based manipulation planner that employs a strain-based Cosserat rod model, extending rigid-body formulations to hybrid deformable linear objects (hDLO). The proposed planner exploits the compliance of deformable links to maneuver through constraints while achieving task-space objectives for the object that are unreachable with rigid tools. By leveraging a differentiable model with analytically derived gradients, the method achieves up to a 33× speedup over finite-difference baselines for inverse kinetostatic(IKS) problems. Furthermore, the subsequent trajectory optimization problem, warm-started using the IKS solution, is only practically realizable via analytical derivatives. The proposed algorithm is validated in simulation on various hDLO systems and experimentally on a three-link hDLO manipulated in a constrained environment using a dual-arm robotic system. Experimental results confirm the planner’s accuracy, yielding an average deformation error of approximately 3 cm (5% of the deformable link length) between the desired and measured marker positions. Finally, the proposed optimal planner is compared against a sampling-based feasibility planner adapted to the strain-based formulation. The results demonstrate the effectiveness and applicability of the proposed approach for robotic manipulation of hybrid assemblies in constrained environments. 
+
+Index Terms —Deformable object manipulation, Cosserat rod, trajectory optimization, strain-based modelling 
+
+I. I NTRODUCTION 
+
+Deformable linear objects (DLOs), such as cables, ropes, and wires, are ubiquitous in daily life and industrial ap-plications. While recent research has focused heavily on the manipulation of DLOs [1], [2], [3], [4], [5], [6], many real-world objects are hybrid assemblies of deformable and rigid links. These systems leverage structural deformation to traverse highly constrained environments while retaining the mechanical precision inherent in conventional parallel designs. The continuum robotics community have proposed many such parallel continuum robots that have DLOs as well as rigid elements [7], [8], [9] in a Stuart-Gough fashion actuated by rotary motors that can be used for minimally invasive surgery. Similarly, coordinated aerial manipulation as in [10], [11] uses multiple drones to cooperatively transport a slung load through 
+
+Anees Peringal, Anup Teejo Mathew and Federico Renda are with the Department of Mechanical and Nuclear Engineering, Khalifa Uni-versity, Abu Dhabi, UAE, and also with the Khalifa University Cen-ter for Autonomous Robotic Systems (KUCARS), Khalifa University, Abu Dhabi, UAE (e-mail:100045872@ku.ac.ae; anup.mathew@ku.ac.ae; fed-erico.renda@ku.ac.ae) Panos Liatsis is with the Department of Computer Science, Khalifa Uni-versity, Abu Dhabi, UAE (e-mail:panos.liatsis@ku.ac.ae) 
+
+Fig. 1: Overview of the robotic platform and an example assembly of deformable and rigid links. The goal of this paper is to generate a quasi-static trajectory that reaches a desired goal while satisfying the workspace (environmental) constraints represented by the red circles. narrow gaps. In all of these cases, the underlying problem is the manipulation of assemblies of DLO and rigid elements. The differences between them arise from the morphology, i.e., the shape and connectivity of the different links, and from the actuation used. The following characteristics define the class of systems under investigation: 1) Assembly of DLOs and rigid links. 2) The requirement for coordinated actuation by two or more manipulators to achieve a target task-space objec-tive. 3) A closed-chain structure in which the object–manipulator system forms a parallel kinematic chain. We refer to such passive assemblies as hybrid Deformable Linear Objects (hDLOs), and to the corresponding robotic setups as hDLO–manipulator systems. The main challenges in the manipulation planning of hDLOs  
+
+> arXiv:2603.12940v1 [cs.RO] 13 Mar 2026 JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 2
+
+are inherited from their constituent DLOs, namely, a high-dimensional state-space and highly non-linear behaviour [3]. Because the shape of each DLO link in the assembly, i.e. the position and orientation of every point on the DLO link, is defined by a continuous mapping from the arc length to elements in SE (3) , the resulting configuration space of the hDLO is infinite dimensional. This infinite-dimensionality makes exhaustive or grid-based search strategies intractable. Consequently, sampling-based motion planning methods, such as rapidly exploring random trees (RRT) and probabilistic roadmaps (PRM), are commonly employed for DLO manip-ulation [4], [3], as they are well-suited for efficiently ex-ploring high-dimensional, complex configuration spaces [12]. However, classical sampling-based planners do not guarantee convergence to an optimal trajectory within the feasible space. Manipulation of hDLOs necessitates a reduced-order model that consistently integrates DLO mechanics with rigid-body kinematics. This integration is naturally provided by the strain-based Geometric Variable Strain (GVS) formulation [13]. By combining rigid-body joint coordinates with rod strain parameters, the GVS model yields a finite-dimensional config-uration space that is amenable to efficient motion planning. We demonstrate that the proposed GVS-based quasi-static planner computes optimal trajectories that steer the hDLO toward a target task-space objective while satisfying environmental constraints. Furthermore, we benchmark our approach against a sampling-based planner adapted for strain-based modelling of hDLOs. Due to the passive nature of hDLO, the hDLO-manipulator system is underactuated. The planning challenge, therefore, lies in computing an optimal trajectory for the actuated Degrees of Freedom (DoFs) that drive the hDLO towards a target goal while satisfying environmental constraints. An example of this class of systems is shown in Fig. 1, where two manipulators coordinate to deform an hDLO, enabling it to traverse a constrained workspace. In this paper, we consider circular apertures of radius ρh as an abstract model of narrow passages that commonly arise in applications like industrial inspection or minimally invasive surgery. The key contributions of this work are:  
+
+> •
+
+We formulate a gradient-based quasi-static trajectory op-timization framework for constrained manipulation of various hDLOs using a strain-based modelling approach.  
+
+> •
+
+We provide a simulation study and experimental vali-dation of the proposed method using a dual-arm robot manipulating an hDLO.  
+
+> •
+
+We develop a sampling-based planner using the strain-based model and compare its performance with the pro-posed optimization framework. The rest of the paper is organised as follows. Section II re-views the current state of the literature. Section III summarises the GVS model applied to hDLOs in static equilibrium. Section IV develops the optimization-based hDLO planner utilizing the GVS framework. Section V applies the planning algorithm in simulation and explores various features of the planner. Section VI validates the planned trajectories on a real dual-arm robot by (i) verifying that the desired task-space objective is achieved and (ii) comparing experimental performance against simulation results. To evaluate the per-formance of our optimization-based planner against traditional sampling-based planners, we implement a Rapidly-exploring random tree (RRT) algorithm using the strain-based model in Section VII. Finally, Section VIII presents concluding remarks and directions for further exploration. II. R ELATED WORKS 
+
+Effective planning of hDLOs requires models that bal-ance computational efficiency with accurate representation of nonlinear deformations. We first review DLO modelling ap-proaches, and then survey planning algorithms for deformable object manipulation, highlighting their respective strengths and limitations. 
+
+A. hDLO Modeling 
+
+Challenges in modelling hDLOs arise mainly from the modelling of the constituent DLOs and reconciling the rigid-body kinematics with the continuous deformation of the DLOs. Three-dimensional deformable objects can be modelled using the Finite Element Method (FEM), which discretizes the continuum equations governing material deformation into a numerically solvable form. FEM is used to model DLOs [14], and can also be extended to rigid bodies and hDLOs that combine deformable and rigid components. However, FEM uses maximal coordinates, which can result in very high DoF systems. Another approach for modelling constituent DLOs is the discrete formulation, which assumes that the deformable ob-ject is composed of a finite set of interconnected elements. Within this class, lumped mass methods [15], [16] have been used to model DLOs by representing them as point masses connected by compliant elements. In contrast, pseudo-rigid body models [17] are particularly well suited for hDLOs, as the constituent DLOs are represented as rigid links connected by compliant joints, consistent with the rigid-joint modelling used in the overall assembly. These models represent hyperre-dundant robots well [18], but are less suitable for continuously deforming objects due to their piecewise-rigid approximation. Data-driven methods offer a bypass to analytical formula-tion by capturing the highly non-linear motion of deformable objects with fast computations [19], [20]. While various neural-network architectures can be used, depending on the input data (e.g., visual, point cloud, etc), the resulting model is represented solely by the learned network parameters, making it difficult to interpret or analyse in the classical control-theoretic sense. In contrast, [21] proposes a Koopman-based method that produces a linear representation of the non-linear soft robot model in a lifted space. The linear system representation is well-suited for robotics since existing control methods can be directly applied to it. However, the lifted space may be very high-dimensional. Moreover, the inherent limitations of data-driven models in data requirements and generalizability also apply in this setting. The DLO links in the hDLO are naturally represented using rod models [22], [3], [4]. The Cosserat rod model provides a JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 3
+
+general six-mode deformation framework, from which many classical rod theories can be recovered as special cases. The Cosserat rod model can be solved by formulating it as a boundary value problem [23]. However, this solution can be unstable in some cases. Discrete elastic rods (DER) [24] are also used as a solution strategy that discretises the rod model into a finite number of vertices and edges consistent with continuum mechanics models. A major drawback is that this formulation of the Cosserat rod is more complex to apply to hDLOs because it does not naturally share the same joint abstraction. Another solution method uses the geometrically exact finite element method (GE-FEM) [25]. The configuration space defined by this method is the field of cross-section poses of the DLO. In contrast, the strain-based model used in this work represents the DLO through the strain along the DLO, which is analogous to the joint-space representation of hDLO. GVS is a general strain-based formulation of the Cosserat rod that allows for variable strains for the six modes of deforma-tion. Other strain-based formulations, such as the widely used Piecewise Constant Curvature (PCC) [26], Piecewise Constant Strain (PCS) [27], can be seen as a special case of the GVS model. 
+
+B. Planning for manipulation 
+
+Planning algorithms can be broadly classified into sampling-based, optimization-based, and learning-based. Among these, sampling-based methods are widely used, as they approximate the configuration space by sampling feasible states and con-necting them to form a graph that enables efficient navigation. A trajectory is then obtained by performing a graph search. Sampling-based approaches are particularly effective in high-dimensional configuration spaces, such as those encountered in hDLO manipulation. Notable examples of such methods include the Probabilistic Roadmap Planner (PRM) [28] and the Rapidly-Exploring Random Tree (RRT) [29]. For a finite number of samples, the graph does not necessarily contain the globally optimal trajectory in configuration space; however, asymptotically optimal planners such as PRM* and RRT* converge to the optimal solution as the number of samples increases. A fundamental limitation of these methods is that the randomly sampled states may not inherently satisfy the hDLO’s physical constraints, potentially leading to infeasible solutions. To address this, techniques such as projection onto the DLO equilibrium manifold [4] or sampling on the manifold [3], have been proposed to ensure compliance with physical model. We develop a bidirectional RRT (BiRRT) tailored to strain-based modeling and conduct a simulation study to com-pare its performance with that of the proposed optimization framework. Optimization-based methods are generally not used for manipulation planning of DLOs because they can be compu-tationally expensive and are highly dependent on the initial guess. In [30], the DLO is modelled with position-based dynamics (PBD) and a sampling-based planner is used to compute a trajectory as the initial guess for trajectory op-timization. The good initial guess obtained from sampling makes trajectory optimization computationally feasible. This underscores the importance of proper initialisation. In contrast, we address this challenge through a dedicated warm-start strategy described in Sec. V, without relying on a sampling-based planner. On the other hand, optimization has been widely used for local control of deformable objects. Model Predictive Control (MPC) is used along with data-driven models of DLOs, particularly in constrained environments, as it allows for the generation of control policies that adhere to environmental constraints. In [1], the shape control problem of a DLO is addressed using MPC along with an offline data-driven DLO model. Learning-based planners, including Reinforcement Learning (RL) and Imitation Learning (IL), find the policies directly from large-scale data about the system [31], [32]. Model-free reinforcement learning has been applied to DLO shape control via pick and place [33], though these methods re-main sample-intensive and fail to generalise across varying material properties. To improve sample efficiency, IL leverages demonstrations to replicate human actions [34] or to define the problem [35], and then refines the policy using differentiable simulation of the deformable object. While promising, their limitations in guaranteeing physical feasibility and adapting to different hybrid deformable–rigid assemblies motivate our model-based planning approaches with explicit physics. III. S TRAIN -BASED MODELING OF H DLO S
+
+We adopt the Geometric Variable Strain (GVS) to model hDLO because it uses a minimal coordinate representation of the constituent DLOs [13]. Furthermore, GVS facilitates a unified treatment of rigid body joints and DLO deformation, allowing both to be expressed within the same geometrical framework. Schematics of some examples of hDLOs are shown in Fig. 2. The hDLO-manipulator system has nd total DoFs of which a subset na are the actuated DoFs that parametrise the manip-ulator joint coordinates, while the rest represent the passive hDLO deformation. The homogeneous transformation matrix of the ith link with respect to the inertial base frame is given by: 
+
+gi =
+
+Ri ri
+
+0 1
+
+
+
+∈ SE (3) (1) where ri ∈ R3 and Ri ∈ SO (3) are the position and orientation respectively. In the case of a deformable link of length li, gi is a function of the curvilinear abscissa ¯X ∈ [0 , l i]
+
+and expressed with respect to the inertial base frame. We define a normalised abscissa X = ¯X/l i.The partial derivatives of gi(X) with respect to time and 
+
+Xi are given by: 
+
+˙gi(Xi) = gi ˆηi (2) 
+
+g′
+
+> i
+
+(Xi) = gi ˆξi (3) where ˆξi and ˆηi are the strain and velocity twists represented in se (3) . By the equality of mixed partial derivatives in space and time, we obtain a relationship between the strain twist and the velocity twist: 
+
+η′ 
+
+> i
+
+= ˙ξi − ad ξi ηi (4) JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 4
+
+Fig. 2: Schematics of exemplary hDLO systems. The depicted hDLO, composed of two DLOs, is actuated via aerial vehicles, prismatic and revolute joints, or serial manipulators with multiple revolute joints. The integration of (4) yields: 
+
+ηi = Ad g−1
+
+> i
+
+Z Xi
+
+> 0
+
+Ad gi
+
+˙ξids (5) The strain twist is, in general, a continuous function of Xi.For a link with ni DoF, the strain field is parametrised be a finite functional basis Φ ∈ R6×ni :
+
+ξi = Φi(Xi)qi + ξ∗ 
+
+> i
+
+(X) (6) where qi ∈ Rni is the vector of generalized coordinates for the ith link, and ξ∗ ∈ R6 is the space rate of change of cross-section poses. For rigid links, the basis vectors does not depend on Xi, and (6) defines the joint twist. For example, in the case of a revolute joint about the z axis, we have 
+
+Φ = [0 0 1 0 0 0] T . This formulation can also handle multidimensional joints such as spherical joints and floating bodies. The forward kinematics for rigid joints can therefore be obtained by the integration of (3): 
+
+gi = exp( ˆξi) (7) In the case of a deformable link, the strain twist is generally a spatially varying function of Xi. To solve the differential equation (3), we utilise the Magnus expansion [36], which provides a matrix Lie algebra element ˆΩ(Xi) ∈ se (3) such that the forward kinematics can be expressed through the exponential map: 
+
+gi(Xi) = exp 
+
+ ˆΩi(Xi)
+
+
+
+(8) which effectively generalises rigid body kinematics in (7). In practice, gi(Xi) is computed recursively at discrete points using Zanna quadrature [37] approximation of Magnus ex-pansion. The geometric Jacobian which maps ˙q to ηi, Ji(q) ∈
+
+R6×nd and be obtained by substituting (6) in (5). where the first three rows, Jω , correspond to the angular velocity and the last three rows, Jv , describe the linear velocity. The generalised static equilibrium of the assembly is then obtained by projecting the freebody static equilibrium of each link i
+
+using Ji to obtain [38]: 
+
+Kq − F (q) − B(q)u = 0 (9) where K ∈ Rnd×nd is the generalized stiffness matrix, B ∈
+
+Rnd×na maps the actuator inputs to generlaized forces, F ∈
+
+Rnd is the vector of external forces acting on the system such as gravity and u ∈ Rna and actuation inputs such as joint torques of the manipulator. The vector qa ∈ Rna denotes the subset of generalized coordinates corresponding to the active DoFs. The hDLO-manipulator systems considered in this paper have a parallel kinematic topology, which necessitates the satisfaction of one or more loop closure constraints. For a fully constrained closed-chain joint, between frames A and B, the holonomic constraint represented in SE (3) is given by: 
+
+g−1 
+
+> A
+
+(q)gB (q) = I (10) To facilitate numerical optimization, we map this constraint into the associated Lie algebra se (3) through the logmap as: 
+
+ec(q) = log( g−1 
+
+> A
+
+gB ) = 0 (11) where ec ∈ R6 represents the twist error associated with one fully constrained closed-chain joint. In general, the system may have multiple closed-chain joints resulting in a total nc
+
+scalar constraints: ec ∈ Rnc . The kinematic constraint in the Pfaffian form is given by A(q) ˙ q = 0 [39], where A is the constraint jacobian A = ∂ec 
+
+> ∂q
+
+(see Appendix B). The associated constraining forces lie in a space spanned by AT . Therefore, the constraining forces can be represented as AT λ, where 
+
+λ ∈ Rnc is the Lagrange multipliers that produce the force required to satisfy the constraint. Collecting all the closed chain constraints, our full static equilibrium condition will be: 
+
+Kq − F − Bu − AT λ = 0 (12a) 
+
+ec = 0 (12b) In practice, K, F and A for the continuous deformable object are computed through a numerical integration method. The continuous domain of X is discretised into np computation points, and the integral for these distributed quantities is computed as: 
+
+Z 10
+
+f (X)dX =
+
+> np
+
+X
+
+> j=1
+
+wj f (Xj ) (13) where Xj and wj denote the integration points and their cor-responding weights, respectively. The integrals are evaluated using Gauss–Legendre quadrature. Recent advances provide closed-form analytical derivatives of the GVS statics and dynamics [40], enabling efficient gradient-based optimization for hybrid soft–rigid robots. In this work, we focus on the partial derivatives of (12) with respect to q, u, and λ.JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 5
+
+IV. O PTIMIZATION BASED PLANNING 
+
+The challenge of quasi-static motion planning involves identifying an optimal path from an initial state to a goal state, constrained to the equilibrium manifold given by M =
+
+{(q, u, λ) | Eq . (12) }. Since the systems under investigation are underactuated, the generalised coordinates cannot be in-dependently prescribed. Thus, trajectories must be generated in the actuated subspace such that the resulting motion of the passive DoFs remains admissible. The admissibility is defined by constraints that depend on both passive and active DoFs such that the hDLO remains within a prescribed spatial region throughout the motion. We pose this trajectory generation as a constrained nonlinear optimization problem. For hDLOs, the goal can be defined in terms of the position, orientation, or full pose of a designated link in the hDLO, referred to as the end-effector or a material point Xi on a DLO link. Although the proposed framework accommodates all such goal specifications, in this work, we restrict our attention to either position, rEE ∈ R3, regulation or full pose, gEE ∈ SE (3) , regulation of the hDLO end-effector, depending on the hDLO morphology. We first investigate the inverse kinetostatic problem. Subsequently, the solution is used to develop a warm-start strategy for the trajectory generation problem that satisfies the environmental constraints. 
+
+A. Environment constraints 
+
+The hDLO is constrained to remain within a spatial re-gion throughout the motion. We model narrow passage en-vironments using circular apertures that impose geometric constraints on the DLO links. Such confined geometries are commonly encountered in industrial inspection and minimally invasive surgery. In this work, we consider two such circular apertures, and we assume that each aperture lies in a plane parallel to the xy -plane at height zh. For each DLO link, there exists a normalised arc length X† ∈ [0 , 1] where it intersects the aperture plane. For a single aperture, it can be written as a combination of equality and inequality constraints: 
+
+ce(q, X †) := zh − z(q, X †) = 0 
+
+cin (q, X †) := ∥Ph − P (q, X †)∥2 − (ρh − ρ(X†)) 2 ≤ 0
+
+(14) where Ph = [ xh yh]T represents the xy -coordinates of the aperture center and P (q, X †) = [x(q, X †) y(q, X †)] T is the xy -coordinates of the DLO link centerline at the point of intersection. ρh and ρ(X†) are the radius of an aperture and the cross-section of the DLO at the point of intersection, respectively. Since we consider two apertures, we will have two sets of ce and cin and the corresponding X† = [ X† 
+
+> 1
+
+X† 
+
+> 2
+
+]T .
+
+X† is treated as free variables within the optimization so that the hDLO can move along the aperture, while satisfying the constraints. The recursive algorithm of GVS framework provides the pose of the cross-section of the DLO links at discrete inte-gration points as discussed in Sec III. Hence, evaluating the environmental constraints requires the pose at arbitrary arc length X†. To achieve this, we utilise an interpolation scheme 
+
+Fig. 3: The pose of the cross section is computed at finite computational points denoted by Xj . At other points, we approximate the pose via an interpolation in SE (3) by assum-ing a constant twist between two consecutive computational points. Interpolation is described in Algorithm 1. on SE (3) to obtain a continuous representation of the DLO as illustrated in Fig. 3. To evaluate the pose at an arbitrary arc length X† that is between two known discrete points Xj and Xj+1 , we utilize interpolation as: 
+
+g(X†) = gj gα (15) where gj = g(Xj ) is the pose at Xj < X † and gα is given by 
+
+exp ( αΩj ), where α = X†−Xj 
+
+> Xj+1 −Xj
+
+. This interpolation method is described in algorithm 1. 
+
+Algorithm 1 Zero-order Interpolation in SE(3) 
+
+Require: Keyframes {(Xj , gj )}Ng 
+
+> k=1
+
+with gj ∈ SE (3) , and query coordinate X†
+
+Ensure: Interpolated pose g(X†) ∈ SE (3) 
+
+Find j such that Xj ≤ X† ≤ Xj+1 
+
+α ← X†−Xj
+
+> Xj+1 −Xj
+
+ˆΩj ← log( g−1 
+
+> j
+
+gj+1 )
+
+g(X†) ← gj exp  α ˆΩj
+
+
+
+return g(X†)
+
+To use gradient-based optimization, we require the analyti-cal derivatives of the constraints with respect to the decision variables. The constraints in (14) are defined by the DLO link position at X†, which is a function of q and X†. From the interpolated pose g(q, X †), the position vector is extracted as: 
+
+r(q, X †) = Rj rα(q, X j ) + rj (16) Using the chain rule, the analytical derivatives of the position of the deformable object with respect to q and X† are given by: 
+
+∂r(q, X †)
+
+∂q = ∂Rj
+
+∂q rα + Rj
+
+∂rα
+
+∂q + ∂rj
+
+∂q
+
+∂r(q, X †)
+
+∂X † = Rj
+
+∂rα
+
+∂X † + rj
+
+(17) JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 6
+
+The full derivation of these terms and the derivatives with respect to q and X† are provided in Appendix B-II. We use this definition of environmental constraints to define the inverse kinetostatic problem and, subsequently, the trajectory-generation problem. 
+
+B. Inverse kinetostatic problem 
+
+Inverse Kineto-Statics (IKS) for hDLOs consists of deter-mining an equilibrium configuration and the corresponding actuation inputs required to achieve a desired kinematic goal. Unlike classical inverse kinematics, the configuration is im-plicitly determined by the static equilibrium of the hDLO-manipulator system. This problem is formulated as a nonlinear constrained optimization problem that minimizes the objective (goal) function. For example, when the goal is full pose regulation, the objective can be defined using the SE (3) 
+
+logarithmic distance between the desired pose gEE,d and the end-effector pose gEE (q):
+
+min 
+
+> x
+
+12 ∥log 
+
+
+
+g−1
+
+> EE,d
+
+gEE (q)
+
+∨
+
+∥2
+
+s.t. Kq − Bu − F − AT λ = 0
+
+ec(q) = 0
+
+ceq (q, X†) = 0
+
+cin (q, X†) ≤ 0
+
+qa, min ≤ qa ≤ qa, max 
+
+(18) where x = [ qT uT λT X†]T and qa, min and qa, max are the joint limits of the manipulator. We solve the inverse kineto-static problem using the fmincon solver in MATLAB with the interior-point algorithm with analytical derivatives specified for the objective function and the constraints. These analytical derivatives are given in Appendix B-I. The known initial configuration of the hDLO, obtained from static equilibrium (12), is used as the initial guess for the solver. The solution of (18) is subsequently used to obtain a warm start for the path planning problem. 
+
+C. Path planning problem 
+
+The path planning problem is formulated as finding an optimal trajectory in the configuration space that transitions from the initial configuration to a final configuration that achieves a desired hDLO end-effector pose. The planner com-putes a sequence of actuation inputs and hDLO configurations that move the hDLO from start to goal while satisfying the constraints. We formulate the trajectory optimization (TO) as a non-linear program, where the decision variables x
+
+are parameterized along a path parameter t and defined as 
+
+x(t) = [ q(t)T , u(t)T , λ(t)T , X†(t)] T . To solve this problem numerically, we employ direct transcription method [41] to transform the continuous functions into N discrete keyframes such that xk = [ qTk , uTk , λTk , X†Tk ]T for k ∈ { 1, . . . , N }. We assume that the initial configuration [q0, u0, λ0] is known a 
+
+priori . The optimization problem consists of N × (nd + na +
+
+nc + 2) decision variables accounting for qk, uk, λk and X†
+
+> k
+
+respectievely. We formulate the TO problem as: 
+
+min  
+
+> x
+
+fp(x)s.t. Kq k − Bkuk − Fk − ATk λk = 0
+
+ec(qk) = 0
+
+ceq (qk, X†
+
+> k
+
+) = 0
+
+cin (qk, X†
+
+> k
+
+) ≤ 0
+
+qa, min ≤ qak ≤ qa, max ∀ k ∈ { 1, . . . , N }
+
+12 ∥log 
+
+
+
+g−1
+
+> EE,d
+
+gEE (qN )
+
+∨
+
+∥2 = 0 
+
+(19) where fp is the path cost of the optimization problem. The path cost promotes smooth variations in deformation, actuation inputs, and constraint forces by penalizing the differences between consecutive keyframes. It is defined as a weighted quadratic norm: 
+
+fp = 
+
+> N−1
+
+X
+
+> k=0
+
+∥qk+1 − qk∥2 
+
+> Qq
+
++ ∥uk+1 − uk∥2 
+
+> Qu
+
++ (20) 
+
+∥λk+1 − λk∥2
+
+> Qλ
+
+This creates a large NLP with N × (nd + nc + 4) + 1 
+
+nonlinear constraints from the static equilibrium N ×(nd +nc),environmental constraint N ×4, and a terminal constraint. The terminal constraint enforces the desired hDLO end-effector pose at the final keyframe. Moreover, the Jacobians are sparse because the keyframes in the trajectory are independent. We utilise the fmincon solver with the interior-point algorithm to solve the optimization problem, as it is particularly suited to large-scale sparse problems. To avoid the slow convergence associated with a cold-start initialization, xk = x0, we employ a warm-start strategy to improve efficiency. First, we compute the IKS solution of (18) to obtain a feasible configuration of the hDLO that achieves the desired pose. This provides the final state xf . The initial guess for the intermediate keyframes is then obtained by linearly interpolating between the initial state x0 and the feasible final state xf :
+
+xk = x0
+
+
+
+1 − kN
+
+
+
++ xf
+
+kN . (21) This warm-start initialization improves the convergence of the TO. In contrast, cold-start initialization often results in slow convergence or failure to converge for several desired hDLO end-effector poses tested in simulation. Moreover, we provide the analytical Jacobians of the objective and constraint functions to the solver. The explicit expressions for these derivatives are given in the Appendix B-III. V. S IMULATION RESULTS 
+
+The SoRoSim simulator [42] is used to implement the GVS model of the hDLO. We apply the proposed method to various hDLO assemblies of increasing complexity, as shown in Fig. 4. hDLOs (a) and (b) consist of two DLO links connected to a rigid link. In the first case, the connections between the DLO links and the rigid link are fixed, whereas in the second case JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 7
+
+Fig. 4: Deformable-rigid assembly examples: a) Deformable and rigid links, connected by a fixed link. b) Deformable rigid links, connected by spherical joints represented by a yellow circle. c) Two deformable and single rigid links d) Three deformable and two rigid links, connected by spherical joints. TABLE I: Geometric and material properties of the assembly components used in the simulation.               
+
+> Component Parameter Value
+> DLO (Nitinol) Length 0.68 m
+> Outer diameter 1.8 mm
+> Inner diameter 1.4 mm
+> Young’s modulus 7.5×10 10 Pa
+> Poisson ratio 0.33 Density 6450 kg m −3
+> Rigid disk Length 0.01 m
+> Diameter 0.1 m
+> Mass 48 g
+
+spherical joints are used. The hDLO in (c) has three DLO links connected to a rigid link through fixed joints. Finally, hDLO (d) also consists of three DLO links connected to two rigid links via fixed joints, while the rigid links are connected to each other through spherical joints. In this case, one of the rigid links is selected as the hDLO end-effector, whose pose must achieve the desired goal. We consider hDLOs (a) and (b) to be actuated by a dual-arm manipulator, where the pose is determined using the product-of-exponentials representation of the manipulator joint coordinates. For hDLOs (c) and (d), the DLO tip pose is modeled using exponential coordinates in R6. For hDLOs (b) and (d), which contain spherical joints, the control objective is restricted to end-effector position because spherical joints do not transmit arbitrary moments and therefore cannot fully constrain orientation. The material properties of the DLO links and the rigid links used to make up the hDLO are given in Table I. The strain field along the DLO links is parametrised using a finite-order functional basis. In this work, we use third-order Legendre polynomials to represent all six deformation modes of the Cosserat rod. Hence, in total for a DLO link ni = 6 × 4 = 24 .
+
+A. Simulation Results 
+
+Using the hDLO in Fig. 4(a), we investigate the effect of environmental constraints. The NLP (19) is solved with and without environmental constraints. In both cases, the terminal pose constraint 12 ∥log( g−1
+
+> EE,d
+
+gEE (qN )) ∨∥2 = 0 is satisfied within numerical precision. When environmental constraints are introduced, the resulting trajectory differs qualitatively from the unconstrained case: the planner actively exploits the deformation of the hDLO links to satisfy the environmental 
+
+Fig. 5: Moving from the same initial configuration of the robot, we need to make use of the deformation of the hDLO to move to the desired pose within the hole constraints. a) shows the trajectory when constraints are considered. b) shows the trajectory when the constraints are not considered. restrictions, as illustrated in Fig. 5. The constraints reshape the feasible configuration space, leading the optimizer to a different equilibrium configuration that accommodates both the task and environmental constraints. We extend the analysis of the constrained NLP to the remaining hDLOs shown in Fig. 4. The resulting trajectories are presented in Fig. 6. In all cases, the terminal constraint is satisfied within numerical precision. The corresponding tra-jectory computation times and solver iterations are reported in Table II. The variation in computation time across assemblies is influenced by the number of deformation variables nd, the morphology of the hDLO, and the terminal constraint (goal). For instance, moving from assembly (a) to (b), the convergence time nearly doubles despite the addition of only 6 DoFs. This increase is primarily due to the presence of passive spherical joints in the hDLO, which introduce additional kinematic coupling that the optimizer must resolve. Overall, the results demonstrate that the proposed frame-work scales reasonably with problem size and remains com-putationally tractable even in the presence of environmental constraints. 
+
+B. Effect of Analytical Derivatives 
+
+The IKS (18) and the TO (19) are solved using fmincon with analytical derivatives supplied to the solver. When derivatives are not provided, the solver approximates them using finite differences. We evaluate the benefit of supplying analytical derivatives by comparing the two approaches on the hDLO assembly shown in Fig. 4(a). JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 8
+
+Fig. 6: TO planner is extended to other hDLOs in Fig 4(b), (c) and (d) respectively. The desired position for hDLO (b) is shown by the blue point and similarly the desired poses for other hDLOs are shown with the axes.                          
+
+> Assembly ndnancTime taken (s) Iteration count a62 14 627.66 221 b68 14 652.88 141 c90 18 12 53.38 132 d93 18 12 55.18 102
+
+TABLE II: The time taken to generate the trajectories shown in Fig. 5(a) and Fig. 6. Finite differences result in an average convergence time of 495.17 s, whereas the use of analytical derivatives reduces this to 14.71 s, corresponding to a 33 × speedup for the IKS problem. The average number of solver iterations also decreases from 373 to 282 , indicating improved convergence behavior when analytical derivatives are provided. For the TO, a quantitative comparison is not possible because the solver did not converge within a reasonable time when gradients were approximated using finite differences. In contrast, when analytical derivatives are supplied to the solver, the TO converges reliably. This indicates that providing analytical derivatives is essential for solving the trajectory generation problem within a practical computation time. VI. E XPERIMENTAL RESULTS 
+
+To validate the proposed planning framework, we conducted experiments using a bimanual robot manipulating the hDLO shown in Fig. 4(a). The hDLO is constructed from highly elastic Nitinol rods, while the rigid link is 3D printed using polylactic acid (PLA). The geometric and material properties of the Nitinol and rigid segments are listed in Table I. To ensure accurate tracking of the hDLO, we perform hand–eye calibration using an Optitrack motion capture sys-tem. Motion capture markers are attached to the manipulator end-effectors. The calibration procedure aligns the robot base frame with the global motion capture frame and accounts for the fixed geometric offset between the manipulator end-effector and the hDLO grasp points. This unified kinematic chain, which includes the Optitrack base frame, manipulator, and the hDLO, allows the system to track both the hDLO configuration and the end-effector pose during execution. During the experiments, additional motion capture markers are placed on the hDLO end-effector to compare the measured end-effector pose with the desired pose. 
+
+A. Forward Model Validation 
+
+The accuracy of the hDLO–manipulator model was vali-dated by comparing experimental measurements of the hDLO end-effector pose with the model’s forward statics solution. For a set of Nv arbitrary manipulator joint configurations, we computed the equilibrium state of the hDLO in simulation and compared the resulting end-effector poses with those measured using the motion capture system. The pose is compared using the positions of four markers in simulation and experiment through the following error function: 
+
+em = 1
+
+NvNvX
+
+> k=1
+
+14
+
+> 4
+
+X
+
+> l=1
+
+∥p sim  
+
+> l
+
+(q∗ 
+
+> k
+
+) − p exp  
+
+> k,l
+
+∥
+
+!
+
+(22) where p sim  
+
+> l
+
+(q∗ 
+
+> k
+
+) is the simulated position of marker l obtained from the forward statics solution at configuration q∗ 
+
+> k
+
+, and 
+
+p exp  
+
+> k,l
+
+is the corresponding experimental measurement from the motion capture system. As shown in Fig. 7, the model accurately predicts the steady-state configuration of the hDLO across the workspace. The validation results yielded an average error of 2.14 cm, which is 3.07% of the length of one of the deformable links. 
+
+B. Manipulation experiments 
+
+We validate the TO framework through four distinct ex-perimental cases, each targeting a different desired hDLO end-effector pose. For each case, the optimal trajectory was computed both without and with environmental constraints. To translate the discrete keyframe joint configurations ob-tained from solving (19) into smooth commands for the manipulator, we employ an interpolation scheme. For a given time period T required to move from one keyframe to the next, the commanded joint trajectory qa(t) between the kth step to the (k + 1) th step is defined as: 
+
+qa(t) = (1 − tT )qa,k + tT qa,k +1 (23) JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 9
+
+Fig. 7: Experimental validation of the hDLO-manipulator model. The average error between the markers in experiment and simulation is 3.07% of the deformable object length. In our experiments, we choose T = 10 s using linear inter-polation, sampled at 100Hz, to provide a smooth reference for a low-level controller. Upon reaching each keyframe, the manipulators remained stationary for an additional 5s to allow any residual vibrations in the hDLO to settle. Consequently, a typical 10-keyframe trajectory was completed in 150 s, ensuring that all experimental measurements reflect the steady-state equilibrium of the assembly. The comparison of marker positions between the experi-ments and the planned path in the unconstrained scenario is shown in Fig. 8, while the corresponding constrained case is shown in Fig. 9. The starting and desired poses of the hDLO are the same in both cases; however, the trajectories generated by the planner differ. The average error between the planned trajectory and the achieved trajectory in terms of (22) is shown in Table III. Moreover, we also show the position error between the final position of the hDLO and the desired position. To put these error values in context, the percentage error with respect to the length of one of the DLO links is also given. All simulated trajectories achieve the desired final end-effector pose within numerical precision. The small discrepancy observed in experiments lies in the range of the forward-model accuracy previously quantified,                      
+
+> Constrained error Unconstrained error Trajectory Average (cm) Final (cm) Avg (cm) Final(cm) 11.37(2.01%) 2.62 1.95(2.87%) 1.41 21.68(2.47%) 2.14 1.64(2.41%) 2.16 32.18(3.20%) 7.53 3.71(5.45%) 4.87 42.60(3.82%) 3.66 2.82(4.14%) 2.78
+
+TABLE III: Average error between the planned path and the measured path, expressed both in centimeters and as a percentage of the length of one Nitinol rod. suggesting that the residual error is dominated by sim-to-real effects rather than planning inaccuracies. Although closed-loop local control could further improve tracking performance, this work concentrates on assessing the capabilities of the proposed planner. VII. C OMPARISON WITH SAMPLING BASED PLANNER 
+
+To evaluate the performance of the proposed TO planner, we implemented a bidirectional rapidly exploring random tree (BiRRT) as a sampling-based baseline. BiRRT is widely used in DLO manipulation due to its efficiency in exploring high-dimensional spaces. In this implementation, the algorithm grows two trees, Tstart 
+
+and Tend , initialised with nodes Ns and Ne at the initial and final configurations, respectively, until a connection is estab-lished between them. The final configuration for initialising 
+
+Tend is obtained by solving IKS (18). The implementation of BiRRT is adapted for strain-based modelling of DLO by defining equilibrium conditions for the hDLO in strain-based coordinates. This ensures that the resulting trajectory is phys-ically feasible and consistent with hDLO elastic properties, providing a direct comparison between the two methods. Every node Nl ∈ T store the tuple Nl = ( qa, xeq ) where qa defines the actuated DoF that is randomly sampled and xeq = [ q u λ ]
+
+is the equilibrium state of the hDLO computed from qa.We define the qa(Nl) as the projection of Node Nl onto the manipulator configuration component. The shape of the deformable object can be obtained from the tuple through the recursive forward kinematics described in (8). The high-level algorithm for the BiRRT implemented here is given in Algorithm 2. 
+
+A. Implementation 
+
+The BiRRT algorithm consists of four principal steps: (1) random sampling in the actuation space, (2) extension of the search tree toward the sampled qa, (3) connection of the two trees, and (4) extraction of a feasible path from the initial state to the goal state through the connected tree. The specific implementation details of each step are described below. 
+
+1) Random sampling SampleState() : The joint angle space is bounded by the joint limits of the manipulator 
+
+(qa,min , qa,max ). A boolean flag, growFromStart , is used to alternate the expansion between Tstart and Tend . At the first iteration, Tstart is selected for expansion and a random joint configuration qrand  
+
+> a
+
+is uniformly sampled within the actuator bounds. To accelerate convergence and facilitate a faster connection between Tstart and Tend , we employ a goal-biasing heuristic. JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 10 
+
+Fig. 8: The unconstrained path planning is compared with the experiment. We find that the average error between the planned marker positions and those measured from the experiment is 2.6 cm or 3.7% of the deformable object length. With a probability pgoal = 10% , the algorithm bypasses uniform sampling and instead sets qrand  
+
+> a
+
+to be the root of the opposite tree. This strategy creates a directed expansion between the two trees, significantly reducing the exploration of irrelevant regions of the high-dimensional joint space and promoting a more efficient bridge between the initial and target hDLO states. 
+
+2) Extending the tree Extend() : Given the sampled joint configuration qrand  
+
+> a
+
+, the closest node N ∗ in the selected tree is identified using the joint space distance metric. 
+
+N ∗ = arg min  
+
+> Nl∈T
+
+∥qa(Nl) − qrand  
+
+> a
+
+∥ (24) A small step of γ is taken from qa(N ∗) towards qrand  
+
+> a
+
+in the manipulator joint space to generate a candidate configuration, 
+
+qcand  
+
+> a
+
+.
+
+qcand  
+
+> a
+
+= qa(Nj ) + γ qrand  
+
+> a
+
+− qa(N ∗)
+
+∥qrand  
+
+> a
+
+− qa(N ∗)∥ (25) However, the candidate configuration does not, in general, satisfy the static equilibrium constraint of the deformable object and therefore requires a projection to the equilibrium manifold. The projection is carried out by solving the static equilibrium equations (12a) and (12b) using a root-finding procedure. To reduce computational cost, the equilibrium state associated with the nearest node xeq (N ∗) is used as an initial guess for the solver. Once the projected equilibrium is obtained, feasibility along the edge connecting N ∗ and the candidate node is verified. Specifically, the strain parameters of the deformable object are linearly interpolated between the two configurations, and the resulting intermediate states are checked against environmental and task-specific constraints. For computational efficiency, feasibility is evaluated at a finite number of interpolation points along this segment. If all checks are satisfied, the candidate node is added to the tree. 
+
+3) Tree connection Connect() : Whenever a new node is successfully added to one tree, the algorithm attempts to connect the opposite tree to this node using a greedy extension strategy. The closest node in the opposite tree is repeatedly extended toward the new node using the same constrained extension procedure described above, until either the two trees meet within a predefined threshold or an infeasible configuration is encountered. If infeasibility is detected during this process, the connection attempt is terminated, and the algorithm proceeds to the next iteration by sampling a new JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 11 
+
+Fig. 9: Constrained trajectory planning is compared with the experiment. The markers measured in the experiment are shown in green, and the markers in the simulation are shown in red. We find an average error of 0.0202m. random configuration. The planning process continues until a valid connection between the two trees is established. The path is extracted with a tree search algorithm over the connected tree, yielding a feasible path from the initial configuration to the goal configuration ( ExtractPath() ). 
+
+B. Results 
+
+We apply the BiRRT planner described above to the con-strained environment to achieve the same hDLO end-effector poses as in Fig 9. The main difference between the proposed TO method and the sampling-based method is in the com-putation of the new step. The TO computes a deterministic, gradient-based step that locally improves the feasibility and the optimality of the solution, whereas RRT generates astochastic extension to explore the global configuration space. The computation time of the proposed TO planner and the BiRRT planner is compared in Table IV. We observe that the proposed TO method can compute feasible and optimal trajectories in a time comparable to that of the sampling-based approach. Notably, for tasks requiring significant out-of-plane deformation, the TO planner demonstrates superior performance. In the case of trajectory 3, it achieves a solution nearly an order of magnitude faster. Beyond computational efficiency, the optimization-based method offers additional behavioural advantages. Specifically,           
+
+> Trajectory number BiRRT TO 133.56 (4.52) 42.36 212.34 (4.50) 40.00 3201.69 (14.39) 45.65 439.77 (2.96) 33.64
+
+TABLE IV: Time to convergence between our TO method and BiRRT method inspired by the literature. To account for the stochastic nature of BiRRT, each trajectory is run 5 times to get the mean and standard deviation (in brackets) of the computation time. it generates trajectories that are optimal with respect to a user-defined cost function, enabling systematic trade-offs between actuation effort and motion characteristics. In Fig. 10, we compare the performance of both planners for trajectory 3 by examining the average absolute values of joint coordinates and actuation inputs over the trajectory. The smoother profile pro-duced by the TO planner contributes to better adherence to the quasi-static assumptions underlying both planning methods. VIII. C ONCLUSION 
+
+This work presents a gradient-based trajectory optimiza-tion framework for manipulating hybrid deformable linear objects in constrained environments. Leveraging the GVS formulation, deformable and rigid components are modelled JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 12 
+
+Algorithm 2 Bi-directional RRT for Deformable Object Ma-nipulation 
+
+Require: Ns = ( qa,s , xeq,s ), Ne = ( qa,e , xeq,e ), 
+
+> 1:
+
+maximum iterations Nmax , step size γ, goal bias pgoal 
+
+Ensure: Path P from Ns to Ne or failure  
+
+> 2:
+
+Tstart ← { Ns} 
+
+> 3:
+
+Tend ← { Ne} 
+
+> 4:
+
+growFromStart ← true  
+
+> 5:
+
+for k = 1 to Nmax do  
+
+> 6:
+
+if rand() < p goal then  
+
+> 7:
+
+Nrand ←
+
+(
+
+Ne if growFromStart 
+
+Ns otherwise  
+
+> 8:
+
+else  
+
+> 9:
+
+Nrand ← SampleState ()  
+
+> 10:
+
+end if  
+
+> 11:
+
+(Tgrow , T other ) ←
+
+(
+
+(Tstart , T end ) if growFromStart 
+
+(Tend , T start ) otherwise  
+
+> 12:
+
+Nnew ← Extend (Tgrow , N rand , γ ) 
+
+> 13:
+
+if Nnew ̸ = ∅ then  
+
+> 14:
+
+Nconn ← Connect (Tother , N new , γ ) 
+
+> 15:
+
+if Nconn ̸ = ∅ then  
+
+> 16:
+
+P ← ExtractPath (Tstart , T end , N new , N conn ) 
+
+> 17:
+
+return P 
+
+> 18:
+
+end if  
+
+> 19:
+
+end if  
+
+> 20:
+
+growFromStart ← not growFromStart  
+
+> 21:
+
+end for  
+
+> 22:
+
+return failure 
+
+Fig. 10: The trajectories computed from the TO (left) and the BiRRT (right) are compared. The TO approach finds a smoother trajectory in generalized coordinates and actuation forces. within a unified mathematical framework, enabling consistent kinematic and static analysis of complex assemblies. The planning problem is formulated as a quasi-static trajectory optimization, and analytical derivatives of the GVS model are supplied to the solver, making it computationally tractable. Simulation studies on multiple hDLO assemblies and ex-periments on a representative hDLO demonstrate that the pro-posed method can generate feasible manipulation trajectories under narrow environmental constraints. Real-world experi-ments with a dual-arm robot validate the physical accuracy of the model, with an average discrepancy of approximately 
+
+2 cm between simulated and measured end-effector poses. These results show that the planner can exploit structural compliance to maneuver through confined spaces while main-taining accurate control of the hDLO end-effector pose. We also compare the proposed TO planner with a sampling-based planner adapted to strain-based modeling, highlighting differences in the resulting trajectories produced by the two approaches. However, several aspects of the research warrant further investigation. The current framework operates under an open-loop control regime and is therefore highly sensitive to the identified parameters. Moreover, it assumes a quasi-static trajectory, which limits performance in uncertain conditions and during dynamic motions. Further work will extend the approach towards dynamic manipulation, incorporating contact dynamics so that contacts can be leveraged to achieve a larger set of feasible hDLO end-effector poses in the constrained environment, and providing feedback control for tracking the generated trajectory. This study shows that combining strain-based modelling of hDLOs with differentiable optimizations provides a powerful tool for manipulation planning in con-strained environments. We believe this framework represents an important step toward reliable manipulation of complex de-formable systems, offering new opportunities for the robotics community to tackle increasingly constrained and contact-rich environments through gradient-based planning. APPENDIX APRELIMINARY DEFINITIONS 
+
+The strain and velocity twists in (2) are defined as: 
+
+ˆξi =
+
+ ˜ki pi
+
+0 0
+
+
+
+∈ se (3) (26) 
+
+ˆηi =
+
+ ˜ω v
+
+0 0
+
+
+
+∈ se (3) (27) where ˆξi and ˆηi are the strain and velocity twists represented in se (3) . Where ki ∈ R3 and pi ∈ R3 are the local angular and linear strains at X, respectively. ki and ωi can be represented by the corresponding skew-symmetric matrix in so (3) denoted by ˜ki and ˜ωi.JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 13 
+
+APPENDIX BANALYTICAL DERIVATIVES FOR PLANNING 
+
+A. Inverse kinetostatics 
+
+The analytical derivatives of the objective function of the IKS (18) problem are given by: 
+
+Jo =
+
+    
+
+> ∂12∥log( g−1
+> rgl(q)) ∨∥2
+> ∂q
+
+0na×1
+
+0nc×1
+
+02×1
+
+ (28) To find the derivative of the logmap we define the distance between two transformation matrices g1 and g2 is given by the logmap as 
+
+ϵ = log  g−11 g2
+
+∨ (29) To find the derivative, we can rewrite the expression as: 
+
+exp( ϵ) = g−11 g2 (30) from [40], we know that 
+
+∂ exp( ϵ)
+
+∂q k
+
+= exp( ϵ)
+
+
+
+Ad −1exp( ϵ)T (ϵ) ∂ϵ
+
+∂q k
+
+∧
+
+(31) where T () is the tangent operator of the exponential map given by: 
+
+T (Ω) = 
+
+Z 10
+
+exp ( s · ad Ω) ds (32) (31) can be rewritten using the geometric Jacobian as: 
+
+exp( ϵ)
+
+
+
+Ad −1exp( ϵ)T (ϵ) ∂ϵ
+
+∂q k
+
+∧
+
+= exp( ϵ) ˆSk (33) where Sk is the kth column of the relative jacobian betweeen 1 and 2. Extending to ∂∂q and rearranging the terms, we get: 
+
+∂ϵ
+
+∂q = T (ϵ)−1  Ad exp (ϵ)J2 − J1
+
+ (34) Our close chain constraint is defined through this derivative where A = ∂ϵ 
+
+> ∂q
+
+. So we have a constraining force given by 
+
+AT λ. However, in our implementation, we define a term 
+
+¯A =  Ad exp (ϵ)J2 − J1
+
+
+
+Our solution will still remain the same because the constrain-ing force will be defined by ¯AT ¯λ where ¯λ = ( T (ϵ)−1)T λ.Since ¯λ is obtained through an optimization and not com-puted explicitly, this modification avoids unnecessary tangent operator computation. In the case of the g1 being constant as in the objective function, we have J1 = 0 to give: 
+
+∂ϵ
+
+∂q = T (ϵ)−1Ad exp (ϵ)J2 (35) The analytical derivatives with respect to the other optimiza-tion variables are zeros. The analytical jacobian of the equality and inequality con-straints of (18) are given by:                     
+
+> Jce =
+> 
+> K−∂B
+> ∂qu−∂F
+> ∂q−∂AT
+> ∂qλ−B−AT0
+> AT06×na06×nc0
+> ∂c eq (q,X†)
+> ∂q01×na01×nc
+> ∂c eq (q,X†)
+> ∂X†
+> 
+
+(36) 
+
+Jcin =
+
+h ∂c in (q,X†) 
+
+> ∂q
+
+01×na 01×nc
+
+> ∂c in (q,X†)
+> ∂X†
+
+i
+
+(37) The analytical terms for ∂B 
+
+> ∂q
+
+, ∂F 
+
+> ∂q
+
+and ∂AT 
+
+> ∂q
+
+are derived in [40]. The derivatives for the environmental constraints are given by: 
+
+∂c eq 
+
+∂q = − ∂z (q, X †)
+
+∂q (38) 
+
+∂c in 
+
+∂q = − 2  Ph − P (q, X †) ∂P (q, X †)
+
+∂q (39) But P (q, X †) = [ x(q, X †) y(q, X †)] , so to find the analytical derivatives of the environmental constraints, we need the derivatives of the position, ∂r(q,X †) 
+
+> ∂q
+
+and ∂r(q,X †)
+
+> ∂X †
+
+B. Position derivatives 
+
+The derivatives of ceq and cin with respect to the optimiza-tion variables depend on the derivative of the position of the DLO link in the hDLO. The pose of the DLO cross section at an arbitrary length X† is found through the interpolation of known discrete poses along the length as: 
+
+g(X†) = gj gα (40) where gα = exp 
+
+ X†−Xj
+
+> Xj+1 −Xj
+
+
+
+Ωj )
+
+
+
+. From this, we can say that r(X†) = Rj rα + rj . differentiating this with respect to the kth component qk of the vector q, we get: 
+
+∂r(X†)
+
+∂q k
+
+= ∂(Rj rα)
+
+∂q k
+
++ ∂rj
+
+∂q k
+
+(41) 
+
+= ∂Rj
+
+∂q k
+
+rα + Rj
+
+∂rα
+
+∂q k
+
++ ∂rj
+
+∂q k
+
+(42) We find each of these terms separately. Using (2), we have: 
+
+˙R = R ˜ω (43) 
+
+˙r = Rv (44) The partial derivative with respect to the kth component of q
+
+will then be: 
+
+∂Rj
+
+∂q k
+
+rα =Rj ˜Jωjk rα = −Rj ˜rαJωjk (45) 
+
+∂rj
+
+∂q k
+
+=Rj Jvjk (46) Combining all the columns of q, we get: 
+
+∂Rj
+
+∂q rα = − Rj ˜rαJωj (47) 
+
+∂rj
+
+∂q =Rj Jvj (48)  
+
+> rα
+> ∂q
+
+follows the same structure as (48): 
+
+∂rα
+
+∂q = Rα
+
+0 I Ad −1exp ( α ˆΩ) T (αΩ) α ∂Ω
+
+∂q (49) using (34), we have 
+
+∂Ω
+
+∂q = T −1(Ωj )
+
+
+
+Ad exp ( ˆΩ) Jj+1 − Jj
+
+
+
+(50) with The analytical derivatives of the position of the deforamble object at X† with respect to u and λ are zeros. However, we JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 14 
+
+need to find the derivative with respect to X†. Between two computational points Xj and Xj+1 , Rj and rj are constant, so the positional derivative with respect to X is given by: 
+
+∂r(X†)
+
+∂X † = Rj
+
+∂rα
+
+∂X † + rj (51) The spatial derivative is known to us through the definition of strain (3). 
+
+∂r(X†)
+
+∂X † = gj gαΩj
+
+03×1
+
+1
+
+
+
+(52) The analytical derivatives of the constraints in (37) can then be found by substituting position derivatives in (38). 
+
+C. Analytical derivatives for the trajectory generation 
+
+The analytical derivatives of the objective function and the constraints of the TO problem (19) are given by: 
+
+Jo = ∂f p(x)
+
+∂x (53) The path cost function (20) used for finding a smooth tra-jectory between the initial state and the final state are given by: 
+
+fp = 
+
+> N−1
+
+X
+
+> k=1
+
+∥qk+1 − qk∥2 
+
+> Qq
+
++ ∥uk+1 − uk∥2 
+
+> Qu
+
++
+
+∥λk+1 − λk∥2 
+
+> Qλ
+
+(54) The optimization variables are q,u, λ and X at timesteps 
+
+k = 1 , 2, 3...N . When k = 1 , it appears twice in the series. So the derivative is 
+
+∂f p
+
+∂q2
+
+= 2 Qq (q2 − q1) − 2Qq (q3 − q2) (55) And similarly for all values of k̸ = N . At k = N , qN appears once, and the derivative is given by: 
+
+∂f p
+
+∂qN
+
+= 2 Qq (qN − qN −1) (56) The gradient with respect to q is given by: 
+
+∂f p
+
+∂qk
+
+=
+
+
+
+2 Qq (qk − qk−1) − 2 Qq (qk+1 − qk), 1 ≤ k < N, 
+
+2 Qq (qk − qk−1), k = N. 
+
+(57) The derivatives with respect to u and λ have a similar structure. The derivative of the constraints, Jt, will take a block-diagonal form with the derivatives of the IKS constraints filling the diagonal positions, since each constraint depends only on the variables at the corresponding keyframe. i.e. there is no coupling between keyframes. The analytical derivative will be of the form 
+
+Jt =
+
+
+
+Jce 1 0 · · · 00 Jce 2 · · · 0
+
+... ... . . . ...
+
+0 0 · · · JceN 
+
+ (58) ACKNOWLEDGMENTS 
+
+Omitted for anonymous review REFERENCES [1] Y. Tang, X. Chu, J. Huang, and K. W. Samuel Au, “Learning-Based MPC With Safety Filter for Constrained Deformable Linear Object Manipulation,” IEEE Robotics and Automation Letters ,vol. 9, no. 3, pp. 2877–2884, Mar. 2024. [Online]. Available: https://ieeexplore.ieee.org/document/10423099 [2] A. Sintov, S. Macenski, A. Borum, and T. Bretl, “Motion Planning for Dual-Arm Manipulation of Elastic Rods,” IEEE Robotics and Automation Letters , vol. 5, no. 4, pp. 6065–6072, Oct. 2020, publisher: Institute of Electrical and Electronics Engineers (IEEE). [Online]. Available: https://ieeexplore.ieee.org/document/9146666/ [3] T. Bretl and Z. McCarthy, “Quasi-static manipulation of a Kirchhoff elastic rod based on a geometric analysis of equilibrium configurations,” 
+
+The International Journal of Robotics Research , vol. 33, no. 1, pp. 48–68, Jan. 2014, publisher: SAGE Publications. [Online]. Available: https://journals.sagepub.com/doi/10.1177/0278364912473169 [4] M. Yu, K. Lv, C. Wang, Y. Jiang, M. Tomizuka, and X. Li, “Generalizable whole-body global manipulation of deformable linear objects by dual-arm robot in 3-D constrained environments,” Sep. 2024, arXiv:2310.09899 [cs]. [Online]. Available: http://arxiv.org/abs/ 2310.09899 [5] N. Lv, J. Liu, and Y. Jia, “Dynamic modeling and control of deformable linear objects for single-arm and dual-arm robot manipulations,” IEEE Transactions on Robotics , vol. 38, no. 4, pp. 2341–2353, 2022. [6] A. Caporali and G. Palli, “Robotic manipulation of deformable linear objects via multiview model-based visual tracking,” IEEE/ASME Trans-actions on Mechatronics , vol. 30, no. 5, pp. 3966–3977, 2025. [7] A. L. Orekhov, C. B. Black, J. Till, S. Chung, and D. C. Rucker, “Analysis and validation of a teleoperated surgical parallel continuum manipulator,” IEEE Robotics and Automation Letters , vol. 1, no. 2, pp. 828–835, 2016. [8] C. E. Bryson and D. C. Rucker, “Toward parallel continuum ma-nipulators,” in 2014 IEEE International Conference on Robotics and Automation (ICRA) , 2014, pp. 778–785. [9] W. Yan, G. Chen, S. Tang, Z. Zhang, X. Duan, and H. Wang, Design of a Reconfigurable Planar Parallel Continuum Manipulator with Variable Stiffness . Springer International Publishing, 2021, p. 803–813. [Online]. Available: http://dx.doi.org/10.1007/978-3-030-89134-3 73 [10] S. Sun, X. Wang, D. Sanalitro, A. Franchi, M. Tognon, and J. Alonso-Mora, “Agile and cooperative aerial manipulation of a cable-suspended load,” arXiv preprint arXiv:2501.18802 , 2025. [11] N. De Carli, R. Belletti, E. Buzzurro, A. Testa, G. Notarstefano, and M. Tognon, “Distributed nmpc for cooperative aerial manipulation of cable-suspended loads,” IEEE Robotics and Automation Letters , 2025. [12] S. M. LaValle and J. J. Kuffner Jr, “Randomized kinodynamic planning,” 
+
+The international journal of robotics research , vol. 20, no. 5, pp. 378– 400, 2001. [13] A. T. Mathew, D. Feliu-Talegon, A. Y. Alkayas, F. Boyer, and F. Renda, “Reduced order modeling of hybrid soft-rigid robots using global, local, and state-dependent strain parameterization,” The International Journal of Robotics Research , vol. 44, no. 1, pp. 129–154, Jan. 2025, publisher: SAGE Publications. [Online]. Available: https://journals.sagepub.com/doi/10.1177/02783649241262333 [14] H. Deng, F. Ahmad, J. Xiong, and Z. Xia, “A Robot-Object Unified Modeling Method for Deformable Object Manipulation in Constrained Environments,” IEEE/ASME Transactions on Mechatronics ,vol. 29, no. 6, pp. 4262–4273, Dec. 2024. [Online]. Available: https://ieeexplore.ieee.org/document/10472610 [15] Andrea Monguzzi, T. Dotti, L. Fattorelli, A. M. Zanchettin, and P. Rocco, “Optimal model-based path planning for the robotic manipulation of deformable linear objects,” Robotics and Computer-Integrated Manufacturing , vol. 92, p. 102891, 2025. [Online]. Available: https://www.sciencedirect.com/science/article/pii/S0736584524001789 [16] A. Selle, M. Lentine, and R. Fedkiw, “A mass spring model for hair simulation,” ACM Trans. Graph. , vol. 27, no. 3, p. 1–11, Aug. 2008. [Online]. Available: https://doi.org/10.1145/1360612.1360663 [17] V. K. Venkiteswaran, J. Sikorski, and S. Misra, “Shape and contact force estimation of continuum manipulators using pseudo rigid body models,” 
+
+Mechanism and machine theory , vol. 139, pp. 34–45, 2019. [18] M. Khoshnam and R. V. Patel, “A pseudo-rigid-body 3r model for a steerable ablation catheter,” in 2013 IEEE International Conference on Robotics and Automation , 2013, pp. 4427–4432. JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 15 
+
+[19] P. Sundaresan, J. Grannen, B. Thananjeyan, A. Balakrishna, M. Laskey, K. Stone, J. E. Gonzalez, and K. Goldberg, “Learning rope manipulation policies using dense object descriptors trained on synthetic depth data,” in 2020 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2020, pp. 9411–9418. [20] Y. Huang, C. Xia, X. Wang, and B. Liang, “Learning graph dynamics with external contact for deformable linear objects shape control,” IEEE Robotics and Automation Letters , vol. 8, no. 6, pp. 3892–3899, 2023. [21] D. Bruder, B. Gillespie, C. Remy, and R. Vasudevan, “Modeling and control of soft robots using the koopman operator and model predictive control. arxiv 2019,” arXiv preprint arXiv:1902.02827 , 2019. [22] I. Grinberg, A. Levin, and E. D. Rimon, “Deformable linear object surface placement using elastica planning and local shape control,” 2025. [Online]. Available: https://arxiv.org/abs/2503.08545 [23] A. Artinian, F. B. Amar, and V. Perdereau, “Closed-Loop Shape Control of Deformable Linear Objects Based on Cosserat Model,” IEEE Robotics and Automation Letters , vol. 9, no. 10, pp. 8746–8753, Oct. 2024, publisher: Institute of Electrical and Electronics Engineers (IEEE). [Online]. Available: https://ieeexplore.ieee.org/document/10654562/ [24] M. Bergou, M. Wardetzky, S. Robinson, B. Audoly, and E. Grinspun, “Discrete elastic rods,” in ACM SIGGRAPH 2008 Papers , ser. SIGGRAPH ’08. New York, NY, USA: Association for Computing Machinery, 2008. [Online]. Available: https://doi.org/10.1145/1399504. 1360662 [25] J. Simo and L. Vu-Quoc, “On the dynamics in space of rods undergoing large motions — a geometrically exact approach,” Computer Methods in Applied Mechanics and Engineering , vol. 66, no. 2, p. 125–161, Feb. 1988. [Online]. Available: http://dx.doi.org/10.1016/0045-7825(88) 90073-4 [26] I. S. Godage, G. A. Medrano-Cerda, D. T. Branson, E. Guglielmino, and D. G. Caldwell, “Dynamics for variable length multisection continuum arms,” The International Journal of Robotics Research ,vol. 35, no. 6, pp. 695–722, 2016. [Online]. Available: https: //doi.org/10.1177/0278364915596450 [27] F. Renda, F. Boyer, J. Dias, and L. Seneviratne, “Discrete cosserat ap-proach for multisection soft manipulator dynamics,” IEEE Transactions on Robotics , vol. 34, no. 6, pp. 1518–1533, 2018. [28] L. E. Kavraki, P. Svestka, J.-C. Latombe, and M. H. Overmars, “Prob-abilistic roadmaps for path planning in high-dimensional configuration spaces,” IEEE transactions on Robotics and Automation , vol. 12, no. 4, pp. 566–580, 1996. [29] S. LaValle, “Rapidly-exploring random trees: A new tool for path planning,” Research Report 9811 , 1998. [30] B. Aksoy and J. T. Wen, “Planning and control for deformable linear object manipulation,” IEEE Transactions on Automation Science and Engineering , 2025. [31] P. M. Scheikl, E. Tagliabue, B. Gyenes, M. Wagner, D. Dall’Alba, P. Fiorini, and F. Mathis-Ullrich, “Sim-to-Real Transfer for Visual Reinforcement Learning of Deformable Object Manipulation for Robot-Assisted Surgery,” IEEE Robotics and Automation Letters ,vol. 8, no. 2, pp. 560–567, Feb. 2023, publisher: Institute of Electrical and Electronics Engineers (IEEE). [Online]. Available: https://ieeexplore.ieee.org/document/9976185/ [32] H. Han, G. Paul, and T. Matsubara, “Model-based reinforcement learning approach for deformable linear object manipulation,” in 2017 13th IEEE Conference on Automation Science and Engineering (CASE) . IEEE, 2017, pp. 750–755. [33] Y. Wu, W. Yan, T. Kurutach, L. Pinto, and P. Abbeel, “Learning to manipulate deformable objects without demonstrations,” arXiv preprint arXiv:1910.13439 , 2019. [34] A. Nair, D. Chen, P. Agrawal, P. Isola, P. Abbeel, J. Malik, and S. Levine, “Combining self-supervised learning and imitation for vision-based rope manipulation,” in 2017 IEEE international conference on robotics and automation (ICRA) . IEEE, 2017, pp. 2146–2153. [35] S. Li, Z. Huang, T. Chen, T. Du, H. Su, J. B. Tenenbaum, and C. Gan, “Dexdeform: Dexterous deformable object manipulation with human demonstrations and differentiable physics,” arXiv preprint arXiv:2304.03223 , 2023. [36] L. C. Hairer Ernst, Wanner Gerhard, Geometric Numerical Integration: structure-preserving algorithms for ordinary differential equations .Springer-Verlag, 2006. [Online]. Available: http://dx.doi.org/10.1007/ 3-540-30666-8 [37] A. Zanna, “Collocation and relaxed collocation for the fer and the magnus expansions,” SIAM journal on numerical analysis , vol. 36, no. 4, pp. 1145–1182, 1999. [38] F. Boyer and F. Renda, “Poincar´ e’s equations for cosserat media: Application to shells,” Journal of Nonlinear Science , vol. 27, no. 1, p. 1–44, Jul. 2016. [Online]. Available: http://dx.doi.org/10.1007/ s00332-016-9324-7 [39] C. Armanini, I. Hussain, M. Z. Iqbal, D. Gan, D. Prattichizzo, and F. Renda, “Discrete cosserat approach for closed-chain soft robots: Application to the fin-ray finger,” IEEE Transactions on Robotics ,vol. 37, no. 6, pp. 2083–2098, 2021. [40] A. T. Mathew, F. Boyer, V. Lebastard, and F. Renda, “Analytical derivatives of strain-based dynamic model for hybrid soft-rigid robots,” The International Journal of Robotics Research , Jun. 2025, publisher: SAGE Publications. [Online]. Available: https: //journals.sagepub.com/doi/10.1177/02783649251346209 [41] D. Pardo, L. Moller, M. Neunert, A. W. Winkler, and J. Buchli, “Evaluating Direct Transcription and Nonlinear Optimization Methods for Robot Motion Planning,” IEEE Robotics and Automation Letters ,vol. 1, no. 2, pp. 946–953, Jul. 2016, publisher: Institute of Electrical and Electronics Engineers (IEEE). [Online]. Available: http://ieeexplore.ieee.org/document/7400956/ [42] A. T. Mathew, I. B. Hmida, C. Armanini, F. Boyer, and F. Renda, “SoRoSim: A MATLAB Toolbox for Hybrid Rigid–Soft Robots Based on the Geometric Variable-Strain Approach,” IEEE Robotics & Automation Magazine , vol. 30, no. 3, pp. 106–122, Sep. 2023, publisher: Institute of Electrical and Electronics Engineers (IEEE). [Online]. Available: https://ieeexplore.ieee.org/document/9895355/

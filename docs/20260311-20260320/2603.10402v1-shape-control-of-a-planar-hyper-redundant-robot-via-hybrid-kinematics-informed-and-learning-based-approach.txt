@@ -1,0 +1,292 @@
+Title: Shape Control of a Planar Hyper-Redundant Robot via Hybrid Kinematics-Informed and Learning-based Approach
+
+URL Source: https://arxiv.org/pdf/2603.10402v1
+
+Published Time: Thu, 12 Mar 2026 00:35:58 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+> 1
+
+# Shape Control of a Planar Hyper-Redundant Robot via Hybrid Kinematics-Informed and Learning-based Approach 
+
+Yuli Song, Wenbo Li, Wenci Xin, Zhiqiang Tang, Daniela Rus, and Cecilia Laschi 
+
+Abstract —Hyper-redundant robots offer high dexterity, making them good at operating in confined and unstructured en-vironments. To extend the reachable workspace, we built a multi-segment flexible rack actuated planar robot. However, the compli-ance of the flexible mechanism introduces instability, rendering it sensitive to external and internal uncertainties. To address these limitations, we propose a hybrid kinematics-informed and learning-based shape control method, named SpatioCoupledNet. The neural network adopts a hierarchical design that explicitly captures bidirectional spatial coupling between segments while modeling local disturbance along the robot body. A confidence-gating mechanism integrates prior kinematic knowledge, allowing the controller to adaptively balance model-based and learned components for improved convergence and fidelity. The frame-work is validated on a five-segment planar hyper-redundant robot under three representative shape configurations. Experi-mental results demonstrate that the proposed method consistently outperforms both analytical and purely neural controllers. In complex scenarios, it reduces steady-state error by up to 75.5% against the analytical model, and accelerates convergence by up to 20.5% compared to the data-driven baseline. Furthermore, gating analysis reveals a state-dependent authority fusion, shifting toward data-driven predictions in unstable states, while relying on physical priors in the remaining cases. Finally, we demonstrate robust performance in a dynamic task where the robot maintains a fixed end-effector position while avoiding moving obstacles, achieving a precise tip-positioning accuracy with a mean error of 10.47 mm. 
+
+I. INTRODUCTION Hyper-redundant robots, with their large number of con-trollable degrees of freedom (DoFs), are particularly well-suited for operation in confined environments and have be-come a key platform for studying advanced control strategies [1], [2], [3]. Most existing hyper-redundant robots adopt ei-ther articulated motor–linkage architectures (e.g., snake robots [4]) or rear-mounted actuation schemes (e.g., tendon-driven 
+
+This work funded in part by the National Research Foundation (NRF), Prime Minister’s Office, Singapore under its Campus for Research Excellence and Technological Enterprise (CREATE) programme. The Mens, Manus, and Machina (M3S) is an interdisciplinary research group (IRG) of the Singapore MIT Alliance for Research and Technology (SMART) centre, in part by Start-up Research Fund of Southeast University (RF1028625147), in part by National Key R&D Program of China (2025YFE0214200) (Corresponding author: Wenci Xin (wenci.xin@smart.mit.edu)) 
+
+Y. Song, W. Li and W. Xin are with Singapore MIT Alliance for Research and Technology (SMART) centre, Singapore, and also with Department of Mechanical Engineering, National University of Singapore, Singapore Z. Tang is with Jiangsu Key laboratory for design and Manufacturing of Precision Medicine equipment, School of Mechanical engineering, Southeast University, China D. Rus is with CSAIL, Massachusetts Institute of Technology, Cambridge, USA, and also co-lead PI of Singapore MIT Alliance for Research and Technology (SMART) centre, Singapore C. Laschi is with the Advanced Robotic Centre, National University of Singapore, Singapore; Department of Mechanical Engineering, National University of Singapore, Singapore, and also PI of Singapore MIT Alliance for Research and Technology (SMART) centre, Singapore 
+
+Fig. 1. Overview of the proposed hybrid kinematics-informed and learning-based framework for shape control. (Top) Real-world physical uncertainties in a planar hyper-redundant robot. It illustrates how unmodeled physical effects (e.g., unexpected positioning shifts and non-ideal bending) and inter-segment force coupling complicate the actual motion. (Middle) The Spa-tioCoupledNet architecture. By explicitly mirroring the physical mechanism, it employs a bidirectional neural structure to capture how forces propagate and interact across different segments. (Bottom) The dynamic confidence gating mechanism. It acts as an adaptive dial ( β) that smoothly balances control authority between the idealized physical model ( Jphy ) and the data-driven neural prediction ( Jnet ). The resulting fused Jacobian ( Jf used ) ensures high-fidelity closed-loop control, even under complex structural deformations. 
+
+hyper-redundant manipulators [5]). However, their limited axial extension capability inherently constrains the reachable workspace and, in turn, restricts practical deployment. Inspired by the flexible rack actuation mechanism proposed in [6], we integrate multiple rack-actuated segments into a unified architecture, yielding a planar hyper-redundant robot with a substantially expanded workspace. This design, however, introduces a new challenge: coordinated whole-body control of multiple serially connected continuum segments. A variety of analytical kinematic models have been de-veloped for continuum robots. Simple geometric formulations, such as the PCC model [7], are computationally efficient, but their idealized assumptions limit their ability to capture the full range of deformations along the robot body [8]. 
+
+> arXiv:2603.10402v1 [cs.RO] 11 Mar 2026 2
+
+More advanced continuum mechanics approaches, including Cosserat rod theory [9], [10] and variable-curvature models [11], provide higher modeling fidelity but are often computa-tionally prohibitive for real-time control. For our architecture, however, strong inter-segment coupling effects make it inade-quate to simply chain multiple kinematic models to describe the behavior of the hyper-redundant robot. In addition, the use of flexible racks increases the system’s sensitivity to external disturbances (e.g., friction) and internal uncertainties (e.g., material degradation), further exacerbating the discrepancy between model predictions and actual performance. Learning-based approaches have gained significant atten-tion in robotics for their ability to adapt to uncertainties and nonlinearities [12]. However, purely data-driven controllers often lack physical grounding and can lead to over-actuation [13]. To mitigate this, hybrid methods that perform residual learning on top of prior kinematic models have been proposed to reduce the mismatch between analytical predictions and real-world behavior [14], [15]. In our setting, however, the highly coupled interactions between segments are difficult to compensate for using residual learning layered on a simplified model. Even at the level of a single segment, the residual mapping exhibits high variance due to friction and material degradation, making it challenging to capture accurately. In this work, we propose a novel kinematics-informed hybrid learning framework, named SpatioCoupledNet, for shape control of hyper-redundant robots subject to strong inter-segment coupling and high-variance disturbances. As illustrated in Fig. 1, we adopt a hierarchical architecture. At the single-segment level, instead of directly performing residual learning to compensate for model errors, we introduce a confidence-gating mechanism that adaptively balances the reliance on the analytical kinematic model and the data-driven model. This design maximizes the utilization of prior knowl-edge while improving training efficiency and convergence stability. To enable real-time control, the computationally effi-cient PCC model is employed. Beyond the local gated module, a bidirectional recurrent structure is introduced across all segments to explicitly capture inter-segment coupling effects and long-range dependencies along the robot body. The main contributions of this work are summarized as follows:  
+
+> •
+
+A kinematics-informed neural architecture, SpatioCou-pledNet, that utilizes a bidirectional recurrent structure to explicitly model the spatial coupling and bidirectional prop-agation of internal stresses inherent in multi-segment hyper-redundant robots.  
+
+> •
+
+A dimension-wise confidence gating strategy for state-dependent fusion, enabling the system to dynamically transi-tion control authority between analytical kinematic priors and learned dynamics to compensate for unmodeled nonlinearities without sacrificing physical consistency.  
+
+> •
+
+Comprehensive experimental validation on a custom hy-brid robot demonstrating high-fidelity tracking in complex boundary configurations and real-time null-space obstacle avoidance.           
+
+> Fig. 2. Kinematic parameterization of the proposed hyper-redundant robot. (a) Planar hyper-redundant robotic platform used during the study with five continuum segments. (b) Local geometric model of the i-th segment based on the PCC assumption. The differential rack extensions qi,L and qi,R
+> explicitly determine the bending angle θiand the central arc length Li, where
+> cidenotes the structural width.
+
+II. ROBOTIC PLATFORM Figure 2(a) shows the robotic platform used during the study. Following the design in [6], each segment consists of two servo motors at its ends that control the extension of two 3D-printed PLA flexible racks. With the base fixed, the extension of two racks provides each segment with 2-DOF, forming a planar hyper-redundant system by stacking N = 5 
+
+segments. Let q ∈ R2N [mm] denote the joint actuation space, where qi = [ qi,L , q i,R ]T represents the left and right rack extensions for the i-th segment, and X ∈ R3N denotes the task-space poses. 
+
+A. Nominal Kinematic Modeling 
+
+Under the PCC assumption [7], the local kinematics of the i-th segment explicitly map the joint-space extensions to the task-space pose Xi = [ xi, y i, θ i]T . The bending angle θi
+
+and the central arc length Li are dictated by the differential and average extensions of the parallel racks: 
+
+θi = qi,L − qi,R 
+
+ci
+
+, Li = qi,L + qi,R 
+
+2 (1) where ci denotes the structural width. By aggregating these local transformations along the serial backbone [16], the in-stantaneous task-space displacement for the entire robot is then linearly approximated using the analytical physical Jacobian 
+
+Jphy :
+
+∆Xnom ≈ Jphy (q)∆ q (2) To prevent hardware failure such as rack jamming or snapping due to excessive localized bending, the operational state space is strictly confined by highly non-linear inter-rack coupling constraints. The feasible actuation range for one rack is dynamically bounded by the current state of its partner: 
+
+qi,L ∈ [fmin (qi,R ), f max (qi,R )] (3) 3
+
+where fmin and fmax are empirically derived polynomial bounds. 
+
+B. Force Coupling and Unmodeled Effects 
+
+The nominal PCC model operates under the idealized assumption that segmental deformations are purely geometric and physically isolated. In physical deployment, the robot behaves as a continuous elastic body subjected to distributed internal loads. When an actuation command is applied, the resulting localized bending moments and shear forces prop-agate bidirectionally along the continuous elastic backbone. Specifically, distal actuation induces proximal reactions, while proximal motions simultaneously alter the stress distribution in distal segments. Throughout this propagation, the effective force is further modulated by localized external friction, which varies dynamically with the robot’s spatial configuration. Consequently, segments undergo force-induced passive defor-mations even when their corresponding actuators are rigidly locked. Furthermore, as the segment bends, the unextended por-tion of a distal rack is forced to conform to the curvature of the proximal segments. This physical constraint induces structural interference: if the bending direction of a proximal segment obstructs the natural path of a distal rack, the rack undergoes forced bending before reaching its own segment. This interaction creates a complex mechanical coupling that propagates across any two segments. Therefore, the true mapping from joint space to task space is not a static geometric projection. Instead, it repre-sents the solution to a highly coupled elastostatic boundary value problem. To formulate this mathematically, we lump the unmodeled structural elasticity, spatial force interference, and historical material hysteresis H into a state-dependent unmodeled dynamics term Funmodeled :
+
+∆Xreal = Jphy (q)∆ q + Funmodeled (q, ∆q, H) (4) The fundamental control objective is to compute an optimal actuation increment ∆q∗ that minimizes the task-space tracking error ∥Xtgt − Xreal ∥ subject to the non-linear operational boundaries qi,L ∈ [fmin (qi,R ), f max (qi,R )] . The core challenge is that these unmodeled dynamics Funmodeled 
+
+are analytically intractable and strongly correlated across ad-jacent segments. Attempting to directly isolate and learn this volatile discrepancy—as in traditional residual compensation methodologies—often leads to erratic control signals. Particu-larly in near-neutral configurations lacking sustained structural tension, or in over-bent states where localized rack instability, the mechanism exhibits unpredictable parasitic translations and non-uniform curvatures. This highly coupled physical reality necessitates a kinematics-aware framework to safely holis-tically compensate for these underlying mechanics through dynamic authority fusion. III. HYBRID KINEMATICS-INFORMED AND LEARNING-BASED FRAMEWORK To achieve high-precision shape control under the afore-mentioned complex force couplings, we propose a kinematics-informed and learning-based framework. At its core, the system relies on a spatial-coupling neural architecture and a dynamic confidence gating mechanism. To ensure long-term robustness against hardware degradation and environmental shifts, this controller is supported by a boundary-aware stream-lined data curation pipeline. 
+
+A. SpatioCoupledNet: Kinematics-Informed Architecture 
+
+Unlike rigid mechanisms, unmodeled dynamics 
+
+Funmodeled in coupled mechanisms propagate spatially. To capture this, SpatioCoupledNet explicitly mirrors the N -segment physical kinematics via a local-to-global hierarchy. At step t, the i-th segment’s state is parameterized as a 15-dimensional vector: 
+
+s(i) 
+
+> t
+
+=
+
+h
+
+q(i) 
+
+> t
+
+, ∆q(i)
+
+> hist
+
+, X(i)
+
+> loc
+
+, ∆q(i)
+
+> cmd
+
+, vec (J(i) 
+
+> phy
+
+)
+
+iT
+
+(5) These features capture distinct physical phenomena: q(i) 
+
+> t
+
+and 
+
+X(i) 
+
+> loc
+
+anchor configuration-dependent kinematics; ∆q(i) 
+
+> hist
+
+pro-vides historical context for non-linear friction and hysteresis; the flattened J(i) 
+
+> phy
+
+supplies an explicit analytical prior; and 
+
+∆q(i) 
+
+> cmd
+
+is the proposed actuation step. The network processes these features through three in-tegrated stages that reflect the physical interactions of the robot. Initially, rather than relying on a centralized mapping, each segment utilizes an independent expert module for local feature extraction. Sequentially stacked linear layers, layer normalization, GELU activations, and residual blocks extract segment-specific representations h(i) ∈ R128 while effectively mitigating vanishing gradients. To capture the global inter-segment dependencies, these local representations h(i) are subsequently fed into a Bidirec-tional Gated Recurrent Unit (Bi-GRU) [17] sequence model. This bidirectional recurrent structure is designed to mirror the complex force coupling inherent in the multi-segment robot. The Bi-GRU effectively captures these concurrent interactions: it models how proximal bending obstructs the natural path of distal racks, inducing forced bending, while simultaneously accounting for how actuation loads and external friction prop-agate through the continuous backbone. By processing the segment sequence from both directions, the network extracts a latent representation H(i) that is fully conditioned on the global mechanical state of the entire mechanism. Finally, a dimension-wise hybrid gating mechanism bridges the analytical and neural domains. The concatenated feature z(i) = [ h(i), H(i), vec (J(i) 
+
+> phy
+
+)] ∈ R390 feeds two paral-lel MLP heads: a prediction head regressing the data-driven full displacement ∆X(i)
+
+> net
+
+, and a confidence gate outputting a trust vector β(i) ∈ [0 , 1] 3. The final displacement is fused via a dimension-wise convex combination: 
+
+∆X(i) 
+
+> hybrid
+
+= β(i) ⊙ ∆X(i) 
+
+> nom
+
++ ( 1 − β(i)) ⊙ ∆X(i) 
+
+> net
+
+(6) where ⊙ is the Hadamard product. This soft-gated system independently assigns confidence to translation and rotation. The gate is initialized with a bias toward the nominal physics 
+
+∆Xnom to ensure operational safety and provide an ana-lytical prior that accelerates convergence. During execution, predictive authority dynamically shifts to the neural prediction 4       
+
+> Fig. 3. Architectural hierarchy of SpatioCoupledNet for N-segment continuum robots. The framework explicitly mirrors the robot’s physical kinematics through three stages: (a) Local Expert Stage where independent MLPs extract segment-specific features h(i); (b) Global Communication Stage utilizing a Bi-GRU to model bidirectional spatial coupling arising from distal actuation and proximal reaction forces; and (c) Dual-Head Gated Fusion Stage where a dimension-wise confidence vector β(i)adaptively balances analytical nominal physics and data-driven predictions.
+
+∆Xnet to compensate for complex unmodeled dynamics, such as external friction. 
+
+B. Physics-Constrained Loss and Differentiable Kinematics 
+
+Given the coupled nature of the robot, kinematic er-ror propagation causes minor angular deviations at proximal segments to amplify into significant task-space deviations at the distal end. To penalize this compounding effect, the loss formulation integrates a Differentiable Forward Kinematics (FK) layer, ensuring the network respects both local joint-space dynamics and global task-space consistency. For the segment-level supervision, let e(i) =∆X(i) 
+
+> hybrid local
+
+− ∆X(i)  
+
+> GT local
+
+denote the local residual error vector for the i-th segment. The local coordinate loss 
+
+Llocal computes the weighted sum of these Huber penalties, heavily skewed towards orientation accuracy: 
+
+Llocal =
+
+> N
+
+X
+
+> i=1
+
+
+
+wxLδ (e(i) 
+
+> x
+
+) + wy Lδ (e(i) 
+
+> y
+
+) + wθ Lδ (e(i) 
+
+> θ
+
+)
+
+
+
+(7)       
+
+> Fig. 4. Schematic of the physics-constrained multi-objective loss function.
+> The total loss Ltotal is composed of: (1) a local coordinate loss Llocal
+> penalizing deviations in segment-wise incremental poses; and (2) a global shape loss Lglobal enforced through a Differentiable Forward Kinematics (FK) layer. Both objectives utilize a Huber penalty to ensure robustness against perception outliers.
+
+Based on the robot’s physical characteristics, we enforce wθ ≫{wx, w y } to strictly penalize angular divergence. Subsequently, the local hybrid predictions are integrated through the Differentiable FK layer. As illustrated in Fig. 4, this layer takes the previous ground-truth global pose 
+
+XGT global,t as the kinematic base to compute the predicted global task-space poses Xhybrid global,t +1 . The global shape loss Lglobal then applies the same Huber penalty to the deviation between the predicted and ground-truth global states, forcing the network to respect global physical plausibility: 
+
+Lglobal = Lδ (Xhybrid global,t +1 − XGT global,t +1 ) (8) Consistent with the fusion weights illustrated in the computa-tional graph, the total loss is defined as: 
+
+Ltotal = Lglobal + λLlocal (9) 
+
+C. Confidence Gating and Closed-Loop Deployment 
+
+During closed-loop deployment, we extract a local Neural Jacobian Jnet = ∂(∆ Xnet ) 
+
+> ∂(∆ qcmd )
+
+via real-time forward numerical perturbation of the network inputs. To avoid over-constraining the actuation space, the Damped Least Squares (DLS) controller [18] operates ex-clusively within the 2D translational subspace. Although the orientation θ is omitted in the inverse solver, its accurate estimation during training remains necessary because proximal angular errors compound into distal translational deviations. Let P ∈ R2N denote the positional components (X, Y )
+
+extracted from the full task-space state X. Consequently, we extract the corresponding translational sub-matrices Jphy,P 
+
+and Jnet,P ∈ R2N ×2N from their full-state counterparts. The fused spatial Jacobian Jf used is defined as: 
+
+Jf used = Bβ Jphy,P + ( I − Bβ )Jnet,P (10) where Bβ ∈ R2N ×2N is a diagonal matrix constructed from the translational dimensions of the confidence vectors β(i).5       
+
+> Fig. 5. Tracking performance across three configuration difficulties in the tracking experiment. The three rows correspond to the Easy (a–c), Medium (d–f), and Extreme (g–i) target configurations, respectively. Left column (a, d, g): The target spatial configurations of the robot. Middle column (b, e, h):
+> The evolution of the mean node error ( emean ) over control steps, illustrating the convergence speed and steady-state accuracy. Right column (c, f, i): Control action chattering, quantified by the third-order difference of joint positions ( ∥∆3q∥) per step.
+
+This gating mechanism dynamically reweights control authority based on the robot’s spatial and kinematic state. At proximal segments or in smooth configurations, Bβ prioritizes 
+
+Jphy,P to leverage analytical stability and ensure directionally consistent gradients. Conversely, for distal segments or near-neutral states where unmodeled friction and hysteresis domi-nate, the controller shifts reliance toward Jnet,P . By learning through the Bi-GRU, this neural component captures the complex inter-segment couplings, such as the forced bending of distal racks and the concurrent propagation of internal stresses that analytical priors typically omit. Throughout the workspace, the physical prior serves as a structural regularizer, ensuring physically-plausible joint velocities. To counteract asynchronous visual latency ∆tdelay during execution, a first-order Taylor expansion utilizes the fused Jacobian and instantaneous joint velocities ˙q to predict the current unobservable positional state: 
+
+Pcurrent = Pvision + Jf used ˙q∆tdelay (11) Finally, target joint commands are computed using the adaptive DLS inverse solve: 
+
+∆q∗ = ( JTf used WJ f used + λdls I)−1JTf used We step (12) where estep is the instantaneous Cartesian tracking error. To maximize tracking efficiency, W is formulated as a dynamic Gaussian weight matrix. The peak of this Gaussian distribu-tion autonomously tracks the segment index with the highest positional error, effectively redistributing the actuation effort across the structural backbone. The resulting commands are clamped by bounding equations to strictly prevent mechanical self-collision and excessive bending. IV. EXPERIMENTS AND RESULTS All experiments were conducted on the custom 5-segment continuum robot driven by servos. The control framework was implemented on a workstation with an Intel Core i7-12700H CPU. For real-time feedback, an overhead camera provides state estimation at a frame rate of 30 Hz, while the control loop operates at 50 Hz. 
+
+A. Tracking Performance 
+
+To evaluate the proposed framework, physical tracking experiments were conducted. The robot was initialized from a predefined state with all actuation components set to q = 70 and tracked targets across three difficulty levels: Easy (mild bending), Medium (moderate coupling), and Extreme (severe structural deformation). We benchmark our hybrid kinematics-informed controller (HYBRID) against a purely analytical model (PHY, where β = 1 ) and a purely data-driven neural network (PURE NN, where β = 0 ). Tracking performance is analyzed using four metrics: steady-state mean error ( emean ), convergence speed ( T95% , defined as the control steps required to reach 95% steady-state convergence), action chattering (mean control jerk, ∥∆3q∥ per step), and total actuation cost (cumulative joint displacement, P ∥∆q∥).                                                       
+
+> TABLE I QUANTITATIVE TRACKING PERFORMANCE ACROSS CONFIGURATIONS .BOLD VALUES INDICATE THE BEST (LOWEST )PERFORMANCE .
+> Config. controller emean T95% Chatter. Cost
+> (mm) ↓(steps) ↓(mm) ↓(mm) ↓
+> Easy
+> PHY 2.13 23 0.095 408.9 PURE NN 1.18 47 0.179 378.5 HYBRID 0.74 47 0.154 371.6 Medium
+> PHY 7.53 106 0.062 2078.0 PURE NN 6.32 127 0.646 1749.0 HYBRID 5.84 101 0.622 1558.6 Extreme
+> PHY 26.76 311 0.017 3285.1
+> PURE NN 7.12 230 0.564 3831.1 HYBRID 6.55 222 0.557 3603.8 6
+
+The quantitative results across different configurations are summarized in Table I, with the corresponding dynamic responses illustrated in Fig. 5. In Easy configurations, the PCC assumption holds well. The PHY controller achieves rapid convergence ( T95% = 23 ) with high smoothness (0.095 mm), but leaves a 2.13 mm steady-state error. As the target ap-proaches workspace boundaries (Medium & Extreme), struc-tural elasticity and inter-segment coupling exacerbate the model-plant mismatch. While the PHY model remains capable of driving the system toward the target, its convergence slows down significantly (e.g., T95% increases to 311 in the Extreme case). Furthermore, unmodeled spatial coupling causes the an-alytical Jacobian to deviate from actual kinematics, leading to a noticeable increase in steady-state error ( emean = 26 .76 mm in Extreme). This indicates the inherent difficulty of using purely analytical models for high-fidelity control in complex boundary states. Learning-based models effectively compensate for these unmodeled effects, drastically reducing Cartesian errors in extreme states. However, this active compensation inherently requires high-frequency localized control adjustments, result-ing in a comparable increase in control chattering for both PURE NN and HYBRID (Chatter. > 0.5 mm in both Medium and Extreme configurations). The critical distinction lies in convergence efficiency and actuation effort. Without physical grounding, the PURE NN approach generates less directed exploration gradients in unstructured state spaces, leading to slower convergence ( T95% = 230 in Extreme) and the highest overall actuation effort (Cost = 3831.1 mm in Extreme). Conversely, our HYBRID controller anchors neural predictions with a kinematics-informed physical prior. This integration acts as a crucial regularizer for the learning process, effectively accelerating convergence ( T95% reduced to 101 in Medium and 222 in Extreme) and decreasing the actuation cost (1558.6 mm in Medium and 3603.8 mm in Extreme), while maintaining the lowest steady-state error ( emean = 5 .84 mm in Medium and 6.55 mm in Extreme). This objectively validates that the physical prior accelerates convergence and balances high-fidelity tracking with operational efficiency. 
+
+B. Confidence Gating Analysis 
+
+To understand the underlying mechanism of the hy-brid controller, we analyzed the real-time evolution of the dimension-wise confidence gate β during a continuous, multi-waypoint trajectory tracking task. For this specific evaluation, the robot was uniformly initialized with all actuation compo-nents set to q = 10 . The target trajectory was designed to drive the mechanism through a diverse sequence of morphological phases. It initially guided the robot to extend leftward (e.g., around T=120); subsequently commanded a severe downward retroflexion, forcing the end-effector to curl back beyond the y-coordinate of the robot’s base (e.g., around T=240); and finally prompted the mechanism to progressively unfurl into a smooth, extended posture with decreasing curvature (e.g., approaching T=400). Fig. 6 visualizes the robot’s spatial con-figuration (a) alongside the corresponding βx and βy heatmaps (b) for all five segments over the control steps. Recall that 
+
+β → 1 assigns predictive authority to the analytical PCC prior, while β → 0 shifts dominance to the neural network prediction.                   
+
+> Fig. 6. Evolution of Robot Configuration and Confidence Gating. (a) Snap-shots of spatial configurations at key intervals ( T={0,120 ,240 ,310 ,400 })during a continuous trajectory. (b) Real-time evolution of the dimension-wise confidence gate βfor all five segments ( N= 1 to N= 5 ) over 400 control steps. The heatmaps illustrate the dynamic shift of control authority between the analytical PCC prior ( β→1, blue) and the data-driven neural prediction (β→0, red).
+
+A distinct spatial hierarchy is immediately evident from the heatmaps. For the proximal base segment (Node 1), βy
+
+remains consistently high (near 1.0) throughout the entire trajectory, while βx initializes high before stabilizing around 0.5. This indicates that the base segment, which is rigidly grounded and suffers minimally from accumulated proximal reaction forces, adheres closely to nominal physical laws, particularly in its longitudinal extension. In stark contrast, the distal segments (Nodes 2 through 5) exhibit predominantly low confidence values ( β < 0.5,denoted by warmer colors) for the majority of the task. As stress propagates along the coupled backbone, distal nodes are subjected to mechanical hysteresis, external friction, and compounded spatial coupling. The theoretical PCC model inherently fails to capture these highly non-linear, state-dependent elastic distortions. Consequently, the gating mecha-nism autonomously recognizes this analytical degradation and dynamically allocates predictive authority to the neural net-work, successfully compensating for the complex unmodeled effects. Furthermore, the gating values demonstrate a strong tem-poral correlation with the instantaneous structural configura-tion. For instance, around T=120, the distal segments exhibit small, alternating curvatures. In such near-neutral states, the lack of sustained structural tension amplifies the effects of external friction, causing the physical mechanism to suffer from parasitic translations and non-uniform curvature. Con-sequently, the geometry deviates significantly from idealized predictions, as reflected by the universally low β values. Conversely, as the robot transitions into a smooth configuration 7  
+
+> Fig. 7. Real-time Null-Space Obstacle Avoidance. (a) Sequential snapshots of the physical demonstration. As a moving obstacle intrudes from the left into the robot’s original workspace, the mechanism dynamically reconfigures its backbone to avoid collision while strictly maintaining the target end-effector pose. (b) The spatial trajectories of all five nodes during the avoidance task. The color gradient (transitioning from light to dark) represents the temporal progression of the movement. (c) The tracking error of the tip position over the control steps.
+
+(e.g., spanning from T=240 to T=400), it adopts a naturally curved posture, maintaining internal structural tension. This active tensioning physically constrains the flexible components into arcs that closely adhere to the PCC assumption, resulting in a widespread increase in β values. This transient shift back to the analytical prior objectively validates that SpatioCoupled-Net does not blindly override the underlying physics; rather, it performs a targeted, state-dependent authority fusion that maximizes both tracking fidelity and structural safety. 
+
+C. Real-time Obstacle Avoidance Demonstration 
+
+To further validate the practical utility and dexterity of the proposed HYBRID controller, we designed a real-time obstacle avoidance task leveraging the hyper-redundant nature of the robot. The inherent kinematic redundancy allows the robot to execute null-space motions [19] by reconfiguring its internal structural shape to evade collisions without altering the target end-effector pose. In this experimental setup, the robot uniformly initializes in a highly extended, straight posture with all ten actuation components set to q = 100 . A vision-based tracking system continuously localizes a dynamic obstacle (represented by an AprilTag [20]) intruding into the original workspace. To generate real-time avoidance trajectories, an Artificial Potential Field (APF) [21] coupled with an envelope boundary method is employed. This planner optimizes a target shape that strictly enforces a fixed tip-pose hard constraint while balancing two underlying objectives: a repulsive force centered on the obstacle to ensure spatial clearance, and a restoring force that continuously encourages the mechanism to return to its nominal straight configuration ( q = 100 ). As illustrated in Fig. 7(a) and (b), the HYBRID frame-work successfully drives the robot to converge toward these dynamically optimized trajectories, flexibly weaving its back-bone around the moving obstacle. During active avoidance, the APF generates target shapes characterized by continuous and natural curvature transitions. However, the task design also inherently introduces a significant elastostatic challenge: as the obstacle moves or recedes, the restoring force continuously drives the mechanism back toward its nominal straight pos-ture. Transitioning back into this near-neutral, low-curvature configuration inevitably causes a loss of sustained structural tension, introducing severe parasitic translations and non-uniform curvatures into the physical system. Despite these complex elastostatic conditions through-out the active avoidance and recovery phases, the HYBRID controller demonstrates remarkable robustness. The physical structure is undeniably affected by these unmodeled distur-bances; however, the SpatioCoupledNet successfully over-comes them by dynamically shifting control authority to the learned spatial predictions when analytical priors degrade. Quantitatively, as shown in Fig. 7(c), the controller ensures high-fidelity null-space manipulation. It bounds the transient tip-positioning error to a peak of 40.02 mm during aggressive obstacle intrusions and maintains a highly precise overall average tracking error of 10.47 mm. Ultimately, the tip error converges to an exceptionally low value at the conclusion of the experiment. This validates the framework’s capability to stably harness kinematic redundancy for dynamic collision avoidance while actively compensating for complex boundary-state non-linearities. V. CONCLUSION AND FUTURE WORK In this paper, we presented a kinematics-informed hybrid closed-loop control framework to overcome the unmodeled effects and inter-segment spatial coupling inherent in hyper-redundant continuum robots. At its core is SpatioCoupledNet, a hierarchical neural architecture that leverages a bidirectional recurrent structure to explicitly model physical force propa-gation and mechanical hysteresis along the robot backbone. A dimension-wise confidence-gating mechanism enables the controller to dynamically interpolate between an analytical piecewise-constant-curvature prior and a data-driven neural Jacobian, exploiting prior structure where it is reliable while relying on learned corrections where the model is deficient. Together, these components provide a principled path toward accurate, robust whole-body shape control in highly coupled hyper-redundant system. Experimental results on a custom five-segment planar robot demonstrate that the proposed framework significantly outperforms both purely analytical and purely data-driven baselines. By anchoring neural predictions with physical pri-ors, the hybrid controller achieved lower steady-state errors, accelerated convergence, and moderated actuation costs, par-ticularly in highly deformed boundary configurations. Specif-8
+
+ically, under extreme structural deformation, the hybrid con-troller achieved a steady-state mean error of 6.55 mm and converged in 222 steps, visibly surpassing both the analyt-ical model (26.76 mm, 311 steps) and the purely neural baseline (7.12 mm, 230 steps). Furthermore, the framework’s robustness was validated in a dynamic null-space obstacle avoidance task, successfully maintaining a precise mean tip-positioning error of 10.47 mm despite severe, dynamically shifting elastostatic disturbances. Future work will focus on three primary directions. First, we plan to scale the proposed framework to more complex robotic platforms with a significantly higher number of seg-ments, which will amplify the non-linear inter-segment cou-pling and further test the scalability of our approach. Second, we aim to optimize the underlying neural architecture by exploring lightweight networks or advanced spatial-modeling paradigms to enhance computational efficiency and feature extraction capabilities. Third, we will improve the system’s en-vironmental adaptability by integrating online learning strate-gies, enabling the controller to autonomously adjust to varying payloads and unpredictable contacts without overfitting to specific laboratory conditions. REFERENCES [1] G. S. Chirikjian and J. W. Burdick, “Hyper-redundant robot mechanisms and their applications,” 1991. [2] Z. Mu, L. Zhang, L. Yan, Z. Li, R. Dong, C. Wang, and N. Ding, “Hyper-redundant manipulators for operations in confined space: Typical appli-cations, key technologies, and grand challenges,” IEEE Transactions on Aerospace and Electronic Systems , vol. 58, no. 6, pp. 4928–4937, 2022. [3] P. Niu, L. Han, Y. Huang, and L. Yan, “Shape-controllable inverse kinematics of hyper-redundant robots based on the improved fabrik method,” Robotica , vol. 42, no. 1, pp. 225–241, 2024. [4] X. Yang, L. Zheng, D. L¨ u, J. Wang, S. Wang, H. Su, Z. Wang, and L. Ren, “The snake-inspired robots: a review,” Assembly automation ,vol. 42, no. 4, pp. 567–583, 2022. [5] F. Manara, A. Poka, D. Ludovico, A. Pistone, L. D. M. C. Dal Verme, C. Canali, G. Berselli, and D. G. Caldwell, “Tendon-driven hyper-redundant manipulators: A review on design solutions,” IEEE/ASME Transactions on Mechatronics , 2025. [6] R. Matsuda, U. K. Mavinkurve, A. Kanada, K. Honda, Y. Nakashima, and M. Yamamoto, “A woodpecker’s tongue-inspired, bendable and extendable robot manipulator with structural stiffness,” IEEE Robotics and Automation Letters , vol. 7, no. 2, pp. 3334–3341, 2022. [7] R. J. Webster III and B. A. Jones, “Design and kinematic modeling of constant curvature continuum robots: A review,” The International Journal of Robotics Research , vol. 29, no. 13, pp. 1661–1683, 2010. [8] W. Zeng, J. Yan, X. Huang, and S. S. Cheng, “Motion coupling analysis for the decoupled design of a two-segment notched continuum robot,” in 2021 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2021, pp. 7665–7671. [9] C. Alessi, C. Agabiti, D. Caradonna, C. Laschi, F. Renda, and E. Falotico, “Rod models in continuum and soft robot control: a review,” 
+
+arXiv preprint arXiv:2407.05886 , 2024. [10] M. Tummers, V. Lebastard, F. Boyer, J. Troccaz, B. Rosa, and M. T. Chikhaoui, “Cosserat rod modeling of continuum robots from newtonian and lagrangian perspectives,” IEEE Transactions on Robotics , vol. 39, no. 3, pp. 2360–2378, 2023. [11] X. Huang, J. Zou, and G. Gu, “Kinematic modeling and control of variable curvature soft continuum robots,” IEEE/ASME Transactions on Mechatronics , vol. 26, no. 6, pp. 3175–3185, 2021. [12] Z. Chen, F. Renda, A. Le Gall, L. Mocellin, M. Bernabei, T. Dangel, G. Ciuti, M. Cianchetti, and C. Stefanini, “Data-driven methods applied to soft robot modeling and control: A review,” IEEE Transactions on Automation Science and Engineering , vol. 22, pp. 2241–2256, 2024. [13] M. Lutter, C. Ritter, and J. Peters, “Deep lagrangian networks: Using physics as model prior for deep learning,” arXiv preprint arXiv:1907.04490 , 2019. [14] J. Gao, M. Y. Michelis, A. Spielberg, and R. K. Katzschmann, “Sim-to-real of soft robots with learned residual physics,” IEEE Robotics and Automation Letters , vol. 9, no. 10, pp. 8523–8530, 2024. [15] X. Li, W. Shang, and S. Cong, “Model-based reinforcement learning for robot control,” in 2020 5th International conference on advanced robotics and mechatronics (ICARM) . IEEE, 2020, pp. 300–305. [16] B. A. Jones and I. D. Walker, “Kinematics for multisection continuum robots,” IEEE transactions on robotics , vol. 22, no. 1, pp. 43–55, 2006. [17] M. Schuster and K. K. Paliwal, “Bidirectional recurrent neural net-works,” IEEE transactions on Signal Processing , vol. 45, no. 11, pp. 2673–2681, 1997. [18] Y. Nakamura and H. Hanafusa, “Inverse kinematic solutions with singularity robustness for robot manipulator control,” 1986. [19] A. Li´ egeois, “Automatic supervisory control of the configuration and behavior of multibody mechanisms,” IEEE Transactions on Systems, Man, and Cybernetics , vol. 7, no. 12, pp. 868–871, 1977. [20] E. Olson, “Apriltag: A robust and flexible visual fiducial system,” in 
+
+2011 IEEE international conference on robotics and automation . IEEE, 2011, pp. 3400–3407. [21] O. Khatib, “Real-time obstacle avoidance for manipulators and mobile robots,” The international journal of robotics research , vol. 5, no. 1, pp. 90–98, 1986.
