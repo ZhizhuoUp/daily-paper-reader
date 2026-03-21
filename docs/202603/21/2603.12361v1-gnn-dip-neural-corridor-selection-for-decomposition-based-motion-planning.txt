@@ -1,0 +1,608 @@
+Title: GNN-DIP: Neural Corridor Selection for Decomposition-Based Motion Planning
+
+URL Source: https://arxiv.org/pdf/2603.12361v1
+
+Published Time: Mon, 16 Mar 2026 00:04:24 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# GNN-DIP: Neural Corridor Selection for Decomposition-Based Motion Planning 
+
+Peng Xie, Yanlinag Huang, Wenyuan Wu, Amr Alanwar 
+
+Abstract —Motion planning through narrow passages remains a core challenge: sampling-based planners rarely place samples inside these narrow but critical regions, and even when samples land inside a passage, the straight-line connections between them run close to obstacle boundaries and are frequently rejected by collision checking. Decomposition-based planners resolve both issues by partitioning free space into convex cells— every passage is captured exactly as a cell boundary, and any path within a cell is collision-free by construction. However, the number of candidate corridors through the cell graph grows combinatorially with environment complexity, creating a bottleneck in corridor selection. We present GNN-DIP, a framework that addresses this by integrating a Graph Neural Network (GNN) with a two-phase Decomposition-Informed Planner (DIP). The GNN predicts portal scores on the cell adjacency graph to bias corridor search toward near-optimal regions while preserving completeness. In 2D, Constrained Delaunay Triangulation (CDT) with the Funnel algorithm yields exact shortest paths within corridors; in 3D, Slab convex decomposition with portal-face sampling provides near-optimal path evaluation. Benchmarks on 2D narrow-passage scenarios, 3D bottleneck environments with up to 246 obstacles, and dynamic 2D settings show that GNN-DIP achieves 99–100% success rates with 2–280 times speedup over sampling-based baselines. 
+
+I. I NTRODUCTION 
+
+Motion planning in cluttered environments is a fundamen-tal problem in robotics. Among its open challenges, narrow passages stand out as both the hardest to solve and the most valuable to exploit: in environments with tight doorways, narrow gaps between obstacles, or double enclosures, the only feasible routes pass through regions that occupy a vanishingly small fraction of the configuration space, making their reliable discovery essential for any practical planner. Sampling-based planners, including RRT* [1], BIT* [2], InformedRRT* (iRRT*) [3], and their variants, provide asymptotic optimality guarantees but face a dual challenge in narrow passages. First, the probability of randomly sampling inside a passage of width ε scales as εd, so narrow gaps become exponentially harder to discover in higher dimen-sions. Second, even when a sample lands inside a narrow passage, the straight-line segments connecting it to neighbor-ing samples run close to obstacle boundaries, complicating collision checking at finite resolution. These two challenges compound in environments with narrow gaps and double 
+
+Peng Xie, Yanlinag Huang, Wenyuan Wu and Amr Alanwar are with the TUM School of Computation, Information and Technology, Department of Computer Engineering, Technical University of Munich, 74076 Heilbronn, Germany. (e-mail: p.xie@tum.de, yanlinag.huang@tum.de, wenyuan.wu@tum.de, alanwar@tum.de) 
+
+enclosures, where increasing sampling density or collision-checking resolution provides diminishing returns. Decomposition-based planners address both challenges structurally. By partitioning the free space F into convex cells and constructing a cell adjacency graph, every passage—no matter how narrow—is represented exactly as a cell boundary (portal), so no bottleneck region is missed. Moreover, any path within a convex cell is collision-free by definition, eliminating resolution-dependent collision checking entirely. The continuous planning problem thus reduces to a discrete corridor search followed by local path optimization within each corridor. In 2D, exact shortest paths within a corridor of convex polygons can be computed in linear time using the Funnel algorithm [5]. The principal limitation of decomposition-based ap-proaches is the corridor selection problem: the number of distinct corridors from start to goal grows combinatorially with the number of cells. In environments with hundreds to thousands of cells, the k-shortest path search via Yen’s algorithm [4] must be guided by accurate edge weights. The default centroid-distance heuristic w(ci, c j ) = ∥zi − zj ∥
+
+correlates poorly with actual path cost in environments with elongated cells, narrow passages, or asymmetric obstacle configurations. Our approach. We address the corridor selection problem by training a GNN on the cell adjacency graph to predict portal-level scores. Each portal pij (the shared boundary between adjacent cells ci and cj ) receives a score sij ∈ [0 , 1] 
+
+indicating the probability that it lies on a near-optimal corridor. These scores modulate edge weights via w(ci, c j ) = 
+
+d(ci, c j ) · exp( −β · sij ), concentrating the k-shortest path search on promising regions. Importantly, the modulation is continuous—no corridors are pruned—thereby preserving completeness while improving the quality of initial corridor candidates. Fig. 1 illustrates the GNN-DIP ( G-DIP) pipeline on a labyrinth environment with 50 polygon obstacles of varying shapes. CDT produces 385 triangular cells (panel b), creating a combinatorial corridor search space that grows exponen-tially with cell count. The GNN identifies a narrow corridor of 73 cells (panel c, light blue) containing the near-optimal path, reducing the effective search space by ∼81% . Parallel corridor evaluation via the Funnel algorithm then yields the initial solution in under 20 ms. Phase 2 refines the solution within a shrinking informed ellipsoid (panel d). The contributions of this paper are:   
+
+> arXiv:2603.12361v1 [cs.RO] 12 Mar 2026 qs
+> qg
+> (a) Planning problem
+> 385 cells
+> (b) Cell decomposition (c) GNN-guided corridor (d) Informed refinement
+
+Fig. 1: GNN-DIP pipeline on a labyrinth with polygon obstacles. (a) Planning problem with start ( ⋆) and goal ( ◦). (b) CDT decomposes the free space into 385 triangular cells. (c) The GNN selects a corridor of 73 cells (light blue), and the Funnel algorithm computes the initial path (green) in parallel across corridor candidates. (d) Phase 2 refines the solution within a shrinking informed ellipsoid (orange dashed → red solid). 1) A GNN-based portal scoring framework on cell adja-cency graphs, with feature engineering for node/edge representations and a training pipeline using focal loss, multi-label generation, and stratified train-validation splitting (Section III). 2) A two-phase Decomposition-Informed Planner (DIP) combining GNN-guided corridor search, informed el-lipsoid pruning, and Funnel-based corridor evaluation, with proofs of completeness and convergence (Sec-tion IV). 3) Comprehensive experiments spanning 2D (310 maps, 18 scenarios), 3D bottleneck environments (4 scenar-ios, 50 PDT runs each), and dynamic 2D environ-ments (100 planning instances), demonstrating 2–280 ×
+
+speedup, 99–100% success rates, and collision safety by construction (Section V). II. P RELIMINARIES AND RELATED WORK 
+
+A. Decomposition-Based Motion Planning 
+
+Cell decomposition methods partition the free space into simple regions and plan over the resulting adjacency graph. Exact cell decomposition [6] constructs cells whose union equals the free space, whereas approximate methods employ regular grids or adaptive subdivisions. Constrained Delaunay Triangulation (CDT) [7] with parity-based face classification provides a well-studied 2D decomposition with robust imple-mentations in CGAL [8]. The Funnel algorithm [5] computes the exact Euclidean shortest path through a sequence of adjacent convex polygons in O(n) time, where n is the total number of portal endpoints. In 3D, exact convex decomposition of general polyhedral free space is computationally expensive. For environments with axis-aligned box (AABB) obstacles, a Slab decom-position exploits obstacle face alignment to produce an exact convex decomposition in near-linear time. Strub and Gammell [9] introduced AIT* and EIT*, which integrate lazy search and informed sampling. The Planner Developer Tools (PDT) framework provides standardized benchmarking infrastructure for OMPL-compatible planners [10]. 
+
+B. Learning and GNNs for Motion Planning 
+
+Neural approaches to motion planning include learned samplers [11], [12], conditional generative models [14], and reinforcement learning [13], all operating in continuous configuration space without exploiting cell decomposition structure. GNNs have been applied to roadmap graphs for collision prediction [15], neural planning [16], and edge cost learning [17]. These operate on roadmap graphs (nodes = configurations, edges = local paths), whereas our GNN operates on the cell adjacency graph (nodes = free-space cells, edges = portals)—a fundamentally different and more compact representation. Informed approaches exploit ellip-soidal [3] or zonotope [23] subsets; our GNN guidance is complementary, biasing corridor search before any solution is found. 
+
+C. Problem Formulation 
+
+This section formalizes the key components of the pro-posed framework. Throughout, W ⊆ Rd (d ∈ { 2, 3}) denotes the workspace. 
+
+Definition 1 (Motion Planning Problem) . Given a workspace 
+
+W with obstacles O = {O1, . . . , O m} (arbitrary simple polygons in 2D, axis-aligned boxes in 3D), the free space is F = W \ Smi=1 Oi. Given start and goal configurations 
+
+qs, q g ∈ F , the optimal motion planning problem seeks a continuous path σ∗ : [0 , 1] → F with σ(0) = qs, σ(1) = qg ,minimizing the path length ℓ(σ) = R 10 ∥ ˙σ(t)∥ dt :
+
+σ∗ = arg min  
+
+> σ
+
+ℓ(σ). (1) 
+
+Definition 2 (Free-Space Decomposition) . A free-space de-composition of F is a finite collection of closed convex cells 
+
+C = {c1, . . . , c n} such that: 
+
+1) Sni=1 ci = F (coverage), 
+
+2) int( ci) ∩ int( cj ) = ∅ for i̸ = j (non-overlapping interiors), 
+
+3) Each ci is convex. In 2D, we use Constrained Delaunay Triangulation (CDT) with obstacle edges as constraints and parity-based classi-fication to identify free faces. In 3D with axis-aligned box obstacles, we employ a Slab convex decomposition : obstacle face coordinates define axis-aligned splitting planes; obstacle cells are removed and adjacent free cells are greedily merged, producing a compact set of convex boxes. 
+
+Definition 3 (Cell Adjacency Graph) . The cell adjacency graph G = ( C, P) is defined over the free-space cells of Definition 2, with cells as nodes and portals as edges. A portal pij ∈ P exists between cells ci and cj if they share a (d−1) -dimensional face (an edge segment in 2D, a rectangular face in 3D). Each portal pij is characterized by its geometric attributes: endpoints {aij , b ij } and midpoint 
+
+mij , with size measure λij defined as the segment length 
+
+∥aij − bij ∥ in 2D or the face area in 3D. 
+
+Definition 4 (Corridor) . A corridor π = ( ci1 , c i2 , . . . , c iL ) is a path in G from the cell containing qs to the cell containing 
+
+qg . The corridor defines a connected region Rπ = SLℓ=1 ciℓ
+
+through which a collision-free path must pass. The corridor cost ℓ(π) is the length of the shortest path in F that traverses the cells of π in order. 
+
+III. GNN P ORTAL SCORING 
+
+The corridor selection problem can be formulated as an edge classification task on the cell adjacency graph: for each portal pij , predict whether it lies on a near-optimal corridor. A GNN is trained to solve this classification problem, and the predicted scores are used to bias edge weights in the corridor search. 
+
+A. Graph Representation and Feature Engineering 
+
+The cell adjacency graph G = ( C, P) is represented as a directed graph with bidirectional edges (each portal appears as two directed edges). Each cell ci is associated with a node feature vector xi ∈ Rdn , and each portal pij with an edge feature vector eij ∈ Rde .
+
+1) Node Features ( dn = 11 in 2D) and Edge Features (de = 9 in 2D): Table I lists the complete 2D feature set. Node features encode cell geometry (area, aspect ratio ρi =
+
+emax /e min ), spatial relationships to the query (distances to start, goal, and the start–goal line d⊥), and role indicators. Edge features encode portal geometry, spatial context, and inter-cell relationships. The relative angle θij = ∠(pij ) −
+
+∠(−−→qsqg ) captures alignment between the portal and the global query direction. For the 3D Slab decomposition, features are extended to dn=14 and de=13 by adding volumetric cell descriptors (volume, size along each axis, clearance) and 3D portal attributes (face area, portal height, normal axis). 
+
+B. GNN Architecture 
+
+The architecture follows an encode–process–decode pat-tern. Raw node features are projected to hidden dimension 
+
+h = 128 via a linear layer with batch normalization (BN) and ReLU. In 2D, three GCN layers [18] with symmetric normalization, BN, and dropout ( p=0 .15 ) process the node embeddings; layers 2–3 use two-layer-skip residual connec-tions. For 3D, GCN is replaced by GATv2 (3 layers, 4 TABLE I: GNN input features: node (cell) and edge (portal).                                                
+
+> Node features (dn= 11 )Edge features (de= 9 )
+> AiCell area λij Portal length
+> zxi, z yiCentroid coords mxij , m yij Midpoint coords
+> d(zi, q s)Dist. to start d(mij , q s)Dist. to start
+> d(zi, q g)Dist. to goal d(mij , q g)Dist. to goal
+> d⊥(zi, q sqg)Dist. to sg -line d⊥(mij , q sqg)Dist. to sg -line
+> ρiAspect ratio θij Relative angle
+> ⊮[i=is]Start cell flag ∥zi−zj∥Cell–cell dist.
+> ⊮[i=ig]Goal cell flag κij Portal clearance
+> |N (i)|Neighbor count
+> κiObstacle clearance
+
+attention heads) to better capture the irregular connectivity of Slab cells; the remaining architecture is identical. For each portal pij , the score is predicted by an MLP (R2h+de → h → 32 → 1, ReLU activations) on the concatenation of endpoint embeddings and edge features: 
+
+ˆsij = sigm 
+
+
+
+MLP 
+
+
+
+[h(3)  
+
+> i
+
+∥h(3)  
+
+> j
+
+∥BN e(eij )] 
+
+ 
+
+, (2) where sigm( ·) = 1/(1 + e−x) is the sigmoid function (distinguished from path σ). 
+
+C. Training 1) Label Generation: Training labels are generated from OMPL baseline planners (iRRT*, AIT*, BIT*, RRT*) run on each map with a sufficient time budget. All solution paths are collected and portals on near-optimal corridors are identified. Let σref denote the shortest path found across all baseline runs: 
+
+yij =
+
+(
+
+1 ∃ σ : ℓ(σ) ≤ (1+ ϵ) ℓ(σref ), p ij ∈ σ
+
+0 otherwise (3) where ϵ = 0 .1 (10% suboptimality threshold). Since σref is the best solution found rather than the true optimum σ∗,label noise may arise when baselines have not converged; in practice, running four planners with a 10 s budget per map yields near-optimal references. This multi-label scheme assigns positive labels to portals on any near-optimal corridor, capturing the multiplicity of good solutions. The resulting label distribution is severely imbalanced: typically less than 5% of portals are positive. 
+
+2) Focal Loss: To address the extreme class imbalance, focal loss [19] is adopted: 
+
+LFL (ˆ s, y ) = −αt(1 − pt)γ log( pt), (4) where pt = ˆ s · y + (1 − ˆs)(1 − y) is the model’s estimated probability for the true class, αt = αy + (1 − α)(1 − y)
+
+balances positive/negative contributions, and γ is the focusing parameter. We use α = 0 .85 and γ = 2 .0. The (1 − pt)γ fac-tor down-weights well-classified negatives, focusing gradient updates on hard positives—the critical portals that the model initially misclassifies. 
+
+3) Optimization: Training employs Adam [20] (initial learning rate 10 −3, weight decay 10 −4) with cosine annealing and early stopping based on validation F1 score (patience 30 epochs). Data are split using stratified sampling (20% validation ratio). The model contains approximately 150K parameters with hidden dimension h = 128 and trains in under 5 minutes on a single GPU. IV. D ECOMPOSITION -I NFORMED PLANNER 
+
+The Decomposition-Informed Planner (DIP) operates in two phases on the cell adjacency graph G. Phase 1 performs GNN-guided k-shortest corridor search with corridor evalu-ation; Phase 2 refines the search using an informed ellipsoid derived from the current best solution. 
+
+A. GNN-Guided Edge Weight Integration 
+
+Given GNN-predicted portal scores {ˆsij }, we define mod-ified edge weights: 
+
+wGNN (ci, c j ) = d(ci, c j ) · exp( −β · ˆsij ), (5) where d(ci, c j ) = ∥zi −zj ∥ is the centroid distance and β > 0
+
+is a temperature parameter (we use β = 3 .0). 
+
+Proposition 1 (Properties of GNN Edge Weights) . The weight (5) is strictly positive and continuous; it recovers the centroid-distance baseline when ˆsij = 0 (graceful degrada-tion); and higher scores yield lower weights, concentrating the k-shortest search on predicted near-optimal portals. B. Phase 1: k-Shortest Corridor Search 
+
+Phase 1 applies Yen’s algorithm [4] to find k shortest paths in G from the start cell cs to the goal cell cg , using edge weights wGNN when available and centroid distances 
+
+d(·, ·) otherwise. Each corridor is evaluated using the Funnel algorithm (2D) or portal-face sampling with layered-graph DP (3D). The best solution from Phase 1 provides an initial cost bound c(1)  
+
+> best
+
+that seeds the refinement in Phase 2. 
+
+C. Phase 2: Informed Ellipsoid Corridor Refinement 
+
+Definition 5 (Informed Ellipsoid) . Given the current best cost cbest , the informed ellipsoid is: 
+
+E(cbest ) = {x ∈ Rd : ∥x − qs∥ + ∥x − qg ∥ ≤ cbest }. (6) 
+
+A portal pij is informative if it intersects the ellipsoid, i.e., 
+
+pij ∩ E (cbest )̸ = ∅, or equivalently min x∈pij (∥x − qs∥ + ∥x −
+
+qg ∥) ≤ cbest .
+
+Phase 2 iteratively re-runs the k-shortest path search on 
+
+G, restricted to portals inside E(cbest ). Only corridors not yet contained in the evaluated set S are passed to the corridor evaluator (Funnel in 2D, portal-face sampling in 3D). When a better corridor is found, the ellipsoid shrinks accordingly; otherwise, the corridor budget k′ is doubled up to 4k, after which the loop terminates. 
+
+Algorithm 1 GNN-DIP: Decomposition-Informed Planner 
+
+Input: W, qs, qg , GNN model fθ , corridor budget k, timeout T
+
+Output: Best path σ∗ and cost c∗ 
+
+> 1
+
+Decompose F into cells; build G = ( C, P) 
+
+> 2
+
+{ˆsij } ← fθ (G) 
+
+> 3
+
+wij ← d(ci, c j ) · exp( −β · ˆsij ), ∀ (ci, c j ) ∈ P  
+
+> 4
+
+c∗ ← ∞ ; S ← ∅  
+
+> 5
+
+Πk ← Yen (G, c s, c g , k, w ) 
+
+> 6
+
+for π ∈ Πk do  
+
+> 7
+
+(ℓπ , σ π ) ← Eval (π, q s, q g ); S ← S ∪ { π} 
+
+> 8
+
+if ℓπ < c ∗ 
+
+> 9
+
+c∗ ← ℓπ ; σ∗ ← σπ 
+
+> 10
+
+k′ ← k 
+
+> 11
+
+while elapsed time < T do  
+
+> 12
+
+P′ ← { pij ∈ P : min x∈pij (∥x − qs∥ + ∥x − qg ∥) ≤ c∗} 
+
+> 13
+
+Π′ ← Yen (G|P′ , c s, c g , k ′, w ) 
+
+> 14
+
+improved ← false  
+
+> 15
+
+for π ∈ Π′ \ S do  
+
+> 16
+
+(ℓπ , σ π ) ← Eval (π, q s, q g ); S ← S ∪ { π} 
+
+> 17
+
+if ℓπ < c ∗ 
+
+> 18
+
+c∗ ← ℓπ ; σ∗ ← σπ ; improved ← true  
+
+> 19
+
+if ¬ improved  
+
+> 20
+
+k′ ← min(2 k′, 4k) 
+
+> 21
+
+if k′ = 4 k 
+
+> 22
+
+break  
+
+> 23
+
+return (σ∗, c ∗)
+
+D. Theoretical Properties 
+
+Theorem 1 (Completeness of DIP) . If a collision-free path from qs to qg exists in F, and the decomposition C covers F
+
+with qs, q g contained in cells of G, then DIP (Algorithm 1) finds a solution path. Proof sketch. GNN weights (5) preserve graph topology (all edges remain with positive weights), so Yen’s algorithm can discover any reachable corridor. For Phase 2, any portal on an optimal corridor satisfies the ellipsoid condition by the triangle inequality, so it is never pruned. 
+
+Theorem 2 (Convergence of DIP) . The Phase 2 loop of Algorithm 1 terminates in finite iterations. Moreover, each iteration either discovers a strictly better corridor (decreas-ing c∗) or explores no new corridors. Proof sketch. The number of distinct corridors is finite; each is evaluated at most once. Each iteration either discovers a new corridor or triggers termination, so the loop terminates. 
+
+E. Corridor Evaluation 
+
+In 2D, the Funnel algorithm [5] computes the exact shortest path through a corridor of L convex polygons in O(L) time via string-pulling. In 3D, we employ portal-face sampling: 
+
+Ns points are sampled uniformly on each portal face, forming a layered DAG from qs through portal samples to qg . A forward DP sweep finds the shortest path in O(L·N 2 
+
+> s
+
+) time— collision-free by convexity. Adaptive Gaussian re-sampling refines the path for up to r = 3 iterations. F. Complexity and System Design 
+
+Decomposition is O(n log n) (CDT in 2D) or 
+
+O(NxNy Nz + M ) (Slab in 3D). Phase 1 runs Yen’s 
+
+k-shortest paths [4] in O(k · |C| · (|P| + |C| log |C| )) ;each Funnel evaluation is O(L). Phase 2 operates on progressively smaller ellipsoid-filtered subgraphs. GNN inference is O(LGNN · (|P| · h + |C| · h2)) with LGNN = 3 ,
+
+h = 128 .The system comprises a C++ planning core ( ∼5K LOC, OMPL-integrated [10]) and a Python GNN module (Py-Torch [21] + PyG [22], ∼150K parameters). GNN inference adds 10–50 ms latency. Default corridor budget: k = 8 in 2D, 
+
+k = 16 (G-DIP) or k = 32 (unguided DIP) in 3D; 3D portal-face sampling uses Ns = 16 , refinement iterations r = 3 .V. E XPERIMENTS 
+
+GNN-DIP is evaluated against unguided DIP and OMPL baselines (best result among iRRT*, AIT*, BIT*, EIT*, RRT*) in both 2D and 3D environments. All experiments are executed on a single thread of an Intel i7 processor. 
+
+A. 2D Evaluation 
+
+The 2D benchmark uses 310 polygon maps across 18 scenarios in four complexity tiers by CDT cell count: simple (14–74), medium (80–164), hard (280–672), and very hard (764–2372 cells). DIP uses k = 8 with Funnel evaluation. DIP achieves an 89.5% win rate against OMPL at 10 ms on simple–hard maps but only 33% on very hard maps (1000+ cells) due to combinatorial corridor explosion. GNN guidance addresses this: on mega forest (1074 cells), unguided DIP fails while GNN-DIP succeeds with cost 1.295 (vs. 1.293 for OMPL); on tight labyrinth (1046 cells), both DIP methods achieve cost 1.737, outperforming OMPL’s 1.799. 
+
+a) Decomposition Guarantees Full Reliability on 2D Narrow Passages: Table II reports PDT [9] results (100 runs, 2 s budget) on four very hard 2D scenarios. DIP and G-DIP achieve 100% success on all scenarios. On Bottleneck, all four sampling-based baselines fall below 3% success; on Tight Labyrinth, only EIT* reaches 47%. On Mega Forest, EIT* attains 99% success but at a median cost of 1.51—17% higher than G-DIP’s 1.29. 
+
+b) GNN Scoring Provides Targeted Speedup on Com-binatorially Hard Maps: G-DIP reduces initial solve time by 4.6 × on Mega Forest (48 ms vs. 223 ms) and 3.3 × on Bottleneck (158 ms vs. 516 ms). On Bottleneck, G-DIP also reduces median cost from 1.52 to 1.33 (12.5%), indicating that GNN-selected corridors are closer to optimal. On Tight Labyrinth and Cluttered Field, where DIP already solves in 16 ms and 35 ms, G-DIP matches both cost and latency. Fig. 2 shows the convergence plots. 
+
+B. 3D Bottleneck Benchmark 
+
+To stress-test narrow-passage planning in 3D, we design four bottleneck scenarios where all feasible paths traverse walls with a single narrow door (width 0.035–0.05 in a unit cube). The probability of hitting a passage of width ε scales TABLE II: PDT benchmark. Top: SR/median cost. Bottom: time to first solution. 2D: 100 runs, 2 s; 3D: 50 runs, 20 s. D-BN = Dense Bottleneck. Bold = best; “—” = no solution.                                                                                                 
+
+> DIP G-DIP BIT* AIT* iRRT* EIT*
+> Success rate / median cost
+> MegaFor. 1.0 /1.30 1.0 /1.29 ——.02 .99/1.51 Bottlnk. 1.0 /1.52 1.0 /1.33 .00 .00 .00 .03 TightLab 1.0 /1.74 1.0 /1.74 —.00 .00 .47 Clutterd 1.0 /1.32 1.0 /1.32 ——.26 .99/1.34 BN Ofc. 1.0 /2.02 1.0 /2.02 .98/2.18 .02/2.82 1.0 /2.06 1.0 /1.90
+> BN Maze 1.0 /2.19 1.0 /2.19 1.0 /2.40 .24/2.88 1.0 /2.26 1.0 /1.78
+> BN Lyrs 1.0 /2.34 1.0 /2.34 1.0 /2.67 .00 .78/2.47 1.0 /1.82
+> D-BN Ofc. 1.0 /2.34 1.0 /2.34 1.0 /2.56 .00 1.0 /2.40 1.0 /1.90
+> Time to first solution
+> MegaFor. 223 ms 48 ms ———1.14 s Bottlnk. 516 ms 158 ms ————TightLab 16 ms 19 ms ————Clutterd 35 ms 22 ms ———508 ms BN Ofc. 18 ms 19 ms 0.47 s 8.19 s 3.24 s 0.10 s BN Maze 29 ms 19 ms 0.11 s 9.75 s 1.73 s 90 ms BN Lyrs 48 ms 38 ms 0.39 s —9.77 s 73 ms D-BN Ofc. 0.26 s 0.12 s 0.43 s —5.86 s 0.17 s
+
+as ε3, making sampling-based discovery exponentially harder. Slab cells exactly represent free space regardless of passage width, and paths within convex cells are collision-free by construction.  
+
+> •
+
+Bottleneck Office: 4 × 4 rooms separated by walls with one narrow door each, a horizontal floor partition, and 30 clutter boxes (181–190 obstacles).  
+
+> •
+
+Bottleneck Maze: Recursive-division maze with single-door walls, two vertical zones, one floor partition, and 25 clutter boxes (129–175 obstacles).  
+
+> •
+
+Bottleneck Layers: Three layers of 3×3 rooms with narrow doors and narrow floor holes (radius 0.04–0.05), plus 30 clutter boxes (239–246 obstacles).  
+
+> •
+
+Dense BN Office: BN Office augmented with 120 extra clutter boxes, yielding ∼600 cells and ∼1600 portals (vs. 
+
+∼200 cells originally)—a search space where unguided k-shortest enumeration becomes a bottleneck. Six planners (DIP, G-DIP, BIT*, AIT*, iRRT*, EIT*) are evaluated via PDT over 50 runs with a 20 s budget on the most challenging map per scenario. 
+
+a) DIP Maintains Perfect Reliability Across All 3D Sce-narios: Table II reports all results. DIP and G-DIP maintain 100% success on all four scenarios, including the dense variant with ∼600 cells. AIT* fails entirely on BN Layers and the dense variant (0%), iRRT* drops to 78% on BN Layers, and BIT* to 98% on BN Office. EIT* sustains 100% across all scenarios but requires the full 20 s budget. 
+
+b) Speed–Quality Tradeoff Between DIP and Asymp-totic Planners: DIP produces initial solutions in 18–48 ms, compared to 110–470 ms for BIT* (4–26 × slower) and 73– 100 ms for EIT*. EIT* achieves lower median costs (1.78– 1.90 vs. DIP’s 2.02–2.34) through asymptotic refinement; DIP trades this for immediate availability. On the dense variant, G-DIP solves in 0.12 s—2.2 × faster than DIP (0.26 s) TABLE III: k-sweep ablation on Dense BN Office (5 maps ×
+
+5 seeds). G-DIP at k=8 matches DIP k=32 quality at 3.5 ×
+
+speedup.              
+
+> Scenario Config Init (ms) Total (ms) Cost D-BN Ofc. DIP k=32 419 6940 2.346
+> G-DIP k=8 64 2011 2.369
+
+and 3.6 × faster than BIT* (0.43 s); convergence plots (Fig. 2) confirm G-DIP converges 2 × faster on this variant. 
+
+c) Neural Corridor Scoring Reduces the Effective Branching Factor: The k-sweep ablation (Table III) confirms that G-DIP at k=8 achieves cost 2.369, closely matching DIP 
+
+k=32 at 2.346—a 3.5 × total speedup (2011 ms vs. 6940 ms) at only 1.0% cost increase. The initialization gap is even larger: 64 ms vs. 419 ms (6.5 ×), showing that GNN scores reduce the number of corridors that must be enumerated by a factor of four. Fig. 2 presents the convergence plots. 
+
+C. Cross-Scenario Generalization 
+
+To evaluate whether GNN portal scoring generalizes be-yond its training distribution, we conduct two transfer ex-periments on seven 3D bottleneck scenarios—the four from Sec. V-B plus Dense BN Maze ( ∼450 cells) and two indi-vidual unseen maps (BN Office #15, BN Maze #20). Each is tested with 50 runs and a 20 s budget. 
+
+a) Leave-One-Type-Out (LOTO): Training data spans four scenario families: office, maze, layers, and warehouse (261 samples across 14 subtypes). For each family f , we train a LOTO model G¬f on all data excluding family f
+
+and evaluate it on scenarios from f . This directly measures cross-family transfer. 
+
+b) Simple-to-Complex Transfer: A model Gsim is trained exclusively on four basic scenario types (forest, narrow passage, multi-room, cluttered)—none containing bottleneck structures—and tested on all complex bottleneck scenarios. Table IV shows that LOTO models match the full model within 0.1% cost in 6 of 7 scenarios with equivalent or faster solve times. The single degradation is Dense BN Maze (+13% cost when maze data is excluded), localiz-able to maze-specific structural knowledge. Gsim matches or improves DIP solve times on all bottleneck scenarios (up to 2.3 × speedup on dense variants) despite never encoun-tering bottleneck structures during training, confirming that spatial features (distance, clearance, connectivity) transfer effectively to complex layouts. 
+
+D. Dynamic 2D Evaluation 
+
+We evaluate GNN-DIP for high-frequency replanning in dynamic 2D environments. Ten scenarios each consist of 10 time steps (100 instances total), with ∼50% static, 30% moving, and 20% toggling obstacles (15–58 per step, 96– 358 CDT cells). GNN-DIP executes the full pipeline (CDT + GNN + DIP) per step; OMPL runs five planners and selects the best valid result. Both use a 0.5 s budget. OMPL TABLE IV: Cross-scenario generalization. LOTO ¬f : trained excluding the test scenario’s family f . Gsim : trained on basic scenarios only. All methods achieve 100% SR. (50 runs, 20 s.) 
+
+DIP G-DIP LOTO ¬f Gsim -DIP 
+
+Median cost 
+
+BN Ofc. 2.02 2.02 2.02 2.02 BN Maze 2.19 2.19 2.19 2.18 BN Lyrs 2.34 2.34 2.34 2.34 D-BN Ofc. 2.34 2.34 2.34 2.34 D-BN Maze 1.86 1.86 2.11 2.04 Ofc. #15 2.88 2.76 2.76 2.76 
+
+Maze #20 2.79 2.67 2.67 2.67 
+
+Time to first solution 
+
+BN Ofc. 14 ms 14 ms 13 ms 14 ms BN Maze 19 ms 11 ms 13 ms 12 ms BN Lyrs 35 ms 26 ms 28 ms 25 ms 
+
+D-BN Ofc. 185 ms 88 ms 78 ms 100 ms D-BN Maze 167 ms 125 ms 129 ms 73 ms 
+
+Ofc. #15 44 ms 26 ms 25 ms 23 ms 
+
+Maze #20 48 ms 21 ms 22 ms 23 ms 
+
+paths are post-validated via dense collision checking (200 samples/unit); only collision-free paths count as successes. 
+
+a) GNN-DIP Dominates Dynamic Replanning in Reli-ability, Latency, and Cost: GNN-DIP achieves 99% success (99/100, with the single failure being genuinely unsolvable) compared to OMPL’s 40% after collision post-validation. GNN-DIP solves each step in 1.8–44 ms (50–280 × speedup). Fig. 3 shows consistently lower path costs across all 10 sce-narios, with the largest margins on multi-room environments (6–8% reduction), and solve times under 50 ms including the pipeline overhead (CDT ∼10 ms + GNN ∼5 ms). 
+
+b) Collision Safety by Construction: The success gap reflects a fundamental architectural difference. To quantify this, we measure OMPL’s pre-validation success rate (planner finds any path) and post-validation rate (path survives dense collision checking) at two motion-validation resolutions: the default ( ∼1% of space extent) and 2× (0.5% , which doubles the per-edge checking cost). Within the same 0.5 s budget, pre-validation success is unchanged (489/500 vs. 488/500 individual planner runs), confirming that the planning al-gorithms succeed and the overhead is negligible. However, post-validation success rises from 36% to 79%—yet 21% of steps still contain paths that penetrate thin walls. Further increasing resolution would continue to reduce violations at the cost of exploring fewer edges per time budget. In contrast, DIP’s collision safety is an architectural guarantee : CDT cells exactly partition free space along obstacle boundaries, so any path within a corridor is collision-free by construction, independent of resolution parameters. 0      
+
+> 25
+> 50
+> 75
+> 100
+> Success [%]
+> 10 −110 0
+> 1.4
+> 1.6
+> 1.8
+> 2
+> Computation time [s]
+> Cost
+> DIP DIP+GNN BIT* AIT* Informed RRT* EIT*
+
+(a) Mega Forest (2D) 0       
+
+> 25
+> 50
+> 75
+> 100
+> Success [%]
+> 10 −110 0
+> 1.4
+> 1.6
+> 1.8
+> Computation time [s]
+> Cost
+> DIP DIP+GNN BIT* AIT* Informed RRT* EIT*
+
+(b) Bottleneck (2D) 0        
+
+> 25
+> 50
+> 75
+> 100
+> Success [%]
+> 10 −210 −110 0
+> 1.75
+> 1.8
+> 1.85
+> 1.9
+> Computation time [s]
+> Cost
+> DIP DIP+GNN BIT* AIT* Informed RRT* EIT*
+
+(c) Tight Labyrinth (2D) 0       
+
+> 25
+> 50
+> 75
+> 100
+> Success [%]
+> 10 −110 0
+> 1.4
+> 1.6
+> 1.8
+> Computation time [s]
+> Cost
+> DIP DIP+GNN BIT* AIT* Informed RRT* EIT*
+
+(d) Cluttered Field (2D) 0        
+
+> 25
+> 50
+> 75
+> 100
+> Success [%]
+> 10 −210 −110 010 1
+> 2
+> 3
+> Computation time [s]
+> Cost
+> DIP DIP+GNN BIT* AIT* Informed RRT* EIT*
+
+(e) BN Office (3D) 0         
+
+> 25
+> 50
+> 75
+> 100
+> Success [%]
+> 10 −210 −110 010 1
+> 2
+> 2.5
+> 3
+> 3.5
+> Computation time [s]
+> Cost
+> DIP DIP+GNN BIT* AIT* Informed RRT* EIT*
+
+(f) BN Maze (3D) 0         
+
+> 25
+> 50
+> 75
+> 100
+> Success [%]
+> 10 −210 −110 010 1
+> 2
+> 3
+> 4
+> 5
+> Computation time [s]
+> Cost
+> DIP DIP+GNN BIT* AIT* Informed RRT* EIT*
+
+(g) BN Layers (3D) 0        
+
+> 25
+> 50
+> 75
+> 100
+> Success [%]
+> 10 −110 010 1
+> 2
+> 2.5
+> 3
+> 3.5
+> Computation time [s]
+> Cost
+> DIP DIP+GNN BIT* AIT* Informed RRT* EIT*
+
+(h) Dense BN Ofc. (3D) 
+
+Fig. 2: PDT convergence plots: success rate (top) and median cost (bottom) vs. time. Top row : 2D very hard scenarios (100 runs, 2 s). Bottom row : 3D bottleneck scenarios (50 runs, 20 s) and Dense BN Office ( ∼600 cells); G-DIP converges 2 ×
+
+faster than DIP on the dense variant. (a) Avg Path Cost (b) Avg Solve Time (c) Success Rate 
+
+Fig. 3: Dynamic 2D benchmark summary across 10 scenarios. (a) Average path cost: GNN-DIP achieves lower cost on all scenarios, especially multi-room (6–8% reduction). (b) Average solve time: GNN-DIP solves in 1.8–44 ms vs. OMPL’s 500 ms budget (50–280 × speedup). (c) Success rate: GNN-DIP achieves 99% vs. OMPL’s 40% after collision post-validation. VI. D ISCUSSION AND CONCLUSION 
+
+DIP exploits geometric structure for deterministic, fast initial solutions with 100% success on all scenarios, while sampling-based planners offer asymptotic optimality but suffer reduced reliability in narrow passages ( ε3 sampling probability in 3D). GNN guidance bridges the speed–quality gap: on small decompositions ( ∼200 cells) the benefit is modest, but as complexity grows ( ∼600+ cells) GNN scoring reduces the effective branching factor by 4×. Cross-scenario generalization (Table IV) confirms that learned spatial fea-tures transfer across scenario families and from simple to complex environments. Python-based inference adds 10– 50 ms; ONNX Runtime integration would reduce this to sub-millisecond levels. 
+
+A. Extension: CBF-Guarded Execution 
+
+DIP produces collision-free point paths; for a disk robot of radius r, wall clearance must be enforced at runtime. Rather than inflating obstacles (requiring re-decomposition) or shrinking portals (over-conservative), we define a CBF [24] on each corridor wall with endpoints (w1, w 2):
+
+h(q) = dist  (x, y ), w 1w2
+
+ − r, (7) where {q : h(q) ≥ 0} is the safe region. The DIP corridor structure is naturally suited for CBF integration because of two properties. First, sparse constraints : the filter monitors only walls of the current and neighboring corridor cells ( ≤ 4
+
+constraints per step), far fewer than whole-space CBF for-mulations that check all obstacle boundaries. Second, mostly-passive monitoring : as Fig. 4(a) illustrates, in a typical CDT cell the path traverses a convex interior where h(q) ≫ 0—the CBF constraint is trivially satisfied and the nominal controller runs unmodified. CBF intervention activates only in the few narrow cells near bottlenecks where h ≈ r (Fig. 4(b)), making the filter effectively a lightweight portal guard . The resulting filter clamps forward speed to v ≤ γh/ |a| when heading toward a wall, preserving forward invariance without a QP solver. 
+
+B. Concluding Remarks 
+
+GNN-DIP integrates GNN portal scoring with a two-phase decomposition-informed planner, with formal completeness and convergence guarantees. Key findings: (1) DIP achieves 89.5% win rate over OMPL at 10 ms in 2D, with GNN guidance solving tight labyrinths in under 20 ms; (2) in 3D bottleneck environments (129–246 obstacles, narrow doors of wall     
+
+> portal
+> portal
+> AB
+> C
+> h(q)0
+> CBF inactive
+> (a) Typical cell: path far from wall
+> wall
+> portal
+> portal
+> AB
+> C
+> CBF
+> push
+> hr
+> CBF active
+> (b) Narrow cell: CBF deflects path from wall
+
+Fig. 4: CBF behavior within CDT cells. (a) Typical cell: path traverses the convex interior far from the wall, h(q) ≫ 0,CBF inactive. (b) Narrow cell near a bottleneck: path forced close to wall, h ≈ r, CBF activates to enforce clearance. qs      
+
+> qg
+> wide
+> door
+> narrow
+> door
+> (a) Corridor with CBF safe passage tube (r =W/2 = 0.0225 )
+> (b) Narrow door: CBF active at portals, inactive in cell interior
+> Corridor cell
+> CBF safe tube ( r)
+> DIP planned path
+> Portal (shared face)
+> Robot ( r=W/2)
+> h0, CBF active
+> h0
+> no intervention
+
+Fig. 5: CBF-guarded passage tube. Safe swept volume (green) clipped to free space; tube constricts at the narrow door where the robot maintains wall clearance. width 0.035–0.05), DIP achieves 100% success vs. 0–100% for sampling-based planners, with 3–20 × speed advantage over BIT*; (3) G-DIP at k=8 matches DIP k=32 at 3.5 ×
+
+speedup on dense 3D ( ∼600 cells); (4) in dynamic 2D, GNN-DIP achieves 99% vs. 40% success with 50–280 × speedup. Future work will address improving 3D path quality via gradient-based refinement within convex corridors, extending Slab decomposition to non-axis-aligned obstacles, C++ GNN integration via ONNX Runtime for sub-millisecond infer-ence, and experimental validation of the CBF execution layer for finite-size robots navigating narrow passages. REFERENCES [1] S. Karaman and E. Frazzoli, “Sampling-based algorithms for optimal motion planning,” Int. J. Robot. Res. , vol. 30, no. 7, pp. 846–894, 2011. [2] J. D. Gammell, S. S. Srinivasa, and T. D. Barfoot, “Batch informed trees (BIT*): Sampling-based optimal planning via the heuristically guided search of implicit random geometric graphs,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , 2015, pp. 3067–3074. [3] J. D. Gammell, S. S. Srinivasa, and T. D. Barfoot, “Informed RRT*: Optimal sampling-based path planning focused via direct sampling of an admissible ellipsoidal heuristic,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) , 2014, pp. 2997–3004. [4] J. Y. Yen, “Finding the K shortest loopless paths in a network,” 
+
+Management Science , vol. 17, no. 11, pp. 712–716, 1971. [5] D. T. Lee and F. P. Preparata, “Euclidean shortest paths in the presence of rectilinear barriers,” Networks , vol. 14, no. 3, pp. 393–410, 1984. [6] J.-C. Latombe, Robot Motion Planning , vol. 124 of The Springer International Series in Engineering and Computer Science . Springer Science & Business Media, 2012. [7] J. R. Shewchuk, “Triangle: Engineering a 2D quality mesh generator and Delaunay triangulator,” in Proc. 1st Workshop Appl. Comput. Geom. , 1996, pp. 203–222. [8] The CGAL Project, CGAL User and Reference Manual , 6.0.1 ed. CGAL Editorial Board, 2024. [9] M. P. Strub and J. D. Gammell, “Adaptively Informed Trees (AIT*) and Effort Informed Trees (EIT*): Asymmetric bidirectional sampling-based path planning,” Int. J. Robot. Res. , vol. 41, no. 4, pp. 390–417, 2022. [10] I. A. S ¸ ucan, M. Moll, and L. E. Kavraki, “The Open Motion Planning Library,” IEEE Robot. Autom. Mag. , vol. 19, no. 4, pp. 72–82, 2012. [11] B. Ichter, J. Harrison, and M. Pavone, “Learning sampling distributions for robot motion planning,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , 2018, pp. 7087–7094. [12] J. Wang, W. Chi, C. Li, C. Wang, and M. Q.-H. Meng, “Neural RRT*: Learning-based optimal path planning,” IEEE Trans. Autom. Sci. Eng. ,vol. 17, no. 4, pp. 1748–1758, 2020. [13] B. Chen, B. Dai, Q. Lin, G. Ye, H. Liu, and L. Song, “Learning to plan in high dimensions via neural exploration-exploitation trees,” in 
+
+Proc. Int. Conf. Learn. Representations (ICLR) , 2020. [14] B. Ichter and M. Pavone, “Robot motion planning in learned latent spaces,” IEEE Robot. Autom. Lett. , vol. 4, no. 3, pp. 2407–2414, 2019. [15] C. Yu and S. Gao, “Reducing collision checking for sampling-based motion planning using graph neural networks,” in Proc. Adv. Neural Inf. Process. Syst. (NeurIPS) , vol. 34, 2021, pp. 4274–4289. [16] A. H. Qureshi, Y. Miao, A. Simeonov, and M. C. Yip, “Motion planning networks: Bridging the gap between learning-based and classical motion planners,” IEEE Trans. Robot. , vol. 37, no. 1, pp. 48– 66, 2021. [17] X. Zang, M. Yin, J. Xiao, S. Zonouz, and B. Yuan, “GraphMP: Graph neural network-based motion planning with efficient graph search,” in Proc. Adv. Neural Inf. Process. Syst. (NeurIPS) , vol. 36, 2023, pp. 3131–3142. [18] T. N. Kipf and M. Welling, “Semi-supervised classification with graph convolutional networks,” in Proc. Int. Conf. Learn. Representations (ICLR) , 2017. [19] T.-Y. Lin, P. Goyal, R. Girshick, K. He, and P. Doll´ ar, “Focal loss for dense object detection,” in Proc. IEEE Int. Conf. Comput. Vision (ICCV) , 2017, pp. 2999–3007. [20] D. P. Kingma and J. Ba, “Adam: A method for stochastic optimization,” in Proc. Int. Conf. Learn. Representations (ICLR) , 2015. [21] A. Paszke et al. , “PyTorch: An imperative style, high-performance deep learning library,” in Proc. Adv. Neural Inf. Process. Syst. (NeurIPS) ,2019, pp. 8024–8035. [22] M. Fey and J. E. Lenssen, “Fast graph representation learning with PyTorch Geometric,” in ICLR Workshop on Representation Learning on Graphs and Manifolds , 2019. [23] P. Xie, J. Betz, and A. Alanwar, “Informed hybrid zonotope-based motion planning algorithm,” arXiv preprint arXiv:2507.09309 , 2025. [24] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier function based quadratic programs for safety critical systems,” IEEE Trans. Autom. Control , vol. 62, no. 8, pp. 3861–3876, 2017.

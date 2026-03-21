@@ -6,91 +6,72 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-03-11 ~ 2026-03-20
-- 运行时间：2026-03-20 21:40:19 UTC
+- 最新运行日期：2026-03-21
+- 运行时间：2026-03-21 19:35:33 UTC
 - 运行状态：成功
-- 本次总论文数：23
-- 精读区：12
+- 本次总论文数：17
+- 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-本期深度解析 23 篇机器人前沿论文，聚焦安全操控与高效运动规划的算法突破。
-重点推荐基于 ADMM 的任务导向型 MPC 框架及神经隐式构型空间距离场，为复杂环境下的避障提供了满分解决方案。
-建议优先研读两篇满分佳作，掌握如何通过数学优化与深度学习的结合提升系统安全性。
-- 详情：[/20260311-20260320/README](/20260311-20260320/README)
+今日精选 17 篇前沿论文，重点聚焦实时生成式模型预测控制与超快速动力学规划。
+隐式极大似然估计显著提升了生成式 MPC 的实时性，而微分平坦技术则实现了采样运动规划的性能
+- 详情：[/202603/21/README](/202603/21/README)
 
 ### 精读区论文标签
-1. [ToMPC: Task-oriented Model Predictive Control via ADMM for Safe Robotic Manipulation](/20260311-20260320/2603.13944v1-tompc-task-oriented-model-predictive-control-via-admm-for-safe-robotic-manipulation)  
-   标签：评分：10.0/10、query:profile-1
-   evidence：基于ADMM和MPC的机器人操作优化避障
-2. [CSSDF-Net: Safe Motion Planning Based on Neural Implicit Representations of Configuration Space Distance Field](/20260311-20260320/2603.18669v1-cssdf-net-safe-motion-planning-based-on-neural-implicit-representations-of-configuration-space-distance-field)  
-   标签：评分：10.0/10、query:profile-1
-   evidence：高维机械臂的安全运动规划
-3. [Parallel-in-Time Nonlinear Optimal Control via GPU-native Sequential Convex Programming](/20260311-20260320/2603.10711v1-parallel-in-time-nonlinear-optimal-control-via-gpu-native-sequential-convex-programming)  
+1. [Implicit Maximum Likelihood Estimation for Real-time Generative Model Predictive Control](/202603/21/2603.13733v1-implicit-maximum-likelihood-estimation-for-real-time-generative-model-predictive-control)  
    标签：评分：9.0/10、query:profile-1
-   evidence：针对非线性约束系统的GPU原生实时轨迹优化
-4. [Parallel-in-Time Nonlinear Optimal Control via GPU-native Sequential Convex Programming](/20260311-20260320/2603.10711v2-parallel-in-time-nonlinear-optimal-control-via-gpu-native-sequential-convex-programming)  
-   标签：评分：9.0/10、query:q8
-   evidence：基于GPU的原生实时轨迹优化
-5. [ADMM-based Continuous Trajectory Optimization in Graphs of Convex Sets](/20260311-20260320/2603.11335v1-admm-based-continuous-trajectory-optimization-in-graphs-of-convex-sets)  
-   标签：评分：9.0/10、query:q3
-   evidence：非凸环境下基于ADMM的连续轨迹优化
-6. [Coupling Tensor Trains with Graph of Convex Sets: Effective Compression, Exploration, and Planning in the C-Space](/20260311-20260320/2603.11658v1-coupling-tensor-trains-with-graph-of-convex-sets-effective-compression-exploration-and-planning-in-the-c-space)  
+   evidence：实时轨迹规划与模型预测控制
+2. [Ultrafast Sampling-based Kinodynamic Planning via Differential Flatness](/202603/21/2603.16059v1-ultrafast-sampling-based-kinodynamic-planning-via-differential-flatness)  
    标签：评分：9.0/10、query:profile-1
-   evidence：用于平滑最优轨迹的基于优化的规划器
-7. [COAD: Constant-Time Planning for Continuous Goal Manipulation with Compressed Library and Online Adaptation](/20260311-20260320/2603.12488v1-coad-constant-time-planning-for-continuous-goal-manipulation-with-compressed-library-and-online-adaptation)  
+   evidence：利用微分平坦性实现机械臂的超快速动力学约束规划
+3. [Near-Optimal Constrained Feedback Control of Nonlinear Systems via Approximate HJB and Control Barrier Functions](/202603/21/2603.16114v1-near-optimal-constrained-feedback-control-of-nonlinear-systems-via-approximate-hjb-and-control-barrier-functions)  
    标签：评分：9.0/10、query:profile-1
-   evidence：针对带障碍物的机器人操作进行恒定时间规划
-8. [Coordinated Manipulation of Hybrid Deformable-Rigid Objects in Constrained Environments](/20260311-20260320/2603.12940v1-coordinated-manipulation-of-hybrid-deformable-rigid-objects-in-constrained-environments)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：受限环境下的基于优化的操作规划器
-9. [SmallSatSim: A High-Fidelity Simulation and Training Toolkit for Microgravity Robotic Close Proximity Operations](/20260311-20260320/2603.14598v1-smallsatsim-a-high-fidelity-simulation-and-training-toolkit-for-microgravity-robotic-close-proximity-operations)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：微重力机器人浮动操作
-10. [Real-Time Online Learning for Model Predictive Control using a Spatio-Temporal Gaussian Process Approximation](/20260311-20260320/2603.17632v1-real-time-online-learning-for-model-predictive-control-using-a-spatio-temporal-gaussian-process-approximation)  
-   标签：评分：9.0/10、query:q8
-   evidence：模型预测控制的实时在线学习
-11. [Graph-of-Constraints Model Predictive Control for Reactive Multi-agent Task and Motion Planning](/20260311-20260320/2603.18400v1-graph-of-constraints-model-predictive-control-for-reactive-multi-agent-task-and-motion-planning)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：基于MPC的多智能体机械臂任务与运动规划
-12. [Safety-Guaranteed Imitation Learning from Nonlinear Model Predictive Control for Spacecraft Close Proximity Operations](/20260311-20260320/2603.18910v1-safety-guaranteed-imitation-learning-from-nonlinear-model-predictive-control-for-spacecraft-close-proximity-operations)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：航天器操作的安全保障NMPC
+   evidence：航天器姿态和安全约束的受限反馈控制
+4. [Learn Structure, Adapt on the Fly: Multi-Scale Residual Learning and Online Adaptation for Aerial Manipulators](/202603/21/2603.11638v1-learn-structure-adapt-on-the-fly-multi-scale-residual-learning-and-online-adaptation-for-aerial-manipulators)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：空中机械臂的实时残差建模
+5. [Beyond Dense Futures: World Models as Structured Planners for Robotic Manipulation](/202603/21/2603.12553v1-beyond-dense-futures-world-models-as-structured-planners-for-robotic-manipulation)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：用于机器人操作与控制的结构化规划器
+6. [A Feasibility-Enhanced Control Barrier Function Method for Multi-UAV Collision Avoidance](/202603/21/2603.13103v1-a-feasibility-enhanced-control-barrier-function-method-for-multi-uav-collision-avoidance)  
+   标签：评分：8.0/10、query:q1
+   evidence：用于多无人机避障的控制屏障函数框架
 
 ### 速读区论文标签
-1. [Safe Probabilistic Planning for Human-Robot Interaction using Conformal Risk Control](/20260311-20260320/2603.10392v1-safe-probabilistic-planning-for-human-robot-interaction-using-conformal-risk-control)  
+1. [Last-iterate Convergence of ADMM on Multi-affine Quadratic Equality Constrained Problem](/202603/21/2603.11919v1-last-iterate-convergence-of-admm-on-multi-affine-quadratic-equality-constrained-problem)  
    标签：评分：8.0/10、query:q2
-   evidence：使用控制屏障函数的概率安全控制
-2. [Interleaving Scheduling and Motion Planning with Incremental Learning of Symbolic Space-Time Motion Abstractions](/20260311-20260320/2603.10651v1-interleaving-scheduling-and-motion-planning-with-incremental-learning-of-symbolic-space-time-motion-abstractions)  
-   标签：评分：8.0/10、query:q1
-   evidence：多物体导航的无碰撞执行计划
-3. [Interleaving Scheduling and Motion Planning with Incremental Learning of Symbolic Space-Time Motion Abstractions](/20260311-20260320/2603.10651v2-interleaving-scheduling-and-motion-planning-with-incremental-learning-of-symbolic-space-time-motion-abstractions)  
-   标签：评分：8.0/10、query:q1
-   evidence：无碰撞执行计划与运动规划
-4. [Vision-Based Hand Shadowing for Robotic Manipulation via Inverse Kinematics](/20260311-20260320/2603.11383v1-vision-based-hand-shadowing-for-robotic-manipulation-via-inverse-kinematics)  
+   evidence：用于机器人操作力轨迹的ADMM算法
+2. [Ada3Drift: Adaptive Training-Time Drifting for One-Step 3D Visuomotor Robotic Manipulation](/202603/21/2603.11984v1-ada3drift-adaptive-training-time-drifting-for-one-step-3d-visuomotor-robotic-manipulation)  
    标签：评分：8.0/10、query:q6
-   evidence：通过逆运动学进行手部跟随的机器人操作
-5. [KnowDiffuser: A Knowledge-Guided Diffusion Planner with LM Reasoning and Prior-Informed Trajectory Initialization](/20260311-20260320/2603.10441v1-knowdiffuser-a-knowledge-guided-diffusion-planner-with-lm-reasoning-and-prior-informed-trajectory-initialization)  
-   标签：评分：7.0/10、query:q3
-   evidence：用于连续物理可行轨迹的扩散规划器
-6. [Safety-critical Control Under Partial Observability: Reach-Avoid POMDP meets Belief Space Control](/20260311-20260320/2603.10572v1-safety-critical-control-under-partial-observability-reach-avoid-pomdp-meets-belief-space-control)  
+   evidence：用于3D视觉运动操作的实时机器人控制
+3. [GNN-DIP: Neural Corridor Selection for Decomposition-Based Motion Planning](/202603/21/2603.12361v1-gnn-dip-neural-corridor-selection-for-decomposition-based-motion-planning)  
+   标签：评分：8.0/10、query:q1
+   evidence：基于分解的运动规划，使用无碰撞凸胞腔
+4. [Unifying Decision Making and Trajectory Planning in Automated Driving through Time-Varying Potential Fields](/202603/21/2603.13136v1-unifying-decision-making-and-trajectory-planning-in-automated-driving-through-time-varying-potential-fields)  
+   标签：评分：8.0/10、query:q1
+   evidence：通过最优控制进行无碰撞轨迹规划
+5. [One-Step Flow Policy: Self-Distillation for Fast Visuomotor Policies](/202603/21/2603.12480v1-one-step-flow-policy-self-distillation-for-fast-visuomotor-policies)  
    标签：评分：7.0/10、query:q5
-   evidence：安全关键控制与信念空间控制
-7. [AdaClearGrasp: Learning Adaptive Clearing for Zero-Shot Robust Dexterous Grasping in Densely Cluttered Environments](/20260311-20260320/2603.10616v1-adacleargrasp-learning-adaptive-clearing-for-zero-shot-robust-dexterous-grasping-in-densely-cluttered-environments)  
-   标签：评分：7.0/10、query:q6
-   evidence：杂乱环境下的自适应清理与灵巧抓取
-8. [GRACE: A Unified 2D Multi-Robot Path Planning Simulator & Benchmark for Grid, Roadmap, And Continuous Environments](/20260311-20260320/2603.10858v1-grace-a-unified-2d-multi-robot-path-planning-simulator--benchmark-for-grid-roadmap-and-continuous-environments)  
+   evidence：针对时间敏感型操作的快速视觉运动策略
+6. [Conflict Mitigation in Shared Environments using Flow-Aware Multi-Agent Path Finding](/202603/21/2603.12736v1-conflict-mitigation-in-shared-environments-using-flow-aware-multi-agent-path-finding)  
+   标签：评分：7.0/10、query:q1
+   evidence：具有冲突缓解的多智能体路径规划
+7. [PhysMoDPO: Physically-Plausible Humanoid Motion with Preference Optimization](/202603/21/2603.13228v1-physmodpo-physically-plausible-humanoid-motion-with-preference-optimization)  
    标签：评分：7.0/10、query:q4
-   evidence：多机器人运动规划模拟器
-9. [Shape Control of a Planar Hyper-Redundant Robot via Hybrid Kinematics-Informed and Learning-based Approach](/20260311-20260320/2603.10402v1-shape-control-of-a-planar-hyper-redundant-robot-via-hybrid-kinematics-informed-and-learning-based-approach)  
+   evidence：使用全身控制器将生成的运动转换为可执行轨迹
+8. [Learning Actionable Manipulation Recovery via Counterfactual Failure Synthesis](/202603/21/2603.13528v1-learning-actionable-manipulation-recovery-via-counterfactual-failure-synthesis)  
+   标签：评分：7.0/10、query:q6
+   evidence：机器人操作恢复的轨迹级修正
+9. [CarPLAN: Context-Adaptive and Robust Planning with Dynamic Scene Awareness for Autonomous Driving](/202603/21/2603.12607v1-carplan-context-adaptive-and-robust-planning-with-dynamic-scene-awareness-for-autonomous-driving)  
    标签：评分：6.0/10、query:q4
-   evidence：受限环境下超冗余机器人的形状控制
-10. [Rethinking Gaussian Trajectory Predictors: Calibrated Uncertainty for Safe Planning](/20260311-20260320/2603.10407v1-rethinking-gaussian-trajectory-predictors-calibrated-uncertainty-for-safe-planning)  
-   标签：评分：6.0/10、query:q1
-   evidence：用于自主导航安全规划的校准不确定性
-11. [RC-NF: Robot-Conditioned Normalizing Flow for Real-Time Anomaly Detection in Robotic Manipulation](/20260311-20260320/2603.11106v1-rc-nf-robot-conditioned-normalizing-flow-for-real-time-anomaly-detection-in-robotic-manipulation)  
+   evidence：具有动态场景感知能力的自动驾驶运动规划框架
+10. [Autonomous Integration and Improvement of Robotic Assembly using Skill Graph Representations](/202603/21/2603.12649v1-autonomous-integration-and-improvement-of-robotic-assembly-using-skill-graph-representations)  
+   标签：评分：6.0/10、query:q4
+   evidence：机器人技能的语义级规划
+11. [PhysMoDPO: Physically-Plausible Humanoid Motion with Preference Optimization](/202603/21/2603.13228v2-physmodpo-physically-plausible-humanoid-motion-with-preference-optimization)  
    标签：评分：6.0/10、query:q5
-   evidence：机器人操作中的实时监控与异常检测
+   evidence：用于真实机器人控制和可执行轨迹的全身控制器
 
 
 <div class="dpr-home-promo-card">
