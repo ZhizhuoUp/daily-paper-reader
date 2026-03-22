@@ -6,72 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-03-21
-- 运行时间：2026-03-21 19:35:33 UTC
+- 最新运行日期：2026-03-22
+- 运行时间：2026-03-22 19:36:34 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 17 篇前沿论文，重点聚焦实时生成式模型预测控制与超快速动力学规划。
-隐式极大似然估计显著提升了生成式 MPC 的实时性，而微分平坦技术则实现了采样运动规划的性能
-- 详情：[/202603/21/README](/202603/21/README)
+今日精选 17 篇论文聚焦具身智能与控制策略，深度解析 KoopmanFlow 与 R3DP 等前沿成果。
+重点关注通过 Koopman 结构偏差实现的生成式控制，以及具备实时 3D 感知能力的具身操作新范式。
+建议优先研读高分论文，探索物理约束下的视觉语言动作模型（VLA）优化与复杂灵巧操作。
+- 详情：[/202603/22/README](/202603/22/README)
 
 ### 精读区论文标签
-1. [Implicit Maximum Likelihood Estimation for Real-time Generative Model Predictive Control](/202603/21/2603.13733v1-implicit-maximum-likelihood-estimation-for-real-time-generative-model-predictive-control)  
+1. [KoopmanFlow: Spectrally Decoupled Generative Control Policy via Koopman Structural Bias](/202603/22/2603.13781v1-koopmanflow-spectrally-decoupled-generative-control-policy-via-koopman-structural-bias)  
    标签：评分：9.0/10、query:profile-1
-   evidence：实时轨迹规划与模型预测控制
-2. [Ultrafast Sampling-based Kinodynamic Planning via Differential Flatness](/202603/21/2603.16059v1-ultrafast-sampling-based-kinodynamic-planning-via-differential-flatness)  
+   evidence：用于机器人操作和实时收缩地平线控制的生成式控制策略
+2. [R3DP: Real-Time 3D-Aware Policy for Embodied Manipulation](/202603/22/2603.14498v1-r3dp-real-time-3d-aware-policy-for-embodied-manipulation)  
+   标签：评分：9.0/10、query:q8
+   evidence：操作任务的实时3D感知策略
+3. [Architecting Autonomy for Safe Microgravity Free-Flyer Inspection](/202603/22/2603.14524v1-architecting-autonomy-for-safe-microgravity-free-flyer-inspection)  
    标签：评分：9.0/10、query:profile-1
-   evidence：利用微分平坦性实现机械臂的超快速动力学约束规划
-3. [Near-Optimal Constrained Feedback Control of Nonlinear Systems via Approximate HJB and Control Barrier Functions](/202603/21/2603.16114v1-near-optimal-constrained-feedback-control-of-nonlinear-systems-via-approximate-hjb-and-control-barrier-functions)  
+   evidence：微重力自由飞行器巡检的安全运动规划
+4. [Coverage First Next Best View for Inspection of Cluttered Pipe Networks Using Mobile Manipulators](/202603/22/2603.16471v1-coverage-first-next-best-view-for-inspection-of-cluttered-pipe-networks-using-mobile-manipulators)  
    标签：评分：9.0/10、query:profile-1
-   evidence：航天器姿态和安全约束的受限反馈控制
-4. [Learn Structure, Adapt on the Fly: Multi-Scale Residual Learning and Online Adaptation for Aerial Manipulators](/202603/21/2603.11638v1-learn-structure-adapt-on-the-fly-multi-scale-residual-learning-and-online-adaptation-for-aerial-manipulators)  
+   evidence：移动操作机的避障与覆盖路径规划
+5. [Generative Control as Optimization: Time Unconditional Flow Matching for Adaptive and Robust Robotic Control](/202603/22/2603.17834v1-generative-control-as-optimization-time-unconditional-flow-matching-for-adaptive-and-robust-robotic-control)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：将动作综合作为自适应机器人控制的迭代优化
+6. [REFINE-DP: Diffusion Policy Fine-tuning for Humanoid Loco-manipulation via Reinforcement Learning](/202603/22/2603.13707v1-refine-dp-diffusion-policy-fine-tuning-for-humanoid-loco-manipulation-via-reinforcement-learning)  
    标签：评分：8.0/10、query:profile-1
-   evidence：空中机械臂的实时残差建模
-5. [Beyond Dense Futures: World Models as Structured Planners for Robotic Manipulation](/202603/21/2603.12553v1-beyond-dense-futures-world-models-as-structured-planners-for-robotic-manipulation)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：用于机器人操作与控制的结构化规划器
-6. [A Feasibility-Enhanced Control Barrier Function Method for Multi-UAV Collision Avoidance](/202603/21/2603.13103v1-a-feasibility-enhanced-control-barrier-function-method-for-multi-uav-collision-avoidance)  
-   标签：评分：8.0/10、query:q1
-   evidence：用于多无人机避障的控制屏障函数框架
+   evidence：人形机器人移动操作运动规划的分层框架
 
 ### 速读区论文标签
-1. [Last-iterate Convergence of ADMM on Multi-affine Quadratic Equality Constrained Problem](/202603/21/2603.11919v1-last-iterate-convergence-of-admm-on-multi-affine-quadratic-equality-constrained-problem)  
-   标签：评分：8.0/10、query:q2
-   evidence：用于机器人操作力轨迹的ADMM算法
-2. [Ada3Drift: Adaptive Training-Time Drifting for One-Step 3D Visuomotor Robotic Manipulation](/202603/21/2603.11984v1-ada3drift-adaptive-training-time-drifting-for-one-step-3d-visuomotor-robotic-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：用于3D视觉运动操作的实时机器人控制
-3. [GNN-DIP: Neural Corridor Selection for Decomposition-Based Motion Planning](/202603/21/2603.12361v1-gnn-dip-neural-corridor-selection-for-decomposition-based-motion-planning)  
-   标签：评分：8.0/10、query:q1
-   evidence：基于分解的运动规划，使用无碰撞凸胞腔
-4. [Unifying Decision Making and Trajectory Planning in Automated Driving through Time-Varying Potential Fields](/202603/21/2603.13136v1-unifying-decision-making-and-trajectory-planning-in-automated-driving-through-time-varying-potential-fields)  
-   标签：评分：8.0/10、query:q1
-   evidence：通过最优控制进行无碰撞轨迹规划
-5. [One-Step Flow Policy: Self-Distillation for Fast Visuomotor Policies](/202603/21/2603.12480v1-one-step-flow-policy-self-distillation-for-fast-visuomotor-policies)  
-   标签：评分：7.0/10、query:q5
-   evidence：针对时间敏感型操作的快速视觉运动策略
-6. [Conflict Mitigation in Shared Environments using Flow-Aware Multi-Agent Path Finding](/202603/21/2603.12736v1-conflict-mitigation-in-shared-environments-using-flow-aware-multi-agent-path-finding)  
-   标签：评分：7.0/10、query:q1
-   evidence：具有冲突缓解的多智能体路径规划
-7. [PhysMoDPO: Physically-Plausible Humanoid Motion with Preference Optimization](/202603/21/2603.13228v1-physmodpo-physically-plausible-humanoid-motion-with-preference-optimization)  
-   标签：评分：7.0/10、query:q4
-   evidence：使用全身控制器将生成的运动转换为可执行轨迹
-8. [Learning Actionable Manipulation Recovery via Counterfactual Failure Synthesis](/202603/21/2603.13528v1-learning-actionable-manipulation-recovery-via-counterfactual-failure-synthesis)  
+1. [Online Model Predictive Control for Trajectory and Beamforming Optimization in UAV-Enabled URLLC](/202603/22/2603.13731v1-online-model-predictive-control-for-trajectory-and-beamforming-optimization-in-uav-enabled-urllc)  
+   标签：评分：8.0/10、query:q3
+   evidence：用于轨迹优化的在线模型预测控制
+2. [LDHP: Library-Driven Hierarchical Planning for Non-prehensile Dexterous Manipulation](/202603/22/2603.13844v1-ldhp-library-driven-hierarchical-planning-for-non-prehensile-dexterous-manipulation)  
+   标签：评分：8.0/10、query:q4
+   evidence：带有碰撞检测的灵巧操作分层规划
+3. [SmoothVLA: Aligning Vision-Language-Action Models with Physical Constraints via Intrinsic Smoothness Optimization](/202603/22/2603.13925v1-smoothvla-aligning-vision-language-action-models-with-physical-constraints-via-intrinsic-smoothness-optimization)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：优化机器人操作的任务性能与运动平滑度
+4. [Safety in Admittance Control using Reference Trajectory Shaping](/202603/22/2603.13959v1-safety-in-admittance-control-using-reference-trajectory-shaping)  
+   标签：评分：8.0/10、query:q5
+   evidence：用于人机协作安全的实时轨迹整形
+5. [REFINE-DP: Diffusion Policy Fine-tuning for Humanoid Loco-manipulation via Reinforcement Learning](/202603/22/2603.13707v2-refine-dp-diffusion-policy-fine-tuning-for-humanoid-loco-manipulation-via-reinforcement-learning)  
    标签：评分：7.0/10、query:q6
-   evidence：机器人操作恢复的轨迹级修正
-9. [CarPLAN: Context-Adaptive and Robust Planning with Dynamic Scene Awareness for Autonomous Driving](/202603/21/2603.12607v1-carplan-context-adaptive-and-robust-planning-with-dynamic-scene-awareness-for-autonomous-driving)  
+   evidence：类人机器人移动操作与运动规划
+6. [GraspADMM: Improving Dexterous Grasp Synthesis via ADMM Optimization](/202603/22/2603.13832v1-graspadmm-improving-dexterous-grasp-synthesis-via-admm-optimization)  
+   标签：评分：7.0/10、query:q6
+   evidence：用于灵巧手抓取合成的ADMM优化
+7. [Path-conditioned Reinforcement Learning-based Local Planning for Long-Range Navigation](/202603/22/2603.13888v1-path-conditioned-reinforcement-learning-based-local-planning-for-long-range-navigation)  
+   标签：评分：7.0/10、query:q4
+   evidence：基于路径信息调节的强化学习长程导航局部规划
+8. [Stiffness Copilot: An Impedance Policy for Contact-Rich Teleoperation](/202603/22/2603.14068v1-stiffness-copilot-an-impedance-policy-for-contact-rich-teleoperation)  
+   标签：评分：7.0/10、query:q6
+   evidence：针对接触密集型操作任务的阻抗策略
+9. [Building Explicit World Model for Zero-Shot Open-World Object Manipulation](/202603/22/2603.13825v1-building-explicit-world-model-for-zero-shot-open-world-object-manipulation)  
+   标签：评分：6.0/10、query:q6
+   evidence：开放世界物体操作的世界模型
+10. [WestWorld: A Knowledge-Encoded Scalable Trajectory World Model for Diverse Robotic Systems](/202603/22/2603.14392v1-westworld-a-knowledge-encoded-scalable-trajectory-world-model-for-diverse-robotic-systems)  
    标签：评分：6.0/10、query:q4
-   evidence：具有动态场景感知能力的自动驾驶运动规划框架
-10. [Autonomous Integration and Improvement of Robotic Assembly using Skill Graph Representations](/202603/21/2603.12649v1-autonomous-integration-and-improvement-of-robotic-assembly-using-skill-graph-representations)  
-   标签：评分：6.0/10、query:q4
-   evidence：机器人技能的语义级规划
-11. [PhysMoDPO: Physically-Plausible Humanoid Motion with Preference Optimization](/202603/21/2603.13228v2-physmodpo-physically-plausible-humanoid-motion-with-preference-optimization)  
-   标签：评分：6.0/10、query:q5
-   evidence：用于真实机器人控制和可执行轨迹的全身控制器
+   evidence：用于机器人规划的轨迹世界模型
+11. [Exploring the dynamic properties and motion reproducibility of a small upper-body humanoid robot with 13-DOF pneumatic actuation for data-driven control](/202603/22/2603.14787v1-exploring-the-dynamic-properties-and-motion-reproducibility-of-a-small-upper-body-humanoid-robot-with-13-dof-pneumatic-actuation-for-data-driven-control)  
+   标签：评分：6.0/10、query:q6
+   evidence：4自由度机械臂子系统的数据驱动控制
 
 
 <div class="dpr-home-promo-card">
