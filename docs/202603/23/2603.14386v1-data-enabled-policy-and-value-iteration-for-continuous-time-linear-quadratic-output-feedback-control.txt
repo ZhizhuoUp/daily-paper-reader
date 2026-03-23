@@ -1,0 +1,2449 @@
+Title: Data-Enabled Policy and Value Iteration for Continuous-Time Linear Quadratic Output Feedback Control
+
+URL Source: https://arxiv.org/pdf/2603.14386v1
+
+Published Time: Tue, 17 Mar 2026 05:20:58 GMT
+
+Number of Pages: 25
+
+Markdown Content:
+# Data-Enabled Policy and Value Iteration for Continuous-Time Linear Quadratic Output Feedback Control 
+
+## Jun Xie ∗ Yuan-Hua Ni † Yiqin Yang ‡ Bo Xu §
+
+## March 17, 2026 
+
+Abstract 
+
+This paper proposes efficient policy iteration and value iteration algorithms for the continuous-time linear quadratic regulator problem with unmeasurable states and unknown system dynamics, from the perspective of direct data-driven control. Specifically, by re-examining the data characteristics of input-output filtered vectors and introducing QR de-composition, an improved substitute state construction method is presented that further elim-inates redundant information, ensures a full row rank data matrix, and enables a complete parameterized representation of the feedback controller. Furthermore, the original problem is transformed into an equivalent linear quadratic regulator problem defined on the substitute state with a known input matrix, verifying the stabilizability and detectability of the trans-formed system. Consequently, model-free policy iteration and value iteration algorithms are designed that fully exploit the full row rank substitute state data matrix. The proposed algo-rithms offer distinct advantages: they avoid the need for prior knowledge of the system order or the calculation of signal derivatives and integrals; the iterative equations can be solved directly without relying on the traditional least-squares paradigm, guaranteeing feasibility in both single-output and multi-output settings; and they demonstrate superior numerical stability, reduced data demand, and higher computational efficiency. Moreover, the heuristic results regarding trajectory generation for continuous-time systems are discussed, circum-venting potential failure modes associated with existing approaches. 
+
+Keywords: direct data-driven control, continuous-time linear quadratic optimal control, substitute state, policy iteration, value iteration. 
+
+# 1 Introduction 
+
+Optimal control is a cornerstone of modern control theory, and the Linear Quadratic Regulator (LQR) problem, where the system is linear and the cost functional is quadratic, occupies a central position. Fea-turing a canonical mathematical form, an explicit solution via the Riccati equation, and broad utility as an approximation for many nonlinear optimal control problems, LQR has been widely applied in robotics [1], autonomous driving [2], and other fields. However, system states are often rendered unmeasurable by cost-effectiveness and engineering practicality [3], whereas system parameters are frequently unknown; these two factors substantially limit the direct applicability of conventional LQR approaches. Accord-ingly, this paper focuses on synthesizing the optimal feedback controller for the continuous-time LQR problem with unmeasurable states and unknown dynamics. Given that the lack of model information poses difficulties for estimating unknown states using model-free methods [4], utilizing limited accessible information to solve this problem is quite challenging. 
+
+> ∗College of Artificial Intelligence, Nankai University, China. Email: xiejun@mail.nankai.edu.cn
+> †College of Artificial Intelligence, Nankai University, China. Email: yhni@nankai.edu.cn
+> ‡The Key Laboratory of Cognition and Decision Intelligence for Complex Systems, Institute of Automation, Chinese Academy of Sciences, China. Email: yiqin.yang@ia.ac.cn
+> §The Key Laboratory of Cognition and Decision Intelligence for Complex Systems, Institute of Automation, Chinese Academy of Sciences, China. Email: xubo@ia.ac.cn
+
+1
+
+> arXiv:2603.14386v1 [eess.SY] 15 Mar 2026
+
+In the discrete-time setting, the LQR problem with unmeasurable states and unknown parameter matrices has been extensively studied. Policy gradient methods are often used to solve for optimal static or dynamic output feedback controllers [5, 6]; however, such methods face complex optimization structures, and the resulting controllers may not achieve the optimal performance of the LQR problem [7]. An alternative approach relies on finite-length history stacks [8] or input-output filtered vectors [7] to construct an injective representation of the unmeasurable states. Controllers derived from this approach yield performance equivalent to that of state feedback controllers [9], which enables the development of direct data-driven policy iteration (PI) and value iteration (VI) algorithms. However, the feasibility conditions of this approach are overly restrictive for multi-output problems, thereby limiting its scope of application. The work in [10] leverages the powerful representational capability of data matrices under Willems’ Fundamental Lemma [11, 12] and develops a data-enabled framework extending [7]. This method eliminates the need for numerical solutions via least squares (LS), guaranteeing feasibility in multi-output scenarios. Since most physical systems inherently possess continuous-time dynamics, developing data-driven rep-resentations for continuous-time linear systems and solving the continuous-time LQR problem without relying on system models or state measurements is of greater significance. The traditional paradigm of discretizing the system before controller design often leads to suboptimal performance [13]; accordingly, this paper aims to design optimal controllers directly for the continuous-time LQR problem. If the states are directly measurable, the work in [14] proposes model-free integral reinforcement learning to simulta-neously estimate the cost parameter matrix and state feedback gain. By leveraging the continuous-time extension of Willems’ Fundamental Lemma [15], the research in [16] converts the Hamilton-Jacobi-Bellman (HJB) equation into a Sylvester transpose equation, and proposes a more efficient integral PI algorithm. However, the absence of an input-output matrix construction method that serves as a substitute state matrix while preserving key properties prevents the direct extension of this approach to unmeasurable state scenarios. When states are unmeasurable, the work in [17] proposes a model-free off-policy reinforcement learning algorithm with a discounted cost function to suppress exploration noise-induced bias. However, an inappropriately chosen discount factor may jeopardize system stability [18] and yield suboptimal LQR solutions; hence, methods based on discounted cost functions should be avoided. Drawing inspiration from discrete-time methods, the research in [13] employs input-output filtered vectors as substitute states and derives a new output feedback HJB equation, upon which model-free integral PI and VI algorithms are established. Building on this, the work in [4] further introduces the replication of observation errors into the substitute states, enhancing the transient performance of the algorithm while guaranteeing closed-loop stability and solution optimality. Additionally, adopting the substitute states from [13], the work in [19] reformulates the original LQR problem into a steady-state equivalent one defined on the substitute states, and the iterative algorithms designed for the transformed LQR problem exhibit lower computational complexity. It is important to note that the substitute states adopted in [13, 19] are equivalent to the true states only at steady state; consequently, the corresponding feedback controller merely achieves steady-state performance equivalence. Therefore, it is necessary to use a stabilizing feedback controller with superimposed exploration noise to collect data over an ex-tended period to obtain approximate steady-state data for algorithm implementation. Furthermore, the aforementioned algorithms [13, 4, 19] all rely on the LS method for numerical solutions. To ensure solvability, the corresponding regression matrices are required to be full row rank, which is difficult to achieve for multi-output problems. Additionally, the introduction of Kronecker products significantly increases computational complexity and data requirements. To this end, this paper focuses on the continuous-time LQR problem with unmeasurable states and unknown dynamics. To address the limitations of existing research, this paper investigates three core issues, corresponding to Sections 3, 4, and 5, respectively: 
+
+• Construct model-free effective substitute states such that the resulting data matrix is guaranteed to be full row rank and can be used to parametrically characterize the closed-loop systems and the controllers. 
+
+• Directly develop model-free, LS-free PI and VI algorithms that are feasible for both single-output and multi-output scenarios, while guaranteeing the optimality of the derived controller. 
+
+• Provide a more universal model-free continuous-time trajectory generation result that corresponds 2to Willems’ Fundamental Lemma, offering a new perspective for data-driven continuous-time sys-tem simulation. However, due to the instantaneous dynamics of continuous-time systems, the lack of a universal continuous-time counterpart to Willems’ Fundamental Lemma, and the absence of an independent Q-function (whose role is subsumed by the V-function), these tasks are not straightforward extensions of discrete-time results [10] to the continuous-time setting. This paper revisits the substitute states proposed in [4] and reveals that, under the controllability assumption, the mapping matrix between substitute states and true states is guaranteed to be of full row rank. This not only ensures the unique reconstruction of true states from substitute states but also lays a critical foundation for establishing the equivalence between the proposed iterative algorithms and model-based state feedback iterative al-gorithms [20, 17]. Furthermore, this paper analyzes the row rank property of the data matrix formed by the original substitute states under persistently exciting (PE) inputs, showing that it is inevitably rank-deficient in multi-output scenarios. To resolve this issue, we perform a QR decomposition on this data matrix and use the orthonormal basis matrix of the column space of the orthogonal matrix to project the original substitute states. The resulting improved substitute state data matrix is guaranteed to be of full row rank, a condition essential for ensuring the convergence of the data-enabled iterative algorithms. This paper further proves that the improved substitute states satisfy a new linear system with the same input as the original system and a known input matrix. By reformulating the original quadratic cost functional into one involving the improved substitute states and inputs, an equivalent new LQR problem is constructed, whose optimal feedback controller achieves performance equivalent to that of the optimal state feedback controller for the original problem. Moreover, this paper demonstrates that this equivalent new LQR problem satisfies the stabilizability and detectability conditions required for iterative algorithms [19]. Accordingly, utilizing the full row rank improved substitute state data matrix, we develop directly solvable model-free HJB iterative equations (tractable generalized Sylvester equations) and model-free cost parameter matrix update equations, serving as the core modules for the data-enabled PI and VI algorithms, respectively. In addition, this paper shows that the full row rank improved substitute state data matrix can be used to construct an ordinary differential equation for the weighting vector in trajectory generation. This provides key insights for establishing the trajectory generation properties of the continuous-time counterpart to Willems’ Fundamental Lemma. The main contributions of this paper are summarized as follows: 
+
+• The proposed effective substitute state construction method that guarantees the resulting data matrix is of full row rank is applicable to various optimal control scenarios with unmeasurable states and provides an effective new tool for input-output-based data-driven control. Furthermore, this paper transforms the LQR problem with unmeasurable states and unknown dynamics into an equivalent new LQR problem with known states and a known input matrix. This transformation not only ensures the optimality of the resulting controller but also reduces the design complexity of model-free algorithms. Compared with [19], the proposed equivalent LQR problem further accounts for the influence of observation errors, yielding an optimal solution that is not confined to steady-state optimality. 
+
+• This paper proposes data-enabled PI and VI algorithms for directly solving the continuous-time LQR problem with unmeasurable states and unknown dynamics. These algorithms eliminate the need for the LS method, relax feasibility conditions, and offer superior performance in terms of both data requirements and computational efficiency. Furthermore, by avoiding the numerical calculation of high-order derivatives or integrals of input-output signals during data collection, nu-merical errors are significantly reduced. Theoretically equivalent to model-based state feedback al-gorithms, the proposed algorithms guarantee stability, convergence, and optimality. Compared with [13, 4, 19], the proposed algorithms do not require additional rank conditions on high-dimensional regression matrices, relying solely on the fundamental PE condition. Consequently, they are ef-fective and feasible for both single-output and multi-output scenarios. In terms of data demand, the proposed algorithms only require the column number of the full row rank substitute state data matrix to be no less than its row number, reducing data requirements. Regarding compu-tational efficiency, the projection operation removes unnecessary redundant information from the data matrix, and the proposed iterative equations can be solved directly, thereby lowering the com-putational burden. In comparison to [4], the proposed iterative equations only solve for the cost 3parameter matrix, not the feedback gain. Moreover, this work is not a direct extension of the state feedback data-enabled PI algorithm [15]; benefiting from the transformation into an equivalent new LQR problem, the proposed PI iterative equation utilizes standard Sylvester equations (instead of the Sylvester transpose equations in [15]), which exhibits superior stability properties. 
+
+• This paper utilizes the proposed full row rank substitute state data matrix to provides constructive conditions for continuous-time trajectory generation, establishing a counterpart to the discrete-time Willems’ Fundamental Lemma. The resulting trajectories are exact, in contrast to the approximate methods based on orthogonal basis expansions in [21, 22]. Additionally, for multi-output problems, the proposed method effectively avoids the unsolvability issue of the ordinary differential equations that restrict trajectory generation in [23], and it eliminates the need for numerical calculation of high-order derivatives. 
+
+Notation. R, R+, N, N++ , Sn and Sn 
+
+> ++
+
+(Sn
+
+> +
+
+) denote the set of real numbers, the set of nonnegative real numbers, the set of natural numbers, the set of positive integers, the set of n × n symmetric matrices and the set of n × n positive (semi-)definite symmetric matrices, respectively. A 12 means the unique symmetric positive semi-definite square root of A ∈ Sn
+
+> +
+
+. In is defined as an n × n identity matrix, and 0
+
+denotes a zero vector or matrix with appropriate dimension. Let ∥ · ∥ denote the Euclidean vector norm or matrix spectral norm. For a matrix A, A⊤, A†, rank( A), and im( A) denote its transpose, Moore-Penrose pseudo-inverse, rank and image space, respectively. For a square matrix B, det( B) and adj( B)denote its determinant and adjugate matrix, respectively. Define diag( A, B ) as the block diagonal matrix with main matrix blocks A and B. Let s, L(·) and L−1(·) represent the Laplace variable, the Laplace transform and the inverse Laplace transform, respectively. For matrices A, B, and C of appropriate dimensions, define RN (A, B ) := [ AN −1B, · · · , AB, B ], ON (A, C ) := [ C⊤, (CA )⊤, · · · , (CA N −1)⊤]⊤,
+
+TN (A, B, C ) := 
+
+
+
+0
+
+CB 0
+
+... . . . . . .
+
+CA N −2B · · · CB 0
+
+ ,
+
+and the subscript N will be omitted when the context is clear. For A = [ a1, · · · , a m] ∈ Rn×m, define vec( A) := [ a⊤ 
+
+> 1
+
+, · · · , a ⊤
+
+> m
+
+]⊤ ∈ Rmn . The notation ⊗ is defined as the Kronecker product. For a discrete-time signal sequence {ut}t∈N, define its stacked window vector as u[i,j ] := [ u⊤ 
+
+> i
+
+, u ⊤
+
+> i+1
+
+, · · · , u ⊤ 
+
+> j
+
+]⊤ with i < j ∈ N,and a N -th order Hankel matrix is given by HN (u[0 ,T +N −2] ) := [ u[0 ,N −1] , u [1 ,N ], · · · , u [T −1,T +N −2] ]with N, T ∈ N++ . For a continuous-time signal {ut}t∈R+ that is sufficiently smooth, u(i) 
+
+> t
+
+denotes the i-th order derivative of ut; define the sampling matrix as H({ut}t=t1,··· ,t T ) := [ ut1 , u t2 , · · · , u tT ]with t1 < · · · < tT ∈ R+, and the N -th order derivative sampling matrix is given by 
+
+HN ({ut}t=t1,··· ,t T ) := [ H({ut}t=t1,··· ,t T )⊤, H ({u(1)  
+
+> t
+
+}t=t1,··· ,t T )⊤, · · · , H ({u(N −1)  
+
+> t
+
+}t=t1,··· ,t T )⊤]⊤; let ∆ t > 
+
+0 represent the time delay step size, the delayed stacked window vector at time t is defined as 
+
+u(t, ∆t,N ) := [ u⊤ 
+
+> t
+
+, · · · , u ⊤ 
+
+> t+( N−1)∆ t
+
+]⊤, and the N -th order delayed Hankel matrix at time t is given by 
+
+HN (u(t, ∆t,N +T −1) ) := [ u(t, ∆t,N ), u (t+∆ t, ∆t,N ), · · · , u (t+( T −1)∆ t, ∆t,N )] with N, T ∈ N++ .
+
+# 2 Problem Formulation and Preliminaries 
+
+This section presents the problem setup and reviews existing research relevant to the subsequent analysis. 
+
+## 2.1 Problem Formulation 
+
+Consider a continuous-time linear time-invariant system described by ˙xt = Ax t + Bu t, yt = Cx t, (1) where xt ∈ Rn is the unmeasurable state, ut ∈ Rm and yt ∈ Rp are the measurable input and output, respectively, with p ≤ n. Without loss of generality, the output matrix C is assumed to be of full row rank. Let Uad denote the set of admissible controllers. 4Define the infinite-horizon quadratic cost functional as 
+
+J(x0, u ) = 
+
+Z ∞
+
+> 0
+
+ y⊤ 
+
+> t
+
+Qy t + u⊤ 
+
+> t
+
+Ru t
+
+ dt, (2) where Q ∈ Sp 
+
+> +
+
+and R ∈ Sm 
+
+> ++
+
+are constant weighting matrices. Furthermore, define the state weighting matrix as Qx := C⊤QC ∈ Sn
+
+> +
+
+.This paper aims to design the optimal feedback controller for the continuous-time LQR problem with unmeasurable states and unknown model parameters. The formal problem statement is given as follows. 
+
+Problem 2.1. Considering system (1), where A, B and C are unknown, and states {xt} are unmeasur-able, find an optimal control policy u∗ such that 
+
+u∗ = arg min 
+
+> u∈U ad
+
+J(x0, u ). (3) This paper adopts the following standard assumptions for solving the unmeasurable-state LQR prob-lem using iterative algorithms. 
+
+Assumption 2.2 (Controllability and Observability.) . The pair (A, B ) is controllable, and the pairs 
+
+(A, C ), (A, Q 12 
+
+> x
+
+) are observable. 
+
+Remark 2.3. In general, the stabilizability of (A, B ) is sufficient to guarantee the existence of the optimal LQR controller; combined with the observability of (A, C ), it also ensures that the states of system (1) can be uniquely reconstructed from input-output data [4]. However, this paper aims to utilize data matrices to develop efficient model-free algorithms. As discussed later, the desirable properties of data matrices required for theoretical analysis are more readily derived under the controllability assumption. Therefore, consistent with classical literature [12, 24], we further assume that (A, B ) is controllable. Additionally, the observability of (A, Q 12 
+
+> x
+
+) is a necessary prerequisite for the convergence of the iterative algorithms [14, 25]. 
+
+## 2.2 Model-Based State Feedback LQR 
+
+For a known system with measurable states, the optimal LQR controller is ut = −K∗ 
+
+> x
+
+xt, where 
+
+K∗ 
+
+> x
+
+= R−1B⊤P ∗ 
+
+> x
+
+, (4) and P ∗ 
+
+> x
+
+∈ Sn 
+
+> ++
+
+is the unique solution to the following algebraic Riccati equation (ARE) 
+
+A⊤P ∗ 
+
+> x
+
++ P ∗ 
+
+> x
+
+A + Qx − P ∗ 
+
+> x
+
+BR −1B⊤P ∗ 
+
+> x
+
+= 0. (5) If Kx is a stabilizing state feedback gain such that A − BK x is Hurwitz stable, then J(x0, −Kxx) = 
+
+x⊤ 
+
+> 0
+
+Pxx0, where Px ∈ Sn 
+
+> ++
+
+is the unique solution to the following Lyapunov equation (A − BK x)⊤Px + Px(A − BK x) + Qx + K⊤ 
+
+> x
+
+RK x = 0. (6) If an initial stabilizing state feedback gain K0 
+
+> x
+
+is selected and iterations are performed on (6) and (4) until convergence, the classical Kleinman’s algorithm is obtained, which possesses desirable stability and convergence properties [20]. Conversely, if the ARE (5) is recursively updated with a suitable step size, the classical model-based VI algorithm is obtained [17]. 
+
+## 2.3 Willems’ Fundamental Lemma for Discrete-Time Systems 
+
+Definition 2.4 (Discrete-Time PE [24]) . A discrete-time signal sequence {ut}t∈N is PE of order N if the Hankel matrix HN (u[0 ,N +T −2] ) has full row rank, where T ≥ mN .
+
+Leveraging the favorable structures of the Hankel matrix and discrete-time linear time-invariant sys-tems, the following important conclusions regarding the properties of data matrices and system trajectory generation can be derived. 5Lemma 2.5 (Willems’ Fundamental Lemma [11]) . Consider a controllable discrete-time linear time-invariant system xt+1 = Ax t + Bu t, yt = Cx t. If a PE input signal {ut}t∈N of order n + N is applied, generating the corresponding state and output sequences {xt}t∈N and {yt}t∈N, then the following asser-tions hold. 
+
+(a) rank 
+
+ HN (u[0 ,T +N −2] )
+
+H1(x[0 ,T −1] )
+
+ 
+
+= mN + n.
+
+(b) Let N ≥ ℓob , where ℓob is the observability index of the linear system. The sequence 
+
+[¯ u⊤ 
+
+> [0 ,N −1]
+
+, ¯y⊤ 
+
+> [0 ,N −1]
+
+]⊤ is an input-output trajectory of length N for the discrete-time linear system, if and only if there exists a vector α ∈ RT such that 
+
+HN (u[0 ,T +N −2] )
+
+HN (y[0 ,T +N −2] )
+
+
+
+α =
+
+¯u[0 ,N −1] 
+
+¯y[0 ,N −1] 
+
+
+
+. (7) A corollary of assertion (a) is given in [12]: im 
+
+ Kx
+
+In
+
+ 
+
+∈ im 
+
+ H1(u[0 ,T −1] )
+
+H1(x[0 ,T −1] )
+
+ 
+
+. (8) Thus, assertion (a) is often used to parameterize closed-loop systems and state feedback control gains in model-free optimal control problems; assertion (b) is commonly employed for model-free trajectory generation in model predictive control [26]. 
+
+## 2.4 Data Characteristics of Continuous-Time Systems 
+
+Owing to the structural similarity between the differential operator of continuous-time linear systems and the shift operator of discrete-time linear systems, the full row rank property of continuous-time signal matrices composed of inputs, their high-order derivatives, and states can be obtained analogously [27]. However, due to the essential differences between these operators, the corresponding results for system trajectory generation in continuous time remain elusive. 
+
+Definition 2.6 (Continuous-Time PE [27]) . Let I ⊆ R+ be an open time interval. A continuous-time signal {ut}t∈I is PE of order N if ut is N − 1 times continuously differentiable on I, and 
+
+ν⊤[u⊤ 
+
+> t
+
+, u (1) ⊤ 
+
+> t
+
+, · · · , u (N −1) ⊤ 
+
+> t
+
+]⊤ = 0 holds for all t ∈ I if and only if ν = 0.
+
+Lemma 2.7 ([27]) . Consider the controllable continuous-time linear time-invariant system (1). If the input {ut}t∈I is PE of order n + N and {xt}t∈I is the corresponding state signal, then 
+
+ν⊤[u⊤ 
+
+> t
+
+, u (1) ⊤ 
+
+> t
+
+, · · · , u (N −1) ⊤ 
+
+> t
+
+, x ⊤ 
+
+> t
+
+]⊤ = 0 holds for all t ∈ I if and only if ν = 0.
+
+The work in [27] further shows that if the signal is sampled at arbitrary fixed time instants t1 < t 2 <
+
+· · · < t T ∈ I with T ≥ mN + n, then under PE inputs of order n + N , the input-derivative-state data matrix has full row rank, i.e., rank 
+
+ HN ({ut}t=t1,··· ,t T )
+
+H1({xt}t=t1,··· ,t T )
+
+ 
+
+= mN + n. (9) For the data matrix composed of inputs, outputs, and their high-order derivatives, under PE inputs of order n + N , it follows from 
+
+HN ({ut}t=t1,··· ,t T )
+
+HN ({yt}t=t1,··· ,t T )
+
+
+
+=
+
+ ImN 0
+
+T (A, B, C ) O(A, C )
+
+  HN ({ut}t=t1,··· ,t T )
+
+H1({xt}t=t1,··· ,t T )
+
+
+
+, (10) and the observability of system (1) that rank 
+
+ HN ({ut}t=t1,··· ,t T )
+
+HN ({yt}t=t1,··· ,t T )
+
+ 
+
+= mN + n. (11) For simplicity, uniform sampling with sampling interval ∆ t is adopted hereinafter. 63 An Effective Substitution State and Equivalent LQR Problem 
+
+This section addresses two main problems: first, how to design an effective substitute state in a model-free manner, such that it maintains an injective linear relationship with the true unmeasurable state and the data matrix formed by its samples is of full row rank; second, how to utilize this substitute state to convert the information-limited original LQR Problem 2.1 into an equivalent new LQR problem with fewer unknowns. 
+
+## 3.1 Data Characteristics of Effictive Substitute State 
+
+When the states {xt} of system (1) are unmeasurable, an n-th order filter of the input-output signals can be used as a substitute state based on a Luenberger observer [4]. However, if the goal is to parameterize feedback gains using the data matrix formed by such a substitute state under PE inputs, the row rank property of this data matrix must be re-examined. This subsection addresses this issue and proposes an effective substitute state construction method that strictly guarantees the resulting data matrix is of full row rank. Specifically, the estimated state ˆ xt obtained via a Luenberger observer satisfies the system ˙ˆxt = ( A − LC )ˆ xt + Bu t + Ly t, (12) where L is the Luenberger observer gain, and ˆ x0 = 0 is typically chosen. The observation error ϵt := 
+
+xt − ˆxt satisfies the system ˙ϵt = ( A − LC )ϵt. (13) Since ϵt = e(A−LC )tϵ0 with ϵ0̸ = 0 and A − LC is Hurwitz stable, xt = ˆ xt holds only as t → ∞ .Furthermore, since the system matrices A − LC , B and L in (12) are unknown, the estimated state ˆ xt
+
+cannot be obtained in a model-free manner. Therefore, the work in [4] jointly considers systems (12) and (13), obtaining model-free substitute vectors for ˆ xt and ϵt via the Laplace operator. This yields a substitute vector ηt for xt = ˆ xt + ϵt, as defined in Theorem 3.1, which can be interpreted as an n-th order filter of the input-output signals. Theorem 3.1 further establishes that, under the controllability assumption, the linear mapping matrix S from ηt to xt (referred to as the state parameterization matrix) is of full row rank. To present a concise formal statement of these results in Theorem 3.1, the following notations are first defined: Λ( s) := det( sI n − (A − LC )) := sn + an−1sn−1 + · · · + a1s + a0,
+
+adj( sI n − (A − LC )) := Dn−1sn−1 + · · · + D1s1 + D0,
+
+and let an = 1. From the relationship between the determinant and the adjugate matrix, it follows that Di = Pn−ij=1 an−j+1 (A − LC )n−i−j for i = 0 , · · · , n − 1, and define D := [ D0, D 1, · · · , D n−1]. For 
+
+i = 1 , · · · , m and j = 1 , · · · , p , let Bi and Lj denote the i-th column of B and the j-th column of L,respectively, and further define Sui = D(In ⊗ Bi) ∈ Rn×n, Syj = D(In ⊗ Lj ) ∈ Rn×n; let Ui(s) and Yj (s)represent the Laplace transforms of the i-th component of ut and the j-th component of yt, respectively, and further define 
+
+ηui 
+
+> t
+
+:= L−1
+
+ Ui(s)Λ( s) , sU i(s)Λ( s) , · · · , sn−1Ui(s)Λ( s)
+
+⊤!
+
+∈ Rn,ηyj 
+
+> t
+
+:= L−1
+
+ Yj (s)Λ( s) , sY j (s)Λ( s) , · · · , sn−1Yj (s)Λ( s)
+
+⊤!
+
+∈ Rn.
+
+Define Su := [Su 
+
+> 1
+
+, · · · , S um], Sy := [Sy 
+
+> 1
+
+, · · · , S yp ], ηut := [( ηu1 
+
+> t
+
+)⊤, · · · , (ηum 
+
+> t
+
+)⊤]⊤, ηyt := [( ηy1 
+
+> t
+
+)⊤, · · · , (ηyp 
+
+> t
+
+)⊤]⊤. Let Aϵ be an arbitrary square matrix with the same eigenvalues as A − LC ,and define Dϵ analogously to D by replacing A − LC with Aϵ. Define 
+
+As := 
+
+ 0 In−1
+
+−a0 −a1 · · · −an−1
+
+
+
+, bs := 
+
+ 0(n−1) ×1
+
+1
+
+
+
+,
+
+As := diag( Im+p ⊗ As, A ϵ), Bs := diag( Im+p ⊗ bs, 0n×n). 7Theorem 3.1. Consider system (1). The following statements hold. 
+
+(a) The state xt of system (1) can be represented by the input-output n-th order filter vector ηt ∈
+
+R(m+p+1) n, i.e., 
+
+xt = [ Su, S y , S ϵ][( ηut )⊤, (ηyt )⊤, (ηϵt )⊤]⊤ := Sη t, (14) 
+
+where ηϵt ∈ Rn is defined by the following system, 
+
+˙ηϵt = Aϵηϵt , ηϵ
+
+> 0
+
+̸ = 0, (15) 
+
+and Sϵ := Sϵx (Sϵη )−1, Sϵx := D(In ⊗ ϵ0), Sϵη := Dϵ(In ⊗ ηϵ
+
+> 0
+
+). The substitute state ηt can be generated in a model-free manner via the following system. 
+
+˙ηt = Asηt + Bs[u⊤ 
+
+> t
+
+, y ⊤ 
+
+> t
+
+, 01×n]⊤, η0 = [ 01×(m+p)n, (ηϵ
+
+> 0
+
+)⊤]⊤. (16) (b) Under the controllability assumption on (A, B ), the state parameterization matrix S has full row rank. 
+
+Remark 3.2. A detailed proof of assertion (a) in Theorem 3.1 is provided in [4]. By appropriately selecting the structure of Aϵ, Sϵη can be made invertible. Note that generating ηt via equation (16) does not require knowledge of A − LC ; instead, by simply assigning stable eigenvalues to A − LC , the block diagonal matrices As and Bs can be computed without any knowledge of system (1). 
+
+Remark 3.3. By the formal correspondence between the continuous-time Laplace operator and the discrete-time Z-transform operator, the continuous-time state parameterization matrix S takes the same form as its discrete-time counterpart. Furthermore, since the controllability criteria are identical, the proof technique developed for discrete-time systems in [10] can be directly applied to assertion (b) of Theorem 3.1. Reference [19] presents similar results for continuous-time systems, but does not involve the replication of the observation error system (16). If (A, B ) is uncontrollable, [9, 4] show that S can still be guaranteed to be of full row rank by either assigning eigenvalues of A − LC disjoint from those of 
+
+A to ensure the controllability of (A − LC, L ), or by assigning distinct eigenvalues for A − LC to ensure the controllability of (A − LC, ϵ 0).
+
+Note that the input to system (16) comprises the input and output of the original system (1), together with zero vectors. Consequently, even if the input to system (1) satisfies the PE condition, the input to system (16) generally does not, due to the decaying excitation of the output and the presence of zero vectors. This prevents the direct application of the results in Section 2.4 to analyze the row rank property of the data matrix E0 := [ ηt, · · · , η t+( T −1)∆ t], which is critical for characterizing the closed-loop systems and controllers, as well as for designing model-free iterative equations independent of LS. To resolve this issue, Lemma 3.4 employs yt = CSη t to transform system (16) into an isosystem of (1) — sharing the same input-output behavior but with state ηt. Then by analyzing the space spanned by ηt within this isosystem, the row rank property of E0 can be established. Herein, the space spanned by ηt is defined as the space formed by all possible ηt generated under PE inputs, i.e., Vt := 
+
+{ηt | ηt solves system (16) for some 2 n-th order PE inputs ut over the interval [0 , t ]}. In the subsequent analysis, the space spanned by the state vector of any non-autonomous system is defined analogously, while that for an autonomous system does not require the PE condition on ut.
+
+Lemma 3.4. Consider the substitute state ηt generated by (16). The following assertions hold. 
+
+(a) ηt satisfies the isosystem given by 
+
+˙ηt = ( As + Bys CS )ηt + Bus ut, yt = CSη t, (17) 
+
+where Bus and Bys denote the matrices formed by the first m columns and columns m + 1 to m + p
+
+of Bs, respectively. 
+
+(b) Under Assumption 2.2, if the input to system (1) satisfies the 2n-th order PE condition, the dimension of the space spanned by ηt is (m + 2) n. Moreover, the rank of the data matrix 
+
+E0 := [ ηt, · · · , η t+( T −1)∆ t] is (m + 2) n, and E0 has full row rank if and only if p = 1 .
+
+8Proof. Assertion (a) follows immediately by substituting yt = CSη t into the input vector of system (16). We now prove assertion (b). Note that while the substitute state ηt in (16) is generated by filtering each component of the input and output individually, we herein consider filtering the entire vectors of the input and output for theoretical analysis. That is, define 
+
+gt := F η ηt =
+
+"
+
+L−1 U (s)Λ( s)
+
+> ⊤
+
+, sU (s)Λ( s)
+
+> ⊤
+
+, · · · , sn−1U (s)Λ( s)
+
+> ⊤
+
+, Y (s)Λ( s)
+
+> ⊤
+
+, sY (s)Λ( s)
+
+> ⊤
+
+, · · · , sn−1Y (s)Λ( s)
+
+> ⊤
+
+!
+
+, η ϵ⊤
+
+> t
+
+#⊤
+
+,
+
+where F η is a row permutation matrix. The dimensions of the spaces spanned by ηt and gt are therefore equal. To analyze the dimension of the space spanned by ηt, it suffices to consider that of gt. Similarly, 
+
+gt is partitioned into input, output, and observation error components as gt = [( gut )⊤, (gyt )⊤, (ηϵt )⊤]⊤.Let Gu(s) := L(gut ); it follows that Λ( s)Gu(s) = [ U (s)⊤, (sU (s)) ⊤, · · · , (sn−1U (s)) ⊤]⊤. (18) Taking the inverse Laplace transform of both sides of equation (18) yields 
+
+a0gut + a1(gut )(1) + · · · + an−1(gut )(n−1) + ( gut )(n) = [( ut)⊤, (u(1)  
+
+> t
+
+)⊤, · · · , (u(n−1)  
+
+> t
+
+)⊤]⊤,
+
+Since gut is a block vector, let gut = [( ξ0)⊤, · · · , (ξn−1)⊤]⊤ with ξj = L−1
+
+ sj U (s)Λ( s)
+
+
+
+∈ Rm for j =0, · · · , n − 1. It follows that 
+
+a0ξ(0)  
+
+> j
+
++ a1ξ(1)  
+
+> j
+
++ · · · + an−1ξ(n−1)  
+
+> j
+
++ ξ(n) 
+
+> j
+
+= u(j) 
+
+> t
+
+, j = 0 , · · · , n − 1. (19) By the continuous differentiability of the input signal, it holds that ξj+1 = ξ(1)  
+
+> j
+
+for j = 0 , 1, · · · , n − 2. Let zt := ξ0; then gut = [( zt)⊤, (z(1)  
+
+> t
+
+)⊤, · · · , (z(n−1)  
+
+> t
+
+)⊤]⊤. Since the mapping ut 7 → zt = L−1
+
+ U (s)Λ( s)
+
+
+
+is linear and invertible on the space of sufficiently smooth trajectories generated by PE signals, the dimensions of the spaces spanned by gut and [( ut)⊤, (u(1)  
+
+> t
+
+)⊤, · · · , (u(n−1)  
+
+> t
+
+)⊤]⊤ are equal. Simi-larly, the dimensions of the spaces spanned by gyt and [( yt)⊤, (y(1)  
+
+> t
+
+)⊤, · · · , (y(n−1)  
+
+> t
+
+)⊤]⊤ are equal. In conclusion, to analyze the dimension of the space spanned by gt, it suffices to consider that of [( ut)⊤, · · · , (u(n−1)  
+
+> t
+
+)⊤, (yt)⊤, · · · , (y(n−1)  
+
+> t
+
+)⊤, (ηϵt )⊤]⊤. Note that the following identity holds 
+
+
+
+ut
+
+...
+
+u(n−1) 
+
+> t
+
+yt
+
+...
+
+y(n−1) 
+
+> t
+
+ηϵt
+
+
+
+=
+
+
+
+Imn 0 0
+
+T (A, B, C ) O(A, C ) O(A, C )Sϵ
+
+0 0 In
+
+| {z }
+
+> M
+
+
+
+ut
+
+...
+
+u(n−1) 
+
+> t
+
+ˆxt
+
+ηϵt
+
+
+
+.
+
+Under the controllability assumption for system (1) and by Lemma 2.7, the vector [( ut)⊤, · · · , (u(n−1)  
+
+> t
+
+)⊤, x ⊤ 
+
+> t
+
+] spans Rmn +n for inputs satisfying the 2n-th order PE condition. As for the space spanned by ηϵt , since we have chosen Dϵ(In ⊗ ηϵ
+
+> 0
+
+) to be invertible, the structure of Dϵ
+
+implies that the matrix [ An−1 
+
+> ϵ
+
+ηϵ
+
+> 0
+
+, · · · , A ϵηϵ
+
+> 0
+
+, η ϵ
+
+> 0
+
+] is invertible. Consequently, under the autonomous system (15), the space spanned by ηϵt is im([ An−1 
+
+> ϵ
+
+ηϵ
+
+> 0
+
+, · · · , A ϵηϵ
+
+> 0
+
+, η ϵ
+
+> 0
+
+]) = Rn. Since ηϵt is independent of the inputs 
+
+{ut} and the initial state x0, ηϵt is independent of [( ut)⊤, · · · , (u(n−1)  
+
+> t
+
+)⊤, (xt)⊤]⊤. Accordingly, the space spanned by [( ut)⊤, · · · , (u(n−1)  
+
+> t
+
+)⊤, (xt)⊤, (ηϵt )⊤]⊤ is R(m+2) n. Since ˆ xt = xt − Sϵηϵt , it holds that 
+
+
+
+ut
+
+...
+
+u(n−1) 
+
+> t
+
+ˆxt
+
+ηϵt
+
+
+
+=
+
+
+
+Imn 0 00 In −Sϵ
+
+0 0 In
+
+| {z }
+
+> I
+
+
+
+ut
+
+...
+
+u(n−1) 
+
+> t
+
+xt
+
+ηϵt
+
+
+
+,
+
+where I is invertible. Thus, the span of [( ut)⊤, · · · , (u(n−1)  
+
+> t
+
+)⊤, (ˆ xt)⊤, (ηϵt )⊤]⊤ is R(m+2) n, meaning this vector is reachable. Consequently, the span of [( ut)⊤, · · · , (u(n−1)  
+
+> t
+
+)⊤, (yt)⊤, · · · , (y(n−1)  
+
+> t
+
+)⊤, (ηϵt )⊤]⊤ is 9im( M). Furthermore, under the observability assumption for system (1), M has full column rank with rank ( m + 2) n. Combining these results, the dimension of the span of ηt is ( m + 2) n. Therefore, under sufficiently exciting input signals, the rank of the substitute state data matrix E0 is ( m + 2) n. However, since the number of its rows is ( m + p + 1) n, these two numbers are equal if and only if p = 1. 
+
+Remark 3.5. The substitute state ηt is still obtained in a model-free manner via equation (16). The isosystem (17) is introduced primarily to exploit its structural consistency with the original system (1), facilitating algorithm design. Note that the dynamic matrix As + Bys CS of the isosystem is unknown, whereas the input matrix Bus is known. 
+
+Remark 3.6 (Relationships and Comparisons with [23]) . From the proof of Lemma 3.4, equation (19) for j = 0 becomes 
+
+ut = a0zt + a1z(1)  
+
+> t
+
++ · · · + an−1zn−1 
+
+> t
+
++ z(n) 
+
+> t
+
+,
+
+where zt = L−1
+
+ U (s)Λ( s)
+
+
+
+; similarly, let ℓt = L−1
+
+ Y (s)Λ( s)
+
+
+
+, and then 
+
+yt = a0ℓt + a1ℓ(1)  
+
+> t
+
++ · · · + an−1ℓn−1 
+
+> t
+
++ ℓ(n) 
+
+> t
+
+.
+
+Thus, [z⊤ 
+
+> t
+
+, ℓ ⊤ 
+
+> t
+
+]⊤ can be regarded as an internal latent variable that generates the input-output of system (1), which aligns with the conclusion in [23, Section III.A]. However, in contrast to [23], we explic-itly derive the specific form and physical meaning of [z⊤ 
+
+> t
+
+, ℓ ⊤ 
+
+> t
+
+]⊤, which is no longer merely a symbolic quantity. Furthermore, we show that the jet vector formed from [z⊤ 
+
+> t
+
+, ℓ ⊤ 
+
+> t
+
+]⊤, namely [( gut )⊤, (gyt )⊤]⊤ =[( zt)⊤, · · · , (z(n−1)  
+
+> t
+
+)⊤, (ℓt)⊤, · · · , (ℓ(n−1)  
+
+> t
+
+)⊤]⊤, spans a space of the same dimension as the input-output jet vector [( ut)⊤, · · · , (u(n−1)  
+
+> t
+
+)⊤, (yt)⊤, · · · , (y(n−1)  
+
+> t
+
+)⊤]⊤ employed in [23]. Unlike the jet vector in [23], which requires high-order derivatives that must be approximated numerically, our jet vector [( gut )⊤, (gyt )⊤]⊤
+
+yields true values in a model-free manner via equation (16) (noting that the permutation matrix P η is known). Additionally, assertion (b) of Lemma 3.4 will serve to refine the continuous-time trajectory gen-eration characterization of Willems’ Fundamental Lemma over that in [23]. This topic will be analyzed in depth in Section 5. 
+
+By Lemma 3.4, for multi-output systems ( p > 1), the data matrix E0 is not full row rank. Di-rectly replacing the unknown full row rank true state matrix X0 := [ xt, x t+∆ t, · · · , x t+( T −1)∆ t] with a rank-deficient E0 may fail to completely parameterize the closed-loop system and feedback controller. Furthermore, algorithms for solving Problem 2.1 may suffer from numerical difficulties, instability, or non-convergence. However, under sufficient PE conditions, the linearly independent rows of E0 contain all the true system information. To ensure the resulting data matrix is full row rank, we perform a full QR decomposition on E0 and use the first ( m + 2) n rows of the transposed orthogonal matrix as a projection. Projecting ηt via this matrix yields an improved substitute state ϕt, whose corresponding data matrix is guaranteed to be full row rank and possesses an associated isosystem. This is formalized in Lemma 3.7. 
+
+Lemma 3.7. If the data matrix E0 := [ ηt, · · · , η t+( T −1)∆ t] obtained from system (16) undergoes a full QR decomposition such that E0 = F [Φ ⊤ 
+
+> 0
+
+, 0T ×(p−1) n]⊤ with orthogonal matrix F ∈ R(m+p+1) n×(m+p+1) n,define F1 as the matrix formed by the first (m + 2) n rows of F ⊤, and let the improved substitute state be 
+
+ϕt := F1ηt. Then, the following assertions hold. 
+
+(a) ϕt satisfies the isosystem given by 
+
+˙ϕt = F1(As + Bys CS )F ⊤ 
+
+> 1
+
+ϕt + F1Bus ut, yt = CSF ⊤ 
+
+> 1
+
+ϕt. (20) (b) If the input to system (1) satisfies the 2n-th order PE condition, the space spanned by the im-proved substitute state ϕt is R(m+2) n, and the resulting data matrix Φ0 := [ ϕt, · · · , ϕ t+( T −1)∆ t] is guaranteed to be full row rank. Proof. For assertion (a), let F ⊤ = [ F ⊤ 
+
+> 1
+
+, F ⊤ 
+
+> 2
+
+]⊤ with F1 ∈ R(m+2) n×(m+p+1) n and F2 ∈ R(p−1) n×(m+p+1) n.Then, F = [ F ⊤ 
+
+> 1
+
+, F ⊤ 
+
+> 2
+
+], and by the definitions of F and ϕt, we have ηt = F [ϕ⊤ 
+
+> t
+
+, 0]⊤ = F ⊤ 
+
+> 1
+
+ϕt. Substituting this into equation (14) yields ˙ϕt = F1(As + Bys CS )ηt + F1Bus ut = F1(As + Bys CS )F [ϕ⊤ 
+
+> t
+
+, 0]⊤ + F1Bus ut
+
+10 = F1(As + Bys CS )F ⊤ 
+
+> 1
+
+ϕt + F1Bus ut,
+
+and a similar derivation yields the equation for yt.For assertion (b), from assertion (b) of Lemma 3.4 and the relation F ⊤ηt = [ ϕ⊤ 
+
+> t
+
+, 01×(p−1) n]⊤, it follows that the space spanned by ηt is contained in the subspace spanned by the first ( m + 2) n columns of F (i.e., F1), with ϕt serving as the coordinate representation within this subspace. Consequently, under the 2 n-th order PE input, the space spanned by ϕt coincides with that of ηt, which is R(m+2) n.This further implies that Φ 0 has full row rank. Under the projection matrix F1, it follows that xt = SF ⊤ 
+
+> 1
+
+ϕt. Now we verify if the improved state parameterization matrix SF ⊤ 
+
+> 1
+
+remains full row rank. Since X0 = SE 0 = S[F ⊤ 
+
+> 1
+
+, F ⊤ 
+
+> 2
+
+][Φ ⊤ 
+
+> 0
+
+, 0]⊤ = ( SF ⊤ 
+
+> 1
+
+)Φ 0,and both X0 and Φ 0 are full row rank under the 2 n-th order PE condition, the improved state parame-terization matrix SF ⊤ 
+
+> 1
+
+is guaranteed to be full row rank. Define U0 := [ ut, · · · , u t+( T −1)∆ t]. Theorem 3.8 demonstrates the role of the full row rank substitute state data matrix Φ 0 in the parameterization of the closed-loop systems and feedback control gains. 
+
+Theorem 3.8. If the input to system (1) satisfies the (2 n + 1) -th order PE condition, the full row rank matrix Φ0 constructed according to Lemma 3.7 can be used to completely parameterize the closed-loop form of system (20) and the feedback controller ut = Kϕ t, i.e., 
+
+im 
+
+ F1
+
+K
+
+ 
+
+⊆ im 
+
+ Φ0
+
+U0
+
+ 
+
+. (21) The proof of this theorem follows similarly to the discrete-time case in [10]. Furthermore, extend-ing the discrete-time results confirms that for multi-output systems, E0 cannot yield a representation analogous to (21). Beyond its role in Theorem 3.8, if Φ 0 is placed on the far right (or Φ ⊤ 
+
+> 0
+
+on the far left) in the model-free iteration equations, post-multiplying (or pre-multiplying) by its right inverse (or the transpose thereof) yields equations equivalent to the original ones. This facilitates the design of data-enabled algorithms, as will be demonstrated in Section 4. 
+
+## 3.2 Equivalent LQR Problem 
+
+This subsection transforms the information-limited Problem 2.1 into an equivalent new LQR problem with fewer unknowns. Using xt = SF ⊤ 
+
+> 1
+
+ϕt, the original cost functional (2) can be rewritten as 
+
+J(ϕ0, K ) = 
+
+Z ∞
+
+> 0
+
+(ϕ⊤ 
+
+> t
+
+Qϕϕt + u⊤ 
+
+> t
+
+Ru t)dt, (22) where Qϕ := F1S⊤C⊤QCSF ⊤ 
+
+> 1
+
+∈ S(m+2) n 
+
+> +
+
+is unknown, even though its partial structure Q is known. Furthermore, since the improved substitute state ϕt and input ut satisfy the linear system (20), Problem 2.1 can be reformulated as Problem 3.9. 
+
+Problem 3.9. Consider the LQR problem defined by system (20) and cost functional (22), where the dynamic matrix F1(As +Bys CS )F ⊤ 
+
+> 1
+
+and the weighting matrix Qϕ are unknown, while the partial structure 
+
+Q of Qϕ, the input matrix F1Bus , the weighting matrix R, and the state ϕt are known. The objective is to find an optimal feedback control gain K that minimizes the cost functional (22) under the control policy 
+
+ut = −Kϕ t.
+
+Now we prove that Problem 2.1 is equivalent to Problem 3.9. We first analyze the relationship between the parameter matrices of system (1) and system (20), which is summarized in Lemma 3.10. 
+
+Lemma 3.10. Consider systems (1) and (20). The following relationships hold 
+
+SF ⊤ 
+
+> 1
+
+F1(As + Bys CS )F ⊤ 
+
+> 1
+
+= ASF ⊤ 
+
+> 1
+
+, SF ⊤ 
+
+> 1
+
+F1Bus = B. (23) 
+
+Proof. We first prove the second equality. From the definitions of D, S, Su, Sui for i = 1 , · · · , m , and 
+
+Bus = [( Im ⊗ bs)⊤, 0m×(p+1) n]⊤ in Section 3.1, together with Dn−1 = In, it holds that 
+
+SBus = Su(Im ⊗ bs) = [ Su 
+
+> 1
+
+bs, · · · , S umbs]11 = [[ D0B1, · · · , D n−1B1]bs, · · · , [D0Bm, · · · , D n−1Bm]bs]= [ Dn−1B1, · · · , D n−1Bm]= [ B1, · · · , B m] = B. (24) Since ϕt = F1ηt and ηt = [ F ⊤ 
+
+> 1
+
+, F ⊤ 
+
+> 2
+
+][ ϕ⊤ 
+
+> t
+
+, 0]⊤ = F ⊤ 
+
+> 1
+
+ϕt, it follows that F ⊤ 
+
+> 1
+
+F1ηt = F ⊤ 
+
+> 1
+
+ϕt = ηt. Thus, 
+
+ηt always lies in the subspace im( F ⊤ 
+
+> 1
+
+F1). Assume that isosystem (17) is initially relaxed. Applying a unit impulse to the i-th channel at t = 0, i.e., ut = δtei for i = 1 , · · · , m , where δt is the Dirac delta function and ei is the i-th standard basis vector of Rm, the zero-state response for any t > 0 is 
+
+ηt = e(As+Bys CS )tBus ei ∈ V . Furthermore, since the span V of ηt is a linear subspace and is closed under limits, it follows that lim 
+
+> t→0+
+
+e(As+Bys CS )tBus ei = Bus ei ∈ V . Thus, F ⊤ 
+
+> 1
+
+F1Bus = Bus . Premultiplying both sides by S yields SF ⊤ 
+
+> 1
+
+F1Bus = SBus = B, which completes the proof of the second equality. For the first equality, following a derivation similar to that for (24), we obtain SBuy = L. From the definition of D and the relations satisfied by its block matrices Di, namely ( A − LC )D0 = −a0In,(A − LC )Di+1 = Di − ai+1 Dn−1 for i = 0 , · · · , n − 3, and Dn−1 = In, it follows that for i = 1 , · · · , m ,
+
+Sui As = D(In ⊗ Bi)As = [ D0Bi, · · · , D n−1Bi]As
+
+= [ −a0Dn−1, D 0 − a1Dn−1, · · · , D n−2 − an−1Dn−1]( In ⊗ Bi)= ( A − LC )[ D0, · · · , D n−1]( In ⊗ Bi) = ( A − LC )Sui ,
+
+Similarly, for j = 1 , · · · , p , we have Syj As = ( A − LC )Syj . Note that for A − LC , it follows from the relationship between the determinant and the adjugate matrix, the definition of D, and Dn−1 = In that (A − LC )D = DAs. Since A − LC and Aϵ share the same characteristic polynomial, replacing A − LC 
+
+with Aϵ and D with Dϵ in the above analysis similarly yields AϵDϵ = DϵAs. Considering the coupling between the coefficient matrix of the adjugate matrix and the initial state, it holds readily that (A − LC )D(In ⊗ ϵ0) = D(In ⊗ ϵ0)As, AϵDϵ(In ⊗ ηϵ
+
+> 0
+
+) = Dϵ(In ⊗ ηϵ
+
+> 0
+
+)As.
+
+Therefore, from the invertibility of Dϵ(In ⊗ ηϵ
+
+> 0
+
+), it follows that (A − LC )Sϵ = ( A − LC )D(In ⊗ ϵ0)( Dϵ(In ⊗ ηϵ
+
+> 0
+
+)) −1
+
+= D(In ⊗ ϵ0)As(Dϵ(In ⊗ ηϵ
+
+> 0
+
+)) −1
+
+= D(In ⊗ ϵ0)( Dϵ(In ⊗ ηϵ
+
+> 0
+
+)) −1Aϵ
+
+= SϵAϵ.
+
+Hence, 
+
+SAs = [ Su(Im ⊗ As), S y (Ip ⊗ As), S ϵAϵ]= [( A − LC )Su, (A − LC )Sy , (A − LC )Sϵ] = ( A − LC )S. 
+
+Synthesizing the above results, we have 
+
+S(As + Bys CS ) = AS. (25) Postmultiplying both sides by F ⊤ 
+
+> 1
+
+yields S(As + Bys CS )F ⊤ 
+
+> 1
+
+= ASF ⊤ 
+
+> 1
+
+. The zero-input response of system (17) is ηt = e(As+Bys CS )tη0 ∈ V . If for any v ∈ V , we set η0 = v, then e(As+Bys CS )tv ∈ V , implying that 
+
+V is invariant under the flow e(As+Bys CS )t. Furthermore, since V is a finite-dimensional linear subspace and is closed under differentiation, it follows that d(e(As+Bys CS )tv)  
+
+> dt t=0
+
+= ( As + Bys CS )v ∈ V , implying that the span V of ηt is an ( As + Bys CS )-invariant subspace. Furthermore, since V = im( F ⊤ 
+
+> 1
+
+), for any 
+
+v ∈ V , there exists w ∈ R(m+2) n such that v = F ⊤ 
+
+> 1
+
+w. By the ( As + Bys CS )-invariance of V, there exists a matrix M ∈ R(m+2) n×(m+2) n such that (As + Bys CS )v = ( As + Bys CS )F ⊤ 
+
+> 1
+
+w = F ⊤ 
+
+> 1
+
+(M w ),
+
+By the arbitrariness of v, it follows that ( As + Bys CS )F ⊤ 
+
+> 1
+
+= F ⊤ 
+
+> 1
+
+M . Premultiplying both sides by F ⊤ 
+
+> 1
+
+F1
+
+yields 
+
+F ⊤ 
+
+> 1
+
+F1(As + Bys CS )F ⊤ 
+
+> 1
+
+= F ⊤ 
+
+> 1
+
+F1F ⊤ 
+
+> 1
+
+M = F ⊤ 
+
+> 1
+
+M = ( As + Bys CS )F ⊤ 
+
+> 1
+
+.
+
+Premultiplying both sides by S yields SF ⊤ 
+
+> 1
+
+F1(As + Bys CS )F ⊤ 
+
+> 1
+
+= S(As + Bys CS )F ⊤ 
+
+> 1
+
+= ASF ⊤ 
+
+> 1
+
+, which proves the first equality. 12 The ARE satisfied by the LQR problem consisting of system (20) and cost functional (22) is given by 
+
+F1(As + Bys CS )⊤F ⊤ 
+
+> 1
+
+Σ + Σ F1(As + Bys CS )F ⊤ 
+
+> 1
+
++ F1S⊤C⊤QCSF ⊤ 
+
+> 1
+
+− ΣF1Bus R−1(F1Bus )⊤Σ = 0.
+
+Let Px = ( F1S⊤)†Σ( SF ⊤ 
+
+> 1
+
+)†. Using (23), the above equation can be rewritten as (SF ⊤ 
+
+> 1
+
+)⊤(A⊤Px + PxA + Qx − PxBR −1B⊤Px)SF ⊤ 
+
+> 1
+
+= 0,
+
+which is equivalent to the state feedback ARE (5) by the full row rank property of SF ⊤ 
+
+> 1
+
+. Similarly, the optimal feedback gain for the LQR problem consisting of system (20) and cost functional (22) is given by 
+
+K = R−1(F1Bus )⊤Σ = R−1BP xSF ⊤ 
+
+> 1
+
+= KxSF ⊤ 
+
+> 1
+
+.
+
+The Lyapunov equations corresponding to the two LQR problems satisfy a similar equivalence relation. Therefore, by the full row rank property of SF ⊤ 
+
+> 1
+
+, the feedback controller ut = Kϕ t is performance equivalent to the state feedback controller ut = Kxxt; by the equivalence of the AREs, the optimal solution ut = K∗ϕt to Problem 3.9 must be the optimal solution to Problem 2.1. 
+
+Remark 3.11. The work in [19] also converts the original LQR problem with unknown dynamics and unmeasurable states into an equivalent LQR problem with known input matrix and accessible states. However, in contrast to [19], the new LQR problem constructed in this paper is strictly equivalent to the original problem, rather than being equivalent only in the steady-state sense. This is primarily reflected in the following aspects: by accounting for the replication of the observation error ϵt when constructing the substitute state, the linear injective relationship between the substitute state and the true state holds strictly, and the equivalence of the cost functionals is also strictly valid; moreover, the isosystem (20) in this paper is strictly equivalent to the original system (1) without neglecting the unknown observation error ϵt. In addition, a significant improvement is the use of the projection matrix F1 to further eliminate redundant information from the input-output filtering vector ηt, which not only facilitates the design of efficient model-free algorithms but also reduces computational complexity, as will be demonstrated in Section 4. 
+
+# 4 Efficient Off-Policy Value-Based Iteration Algorithms 
+
+To design model-free algorithms for solving Problem 3.9, this section first analyzes the stabilizability and detectability of the LQR problem defined by system (20) and cost functional (22). Then, based on model-based results, efficient PI and VI algorithms are developed by utilizing the full row rank data matrices Φ 0, U0, Y0 := [ yt, · · · , y t+( T −1)∆ t], and Φ 1 := [ ˙ϕt, · · · , ˙ϕt+( T −1)∆ t] = F1[ ˙ ηt, · · · , ˙ηt+( T −1)∆ t]obtained from Lemma 3.7 under 2 n-th order PE inputs. 
+
+## 4.1 Regularity Condition 
+
+Lemma 4.1. Under Assumption 2.2, if all eigenvalues of A − LC are chosen to be in the open left-half plane, then the pair (F1(As + Bys CS )F ⊤ 
+
+> 1
+
+, F 1Bus ) is stabilizable. Proof. We first prove that the pair ( As + Bys CS, Bus ) is stabilizable before projection. From the control-lability assumption of system (1), there exists a state feedback control gain Kx such that A − BK x is Hurwitz stable. Applying ut = −Kη t = −KxSη t to system (1) yields ˙xt = Ax t + Bu t = Ax t − BK xSη t = ( A − BK x)xt.
+
+Hence, xt converges exponentially to 0. Considering the isosystem (17), applying ut = −Kη t = −KxSη t
+
+to it yields ˙ηt = ( As + Bys CS )ηt − B us Kη t = ( As + Bys CS − B us K)ηt,
+
+˙ηt = ( As + Bys CS )ηt − B us KxSη t = Asηt + ( Bys C − B us Kx)xt.
+
+13 Since xt converges exponentially to zero and A − LC is Hurwitz stable when the eigenvalues of As are chosen to be in the open left-half plane, it follows from [28] that ηt also converges exponentially to 0.Thus, the closed-loop system matrix As + Bys CS − B us K must be Hurwitz, which proves that the pair (As + Bys CS, Bus ) is stabilizable. If the orthogonal matrix F ⊤ = [ F ⊤ 
+
+> 1
+
+, F ⊤ 
+
+> 2
+
+]⊤ defined in Lemma 3.7 is used to perform a similarity transformation on system (17), where the state of the transformed system is μt = F ⊤ηt, then by the properties of similarity transformations, the pair ( F ⊤(As + Bys CS )F, F ⊤Bus )is also stabilizable. Building on this, we next use the Hautus stabilizability criterion to prove that the pair ( F1(As +
+
+Bys CS )F ⊤ 
+
+> 1
+
+, F 1Bus ) is stabilizable, i.e., for all λ with positive real parts, the matrix [ λI (m+2) n − F1(As +
+
+Bys CS )F ⊤ 
+
+> 1
+
+, F 1Bus ] has full row rank. For brevity, denote A := As + Bys CS , so we have 
+
+F ⊤AF =
+
+F1AF ⊤ 
+
+> 1
+
+F1AF ⊤
+
+> 2
+
+0 F2AF ⊤
+
+> 2
+
+
+
+, F ⊤Bus =
+
+F1Bus
+
+0
+
+
+
+, (26) where the zero matrices arise because, the A-invariance of the span V = im( F ⊤ 
+
+> 1
+
+) of ηt (established in the proof of Lemma 3.10) implies AF ⊤ 
+
+> 1
+
+∈ V , and thus F2AF ⊤ 
+
+> 1
+
+= 0 by the orthogonality of F2 and F ⊤ 
+
+> 1
+
+;furthermore, since every column of Bus belongs to V = im( F ⊤ 
+
+> 1
+
+) (also from the proof of Lemma 3.10), it follows that F2Bus = 0. Therefore, we have [λI (m+p+1) n − F ⊤AF, F ⊤Bus ] = 
+
+λI (m+2) n − F1AF ⊤ 
+
+> 1
+
+−F1AF ⊤ 
+
+> 2
+
+F1Bus
+
+0 λI (p−1) n − F2AF ⊤ 
+
+> 2
+
+0
+
+
+
+,
+
+Then, rank([ λI (m+p+1) n − F ⊤AF, F ⊤Bus ]) = rank([ λI (m+2) n − F1AF ⊤ 
+
+> 1
+
+, F 1Bus ]) + rank( λI (p−1) n − F2AF ⊤ 
+
+> 2
+
+).
+
+For the system after the similarity transformation, let μt = F ⊤ηt = [( μ1 
+
+> t
+
+)⊤, (μ2 
+
+> t
+
+)⊤]⊤ with μ1 
+
+> t
+
+∈ R(m+2) n
+
+and μ2 
+
+> t
+
+∈ R(p−1) n. Then ˙ μ2 
+
+> t
+
+= F2AF ⊤ 
+
+> 2
+
+μ2 
+
+> t
+
+forms an autonomous subsystem. Since the pair ( F ⊤(As +
+
+Bys CS )F, F ⊤Bus ) is stabilizable, the subsystem ˙ μ2 
+
+> t
+
+= F2AF ⊤ 
+
+> 2
+
+μ2 
+
+> t
+
+cannot contain unstable modes, implying that F2AF ⊤ 
+
+> 2
+
+is Hurwitz, i.e., rank( λI (p−1) n − F2AF ⊤ 
+
+> 2
+
+) = ( p − 1) n for all λ with positive real parts. Then it holds that rank([ λI (m+2) n − F1AF ⊤ 
+
+> 1
+
+, F 1Bus ]) = ( m + 2) n for all λ with positive real parts, that is, (F1(As + Bys CS )F ⊤ 
+
+> 1
+
+, F 1Bus ) is stabilizable. 
+
+Lemma 4.2. Under Assumption 2.2, if all eigenvalues of A − LC are chosen to be in the open left-half plane, then the pair (F1(As + Bys CS )F ⊤ 
+
+> 1
+
+, Q 12 CSF ⊤ 
+
+> 1
+
+) is detectable. Proof. First, under Assumption 2.2, we use the Hautus detectability criterion prove that the pair ( As +
+
+Bys CS, Q 12 CS ) is detectable before projection. Using proof by contradiction, suppose that for some λ
+
+with positive real part, there exists a non-zero vector v ∈ R(m+p+1) n such that 
+
+λI (m+p+1) n − (As + Bys CS )
+
+Q 12 CS 
+
+
+
+v = 0.
+
+From equation (25) in the proof of Lemma 3.10, we have S(As + Bys CS ) = AS . Post-multiplying both sides of this equation by the vector v yields S(As + Bys CS )v = ASv . According to the assumption, 
+
+S(As + Bys CS )v = A(Sv ) = λ(Sv ) which implies that λ is an eigenvalue of matrix A associated with the eigenvector Sv . Furthermore, since Q 12 C(Sv ) = 0, the observability of ( A, Q 12 C) in Assumption 2.2 implies Sv = 0. Consequently, ( As + Bys CS )v = Asv = λv , meaning that λ is an eigenvalue of As
+
+associated with the eigenvector v. However, since all eigenvalues of A − LC are chosen to be in the open left-half plane, As is Hurwitz stable, and thus all its eigenvalues must have negative real parts, leading to a contradiction. Therefore, the pair ( As + Bys CS, Q 12 CS ) is detectable. It follows that the pair ( F ⊤(As + Bys CS )F, Q 12 CSF ) is also detectable under the similarity transformation μt = F ⊤ηt.Building on this, we next use the Hautus detectability criterion and proof by contradiction to show that the pair ( F1(As + Bys CS )F ⊤ 
+
+> 1
+
+, Q 12 CSF ⊤ 
+
+> 1
+
+) is detectable. Suppose that for some λ with positive real part, there exists a non-zero vector w ∈ R(m+2) n such that 
+
+λI (m+2) n − F1(As + Bys CS )F ⊤
+
+> 1
+
+Q 12 CSF ⊤
+
+> 1
+
+
+
+w = 0.
+
+14 For brevity, denote A := As + Bys CS . Since Q 12 CSF = [ Q 12 CSF ⊤ 
+
+> 1
+
+, Q 12 CSF ⊤ 
+
+> 2
+
+], combining this with equation (26) yields 
+
+λI (m+p+1) n − F ⊤AFQ 12 CSF 
+
+
+
+=
+
+
+
+λI (m+2) n − F1AF ⊤ 
+
+> 1
+
+−F1AF ⊤
+
+> 2
+
+0 λI (p−1) n − F2AF ⊤
+
+> 2
+
+Q 12 CSF ⊤ 
+
+> 1
+
+Q 12 CSF ⊤
+
+> 2
+
+ .
+
+Thus, 
+
+λI (m+p+1) n − F ⊤AFQ 12 CSF 
+
+  w
+
+0(p−1) n
+
+
+
+=
+
+
+
+λI (m+2) n − F1AF ⊤
+
+> 1
+
+0
+
+Q 12 CSF ⊤
+
+> 1
+
+ w = 0.
+
+This contradicts the detectability of the pair ( F ⊤(As + Bys CS )F, Q 12 CSF ), which proves that the pair (F1(As + Bys CS )F ⊤ 
+
+> 1
+
+, Q 12 CSF ⊤ 
+
+> 1
+
+) is detectable. 
+
+Remark 4.3. In analyzing the stabilizability and detectability of the unprojected LQR problem, our approach differs from that in [19] in two key aspects. First, we do not need to consider the influence of the observation error ϵt when establishing stabilizability. Second, regarding detectability, while [19] requires Q ≻ 0 and relies on constructing a specific observation gain, we provide a rigorous proof via the Hautus detectability criterion; by leveraging the observability of the original system and the matrix relationship between the isosystem and the original system, our method only requires Q ⪰ 0.
+
+Consequently, based on the results in the appendix of [19], the stabilizability and detectability of the transformed new LQR problem guarantee the existence of convergent model-based iterative algorithms. This provides the theoretical foundation for designing model-free algorithms to solve Problem 3.9. 
+
+## 4.2 Policy Iteration Algorithm 
+
+Considering the equivalent transformed LQR problem, define AF := F1(As +Bys CS )F ⊤ 
+
+> 1
+
+and BF := F1Bus .Then, under the feedback control ut = −Kϕ t, the Lyapunov equation satisfied by this LQR problem is (AF − B F K)⊤Σ + Σ( AF − B F K) + Qϕ + K⊤RK = 0, (27) which admits a unique optimal solution Σ ∈ S(m+2) n 
+
+> +
+
+under Lemmas 4.1 and 4.2. Furthermore, consid-ering the cost functional (22), the optimal feedback control gain is 
+
+K = R−1B⊤ 
+
+> F
+
+Σ. (28) Considering the setup of Problem 3.9, since C and S are unknown matrices, AF and portions of the structure of Qϕ are unknown. Nevertheless, since BF is known, we can left-multiply both sides of equation (27) by Φ ⊤ 
+
+> 0
+
+and right-multiply by Φ 0, then add and subtract the term U ⊤ 
+
+> 0
+
+B⊤ 
+
+> F
+
+ΣΦ 0 + Φ ⊤ 
+
+> 0
+
+ΣBF U0.Rearranging yields (AF Φ0 + BF U0 − B F (KΦ0 + U0)) ⊤ΣΦ 0 + Φ ⊤ 
+
+> 0
+
+Σ( AF Φ0 + BF U0 − B F (KΦ0 + U0)) + Φ ⊤QϕΦ0 + Φ ⊤ 
+
+> 0
+
+K⊤RK Φ0 = 0.
+
+Noting that Φ 1 = AF Φ0 + BF U0 and Φ ⊤ 
+
+> 0
+
+QϕΦ0 = Φ ⊤ 
+
+> 0
+
+F1S⊤C⊤QCSF ⊤ 
+
+> 1
+
+Φ0 = X⊤ 
+
+> 0
+
+C⊤QCX 0 = Y ⊤ 
+
+> 0
+
+QY 0,the above equation simplifies to (Φ 1 − B F (KΦ0 + U0)) ⊤ΣΦ 0 + Φ ⊤ 
+
+> 0
+
+Σ(Φ 1 − B F (KΦ0 + U0)) + Y ⊤ 
+
+> 0
+
+QY 0 + Φ ⊤ 
+
+> 0
+
+K⊤RK Φ0 = 0. (29) If the current feedback control gain K is known, the only unknown in equation (29) is Σ. Thus, equation (29) can serve as the policy evaluation step in model-free PI. Furthermore, since BF is known, equation (28) can still be used as the policy improvement step. The complete algorithm is presented in Algorithm 1. Since equation (29) is a generalized Sylvester equation (if T = ( m + 2) n is chosen, it reduces to a Lyapunov equation due to the full row rank property of Φ 0), it can be solved directly, eliminating the need to convert the iterative equation into an LS problem for numerical solution or to consider the solvability of such an LS problem. Since Algorithm 1 only requires collecting data once prior to iteration and uses the same data for every iteration, the algorithm is off-policy. 15 Algorithm 1 Model-Free Policy Iteration (PI) 
+
+Data Collection: Apply a 2 n-th order PE input to system (1), and collect the corresponding input 
+
+ut and output yt trajectories to form U0 and Y0. Concatenate ut, yt, and a vector of zeros into an extended vector, and use it as the input for system (16) to collect the corresponding state ηt and state derivative ˙ ηt, forming E0 and E1. Calculate the projection matrix F1, and construct the full row rank data matrices Φ 0 = F1E0, Φ 1 = F1E1, and BF = F1Bs.
+
+Initialization: Select a precision constant ϵ. Set i = 0 and choose an initial stabilizing control gain 
+
+K0 such that AF − B F K0 is Hurwitz stable. 
+
+for i = 0 , 1, 2, · · · , do 
+
+(i) Policy evaluation: calculate Σ i by solving (Φ 1 − B F (KiΦ0 + U0)) ⊤ΣiΦ0 + Φ ⊤ 
+
+> 0
+
+Σi(Φ 1 − B F (KiΦ0 + U0)) + Y ⊤ 
+
+> 0
+
+QY 0 + Φ ⊤ 
+
+> 0
+
+(Ki)⊤RK iΦ0 = 0. (30) (ii) Policy improvement: update the control gain as Ki+1 = R−1B⊤ 
+
+> F
+
+Σi.
+
+if ∥Ki+1 − Ki∥ ≤ ϵ then return K∗ 
+
+> P I
+
+= Ki+1 .
+
+end if end for Remark 4.4 (Initial Stabilizing Control Gain) . Since the states of system (20) are available, we can uti-lize continuous-time state feedback stabilization results to provide an initial stabilizing gain for Algorithm 1. Two primary methods are presented below. (a) Dead-beat method [16]. Let G1 and G2 be the right inverse and a basis matrix for the null space of Φ0, respectively. Design Kdb such that Φ1(G1 − G 2Kdb ) is Hurwitz stable. Then K0 = −U0(G1 − G 2Kdb ) serves as an initial stabilizing control gain for Algorithm 1. (b) Linear matrix inequalities method [29]. If there exists a matrix Γ ∈ RT ×(m+2) n such that Φ0Γ ≻ 0
+
+and Φ1Γ + ΓΦ ⊤ 
+
+> 1
+
+≺ 0, then K0 = −U0Γ(Φ 0Γ) −1 serves as an initial stabilizing control gain for Algorithm 1. 
+
+Proposition 4.5. Under Assumption 2.2, select the eigenvalues of A − LC to lie in the open left-half plane. If the initial control gain K0 is stabilizing, the sequence of control gains {Ki} generated by Algorithm 1 is stabilizing, and the sequence of cost parameter matrices {Σi} is monotonically non-increasing. Ultimately, both {Σi} and {Ki} converge to the optimal values Σ∗ and K∗, respectively. Proof. By the full row rank property of Φ 0 and the preceding analysis, iterative equation (30) is equivalent to iterating on the model-based Lyapunov equation (27). Thus, Algorithm 1 corresponds to Kleinman’s algorithm [20] for the equivalent new LQR problem. Since [19] establishes that model-based PI remains stable and convergent under only stabilizability and detectability, Lemmas 4.1 and 4.2 imply that Algo-rithm 1 generates a sequence of stabilizing control gains and monotonically non-increasing cost parameter matrices, both converging to their respective optimal solutions. 
+
+## 4.3 Value Iteration Algorithm 
+
+The VI method dispenses with the need for an initial stabilizing gain. Consider the following ARE equation associated with the consistent system (20) and cost functional (22), 
+
+A⊤ 
+
+> F
+
+Σ + Σ AF + Qϕ − ΣBF R−1BF Σ = 0.
+
+If the current Σ is known, Σ BF R−1BF Σ is computable since BF is available, leaving only the first three terms to be addressed. Treating Ω := A⊤ 
+
+> F
+
+Σ + Σ AF + Qϕ as a single unknown entity, we follow the same approach as in PI: premultiplying Ω by Φ ⊤ 
+
+> 0
+
+and postmultiplying by Φ 0, then substituting the expression for Qϕ yields Φ⊤ 
+
+> 0
+
+ΩΦ 0 = Φ ⊤ 
+
+> 0
+
+A⊤ 
+
+> F
+
+ΣΦ 0 + Φ ⊤ 
+
+> 0
+
+ΣAF Φ0 + Y ⊤ 
+
+> 0
+
+QY 0.
+
+Adding the known terms U ⊤ 
+
+> 0
+
+B⊤ 
+
+> F
+
+ΣΦ 0 + Φ ⊤ 
+
+> 0
+
+ΣBF U0 to both sides yields Φ⊤ 
+
+> 0
+
+ΩΦ 0 + U ⊤ 
+
+> 0
+
+B⊤ 
+
+> F
+
+ΣΦ 0 + Φ ⊤ 
+
+> 0
+
+ΣBF U0 = ( AF Φ0 + BF U0)⊤ΣΦ 0 + Φ ⊤ 
+
+> 0
+
+Σ( AF Φ0 + BF U0) + Y ⊤ 
+
+> 0
+
+QY 0.
+
+16 Substituting Φ 1 = AF Φ0 + BF U0 into the above equation yields Φ⊤ 
+
+> 0
+
+ΩΦ 0 = (Φ 1 − B F U0)⊤ΣΦ 0 + Φ ⊤ 
+
+> 0
+
+Σ(Φ 1 − B F U0) + Y ⊤ 
+
+> 0
+
+QY 0, (31) in which Ω is the sole unknown when Σ is known. By the full row rank property of Φ 0, this equation is directly solvable. Thus, Ω − ΣBF R−1BF Σ serves as the increment in VI. Upon convergence of Σ, the approximate optimal feedback gain is computed via (28). The complete off-policy algorithm is presented in Algorithm 2. Consistent with classical continuous-time VI, to prevent excessive growth of the cost parameter matrix Σ, we define a sequence of constraint sets {G j }∞ 
+
+> j=0
+
+for the increment matrix and a step-size sequence {δi}∞ 
+
+> i=0
+
+satisfying the following condition. 
+
+Gj ⊂ G j+1 , lim  
+
+> j→∞
+
+Gj = S(m+2) n 
+
+> +
+
+,
+
+> ∞
+
+X
+
+> i=0
+
+δi = ∞,
+
+> ∞
+
+X
+
+> i=0
+
+δ2 
+
+> i
+
+< ∞. (32) 
+
+Algorithm 2 Model-Free Value Iteration (VI) 
+
+Data Collection: Apply a 2 n-th order PE input to system (1), and collect the corresponding input 
+
+ut and output yt trajectories to form U0 and Y0. Concatenate ut, yt, and a vector of zeros into an extended vector, and use it as the input for system (16) to collect the corresponding state ηt and state derivative ˙ ηt, forming E0 and E1. Calculate the projection matrix F1, and construct the full row rank data matrices Φ 0 = F1E0, Φ 1 = F1E1, and BF = F1Bs.
+
+Initialization: Select a precision constant ϵ. Set i = 0, j = 0, and arbitrarily select an initial cost parameter matrix Σ 0 ∈ S(m+2) n 
+
+> +
+
+. Choose the sequence of sets {G j }∞ 
+
+> j=0
+
+and step-size sequence {δi}∞
+
+> i=0
+
+that satisfy equation (32). 
+
+for i = 0 , 1, 2, · · · , do 
+
+(i) Calculate Ω i by Φ⊤ 
+
+> 0
+
+ΩiΦ0 = (Φ 1 − B F U0)⊤ΣiΦ0 + Φ ⊤ 
+
+> 0
+
+Σi(Φ 1 − B F U0) + Y ⊤ 
+
+> 0
+
+QY 0. (33) (ii) Update the cost parameter matrix Σ i+1 by Σ i+1 = Σ i + δi(Ω i − ΣiBF R−1B⊤ 
+
+> F
+
+Σi). 
+
+if Σi+1 /∈ F j then 
+
+Σi+1 = Σ 0, j = j + 1. 
+
+end if if ∥Σi+1 − Σi∥/δ i ≤ ϵ then return K∗ 
+
+> V I
+
+= R−1B⊤ 
+
+> F
+
+Σi+1 .
+
+end if end for Proposition 4.6. Under Assumption 2.2, select the eigenvalues of A − LC to lie in the open left-half plane. If the initial cost parameter matrix Σ0 is chosen to be positive semi-definite, the sequence {Σi}
+
+generated by Algorithm 2 converges to the optimal solution Σ∗.Proof. By the full row rank property of Φ 0 and the preceding analysis, equation (33) is equivalent to computing the model-based term Ω i = A⊤ 
+
+> F
+
+Σi + Σ iAF + Qϕ. Thus, Algorithm 2 corresponds to model-based VI [25] for the equivalent new LQR problem. Since [19] establishes that model-based VI converges under only stabilizability and detectability, Lemmas 4.1 and 4.2 imply that the cost parameter matrices generated by Algorithm 2 converge to the respective optimal solution. 
+
+Remark 4.7. Noting that in classic literature on continuous-time direct data-driven control [14, 17, 13], integral forms of data are often used to avoid numerical differentiation of signals, we may simi-larly replace the data matrices Φ0, U0, Y0, and Φ1 with their corresponding integral forms ˜Φ0 := R ∆t 
+
+> 0
+
+[ϕτ , · · · , ϕ τ +( T −1)∆ t]dτ , ˜U0 := R ∆t 
+
+> 0
+
+[uτ , · · · , u τ +( T −1)∆ t]dτ , ˜Y0 := R ∆t 
+
+> 0
+
+[yτ , · · · , y τ +( T −1)∆ t]dτ , and 
+
+˜Φ1 := [ ϕ∆t − ϕ0, · · · , ϕ T ∆t − ϕ(T −1)∆ t], as they still satisfy 
+
+˜Φ1 = F1(As + Bys CS )F ⊤ 
+
+> 1
+
+˜Φ0 + F1Bus ˜U0, ˜Y0 = CSF ⊤ 
+
+> 1
+
+˜Φ0.
+
+Nevertheless, this paper maintains the use of the derivative matrix Φ1. This is because ˙ηt can be obtained directly from (16) without model knowledge, and the projection matrix F1 is constructed directly from 
+
+17 the data matrix E0. Consequently, ˙ϕt = F1 ˙ηt can be computed directly and accurately, eliminating the need for integral data matrices, which would introduce additional numerical errors and computational complexity. 
+
+Now we elucidate the efficiency of Algorithms 1 and 2. First, the proposed algorithms only require Φ 0
+
+to be of full row rank, which is guaranteed by a PE input and Lemma 3.7. This renders the algorithms feasible for both single-output and multi-output scenarios, a distinct advantage over existing LS-based PI and VI algorithms. Works such as [13, 4, 19] reformulate the iterative equation as an LS problem, which strictly requires the regression matrix, formed by the Kronecker product (or further integrals) of data, to be full row rank. We can use assertion (b) of Lemma 3.4 to demonstrate that this rank condition is difficult to achieve in multi-output scenarios. Specifically, ensuring a full row rank regression matrix generally requires the matrix Γ η := [vec( ηtη⊤ 
+
+> t
+
+), · · · , vec( ηt+( T −1)∆ tη⊤ 
+
+> t+( T−1)∆ t
+
+)] ∈ R(m+p+1) 2n2×T to be of full row rank. By assertion (b) of Lemma 3.4, the span of ηt is V = im( F ⊤ 
+
+> 1
+
+). We thus treat the columns of F ⊤ 
+
+> 1
+
+as a basis for V and set ηt = F ⊤ 
+
+> 1
+
+bt, where bt ∈ R(m+2) n is a coefficient vector. Then, vec( ηtη⊤ 
+
+> t
+
+) = vec( F ⊤ 
+
+> 1
+
+btb⊤ 
+
+> t
+
+F1) = ( F ⊤ 
+
+> 1
+
+⊗ F ⊤ 
+
+> 1
+
+)vec( btb⊤ 
+
+> t
+
+).
+
+Hence, rank(Γ η ) ≤ rank([vec( btb⊤ 
+
+> t
+
+), · · · , vec( bt+( T −1)∆ tb⊤ 
+
+> t+( T−1)∆ t
+
+)]) ≤ (m + 2) 2n2 ≤ (m + p + 1) 2n2,
+
+where the last inequality holds strictly when system (1) is multi-output. Consequently, Γ η cannot be of full row rank, implying the regression matrix does not have full row rank either, which may cause LS-based algorithms to fail. Second, the proposed algorithms involve fewer unknowns in their iterative equations. Since this paper reformulates the original LQR problem as an equivalent new LQR problem with accessible states, the unknown parameters in the iterative equations no longer include terms related to the control gain. Additionally, when p > 1, projecting the input-output filtering vector 
+
+ηt using F1 further eliminates redundant information, thereby reducing the number of unknowns in the iterative equations by ( p − 1) n((2 m + p + 3) n + 1) /2. Third, the proposed algorithms require less data. LS-based algorithms necessitate the amount of data to exceed the number of unknowns; for instance, 
+
+T ≥ (m + p + 1) n(( m + p + 1) n + 1) /2 + ( m + p + 1) nm in [4] and T ≥ (m + p)n(( m + p)n + 1) /2 in [19]. In contrast, the proposed algorithms only require the number of columns of Φ 0 to be no less than the number of rows, i.e., T ≥ (m + 2) n.
+
+# 5 Further Discussion 
+
+Building upon the content of Sections 2.4 and 3.1, this section briefly discusses the trajectory generation for continuous-time linear systems, the PE conditions required in this paper, the determination of the system order n, and potential policy optimization improvements enabled by the full row rank matrix Φ 0.
+
+Trajectory generation for continuous-time systems. Existing research typically follows a fixed paradigm: it extends the weighting vector α in (7) to a time-varying vector αt, constrains αt via ordi-nary differential equations with coefficients derived from input-state or input-output data matrices, and generates true trajectories by weighting sampled input-output data matrices with αt. However, current methods lack universality: the work in [15] is limited to systems with measurable states; the approach in [23] utilizes data matrices composed of inputs, outputs, and their derivatives, but as shown in equation (11), such a matrix is not of full row rank when the output dimension p > 1, whereby the corresponding ordinary differential equations cannot be directly solved, making the method invalid. To address this, based on assertion (b) of Lemma 3.7, Proposition 5.1 provides constructive conditions for generating valid true trajectories of system (1) in multi-output scenarios. This resolves the open problem in [23], requiring no state measurability and avoiding high-order numerical differentiation of continuous-time signals. 
+
+Proposition 5.1. Assume the input signal {ut}t∈R+ of system (1) satisfies the (2 n + 1) -th order PE condition, and let {yt}t∈R+ be the corresponding output signal. Construct the full row rank substitute state data matrix Φ0 at time t according to Lemma 3.7. Then, the following assertions hold. 
+
+18 (a) If there exists a vector αt ∈ RT such that Φ0α(1)  
+
+> t
+
+= 0 holds, then the continuously differentiable vector [(¯ ut)⊤, (¯ yt)⊤]⊤ satisfying equation (34) is a true trajectory of system (1). 
+
+H1(u(t, ∆t,T −1) )
+
+H1(y(t, ∆t,T −1) )
+
+
+
+αt =
+
+¯ut
+
+¯yt
+
+
+
+. (34) (b) For a continuously differentiable trajectory [(¯ ut)⊤, (¯ yt)⊤]⊤ of system (1), if there exists a vector 
+
+αt ∈ RT such that the following equation holds, 
+
+H1(u(t, ∆t,T −1) )Φ0
+
+
+
+α(1)  
+
+> t
+
+= −
+
+"
+
+H1(u(1) (t, ∆t,T −1) )
+
+0
+
+#
+
+αt +
+
+"
+
+¯u(1) 
+
+> t
+
+0
+
+#
+
+,
+
+then ¯yt can be derived from equation (34). Proof. For assertion (a), defining ¯ xt := H1(x(t, ∆t,T −1) )αt, the linearity of the delayed Hankel matrix yields ˙¯xt = ddt (H1(x(t, ∆t,T −1) )αt) = H1( ˙ x(t, ∆t,T −1) )αt + H1(x(t, ∆t,T −1) )α(1) 
+
+> t
+
+= ( AH 1(x(t, ∆t,T −1) ) + BH 1(u(t, ∆t,T −1) )) αt + H1(x(t, ∆t,T −1) )α(1) 
+
+> t
+
+= AH 1(x(t, ∆t,T −1) )αt + BH 1(u(t, ∆t,T −1) )αt + SF ⊤ 
+
+> 1
+
+Φ0α(1) 
+
+> t
+
+= A¯xt + B ¯ut.
+
+Denote the substitute state data matrix at the initial time t0 as Φ ini  
+
+> 0
+
+, and the initial weighting vector as αt0 = (Φ ini  
+
+> 0
+
+)†F1 ¯ηt0 , where ¯ ηt0 is the filtering vector obtained by driving (16) with [(¯ ut0 )⊤, (¯ yt0 )⊤, 0]⊤.Consequently, under the initial state ¯ xt0 = H1(x(t0,∆t,T −1) )αt0 = SF ⊤ 
+
+> 1
+
+Φini  
+
+> 0
+
+αt0 and input ¯ ut, ¯ xt is the state trajectory of system (1). Furthermore, since ¯yt = H1(y(t, ∆t,T −1) )αt = CH 1(x(t, ∆t,T −1) )αt = C ¯xt,
+
+¯yt is the output trajectory of system (1). For assertion (b), it is straightforward to show that ¯ ut = H1(u(t, ∆t,T −1) )αt. Furthermore, since Φ0α(1)  
+
+> t
+
+= 0, we have ˙¯xt = A¯xt + B ¯ut = A¯xt + B ¯ut + SF ⊤ 
+
+> 1
+
+Φ0α(1) 
+
+> t
+
+= A¯xt + H1(u(t, ∆t,T −1) )αt + H1(x(t, ∆t,T −1) )α(1)  
+
+> t
+
+.
+
+From the initial conditions, it follows that ¯ xt = H1(x(t, ∆t,T −1) )αt, which further implies that ¯yt = C ¯xt = CH 1(x(t, ∆t,T −1) )αt = H1(y(t, ∆t,T −1) )αt.
+
+This completes the proof. 
+
+Piecewise constant PE. Section 2.4 defines the continuous-time PE condition using high-order derivatives of signals to derive (9). In contrast, the work in [15] directly defines a continuous-time input as N -th order PE if it satisfies rank 
+
+ HN (u(t, ∆,N +T −1) )
+
+H1(u(t, ∆,T −1) )
+
+ 
+
+= mN + n, 
+
+and shows that piecewise constant PE inputs satisfy this definition. Piecewise constant PE inputs do not meet the definition adopted herein, but they relax continuity and smoothness requirements while still ensuring a similar full row rank property of the input-state matrix, which relies on delayed signals instead of derivatives. It can be verified via experiments that under piecewise constant PE, the row rank of matrix E0 remains ( m + p + 1) n. Consequently, the full row rank data matrix Φ 0 can still be con-structed in the same manner and utilized for model-free optimal controller design. This suggests that the required excitation does not necessitate global high-order continuous differentiability, but only piecewise 19 continuous differentiability. The theoretical analysis of such relaxed continuous-time PE conditions is a direction for future research. 
+
+Dimension n of the unmeasurable state xt. Algorithms 1 and 2 do not require prior knowledge of the state dimension n, as the full QR decomposition naturally reveals the full row rank property of the data matrix Φ 0, confirming its row rank to be ( m + 2) n. Furthermore, the order n of the linear system with unknown dynamics and unmeasurable states can be obtained by dividing the row rank of Φ0 by the known quantity m + 2. Compared to calculating n using equation (11), this method avoids the need for numerical differentiation of the input-output signals. 
+
+Data-enabled policy gradient. For the model-free discrete-time LQR problem with measurable states, the corollary (8) of Lemma 2.5 has been successfully used to design the data-enabled policy gradi-ent algorithm [30]. Motivated by the structural analogy between the differential operator of continuous-time systems and the shift operator of discrete-time systems, together with the facts that ϕt serves as a substitute state for xt with an injective linear relationship and that the feedback control gain K is intrinsically related to the full row rank input-substitute state data matrix (as shown in Theorem 3.8 and analogous to (8)), the results developed in this paper pave the way for extending model-free policy gradient algorithms to continuous-time settings. 
+
+# 6 Numerical Experiments 
+
+This section validates the computational efficiency of Algorithms 1 and 2 for single-output problems, as well as their applicability to multi-output problems, through numerical experiments. 
+
+## 6.1 Single Output Problem 
+
+This subsection initializes the MATLAB random number generator using the rng (3) function. Randomly generate 50 continuous-time single-input single-output linear time-invariant systems with dimensions 
+
+n = 2, m = 1, p = 1 that satisfy Assumption 2.2. The dynamics matrix A is a symmetric matrix with all eigenvalues within the interval ( −2, 0), while the input matrix B and output matrix C are strictly positive matrices. Set Q = 1 and R = 1. For each randomly generated LQR problem, the eigenvalues of 
+
+A−LC are chosen as −5 and −6, and Aϵ is selected as a controllable canonical form matrix with the same eigenvalues. Each element of x0 and ηϵ 
+
+> 0
+
+independently follows a uniform distribution over the interval [−1, 1]. The required data are collected using the PE input ut = −0.2 + 0 .2(sin(74 πt ) + 1 .5 sin(38 πt ) + 2 sin(26 πt ) + 2 .5 sin(10 πt )) proposed in [4]. For the PI and VI algorithms that do not include replication of observation errors proposed in [19] (LS-Based Transformed PI and LS-Based Transformed VI), data collection commences at t = 12 s with a sampling step of ∆ t = 0 .04 s. For the VI algorithm proposed in [4] (LS-Based VI) and the algorithms proposed in this paper, sampling begins at the initial time t = 0 with a sampling step of ∆ t = 0 .2s. For all algorithms, the precision threshold is set to ϵ = 0 .01. The initial stabilizing controller K0 for all PI algorithms is selected as the zero matrix of the corresponding dimension, with a maximum of 100 iterations. The initial cost parameter matrix for all VI algorithms is selected as the identity matrix of the corresponding dimension, with a maximum of 3000 iterations; the step size is defined as {δi}∞ 
+
+> i=0
+
+= 10 /(i + 1000), and the sequence of constraint sets for the incremental matrix is {G j }∞ 
+
+> j=0
+
+= {Σ ∈ S+ ∥Σ∥ < 10 5(j + 1) }. Since a fixed random number generator and PE input are used in the comparative experiments, the regression matrices required by the LS-based algorithms may not necessarily be of full row rank. Therefore, Tables 1 and 2 only compare the average number of iterations, average computation time, and the average relative error of the resulting feedback control gain, defined as ∥K∗  
+
+> P I/V I −K∗∥∥K∗∥
+
+, among the five algorithms for cases where the regression matrix has full row rank. Figure 1 illustrates the distribution of the non-zero minimum singular values of the obtained data matrices for the 50 randomly generated LQR problems. Based on the experimental results, during the data collection phase, Algorithms 1 and 2 allow sam-pling at any time instant, eliminating the need to wait for the system to reach steady state or to perform Kronecker product operations on the data, thereby reducing the time required for data collection. In terms of numerical stability, the data matrix Φ 0 utilized by Algorithms 1 and 2 is guaranteed to be of full row rank, with the smallest minimum singular value across the 50 tests found to be 3 .5309 × 10 8.In contrast, the three LS-based algorithms encounter cases where the data matrices are not of full row 20 LS-Based Transformed PI Algorithm 1 Number of full row rank data matrices / 50 36 50 Average number of iterations 4.3889 3.700 Average computation time (s) 5.6941 × 10 −4 5.0123 × 10 −4
+
+Average relative error 0.0393 6.1397 × 10 −10 
+
+Table 1: Performance Comparison of PI Algorithms. LS-Based VI LS-Based Transformed VI Algorithm 2 Number of full row rank data matrices / 50 42 43 50 Average number of iterations 1678 .0476 277 .6279 137 .4000 Average computation time (s) 0.0973 0.0189 0.0025 Average relative error 0.0024 0.2002 1.0031 × 10 −6
+
+Table 2: Performance Comparison of VI Algorithms. rank, which requires data regeneration by adjusting random number seeds or PE inputs. Furthermore, the minimum singular values of the full row rank regression matrices for these LS-based methods are all below the order of 10 −8, which introduces computational instability. In terms of computational efficiency, Algorithm 1 demonstrates slight superiority over the LS-Based Transformed PI algorithm. Among the VI algorithms, Algorithm 2 exhibits significant advantages, requiring fewer iterations and less time to achieve the same convergence precision. For the optimality of the resulting feedback control gains, Algo-rithms 1 and 2 yield significantly smaller average relative errors. Conversely, the algorithms proposed in [19] produce larger final relative errors in the tests on randomly generated LQR problems. Specifically, the LS-Based Transformed PI algorithm yields 5 results with relative errors greater than 0 .1, and the LS-Based Transformed VI algorithm yields 13 such results, while the remaining results have very small relative errors. This behavior occurs because these two algorithms do not adequately account for the influence of observation errors, which can lead to large errors if data collection is improper. Therefore, the algorithms proposed in this paper exhibit superior performance. 
+
+## 6.2 Multiple Output Problem 
+
+Consider a continuous-time LQR problem with dimensions n = 4, m = 2, and p = 2, where 
+
+A =
+
+
+
+−1.0169 −1.4786 1.7280 0.2547 1.5194 −0.5787 0.3642 0.1249 
+
+−1.6774 0.4439 −0.6473 −0.3487 
+
+−0.3387 −0.2713 0.1172 −0.7287 
+
+ , B =
+
+
+
+−0.2938 0
+
+−0.8479 0.3075 
+
+−1.1201 −1.2571 0 1
+
+
+
+C =
+
+1 1 0 00 1 0 0
+
+
+
+, Q = I2, R = 2 I2.
+
+(35) The eigenvalues of A−LC are selected as −2, −3, −4, and −5, and Aϵ is chosen as a controllable canonical form matrix with the same eigenvalues. Each element of x0 and ηϵ 
+
+> 0
+
+independently follows a uniform distribution over the interval [ −10 , 10]. The required data are collected using the PE input ut = [ u1 
+
+> t
+
+, u 2 
+
+> t
+
+]⊤,where u1 
+
+> t
+
+= 0 .5 sin(2 πt ) + 0 .3 cos(4 πt ) + 0 .2 sin(6 πt + π/ 4) + 0 .1 cos(10 πt ) and u2 
+
+> t
+
+= 0 .4 cos(3 πt ) + 0.25 sin(5 πt ) + 0 .15 cos(7 πt − π/ 3) + 0 .05 sin(9 πt ), with a sampling step of ∆ t = 0 .2s. Without fixing the random number generator, 100 data collection trials are conducted to satisfy the feasibility condition of the LS-based algorithms, i.e., the regression matrix being of full row rank. The results show that the average row rank of the regression matrices for the LS-Based VI algorithm proposed in [4] is 115 .84 (with 250 rows); for the LS-Based Transformed PI and LS-Based Transformed VI algorithms proposed in [19], the average row ranks of their regression matrices are 20 .03 and 21 .56 (with 136 rows), respectively. None of these three algorithms achieved a full row rank regression matrix in any of the 100 trials. This indicates that the existing LS-based algorithms lack practical feasibility for multi-output problems. Now we consider the algorithms proposed in this paper. The MATLAB random number generator is initialized using the rng (3) function, and the precision threshold for Algorithms 1 and 2 is set to 21 0 0.5 1 1.5 2
+
+Value 10 -4    
+
+> 0
+> 0246
+
+Value 10 -9   
+
+> LS-based transformation PI
+> 00.5 1
+
+Value 10 -11    
+
+> LS-based VI
+> 00.5 11.5
+
+Value 10 -10   
+
+> LS-based transformation VI
+> 00.5 110 -7
+
+Figure 1: Comparison of Minimum Singular Values of Data Matrices. 
+
+ϵ = 0 .01. Given that the dynamics matrix A of the LQR problem (35) is Hurwitz stable, the initial stabilizing controller for Algorithm 1 can be selected as K0 = 0m×(m+2) n. Algorithm 1 terminates after 7 iterations, with an iterative residual of ∥K7 − K6∥ = 3 .8273 × 10 −6 at termination. The curve of the relative error ∥Ki−K∗∥∥K∗∥ against the number of iterations is shown in Figure 2. The final relative error achieved is ∥K∗  
+
+> P I −K∗∥∥K∗∥
+
+= 3 .8273 × 10 −9, and the calculated optimal cost is ϕ⊤ 
+
+> 0
+
+Σ∗ 
+
+> P I
+
+ϕ0 = 11 .4715, with a difference of 8 .6535 × 10 −11 from the true optimal cost x⊤ 
+
+> 0
+
+P ∗ 
+
+> x
+
+x0 = 11 .4715. Therefore, the solution K∗
+
+> P I
+
+obtained by Algorithm 1 is a nearly optimal solution to the LQR problem (35). If the element −0.5787 at the (2 , 2) position of the dynamics matrix A in the LQR problem (35) is modified to 0 .5787, the dynamics matrix A is no longer Hurwitz stable, but Assumption 2.2 is still satisfied. Algorithm 2 is applied to the modified LQR problem with the altered A. The initial cost parameter matrix is selected as Σ 0 = 0 .01 I(m+2) n, the step size is set to {δi}∞ 
+
+> i=0
+
+= 100 /(i + 1000), and the sequence of constraint sets for the incremental matrix is {G j }∞ 
+
+> j=0
+
+= {Σ ∈ S(m+2) n 
+
+> +
+
+∥Σ∥ < 10 5(j + 1) }.Algorithm 2 terminates after 155 iterations, with an iterative residual of ∥P 155 − P 154 ∥/δ 154 = 8 .9369 ×
+
+10 −3 at termination. The curve of the relative error ∥Ki−K∗∥∥K∗∥ against the number of iterations is shown in Figure 3. The final relative error achieved is ∥K∗  
+
+> V I −K∗∥∥K∗∥
+
+= 5 .1723 × 10 −8, and the calculated optimal cost is ϕ⊤ 
+
+> 0
+
+Σ∗ 
+
+> V I
+
+ϕ0 = 17 .7086, with a difference of 1 .1727 × 10 −5 from the true optimal cost x⊤ 
+
+> 0
+
+P ∗ 
+
+> x
+
+x0 = 17 .7086. Therefore, the solution K∗ 
+
+> V I
+
+obtained by Algorithm 2 is a nearly optimal solution to the original problem. The controllability assumption in Assumption 2.2 is imposed primarily to facilitate the derivation of the theoretical results in this paper. If system (1) is stabilizable but not controllable, Algorithms 1 and 2 remain feasible provided that suitable user-defined parameters are chosen such that both the state parameterization matrix S and the data matrix Φ 0 have full row rank. If we set A = diag( −1, −2, −3, −4), 
+
+B =
+
+1 0 0 00 1 1 0
+
+⊤
+
+, C =
+
+1 0 1 00 1 0 1
+
+
+
+,
+
+then the linear system satisfies observability and stabilizability but is uncontrollable. If the cost weighting matrices and user-defined parameters remain unchanged, the matrices S and Φ 0 obtained thereby still have full row rank. Applying Algorithm 1 to this uncontrollable LQR problem, the algorithm terminates after 4 iterations with an iterative residual of ∥K4 −K3∥ = 8 .347 ×10 −6. The final relative error achieved is ∥K∗  
+
+> P I −K∗∥∥K∗∥
+
+= 1 .2689 × 10 −8, and the calculated optimal cost is ϕ⊤ 
+
+> 0
+
+Σ∗ 
+
+> P I
+
+ϕ0 = 5 .8385, differing from the 22 1 2 3 4 5 6 7
+
+> Number of iteration:i
+> 00.5 11.5 22.5 3
+> ||K i - K *||/||K *||
+
+Figure 2: Iteration curve of the relative error for Algorithm 1. true optimal cost x⊤ 
+
+> 0
+
+P ∗ 
+
+> x
+
+x0 = 5 .8385 by 5 .4712 × 10 −13 . Applying Algorithm 2 to this uncontrollable LQR problem, the algorithm terminates after 53 iterations with an iterative residual of ∥K53 − K52 ∥ =7.7395 × 10 −3. The final relative error achieved is ∥K∗  
+
+> V I −K∗∥∥K∗∥
+
+= 4 .3403 × 10 −7, and the calculated optimal cost is ϕ⊤ 
+
+> 0
+
+Σ∗ 
+
+> V I
+
+ϕ0 = 5 .8385, differing from the true optimal cost x⊤ 
+
+> 0
+
+P ∗ 
+
+> x
+
+x0 = 5 .8385 by 3 .6101 × 10 −7.These results demonstrate that Algorithms 1 and 2 can still converge to a nearly optimal solution for uncontrollable LQR problems. 
+
+# 7 Conclusion 
+
+In the continuous-time framework, this work proposes an effective substitute state construction method that guarantees the data matrix to be of full row rank. Based on this, the continuous-time LQR prob-lem with unmeasurable states and unknown model parameters is equivalently transformed into a new LQR problem with the proposed substitute state as the state variable and a known input matrix. Ef-ficient model-free PI and VI algorithms are then designed to solve for the optimal feedback controller, which eliminate hard-to-satisfy feasibility conditions, avoid reliance on LS solutions, and provide solid theoretical guarantees. The data-driven theory proposed in this paper for unmeasurable state settings exhibits strong general-izability. Future work will focus on exploring its integration with other reinforcement learning algorithms and its application to other optimal control problems. On the other hand, while the data used herein are exact, real-world data is typically corrupted by noise, making algorithm design and theoretical analysis under noisy data a subject for future research. Furthermore, the substitute states constructed in relevant literature and this paper remain redundant representations of the true states, which increases the compu-tational burden in high-dimensional systems. Thus, developing model-free solutions for high-dimensional optimal control problems with unmeasurable states is also a key focus for our future research. 
+
+# References 
+
+[1] Victor Klemm, Yvain de Viragh, David Rohr, Roland Siegwart, and Marco Tognon. Nonsmooth trajectory optimization for wheeled balancing robots with contact switches and impacts. IEEE Transactions on Robotics , 41:497–517, 2025. 23 0 20 40 60 80 100 120 140 160 
+
+> Number of iteration:i
+> 00.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1
+> ||K i - K *||/||K *||
+
+Figure 3: Iteration curve of the relative error for Algorithm 2. [2] Jianyu Chen, Wei Zhan, and Masayoshi Tomizuka. Autonomous driving motion planning with constrained iterative lqr. IEEE Transactions on Intelligent Vehicles , 4(2):244–254, 2019. [3] Wenjie Liu, Gang Wang, Jian Sun, Francesco Bullo, and Jie Chen. Learning robust data-based lqg controllers from noisy data. IEEE Transactions on Automatic Control , 69(12):8526–8538, 2024. [4] Kedi Xie, Martin Guay, Maobin Lu, Shimin Wang, and Fang Deng. Optimal output feedback learning control for continuous-time linear quadratic regulation. IEEE Transactions on Automatic Control , 70(6):4124–4131, 2025. [5] Jingliang Duan, Jie Li, Xuyang Chen, Kai Zhao, Shengbo Eben Li, and Lin Zhao. Optimization landscape of policy gradient methods for discrete-time static output feedback. IEEE Transactions on Cybernetics , 54(6):3588–3601, 2024. [6] Jingliang Duan, Wenhan Cao, Yang Zheng, and Lin Zhao. On the optimization landscape of dynamic output feedback linear quadratic control. IEEE Transactions on Automatic Control , 69(2):920–935, 2024. [7] Kedi Xie, Martin Guay, Shimin Wang, Fang Deng, and Maobin Lu. Optimal output feedback learning control for discrete-time linear quadratic regulation. arXiv : 2503.06226, 2025. [8] Frank L. Lewis and Kyriakos G. Vamvoudakis. Reinforcement learning for partially observable dy-namic processes: Adaptive dynamic programming using measured output data. IEEE Transactions on Systems, Man, and Cybernetics, Part B (Cybernetics) , 41(1):14–25, 2011. [9] Syed Ali Asad Rizvi and Zongli Lin. A note on state parameterizations in output feedback reinforce-ment learning control of linear systems. IEEE Transactions on Automatic Control , 68(10):6200– 6207, 2023. [10] Jun Xie, Yuan-Hua Ni, Yiqin Yang, and Bo Xu. An efficient data-driven framework for linear quadratic output feedback control. arXiv : 2508.20748, 2025. [11] Jan C. Willems, Paolo Rapisarda, Ivan Markovsky, and Bart L.M. De Moor. A note on persistency of excitation. Systems & Control Letters , 54(4):325–329, 2005. [12] Claudio De Persis and Pietro Tesi. Formulas for data-driven control: Stabilization, optimality, and robustness. IEEE Transactions on Automatic Control , 65(3):909–924, 2020. 24 [13] Syed Ali Asad Rizvi and Zongli Lin. Reinforcement learning-based linear quadratic regulation of continuous-time systems using dynamic output feedback. IEEE Transactions on Cybernetics ,50(11):4670–4679, 2020. [14] Yu Jiang and Zhong-Ping Jiang. Computational adaptive optimal control for continuous-time linear systems with completely unknown dynamics. Automatica , 48(10):2699–2704, 2012. [15] Victor G. Lopez and Matthias A. M¨ uller. On a continuous-time version of willems’ lemma. In 2022 IEEE 61st Conference on Decision and Control (CDC) , pages 2759–2764, 2022. [16] Victor G. Lopez and Matthias A. M¨ uller. An efficient off-policy reinforcement learning algorithm for the continuous-time lqr problem. In 2023 62nd IEEE Conference on Decision and Control (CDC) ,pages 13–19, 2023. [17] Hamidreza Modares, Frank L. Lewis, and Zhong-Ping Jiang. Optimal output-feedback control of unknown continuous-time linear systems using off-policy reinforcement learning. IEEE Transactions on Cybernetics , 46(11):2401–2410, 2016. [18] Romain Postoyan, Lucian Bu¸ soniu, Dragan Neˇ si´ c, and Jamal Daafouz. Stability analysis of discrete-time infinite-horizon optimal control with discounted cost. IEEE Transactions on Automatic Con-trol , 62(6):2736–2749, 2017. [19] Liquan Lin, Haoyan Lin, and Jie Huang. A new approach to the data-driven output-based lqr problem of continuous-time linear systems. arXiv : 2509.18819, 2025. [20] David L. Kleinman. On an iterative technique for riccati equation computations. IEEE Transactions on Automatic Control , 13(1):114–115, 1968. [21] Paolo Rapisarda, M. Kanat C ¸ amlibel, and Henk J. van Waarde. A “fundamental lemma” for continuous-time systems, with applications to data-driven simulation. Systems & Control Letters ,179:105603, 2023. [22] Paolo Rapisarda, Henk J. van Waarde, and M. Kanat C ¸ amlibel. Orthogonal polynomial bases for data-driven analysis and control of continuous-time systems. IEEE Transactions on Automatic Control , 69(7):4307–4319, 2024. [23] Victor G. Lopez, Matthias A. M¨ uller, and Paolo Rapisarda. An input-output continuous-time version of willems’ lemma. IEEE Control Systems Letters , 8:916–921, 2024. [24] Victor G. Lopez, Mohammad Alsalti, and Matthias A. M¨ uller. Efficient off-policy q-learning for data-based discrete-time lqr problems. IEEE Transactions on Automatic Control , 68(5):2922–2933, 2023. [25] Tao Bian and Zhong-Ping Jiang. Value iteration and adaptive dynamic programming for data-driven adaptive optimal control design. Automatica , 71:348–360, 2016. [26] Jeremy Coulson, John Lygeros, and Florian D¨ orfler. Data-enabled predictive control: In the shallows of the deepc. In 2019 18th European Control Conference (ECC) , pages 307–312, 2019. [27] Paolo Rapisarda, M. Kanat C ¸ amlibel, and Henk J. van Waarde. A persistency of excitation condition for continuous-time systems. IEEE Control Systems Letters , 7:589–594, 2023. [28] He Cai, Frank L. Lewis, Guoqiang Hu, and Jie Huang. The adaptive distributed observer approach to the cooperative output regulation of linear multi-agent systems. Automatica , 75:299–305, 2017. [29] Victor G. Lopez and Matthias A. M¨ uller. Data-based control of continuous-time linear systems with performance specifications. arXiv : 2403.00424, 2025. [30] Feiran Zhao, Florian D¨ orfler, Alessandro Chiuso, and Keyou You. Data-enabled policy optimization for direct adaptive learning of the lqr. IEEE Transactions on Automatic Control , pages 1–16, 2025. 25

@@ -6,73 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-03-22
-- 运行时间：2026-03-22 19:36:34 UTC
+- 最新运行日期：2026-03-23
+- 运行时间：2026-03-23 19:54:33 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 17 篇论文聚焦具身智能与控制策略，深度解析 KoopmanFlow 与 R3DP 等前沿成果。
-重点关注通过 Koopman 结构偏差实现的生成式控制，以及具备实时 3D 感知能力的具身操作新范式。
-建议优先研读高分论文，探索物理约束下的视觉语言动作模型（VLA）优化与复杂灵巧操作。
-- 详情：[/202603/22/README](/202603/22/README)
+今日精选 17 篇论文，聚焦机器人鲁棒操作、软体机器人避障及 VLA 模型在复杂接触任务中的性能突破。
+重点推荐 ManiDreams 开源库利用直觉物理提升操作鲁棒性，以及软体机器人实现全身避障的创新闭式解控制器。
+建议开发者关注 ForceVLA2 等力位混合控制方案，探索如何通过速度前馈提升视觉语言模型的动态追踪能力。
+- 详情：[/202603/23/README](/202603/23/README)
 
 ### 精读区论文标签
-1. [KoopmanFlow: Spectrally Decoupled Generative Control Policy via Koopman Structural Bias](/202603/22/2603.13781v1-koopmanflow-spectrally-decoupled-generative-control-policy-via-koopman-structural-bias)  
+1. [ManiDreams: An Open-Source Library for Robust Object Manipulation via Uncertainty-aware Task-specific Intuitive Physics](/202603/23/2603.18336v1-manidreams-an-open-source-library-for-robust-object-manipulation-via-uncertainty-aware-task-specific-intuitive-physics)  
+   标签：评分：9.0/10、query:q6
+   evidence：基于物理模型的机器人操作不确定性感知规划
+2. [A Closed-Form CLF-CBF Controller for Whole-Body Continuum Soft Robot Collision Avoidance](/202603/23/2603.19424v1-a-closed-form-clf-cbf-controller-for-whole-body-continuum-soft-robot-collision-avoidance)  
    标签：评分：9.0/10、query:profile-1
-   evidence：用于机器人操作和实时收缩地平线控制的生成式控制策略
-2. [R3DP: Real-Time 3D-Aware Policy for Embodied Manipulation](/202603/22/2603.14498v1-r3dp-real-time-3d-aware-policy-for-embodied-manipulation)  
-   标签：评分：9.0/10、query:q8
-   evidence：操作任务的实时3D感知策略
-3. [Architecting Autonomy for Safe Microgravity Free-Flyer Inspection](/202603/22/2603.14524v1-architecting-autonomy-for-safe-microgravity-free-flyer-inspection)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：微重力自由飞行器巡检的安全运动规划
-4. [Coverage First Next Best View for Inspection of Cluttered Pipe Networks Using Mobile Manipulators](/202603/22/2603.16471v1-coverage-first-next-best-view-for-inspection-of-cluttered-pipe-networks-using-mobile-manipulators)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：移动操作机的避障与覆盖路径规划
-5. [Generative Control as Optimization: Time Unconditional Flow Matching for Adaptive and Robust Robotic Control](/202603/22/2603.17834v1-generative-control-as-optimization-time-unconditional-flow-matching-for-adaptive-and-robust-robotic-control)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：将动作综合作为自适应机器人控制的迭代优化
-6. [REFINE-DP: Diffusion Policy Fine-tuning for Humanoid Loco-manipulation via Reinforcement Learning](/202603/22/2603.13707v1-refine-dp-diffusion-policy-fine-tuning-for-humanoid-loco-manipulation-via-reinforcement-learning)  
+   evidence：无需在线优化的机械臂实时三维避障
+3. [Data-Driven Physics Embedded Dynamics with Predictive Control and Reinforcement Learning for Quadrupeds](/202603/23/2603.14333v1-data-driven-physics-embedded-dynamics-with-predictive-control-and-reinforcement-learning-for-quadrupeds)  
+   标签：评分：8.0/10、query:q2
+   evidence：四足机器人的预测控制与动力学学习
+4. [Transformers As Generalizable Optimal Controllers](/202603/23/2603.14910v1-transformers-as-generalizable-optimal-controllers)  
+   标签：评分：8.0/10、query:q2
+   evidence：最优状态反馈律与LQR生成的轨迹
+5. [FASTER: Rethinking Real-Time Flow VLAs](/202603/23/2603.19199v1-faster-rethinking-real-time-flow-vlas)  
+   标签：评分：8.0/10、query:q5
+   evidence：动作策略中的实时执行与反应时间
+6. [Speculative Policy Orchestration: A Latency-Resilient Framework for Cloud-Robotic Manipulation](/202603/23/2603.19418v1-speculative-policy-orchestration-a-latency-resilient-framework-for-cloud-robotic-manipulation)  
    标签：评分：8.0/10、query:profile-1
-   evidence：人形机器人移动操作运动规划的分层框架
+   evidence：实时云机器人操作与运动学路点流传输
 
 ### 速读区论文标签
-1. [Online Model Predictive Control for Trajectory and Beamforming Optimization in UAV-Enabled URLLC](/202603/22/2603.13731v1-online-model-predictive-control-for-trajectory-and-beamforming-optimization-in-uav-enabled-urllc)  
+1. [Context-Aware Adaptive Shared Control for Magnetically-Driven Bimanual Dexterous Micromanipulation](/202603/23/2603.14388v1-context-aware-adaptive-shared-control-for-magnetically-driven-bimanual-dexterous-micromanipulation)  
+   标签：评分：8.0/10、query:q6
+   evidence：双臂机器人操作器的协调控制
+2. [ForceVLA2: Unleashing Hybrid Force-Position Control with Force Awareness for Contact-Rich Manipulation](/202603/23/2603.15169v1-forcevla2-unleashing-hybrid-force-position-control-with-force-awareness-for-contact-rich-manipulation)  
+   标签：评分：8.0/10、query:q6
+   evidence：针对接触密集型操作的力-位混合控制
+3. [Enabling Dynamic Tracking in Vision-Language-Action Models via Time-Discrete and Time-Continuous Velocity Feedforward](/202603/23/2603.16218v1-enabling-dynamic-tracking-in-vision-language-action-models-via-time-discrete-and-time-continuous-velocity-feedforward)  
+   标签：评分：8.0/10、query:q8
+   evidence：用于机器人操作跟踪的实时速度前馈
+4. [Featurized Occupation Measures for Structured Global Search in Numerical Optimal Control](/202603/23/2603.16231v1-featurized-occupation-measures-for-structured-global-search-in-numerical-optimal-control)  
    标签：评分：8.0/10、query:q3
-   evidence：用于轨迹优化的在线模型预测控制
-2. [LDHP: Library-Driven Hierarchical Planning for Non-prehensile Dexterous Manipulation](/202603/22/2603.13844v1-ldhp-library-driven-hierarchical-planning-for-non-prehensile-dexterous-manipulation)  
-   标签：评分：8.0/10、query:q4
-   evidence：带有碰撞检测的灵巧操作分层规划
-3. [SmoothVLA: Aligning Vision-Language-Action Models with Physical Constraints via Intrinsic Smoothness Optimization](/202603/22/2603.13925v1-smoothvla-aligning-vision-language-action-models-with-physical-constraints-via-intrinsic-smoothness-optimization)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：优化机器人操作的任务性能与运动平滑度
-4. [Safety in Admittance Control using Reference Trajectory Shaping](/202603/22/2603.13959v1-safety-in-admittance-control-using-reference-trajectory-shaping)  
-   标签：评分：8.0/10、query:q5
-   evidence：用于人机协作安全的实时轨迹整形
-5. [REFINE-DP: Diffusion Policy Fine-tuning for Humanoid Loco-manipulation via Reinforcement Learning](/202603/22/2603.13707v2-refine-dp-diffusion-policy-fine-tuning-for-humanoid-loco-manipulation-via-reinforcement-learning)  
+   evidence：在最优控制中统一了轨迹搜索和全局HJB认证
+5. [A Real-Time Neuro-Symbolic Ethical Governor for Safe Decision Control in Autonomous Robotic Manipulation](/202603/23/2603.14221v1-a-real-time-neuro-symbolic-ethical-governor-for-safe-decision-control-in-autonomous-robotic-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：类人机器人移动操作与运动规划
-6. [GraspADMM: Improving Dexterous Grasp Synthesis via ADMM Optimization](/202603/22/2603.13832v1-graspadmm-improving-dexterous-grasp-synthesis-via-admm-optimization)  
+   evidence：自主机器人操作的实时决策控制
+6. [Load-Aware Locomotion Control for Humanoid Robots in Industrial Transportation Tasks](/202603/23/2603.14308v1-load-aware-locomotion-control-for-humanoid-robots-in-industrial-transportation-tasks)  
    标签：评分：7.0/10、query:q6
-   evidence：用于灵巧手抓取合成的ADMM优化
-7. [Path-conditioned Reinforcement Learning-based Local Planning for Long-Range Navigation](/202603/22/2603.13888v1-path-conditioned-reinforcement-learning-based-local-planning-for-long-range-navigation)  
+   evidence：类人机器人的移动-操作架构
+7. [VIP-Loco: A Visually Guided Infinite Horizon Planning Framework for Legged Locomotion](/202603/23/2603.14345v1-vip-loco-a-visually-guided-infinite-horizon-planning-framework-for-legged-locomotion)  
    标签：评分：7.0/10、query:q4
-   evidence：基于路径信息调节的强化学习长程导航局部规划
-8. [Stiffness Copilot: An Impedance Policy for Contact-Rich Teleoperation](/202603/22/2603.14068v1-stiffness-copilot-an-impedance-policy-for-contact-rich-teleoperation)  
-   标签：评分：7.0/10、query:q6
-   evidence：针对接触密集型操作任务的阻抗策略
-9. [Building Explicit World Model for Zero-Shot Open-World Object Manipulation](/202603/22/2603.13825v1-building-explicit-world-model-for-zero-shot-open-world-object-manipulation)  
+   evidence：基于MPC的足式机器人动态环境运动规划
+8. [Bridging Scene Generation and Planning: Driving with World Model via Unifying Vision and Motion Representation](/202603/23/2603.14948v1-bridging-scene-generation-and-planning-driving-with-world-model-via-unifying-vision-and-motion-representation)  
+   标签：评分：7.0/10、query:q5
+   evidence：通过统一视觉与运动表示实现实时规划
+9. [Data-Enabled Policy and Value Iteration for Continuous-Time Linear Quadratic Output Feedback Control](/202603/23/2603.14386v1-data-enabled-policy-and-value-iteration-for-continuous-time-linear-quadratic-output-feedback-control)  
+   标签：评分：6.0/10、query:q2
+   evidence：数据驱动的线性二次输出反馈控制
+10. [Progress-Based Fault Detection and Health-Aware Task Allocation for Heterogeneous Multi-Robot Systems](/202603/23/2603.14622v1-progress-based-fault-detection-and-health-aware-task-allocation-for-heterogeneous-multi-robot-systems)  
+   标签：评分：6.0/10、query:q5
+   evidence：通过二次规划实现的实时故障检测与任务分配
+11. [AnoleVLA: Lightweight Vision-Language-Action Model with Deep State Space Models for Mobile Manipulation](/202603/23/2603.15046v1-anolevla-lightweight-vision-language-action-model-with-deep-state-space-models-for-mobile-manipulation)  
    标签：评分：6.0/10、query:q6
-   evidence：开放世界物体操作的世界模型
-10. [WestWorld: A Knowledge-Encoded Scalable Trajectory World Model for Diverse Robotic Systems](/202603/22/2603.14392v1-westworld-a-knowledge-encoded-scalable-trajectory-world-model-for-diverse-robotic-systems)  
-   标签：评分：6.0/10、query:q4
-   evidence：用于机器人规划的轨迹世界模型
-11. [Exploring the dynamic properties and motion reproducibility of a small upper-body humanoid robot with 13-DOF pneumatic actuation for data-driven control](/202603/22/2603.14787v1-exploring-the-dynamic-properties-and-motion-reproducibility-of-a-small-upper-body-humanoid-robot-with-13-dof-pneumatic-actuation-for-data-driven-control)  
-   标签：评分：6.0/10、query:q6
-   evidence：4自由度机械臂子系统的数据驱动控制
+   evidence：用于移动操作的轻量级VLA模型
 
 
 <div class="dpr-home-promo-card">

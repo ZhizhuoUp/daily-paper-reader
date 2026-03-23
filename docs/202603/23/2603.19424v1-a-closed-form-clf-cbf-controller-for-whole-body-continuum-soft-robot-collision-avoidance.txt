@@ -1,0 +1,756 @@
+Title: A Closed-Form CLF-CBF Controller for Whole-Body Continuum Soft Robot Collision Avoidance
+
+URL Source: https://arxiv.org/pdf/2603.19424v1
+
+Published Time: Mon, 23 Mar 2026 00:08:31 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# A Closed-Form CLF-CBF Controller for Whole-Body Continuum Soft Robot Collision Avoidance 
+
+Kiwan Wong 1, Maximillian St¨ olzle 1, Wei Xiao 2,1, Daniela Rus 1
+
+Abstract — Safe operation is critical for deploying robots in human-centered 3D environments. Soft continuum manip-ulators offer passive safety through compliance but require active control to ensure reliable collision avoidance. Existing methods, such as sampling-based planning, are computationally expensive and lack formal safety guarantees, limiting real-time whole-body collision avoidance. This paper presents a closed-form Control Lyapunov Function–Control Barrier Function (CLF–CBF) controller that enforces real-time, 3D obstacle avoidance without online optimization. By analytically em-bedding safety constraints into the control input, the method guarantees stability and safety under the stated modeling as-sumptions, improving optimality guarantees, avoiding feasibil-ity issues commonly encountered in online optimization-based approaches, and being up to 10x faster than common online optimization-based approaches for solving the CLF-CBF QP and up to 100x faster than traditional sampling-based planning approaches. Simulation and hardware experiments on a tendon-driven soft manipulator demonstrate accurate 3D trajectory tracking and robust avoidance in cluttered environments. The proposed framework enables scalable, provably safe control for soft robots operating in dynamic, safety-critical settings. 
+
+I. I NTRODUCTION 
+
+Deploying robots in human-centered environments, such as manufacturing, healthcare, and assistive applications [1], demands not only demonstrable safety [2] but also user trust in the robot’s ability to operate predictably and avoid hazardous collisions. Soft continuum manipulators offer in-herent safety advantages by embedding compliance directly into their physical structure [3]. Nevertheless, as the field advances toward higher precision, larger payloads, and more dynamic tasks, modern soft robot designs increasingly incor-porate greater stiffness [4], stronger actuation [5], and hybrid rigid–soft architectures [6]. Under these conditions, passive compliance alone is insufficient: soft manipulators can still produce significant impact forces, suffer structural damage from excessive deformation, or experience instability during environmental contact. Consequently, formal, proactive ob-stacle avoidance mechanisms are essential to ensure reliable and safe operation in safety-critical scenarios. Although the distinctive characteristics and complex de-formations of continuum soft robots necessitate special-ized techniques, the literature on obstacle avoidance for 3d continuum soft robots remains limited, largely focusing on path- or trajectory-planning formulations tackled with sampling-based planners [7], [8], [9], [10], [11], such as RRT* [12], and Model Predictive Control (MPC)-based motion planning [13], [14]. Related work on general path and motion planning for continuum soft robots is likewise sparse and tends to emphasize search-based [15], [16] and sampling-based methods [17]. However, search-based plan-ners typically require discretizing the task or configuration                      
+
+> 1Computer Science and Artificial Intelligence Laboratory, Massachusetts Institute of Technology, Cambridge, MA 02139, USA {kiwan588, mstolzle, weixy, rus }@mit.edu .2Robotics Engineering Depart-ment, Worcester Polytechnic Institute, Worcester, MA 01609, USA
+> wxiao3@wpi.edu .The work by K. Wong was supported by The Hong Kong Jockey Club Scholarships. We are grateful to the Singapore–MIT Alliance for Research and Technology (SMART) M3S for support of this work.
+
+Fig. 1: Experimental setup of the tendon-driven soft robotic manipulator used to validate the proposed closed-form CLF–CBF controller. The two-segment robot is mounted to a ceiling fixture and operates in an environment with spherical obstacles. Reflective markers are attached to each segment for real-time motion capture and feedback control during safe trajectory tracking experiments. space—sacrificing precision—and running sampling-based planners online can be computationally expensive. Moreover, because these methods generally do not produce actuation setpoints, they often necessitate complex cascaded architec-tures with high-rate inner-loop controllers. Classical reactive approaches like potential field methods, have also been explored in other robotic settings; however, they typically lack formal safety guarantees. A promising alternative direction is to enforce safety on-line using Control Barrier Function (CBF)-based constraints. This typically requires solving a Quadratic Program (QP) in real time, either formulated as a CBF safety filter on a nominal controller [18], [19], [20] or by jointly optimizing task progress through Control Lyapunov Function (CLF)-based objectives in a CLF-CBF framework [21]. However, the continuous deformability of soft robots poses inherent challenges to such online optimization: accurately modeling their kinematics and dynamics often demands many degrees of freedom (e.g., many segments in PCC/PCS models) [22], [23], and faithful collision detection via geometric primitives (e.g., spheres or convex polygons) requires fine-grained discretization, yielding a large number of safety constraints. 
+
+> arXiv:2603.19424v1 [cs.RO] 19 Mar 2026
+
+Combined, these factors render solving the optimization problem online challenging, limit attainable control frequen-cies or force model or constraint simplifications, thereby weakening formal safety guarantees. Moreover, optimization-based approaches can suffer from numerical instability, suboptimality when tight runtime budgets preclude global search, and infeasibility when multiple constraints inter-act—a common scenario in whole-body avoidance. As a result, current methods either lack real-time performance, fail to scale to high-dimensional soft bodies, or cannot guarantee formal whole-body safety. In this paper, we address these limitations by introducing a closed-form CLF-CBF controller for whole-body obstacle avoidance of soft continuum robots. Unlike traditional QP-based formulations, the proposed control law directly embeds the CBF constraints into the control input through a closed-form expression, avoiding online optimization entirely. This enables real-time safety enforcement even with a large num-ber of safety constraints, making it particularly suitable for high-dimensional soft robots operating in cluttered environ-ments. Furthermore, the closed-form structure improves nu-merical stability and eliminates feasibility issues commonly encountered in optimization-based approaches. The main contributions of this work are:  
+
+> •
+
+A closed-form CLF–CBF controller for high-dimensional continuum soft robots that ensures real-time whole-body obstacle avoidance under dense collision constraints, without requiring online QP solving, addressing a regime where existing explicit CBF methods for rigid or low-dimensional systems do not readily apply.  
+
+> •
+
+Extensive simulation and real-world hardware experi-ments results demonstrating real-time performance, for-mal safety guarantees, and accurate task-space tracking in cluttered environments.  
+
+> •
+
+Comparison of the proposed closed-form CLF-CBF controller against an obstacle avoidance baseline strat-egy consisting of an RRT* planner and a kinematic, obstacle-unaware low-level controller on a setpoint reg-ulation task in simulation. The code is publicly available on GitHub. 1
+
+II. B ACKGROUND 
+
+This section introduces the background necessary for introducing the methodology. 
+
+A. Kinematics of a Tendon-Driven Soft Robotic Arm 
+
+We model the kinematics of a soft robot moving in 3D space via the Piecewise Constant Strain (PCS) [24] formulation, which approximates the continuous backbone by discretizing it into N segments, where each segment exhibits spatially constant strain ξi
+
+ξi = [ κx,i κy,i κz,i σx,i σy,i σz,i ]⊤ ∈ R6, (1) where κy,i , κ z,i represent the bending strains, κx,i is the torsional strain around the backbone axis, σx,i denotes the axial/elongation strain, and σy,i , σ z,k the shear strains. The overall configuration vector q ∈ Rnq that describes the deviation from the reference strain ¯ξ ∈ Rnq is defined as 
+
+q = ξ⊤ 
+
+> 1
+
+· · · ξ⊤
+
+> N
+
+⊤ − ¯ξ ∈ Rnq , (2) where nq = 6 N in case all strains are active. The corre-sponding positional forward kinematics map p = FK( q, s ) : 
+
+Rnq × (0 , L ] → R3 returns the position p at the backbone 
+
+> 1https://github.com/KWWnoob/closed-form-clf-cbf-soft-robot
+
+abscissa s ∈ (0 , L ], where L is the nominal/reference length of the soft robot. Next, we introduce a model that relates the actuation (i.e., the tendons) to the soft robot strains/configurations. 
+
+a) Tendon Length Model: Consider m tendons placed on the cross-section at a constant radius R, each at a polar angle ϕj ∈ [−π, π ) in the local cross-sectional y-z plane. Then, the tendon distance from the backbone in the local frame takes the form dt,j = [0 , cos( ϕj )Rj , sin( ϕj )Rj ]⊤.Let b· : R6 → se (3) denote the SE(3) hat/wedge operator and ˜· : R3 → so (3) the tilde operator returning the skew matrix [25]. Then, the corresponding tangent vector tt,j,i (qi)
+
+and the local actuation mapping Θt,j,i (qi) of the jth tendon in the ith segment can be constructed as [25] 
+
+tt,j,i (qi) = [ bξi dt,j ]3
+
+∥ bξi dt,j ∥2
+
+, Θt,j,i (qi) = 
+
+ ˜dt,j tt,j,i (qi)
+
+tt,j,i (qi)
+
+
+
+∈ R6.
+
+(3) Referring to the length of the ith segment as Li, the tendon length in that segment can be defined uniquely (neglecting tendon slack) as [26] 
+
+ℓj,i (qi) = 
+
+Z Li
+
+> 0
+
+Θ⊤
+
+> t,j,i
+
+(qi) ξi ds = Θ⊤
+
+> t,j,i
+
+(qi) ξi Li ∈ R. (4) Referring to the full length of the jth tendon as ℓj =P 
+
+> i
+
+ℓj,i ∈ R, stacking the tendon lengths across all segments yields 
+
+ℓ(q) = ℓ1(q) . . . ℓ m(q)⊤ ∈ Rm,
+
+and differentiating w.r.t. q provides the tendon-actuation Jacobian Jℓ(q) = ∂ℓ(q) 
+
+> ∂q
+
+∈ Rm×nq that maps generalized velocities to tendon velocities as ˙ℓ = Jℓ(q) ˙ q, whose elements are given by [26] 
+
+Jℓ,j,i (qi) = 
+
+Z Li
+
+> 0
+
+Θ⊤
+
+> t,j,i
+
+(qi) d s = Θ⊤
+
+> t,j,i
+
+(qi) Li. (5) Please note that the actuation matrix A ∈ Rnq×m that maps tendon forces to generalized torques is the transpose of the tendon-actuation Jacobian, i.e., A(q) = J⊤ 
+
+> ℓ
+
+(q) [26]. 
+
+b) Differential Actuation Kinematics: Let the control input be the tendon length rates u := ˙ℓ ∈ Rm. Defining the system state as x := q with n := nq2 while neglecting the inertial dynamics, we can describe the evolution of the configuration using the differential actuation kinematics 
+
+˙q = J+ 
+
+> ℓ
+
+(q) ˙ℓ = A⊤+
+
+(q)
+
+| {z }
+
+> g(x)
+
+u. (6) The control-affine standard form of the ODE is then given by 
+
+˙x = f (x) + g(x)u with f (x) = 0n, and g : Rm → Rm×d
+
+is locally Lipschitz. 
+
+B. Control Barrier Functions and Control Lyapunov Func-tions 
+
+Given a barrier function b(x) : Rn → R and a Lyapunov function V (x) : Rn → R, both continuous in the system state x ∈ Rn, one can define CBF and CLF as follows [27] 
+
+Definition 1 (Control Barrier Function [27], [28]): Let C =
+
+{x ∈ Rn : b(x) ≥ 0} be the safe set, then the continuously differentiable function b : Rn → R is a CBF for system (6) if there exists a class K function α such that 
+
+˙b(x) + α(b(x)) ≥ 0, (7) for all x ∈ C.
+
+Definition 2 (Control Lyapunov Function [27]): A continu-ously differentiable function V : Rn → R is a globally and     
+
+> 2Please note that we will in the following use xand qinterchangeably for referring to the soft robot state.
+
+exponentially stabilizing CLF for system (6) if there exist constants c1 > 0, c2 > 0, and c3 > 0 such that 
+
+c1∥x∥2 ≤ V (x) ≤ c2∥x∥2, (8) 
+
+inf 
+
+> u∈U
+
+[Lf V (x) + Lg V (x)u + c3V (x)] ≤ 0, (9) for all x ∈ Rn.The CBF (1) and CLF (2) can be integrated into a convex QP optimization problem: 
+
+min  
+
+> u,δ
+
+∥u∥22 + pδ 2,
+
+s.t. ˙V (x, u) + c3V (x) ≤ δ, 
+
+˙b(x, u) + α(b(x)) ≥ 0.
+
+(10) To keep the QP feasible when several CBFs and CLFs contradict each other, we usually add a non-negative slack 
+
+δ ≥ 0 with penalty p > 0. Typically, CLFs capture performance objectives and CBFs capture safety and other constraints; assigning slack to lower priority terms let the controller trade performance for safety. III. C LOSED -F ORM SOLUTION FOR CLF-CBF CONTROLLER 
+
+This section presents a closed-form formulation of the CLF–CBF controller for whole-body soft robot collision avoidance via dense spatial discretizations, while relying on kinematic model rather than full continuum dynamics [22]. By explicitly solving the underlying QP, we obtain an closed-form control law that guarantees both safety and convergence according to the task objective. 
+
+A. Problem Formulation 1) Control Barrier Functions: We consider a soft robotic arm operating within a three-dimensional workspace W ⊂ 
+
+R3, populated by Nobs spherical obstacles Wobs =
+
+{O 1, . . . , ONobs }, which we assume to be known, static, centered at inertial frame position pobs ,j and exhibiting a radius of Robs ,j . Although other obstacle geometries (e.g., convex polygons [21]) can be considered in future work, we focus on spheres for clarity of exposition. To provide full-body collision avoidance, we approxi-mate the robotic arm the union of a discrete chain of 
+
+Nres spheres R = ( S1, . . . , S Nres ), where each sphere Si
+
+with radius Rres ,i is centered at inertial frame position 
+
+pres ,i = FK( q, s i) ∈ R3 corresponding to a uniformly spaced backbone abscissa si along the robot’s backbone curve and captures the local body geometry at that location. Thus, the overall robot body is approximated as SNres  
+
+> i=1
+
+Si.We can then detect collisions between the Nres spheres representing the robot and the Nobs obstacles in the envi-ronment. Let the configuration-dependent distance function 
+
+di,j (q) : Rnq → R between the ith robot sphere Si and the 
+
+jth obstacle Oj be defined as 
+
+di,j (q) = ∥pobs ,j − FK( q, s i)∥2 − Robs ,j − Rres ,i . (11) Then, we require all pairwise distances to be greater than a certain safety margin dsafe , namely, 
+
+bi,j (q) := di,j (q) − dsafe ≥ 0, ∀ i ∈ NNres , j ∈ NNobs . (12) 
+
+2) Control Lyapunov Function: As an example, we con-sider an CLF for positional 3 operational space setpoint regulation [21], that aims to drive the robot tip position 
+
+ptip (q) = FK( q, L ) ∈ R3 towards a desired Cartesian           
+
+> 3Please note that this could be easily extended to (tip) orientation regulation [29].
+
+position pd 
+
+> tip
+
+∈ R3. The corresponding CLF function is defined as 
+
+V (q) = ∥pdtip − FK( q, L )∥22. (13) 
+
+3) Quadratic Program: Summarizing the above-specified safety barriers and task objectives, the QP problem can be written as: min  
+
+> u, δ
+
+∥u∥22 + p δ 2,
+
+s.t. ˙V (x, u) + c3V (x) ≤ δ, 
+
+˙bi,j (x, u) + α(bi,j (x)) ≥ 0, ∀i ∈ NNres , j ∈ NNobs ,
+
+(14) where the number of constraints without further heuristic approximations is given by the product Nres Nobs ; the higher the collision-avoidance resolution, the O(Nobs ) more con-straints the QP must consider. 
+
+B. Aggregation of CBFs 
+
+To handle multiple safety constraints efficiently in aclosed-form expression, we first aggregate all pairwise dis-tance functions bi,j (x) into a single smooth barrier function using the Log-Sum-Exp (LSE) approximation [30]. Intu-itively, we are now considering the CBF as the characteristic distance describing the minimum distance between the soft robot and all obstacles in the environment 
+
+bLSE (x) = − 1
+
+κ log 
+
+
+
+> Nres
+
+X
+
+> i=1
+> Nobs
+
+X
+
+> j=1
+
+exp[ −κ b i,j (x)] 
+
+ . (15) The parameter κ > 0 trades off smoothness and responsive-ness: larger κ emphasizes the most critical obstacle, while smaller κ yields smoother yet more conservative avoidance. 
+
+Lemma 1 (LSE barrier implies all pairwise barriers): Let 
+
+{bi,j (x)}i∈NNres ;j∈NNobs be real-valued functions and define the Log-Sum-Exp aggregation 
+
+bLSE (x) := − 1
+
+κ log 
+
+
+
+> Nres
+
+X
+
+> i=1
+> nobs
+
+X
+
+> j=1
+
+exp[ −κ b i,j (x)] 
+
+ , κ > 0.
+
+If bLSE (x) ≥ 0, then bi,j (x) ≥ 0 for all i, j .
+
+Proof. Let b(x) := min i,j bi,j (x). Then X
+
+> i,j
+
+exp[ −κ b i,j (x)] ≥ exp[ −κ b (x)] .
+
+Applying − 1 
+
+> κ
+
+log( ·), which is order-reversing, yields 
+
+bLSE (x) = − 1
+
+κ log X
+
+> i,j
+
+e−κb i,j (x) ≤ − 1
+
+κ log e−κb (x) = b(x).
+
+(16) 
+
+Hence b(x) ≥ bLSE (x) ≥ 0, which implies bi,j (x) ≥ 0 for all i ∈ NNres ; j ∈ NNobs .
+
+C. Closed-form Solution Derivation 
+
+The optimization problem in (14) provides a general and flexible framework for combining stability and safety objectives. However, solving the QP at every control step can be computationally expensive and challenging when dealing with high-dimensional dynamics and many nonlinear safety constraints. To address this, we derive in closed form the optimal control input u∗ that minimizes the objective while satisfying both CLF and CBF constraints. Using bLSE as the unified safety constraint, the CLF–CBF QP in (14) can be further simplified to a two-constraint form with a relaxed CLF constraint :
+
+min 
+
+u, δ ∥u∥22 + wclf δ2,
+
+s.t. ˙V (x, u) + c3V (x) ≤ δ, 
+
+˙bLSE (x, u) + α bLSE (x) ≥ 0,δ ≥ 0.
+
+(17) Let a⊤
+
+V u + bV ≤ δ and a⊤
+
+h u + bh ≥ 0 denote the CLF and CBF constraints, respectively, where 
+
+aV = Lg V (x)⊤, bV = c3V (x),
+
+ah = Lg bLSE (x)⊤, bh = α bLSE (x).
+
+a) Lagrangian and KKT conditions [31]: Introduce multipliers λV , λ h, λ δ ≥ 0 for the CLF, CBF, and slack constraints, respectively. The Lagrangian is 
+
+L(u, δ, λ V , λ h, λ δ ) = ∥u∥22 + wclf δ2 + λV (a⊤
+
+V u + bV − δ)+ λh(−a⊤
+
+h u − bh) + λδ (−δ). (18) Taking derivatives gives the KKT stationarity conditions: 
+
+∂uL = 0 ⇒ 2u∗ + λV aV − λhah = 0 ,∂δ L = 0 ⇒ 2wclf δ∗ − λV − λδ = 0 . (19) Complementary slackness yields 
+
+λV (a⊤ 
+
+> V
+
+u∗ + bV − δ∗) = 0 , λ h(−a⊤ 
+
+> h
+
+u∗ − bh) = 0 , λ δ δ∗ = 0 .
+
+(20) 
+
+b) Role of the slack variable: From the second station-arity condition in Eq. (19), and third condition in Eq. (20): 
+
+• If δ∗ > 0, then λδ = 0 and λV = 2 wclf δ∗.
+
+• If δ∗ = 0 , then λδ = λV .Thus δ∗ is absorbed into λV , i.e., it only modulates the magnitude of the CLF multiplier and does not directly change the control direction. 
+
+c) Stationarity in u.: From ∂uL = 0 :
+
+u∗ = − 12
+
+ λV aV − λhah
+
+.
+
+This leads directly to the piecewise closed-form structure depending on which constraints are active: 
+
+u∗ =
+
+
+
+− 12 (λV aV − λhah), λV , λ h > 0,
+
+− 12 λV aV , λV > 0, λ h = 0 ,
+
++ 12 λhah, λh > 0, λ V = 0 ,
+
+0, λV , λ h = 0 .
+
+(21) where λV = 2 wclf δ∗ and λh ≥ 0 are determined by the complementary slackness conditions. 
+
+d) Solving for the multipliers: When both constraints are active, substituting (21) into the active constraints yields the linear system G11 + 1 /w clf G12 
+
+G21 G22 
+
+  λV
+
+λh
+
+
+
+= −2
+
+bV
+
+bh
+
+
+
+, (22) with 
+
+G11 = a⊤
+
+V aV , G22 = a⊤
+
+h ah, G12 = G21 = a⊤
+
+V ah.
+
+The additional term 1/w clf arises from eliminating the slack variable through λV = 2 wclf δ∗. Let ∆ = ( G11 +1/w clf )G22 − G212 . If ∆ > 0, the closed-form solution is 
+
+λV = −2 G22 bV − G12 bh
+
+
+
+∆ ,λh = −2 (G11 + 1 /w clf )bh − G12 bV
+
+
+
+∆ .
+
+(23) Negative multipliers are clipped to zero to enforce dual feasibility, which corresponds to deactivating the correspond-−0.15 −0.10 −0.05 0.00 0.05 0.10 0.15 
+
+> X [m]
+> −0.10
+> −0.05
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> Y [m]
+> Desired trajectory
+> Close_form (RMSE=1.37e-01)
+> QP (RMSE=1.58e-01)
+
+(a) Speed: 3 RPM , obstacles placed outside the trajectory −0.15 −0.10 −0.05 0.00 0.05 0.10 0.15  
+
+> X [m]
+> −0.10
+> −0.05
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> Y [m]
+> Desired trajectory
+> Close_form (RMSE=1.51e-01)
+> QP (RMSE=1.65e-01)
+
+(b) Speed: 3 RPM , obstacles placed inside the trajectory −0.15 −0.10 −0.05 0.00 0.05 0.10 0.15 
+
+> X [m]
+> −0.10
+> −0.05
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> Y [m]
+> Desired trajectory
+> Close_form (RMSE=9.78e-02)
+> QP (RMSE=1.04e-01)
+
+(c) Speed: 1.5 RPM , obstacles placed outside the trajectory −0.15 −0.10 −0.05 0.00 0.05 0.10 0.15  
+
+> X [m]
+> −0.10
+> −0.05
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> Y [m]
+> Desired trajectory
+> Close_form (RMSE=1.03e-01)
+> QP (RMSE=1.60e-01)
+
+(d) Speed: 1.5 RPM , obstacles placed inside the trajectory 
+
+Fig. 2: Simulation results. Circular trajectory tracking pattern in 2D. The trajectories represent the motion path of the soft robot tip center, while the red-shaded region indicates the collision area. The RMSE of each case is shown in the legend, consistently demonstrating that the closed-form controller achieves more accurate and smoother trajectories than the baseline QP controller. ing constraint: 
+
+λV = max 
+
+
+
+0, − 2bV
+
+G11 + 1 /w clf 
+
+
+
+,λh = max 
+
+
+
+0, − 2bh
+
+G22 
+
+
+
+.
+
+(24) Finally, the CLF slack is recovered as δ∗ = λV /(2 wclf ).
+
+e) Remarks: The key difference from the hard-CLF [32] case is the presence of the slack variable, which softens the convergence constraint but does not affect the control direction explicitly. Its effect is entirely captured through λV , and the resulting Gram system remains 2 × 2
+
+with a simple closed-form solution. The CBF is always strictly enforced, ensuring safety, while the CLF can be relaxed to maintain feasibility near constraint boundaries. Moreover, the LSE aggregation ensures smooth transitions when multiple obstacles are present, avoiding discontinuous active-set switching. IV. S IMULATION EXPERIMENTS 
+
+In this section, we thoroughly evaluate in simulation how the proposed controller scales with the number of safety constraints and DOFs of the soft robot, we benchmark the computational time and numerical accuracy against a standard QP solver, and we perform setpoint regulation and trajectory tracking experiments, where we compare the be-havior of the closed-loop system under the proposed closed-form CLF-CBF controller against an RRT* baseline strategy and, again, the same CLF-CBF solved using a standard QP solver. TABLE I: Runtime and numerical accuracy for the two-constraint QP. The Closed-form method denotes the closed-form solution derived from KKT conditions, and the QP solver refers to the JIT-compiled numerical optimizer (qpax ). Metrics are defined as follows: ∥uc − uqp ∥∞ and 
+
+∥uc − uqp ∥2 measure the maximum and Euclidean norm of the solution difference, |f (uc)−f (uqp )| is the objective gap, and max( Au − b, 0) quantifies constraint violation. All re-sults show machine-precision agreement between the closed-form and numerical solutions, with the closed-form approach achieving over an order-of-magnitude faster runtime.                                             
+
+> Methods Runtime [ μs/call] Rel. Speedup QP solver ( qpax , JIT) 45.53 1x (baseline) Closed-form 4.22 10 .8x faster
+> Numerical Accuracy Mean Med. 95th Max
+> ∥uc−uqp ∥∞5.2×10 −11 2.7×10 −12 8.7×10 −11 5.8×10 −9
+> ∥uc−uqp ∥26.5×10 −11 3.8×10 −12 1.5×10 −10 6.3×10 −9
+> |f(uc)−f(uqp )|9.6×10 −13 1.6×10 −13 6.2×10 −12 1.2×10 −11
+> max( Auc−b, 0) 6.9×10 −18 05.6×10 −17 5.6×10 −17
+> max( Auqp −b, 0) 1.1×10 −13 01.1×10 −12 1.7×10 −12
+
+A. Simulation Setup 
+
+We build our closed-form CLF-CBF controller on the 
+
+CBFpy [33] package that offers an intuitive user interface and high-performance auto-differentiation for CLF-CBF con-troller computation based on JAX. Our simulations consider an N -segment PCS [24] soft robot operating in 3D space, approximated with 20 spheres per segment for collision detection, and implemented in a differentiable fashion in the 
+
+SoRoMoX [34] package. The soft robot has a total length of 
+
+L = 0 .3 m and a backbone radius of 0.036 m . We assume that three tendons terminate at the end of each segment (e.g., m = 6 for N = 2 ) and that they are symmetrically distributed along the cross-section with ϕj = 23 π j . The kinematic closed-loop ODE is integrated with a numerical solver implementing Tsitouras’ 5/4 method with time step 
+
+δt = 1 ms . The safety margin, dsafe is set at 0 m . We do not consider input constraints. 
+
+B. Numerical Validation and Benchmarking of Closed-Form Solution against QP Solver 
+
+First, we focus on verifying numerically the closed-form solution with respect to solving the QP via the primal-dual interior point method. We benchmark a two-constraint QP 
+
+min  
+
+> u
+
+∥u∥22 s.t. Au ≤ b, A ∈ R2×m,
+
+where the slack variable δ = 0 :An closed-form solution (derived from KKT conditions) is compared against a JIT-compiled primal-dual interior point solver for convex QPs ( qpax [35]) that we regard as a numerical reference. All methods are implemented in JAX 
+
+and evaluated on CPU with double-precision floating point operations ( float64 ). Each measured timing is averaged over 10000 calls after JIT warm-up. The closed-form method achieves machine-precision agreement with the numerical solver while being more than an order of magnitude faster in steady-state runtime. No constraint violation is observed, and all 200 /200 active sets match exactly at tolerance τ = 10 −6, confirming the correctness and robustness of the closed-form solution. 
+
+C. Geometrical Approximation of Soft Robot Body and Scal-ing of Computational Time with Resolution 
+
+We evaluate how the discretization resolution of the soft robot affects both geometric fidelity and controller compu-0 100 200 300 400 500 600  
+
+> Number of Soft Robot Spheres Nres
+> 10 −3
+> 10 −2
+> Sym. Hausdorff Dist. (log scale)  Average
+> ± Std Dev
+
+(a) Approximation error be-tween the discretized and con-tinuous robot body, measured using the symmetric Hausdorff distance as the number of dis-cretized spheres Nres increases. 250 500 750 1000 1250 1500  
+
+> Number of Soft Robot Spheres Nres
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> 35
+> 40
+> Computation time (ms)
+> Pure QP mean (ms)
+> Pure QP ± Std Dev
+> Closed-form QP mean (ms)
+> Closed-form ± Std Dev
+
+(b) Average computation time of the controller with increasing resolution. Closed-form CLF–CBF QP is significantly faster than the generic QP solver. 
+
+Fig. 3: Quantitative evaluation of body discretization and controller efficiency. (a) Increasing Nres improves geometric fidelity, with rapidly diminishing Hausdorff error after ∼ 400 
+
+spheres. (b) The closed-form CLF–CBF solver maintains low computation time even at high discretization resolutions, in contrast to the generic QP solver. tational efficiency, as reported in Fig. 3. Specifically, we first simulate a trajectory for the robot and randomly select configurations for evaluation. Subsequently, we measure the mismatch between the actual soft robot geometry and the geometry for collision detection, approximated with a chain of spheres, using the symmetric Hausdorff distance. Indeed, it is shown how increasing the resolution Nres improves the accuracy of the geometric approximation of the robot’s shape and decreases the symmetric Hausdorff distance. Fur-thermore, we evaluate the computational time necessary for one controller evaluation and compare solving the QP online using the CBFpy [33] with our proposed closed-form solution. We observe that the closed-form solution maintains significantly lower computational time as Nres increases, demonstrating its advantages with regard to scalability and efficiency when increasing the number of safety constraints. 
+
+D. Baseline: RRT* in Configuration-Space 
+
+As we discussed in the introduction, currently, sampling-based path planning methods, such as RRT variants, are the most widely established approaches for obstacle avoidance with continuum soft robots [7], [8], [9], [10], [11]. Therefore, we adapt as a baseline an RRT* [12] path planner that operates in configuration-space, checks for collisions, and returns a sequence of kinematic configurations that move the robot towards the target end-effector position and that are tracked by a kinematic low-level controller. Please note that we had to neglect shear and twist strains to keep the dimensionality of the planning space manageable. More sophisticated baselines (e.g., MPC-based controllers) could improve tracking performance, but typically lack formal safety guarantees or require online optimization. Our implementation is similar to the method proposed by Kuntz et al. [8], apart from that we use RRT* [12] instead of vanilla RRT [36]. Specifically, we implement a RRT* variant that operates in an affine-normalized configuration space: the robot’s physical joint/strain bounds are mapped to [0 , 1] nq
+
+so that sampling, nearest-neighbor queries, and distances are well-conditioned across heterogeneous units. Sampling is uniform in this normalized space, edges are grown with a fixed step parameter ( q = 0 .02 ), and collisions are screened along each edge at a finer stride ( r = 0 .01 ) by evaluating a control barrier function b(q) ≥ 0 on denormalized configu-rations; Goal progress is driven via the CLF V (q); planning terminates once V < 0.01 m . We enable rewiring ( k = 32 
+
+neighbors) to improve path cost, and cap iterations at 20 480 
+
+samples. If no node satisfies the threshold within the budget, we return the path to the node that attained the smallest V (q)
+
+(closest approach). Subsequently, this sequence of configurations is tracked by a kinematic controller that drives the system towards the next configuration setpoint qd ∈ Rnq
+
+u(t) = ˙ℓ(t) = Jℓ(q) Kp
+
+ qd(t) − q(t) , (25) where Kp ≻ 0 ∈ Rnq×nq determines the proportional feedback gains. In our simulations, we use Kp = 2 Inq .As soon as the system has reached a tight region around the setpoint, or 4 s have passed, the next setpoint from the planned path is provided to the controller. Please note that a cascaded scheme—path planner plus safety-unaware low-level controller—exhibits safety gaps: collision freedom holds only under the planner’s heuristic of linear interpolation in configuration space between set-points/nodes. In practice, the closed-loop motion deviates between setpoints, so collisions aren’t guaranteed to be avoided. 
+
+E. Setpoint Regulation 
+
+We design a setpoint regulation scenario, with shearing strain active, in which a two-segment ( N = 2 ) soft robot must navigate in an environment with multiple obstacles while attempting to reach a fixed target at (0 .10 , 0.05 , 0.32) .The spherical obstacles are placed at (0 .10 , 0.08 , 0.24) m, 
+
+(0 .12 , 0.06 , 0.32) m, and (0 .04 , 0.055 , 0.20) m, and each has a radius of 0.02 m . In this scenario, the controller must ensure that the robot approaches the target as closely as pos-sible while strictly maintaining a minimum clearance from all obstacles. Fig. 4 plots the CLF value V (q(t)) and the minimum of the barrier functions min i∈Nres ,j ∈Nobs bi,j (q(t)) 
+
+over the simulation time both for the RRT* baseline and the proposed closed-form CLF-CBF controller. Fig. 5 contains a sequence of stills illustrating how the controller enables the robot to approach the target while maintaining safe distances from the obstacles, and Fig. 6 plots the time evolution of the end effector position for the RRT* baseline. These simu-lation results motivate several advantages of the proposed CLF-CBF controller against established obstacle avoidance strategies relying on a cascaded scheme of a sampling-based planner with a low-level controller: (i) the proposed strategy exhibits a smoother and monotone convergence towards the goal as it does not rely on discrete intermediate setpoints, (ii) the RRT* baseline identifies because of the limited sampling budget as less optimal path with a higher final CLF value, and (iii) while a thorough comparison of the computational time between the proposed CLF-CBF controller and the RRT* baseline is not straightforward (e.g., there exists a tradeoff between planning time and optimality; RRT* planning needs to be done once before the start of the motion for a given set of obstacles and a given goal, while the proposed controller does not rely on a priori planning) and, therefore, out of scope for this paper, we observe that the RRT* planning takes 
+
+244 s on an 12th-gen Intel i9 CPU with 24 cores and 64 GB 
+
+of RAM, which is orders of magnitudes more expensive than the proposed closed-form strategy. 
+
+F. Trajectory Tracking 
+
+Furthermore, we evaluate the performance of the proposed closed-form controller against the standard QP-based con-0 2 4 6 8 10 
+
+> Time [s]
+> 0.0000
+> 0.0025
+> 0.0050
+> 0.0075
+> 0.0100
+> 0.0125
+> 0.0150
+> 0.0175
+> 0.0200
+> Min. Distance to Obstacle [m]  Min. dist to obstacle
+> Dist. to target
+> 0.04
+> 0.05
+> 0.06
+> 0.07
+> 0.08
+> 0.09
+> 0.10
+> 0.11
+> Distance to Target [m]
+
+(a) RRT* + Low-Level Con-troller (Baseline) 0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0  
+
+> Time [s]
+> 0.000
+> 0.002
+> 0.004
+> 0.006
+> 0.008
+> 0.010
+> 0.012
+> Min. Distance to Obstacle [m]  Min. dist to obstacle
+> Dist. to target
+> 0.03
+> 0.04
+> 0.05
+> 0.06
+> 0.07
+> 0.08
+> 0.09
+> 0.10
+> 0.11
+> Distance to Target [m]
+
+(b) Closed-Form CLF-CBF Controller (Proposed) 
+
+Fig. 4: Setpoint regulation simulation results for the distance to the target (CLF objective) and to the obstacles (CBF constraints). Left. Behavior of a low-level controller tracking a sequence of configuration setpoints provided by an RRT* obstacle avoidance planner. Right. Behavior of the closed-loop system under the proposed closed-form CLF-CBF con-troller. The distance to the target does not reach absolute zero due to the presence of nearby obstacles. 
+
+Fig. 5: Sequence of stills of the setpoint regulation simula-tions visualizing the motion of a soft robot consisting of two segments (blue and green) under the closed-form CLF–CBF controller, with time progressing from left to right. The controller steers the robot toward the target denoted with a red dot while preserving a safe distance from surrounding obstacles (grey). 0 2 4 6 8 10          
+
+> Time [s]
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> End-effector position [m]  Desired EE target x
+> Desired EE target y
+> Desired EE target z
+> Planned EE setpoint x
+> Planned EE setpoint y
+> Planned EE setpoint z
+> Actual EE x
+> Actual EE y
+> Actual EE z
+
+Fig. 6: Setpoint regulation simulation results for the time evolution of the end-effector (EE) position under the RRT* baseline collision avoidance strategy. The dotted lines rep-resent the desired EE targets (i.e., the task encoded in the CLF), the dashed lines the sequence of the setpoints provided by the RRT* planner that serve as intermediate goals for the low-level kinematic controller, and the solid lines the actual motion of the closed-loop system. troller on a circular trajectory tracking task with N = 2 
+
+and while neglecting shear strains. The inputs are clipped in ±0.02 m /s. A reference target lying on the circular trajectory was provided at each time step, and the reference variation was adjusted in different cases to examine whether the controllers could still track the trajectory under faster reference changes. The slack variable δ is set to zero. A set of spherical obstacles with radii of 0.01 m , was placed on the same plane as the robot’s target z-plane to introduce controlled collision scenarios and in 120 degrees apart. This setup allows us to assess the controller’s ability to maintain accurate trajectory tracking while ensuring safety under different obstacle configurations. Fig. 2 visualizes the trajectories for both controllers with respect to the circular reference. Notably, the closed-form controller consistently follows the trajectory more accurately and smoothly than the standard QP-based controller. The closed-form controller consistently follows the trajectory more accurately and smoothly than the standard QP-based controller. This is because the closed-form solution yields a continuous and closed-form control law, which avoids the discontinuities induced by active-set switching in QP solvers. By embedding the safety constraints directly into the control law, the closed-form controller produces smoother control inputs and reduces abrupt trajectory deviations, particularly near obstacles. 
+
+Fig. 7: Experimental results. Sequence of stills showing the system evolution under: a) the closed-form CLF–CBF controller, b) a QP CLF controller. The target position is highlighted in red, and the obstacle is outlined in green. Consistently, the closed-form CLF–CBF controller avoids the obstacle entirely, whereas the pure CLF controller reaches the target but violates the safety constraints. V. L ABORATORY EXPERIMENTS 
+
+We further assessed the proposed closed-form CLF–CBF controller through a representative setpoint tracking experi-ment on a tendon-driven soft robotic arm in a 3D laboratory environment. 
+
+A. Tendon-Driven Soft Robotic Platform 
+
+A tendon-driven, two-segment soft robotic arm is em-ployed for the real-time control experiments. The soft robot design is based on a previous work [37]. Each robot segment is 0.15 m long, and 0.036 m in radius. Reflective markers are placed at the base and at the tip of each segment, enabling feedback of Cartesian poses through five OptiTrack motion capture cameras. Subsequently, we perform inverse kinematics in closed-form via the SE(3) Log on the relative transformation between the proximal and distal end of each segment to gather the current configuration of the soft robot 
+
+q [?]. Each segment contains three tendons evenly distributed at 120 ◦ intervals around the backbone. Between the two segments, the tendon routing is offset by 60 ◦ to improve dexterity and reduce actuation coupling. The tendons are actuated by DYNAMIXEL XM430-W350-R motors operated in velocity control mode. Each motor is equipped with a spool of radius 0.0045 m , and constrained in rotation speed to ±16 RPM . The controller is evaluated at a rate of 100 Hz 
+
+and communicates with the actuators in real time through 
+
+ROS , allowing for smooth execution of the CLF–CBF–based controllers and dynamic trajectories. 0.0 2.5 5.0 7.5 10.0 12.5 15.0 17.5 20.0 
+
+> Time [s]
+> 0.00
+> 0.01
+> 0.02
+> 0.03
+> 0.04
+> 0.05
+> 0.06
+> 0.07
+> Distance to Target [m]
+> CLF-CBF
+> Pure CLF
+> Desired distance (0.0 m)
+
+(a) Minimum target distance variation with respect to time. 0.0 2.5 5.0 7.5 10.0 12.5 15.0 17.5 20.0  
+
+> Time [s]
+> 0.00
+> 0.02
+> 0.04
+> 0.06
+> 0.08
+> Minimum Distance [m]
+> Unsafe zone (<0.05 m)
+> CLF-CBF
+> Pure CLF
+> Safety margin (0.05 m)
+
+(b) Minimum distance for the whole robotic body to the obsta-cle. 
+
+Fig. 8: Experimental results. Comparison of target and ob-stacle distances for closed-form CLF-CBF controller, and a pure QP CLF controller during the hardware experiment. 
+
+B. Results 
+
+We conducted closed-loop control experiments to quali-tatively compare the behavior of the proposed closed-form CLF–CBF controller with that of a pure CLF controller, which does not enforce safety constraints. We employ the same software and control packages as in the simulation experiments while neglecting shear strains. For the real robot, the soft body was discretized into 40 sections to achieve a sufficiently high spatial resolution for collision avoidance, and the slack variable δ is chosen as 0. In this experiment, the desired target lies within the influence region of the obstacle, rendering exact convergence infeasible under the enforced safety margin. The controller therefore converges to the closest safe equilibrium. Figure 7 shows representative stills of the robot’s motion under both controllers. Under the pure CLF controller, the robot quickly reaches the target but violates the safety distance by colliding with the obstacle. In contrast, the closed-form CLF–CBF controller maintains a safe distance throughout the trajectory while achieving stable convergence. Fig. 8a plots the distance to the target over time. The closed-form controller achieves smooth convergence without overshoot, whereas the pure CLF controller reaches the target faster but with no safety enforcement. Fig. 8b further depicts the minimum distance to the obstacle. While the pure CLF controller enters the unsafe region, the CLF–CBF controller consistently maintains the predefined 0.05 m safety margin. These results provide a qualitative illustration of the controller’s ability to enforce safety constraints in a rep-resentative laboratory scenario. This experiment highlights the effectiveness of the closed-form CLF–CBF controller in maintaining safety without sacrificing nominal tracking performance. VI. C ONCLUSION 
+
+This paper presents a closed-form CLF–CBF controller framework for soft robots, enabling real-time safe control without the need for online optimization. By deriving an explicit solution to the CLF–CBF quadratic program, the proposed method guarantees safety constraint satisfaction while maintaining low computational overhead. The con-troller is built upon a differentiable PCS kinematics model and safety constraints evaluated along the entire soft body, ensuring whole-body safety in cluttered environments. Sim-ulation and laboratory experiments demonstrate that the closed-form controller achieves better setpoint regulation behavior compared to traditional sampling-based planning approaches at two order of magnitudes less computational expense and better tracking performance compared to online optimization-based methods for solving the CLF-CBF QP while strictly respecting safety constraints. The main limitation of the current approach is that it aggregates only a single constraint type—specifically, acollision-avoidance barrier—and cannot accommodate het-erogeneous constraints (e.g., input bounds, energy budgets, or task-specific requirements). Future work will extend the closed-form CLF–CBF controller to support composition-ality across multiple constraint classes and to incorporate hierarchical prioritization, enabling more expressive and flex-ible safety-critical control. Furthermore, while the current approach neglects the inertia of the soft robot and excels in quasi-static settings, future work could extend it to dynamic collision avoidance scenarios via the use of higher-order CLFs and CBFs [28], [21]. Finally, we will also examine experimental settings that more closely reflect real-world deployment scenarios. REFERENCES [1] A. K. Hall, U. Backonja, et al. , “Acceptance and perceived usefulness of robots to assist with activities of daily living and healthcare tasks,” 
+
+Assistive Technology , 2019. [2] M. St¨ olzle, “Safe yet precise soft robots: Incorporating physics into learned models for control,” Dissertation (TU Delft), Mechanical Engineering, Delft University of Technology, 09 2025. [3] D. Rus and M. T. Tolley, “Design, fabrication and control of soft robots,” Nature , vol. 521, no. 7553, pp. 467–475, 2015. [4] D. Bruder, M. A. Graule, et al. , “Increasing the payload capacity of soft robot arms by localized stiffening,” Science Robotics , vol. 8, no. 81, p. eadf9001, 2023. [5] Y. Tang, Y. Chi, et al. , “Leveraging elastic instabilities for amplified performance: Spine-inspired high-speed and high-force soft robots,” 
+
+Science advances , vol. 6, no. 19, p. eaaz6912, 2020. [6] R. Zuo, D. H. Han, et al. , “Umarm: Untethered, modular, wearable, soft pneumatic arm,” arXiv preprint arXiv:2505.11476 , 2025. [7] L. G. Torres, A. Kuntz, et al. , “A motion planning approach to auto-matic obstacle avoidance during concentric tube robot teleoperation,” in 2015 IEEE international conference on robotics and automation (ICRA) . IEEE, 2015, pp. 2361–2367. [8] A. Kuntz, A. W. Mahoney, et al. , “Motion planning for continuum reconfigurable incisionless surgical parallel robots,” in 2017 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) .IEEE, 2017, pp. 6463–6469. [9] B. H. Meng, I. S. Godage, and I. Kanj, “Rrt*-based path planning for continuum arms,” IEEE Robotics and Automation Letters , vol. 7, no. 3, pp. 6830–6837, 2022. [10] Y. Li, T. Miyazaki, et al. , “S-rrt*-based obstacle avoidance au-tonomous motion planner for continuum-rigid manipulator,” arXiv preprint arXiv:2409.19110 , 2024. [11] Y. Lang, J. Liu, et al. , “Obstacle-avoidance planning in c-space for continuum manipulator based on irrt-connect,” Sensors , vol. 25, no. 10, p. 3081, 2025. [12] S. Karaman and E. Frazzoli, “Sampling-based algorithms for optimal motion planning,” The international journal of robotics research ,vol. 30, no. 7, pp. 846–894, 2011. [13] F. A. Spinelli and R. K. Katzschmann, “A unified and modular model predictive control framework for soft continuum manipulators under internal and external constraints,” in 2022 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2022, pp. 9393–9400. [14] M. Hachen, C. Shentu, et al. , “A non-linear model predictive task-space controller satisfying shape constraints for tendon-driven contin-uum robots,” IEEE Robotics and Automation Letters , 2025. [15] P. Rao, O. Salzman, and J. Burgner-Kahrs, “Towards contact-aided motion planning for tendon-driven continuum robots,” IEEE Robotics and Automation Letters , 2024. [16] A. Ouyoucef, Q. Peyron, et al. , “Durability-aware trajectory planning and quasi-static control of a continuum parallel robot for industrial applications,” IEEE Robotics and Automation Letters , vol. 10, no. 11, pp. 12 016–12 023, 2025. [17] Y. Du, Y. Xiong, et al. , “Physics-embedded motion planning with contact handling for continuum surgical robots,” IEEE Robotics and Automation Letters , 2025. [18] Z. J. Patterson, W. Xiao, et al. , “Safe control for soft-rigid robots with self-contact using control barrier functions,” in 2024 IEEE 7th International Conference on Soft Robotics (RoboSoft) . IEEE, 2024, pp. 151–156. [19] F. Xu, X. Kang, and H. Wang, “Hybrid visual servoing control of a soft robot with compliant obstacle avoidance,” IEEE/ASME Transactions on Mechatronics , vol. 29, no. 6, pp. 4446–4455, 2024. [20] A. K. Dickson, J. C. P. Garcia, et al. , “Safe autonomous environmental contact for soft robots using control barrier functions,” IEEE Robotics and Automation Letters , vol. 10, no. 11, pp. 11 283–11 290, 2025. [21] K. Wong, M. St¨ olzle, et al. , “Contact-aware safety in soft robots using high-order control barrier and lyapunov functions,” IEEE Robotics and Automation Letters , vol. 10, no. 12, pp. 12 485–12 492, 2025. [22] C. Della Santina, C. Duriez, and D. Rus, “Model-based control of soft robots: A survey of the state of the art and open challenges,” IEEE Control Systems Magazine , vol. 43, no. 3, pp. 30–65, 2023. [23] C. Armanini, F. Boyer, et al. , “Soft robots modeling: A structured overview,” IEEE Transactions on Robotics , vol. 39, no. 3, pp. 1728– 1748, 2023. [24] F. Renda, F. Boyer, et al. , “Discrete cosserat approach for multisection soft manipulator dynamics,” IEEE Transactions on Robotics , vol. 34, no. 6, pp. 1518–1533, 2018. [25] F. Renda, C. Armanini, et al. , “A geometric variable-strain approach for static modeling of soft manipulators with tendon and fluidic actuation,” IEEE Robotics and Automation Letters , vol. 5, no. 3, pp. 4006–4013, 2020. [26] P. Pustina, C. Della Santina, et al. , “Input decoupling of lagrangian systems via coordinate transformation: General characterization and its application to soft robotics,” IEEE transactions on robotics , vol. 40, pp. 2098–2110, 2024. [27] A. D. Ames, S. Coogan, et al. , “Control barrier functions: Theory and applications,” in 2019 18th European control conference (ECC) . Ieee, 2019, pp. 3420–3431. [28] W. Xiao and C. Belta, “High-order control barrier functions,” IEEE Transactions on Automatic Control , vol. 67, no. 7, pp. 3655–3662, 2021. [29] N. P. S. Prakash, J. Seo, et al. , “Deep geometric potential functions for tracking on manifolds,” in 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2024, pp. i–viii. [30] T. G. Molnar and A. D. Ames, “Composing control barrier functions for complex safety specifications,” IEEE Control Systems Letters ,vol. 7, pp. 3615–3620, 2023. [31] S. P. Boyd and L. Vandenberghe, Convex optimization . Cambridge university press, 2004. [32] W. Xiao, T.-H. Wang, et al. , “Abnet: Adaptive explicit-barrier net for safe and scalable robot learning,” in Forty-second International Conference on Machine Learning , 2025. [33] D. Morton and M. Pavone, “Safe, task-consistent manipulation with operational space control barrier functions,” in 2025 IEEE/RSJ Inter-national Conference on Intelligent Robots and Systems (IROS) . IEEE, 2025, pp. 187–194. [34] M. St¨ olzle, S. Gribonval, et al. , “Soromox: Soft robot models in jax,” https://github.com/tud-phi/soromox, 2026, version 0.1.0 [Software]. Kinematic and dynamic models of continuum and articulated soft robots implemented in JAX. [35] K. Tracy and Z. Manchester, “On the differentiability of the primal-dual interior-point method,” 2024. [36] S. M. LaValle and J. J. Kuffner, “Rapidly-exploring random trees: Progress and prospects: Steven m. lavalle, iowa state university, a james j. kuffner, jr., university of tokyo, tokyo, japan,” Algorithmic and computational robotics , pp. 303–307, 2001. [37] Z. J. Patterson, E. R. Sologuren, and D. Rus, “Design of trimmed helicoid soft-rigid hybrid robots,” in 2025 IEEE 8th International Conference on Soft Robotics (RoboSoft) . IEEE, 2025, pp. 1–7.

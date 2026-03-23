@@ -1,0 +1,1836 @@
+Title: Featurized Occupation Measures for Structured Global Search in Numerical Optimal Control
+
+URL Source: https://arxiv.org/pdf/2603.16231v1
+
+Published Time: Wed, 18 Mar 2026 00:49:38 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+> 1
+
+# Featurized Occupation Measures for Structured Global Search in Numerical Optimal Control 
+
+Qi Wei, Jianfeng Tao, Haoyang Tan, Hongyu Nie 
+
+Abstract —Numerical optimal control is commonly divided between globally structured but dimensionally intractable Hamilton-Jacobi-Bellman (HJB) methods and scalable but local trajectory optimization. We introduce the Featurized Occupation Measure (FOM), a finite-dimensional primal-dual interface for the occupation-measure formulation that unifies trajectory search and global HJB-type certification. FOM is broad yet numerically tractable, covering both explicit weak-form schemes and implicit simulator- or rollout-based sampling methods. Within this frame-work, approximate HJB subsolutions serve as intrinsic numerical certificates to directly evaluate and guide the primal search. We prove asymptotic consistency with the exact infinite-dimensional occupation-measure problem, and show that for block-organized feasible certificates, finite-dimensional approximation preserves certified lower bounds with blockwise error and complexity control. We also establish persistence of these lower bounds under time shifts and bounded model perturbations. Consequently, these structural properties render global certificates into flexible, reusable computational objects, establishing a systematic basis for certificate-guided optimization in nonlinear control. 
+
+Index Terms —Hamilton-Jacobi-Bellman equations, occupation measures, optimal control, sampling methods, trajectory opti-mization. 
+
+I. I NTRODUCTION 
+
+Optimal control is central to many applications in robotics and autonomous systems, where one must make decisions over long horizons under nonlinear dynamics, complex constraints, contact or task-induced combinatorial structure [1]–[4], as well as in dynamic-game interactions [5]–[7]. The main challenge is to compute solutions in such highly nonconvex problems while preserving time-consistency during excution. Numerical optimal control has developed along two main lines. The first seeks a solution of the Hamil-ton–Jacobi–Bellman (HJB) equation [8], [9], whose global value function, when available, induces an optimal or near-optimal feedback law and hence closed-loop control [10]. Its key advantage is the direct maintenance of global value structure, while its main limitation is the curse of dimen-sionality [11]: global state-space discretization typically leads to complexity growing exponentially with dimension. Repre-sentative advances mitigate this difficulty through structured value representations or equivalent reformulations, including sparse or adaptive representations [12]–[14], low-rank tensor formats [15], [16], and pointwise evaluation via Hopf formulas or characteristics [17], [18]. 
+
+This work was supported by the National Key R&D Program of China under Grant 2024YFF0505303. Qi Wei (v7sjtu@sjtu.edu.cn), Jianfeng Tao (corresponding author), Haoyang Tan, and Hongyu Nie are with the School of Mechanical Engineering, Shang-hai Jiao Tong University, Shanghai 200240, China (e-mail: jftao@sjtu.edu.cn). 
+
+The other performs trajectory-wise local optimization in-stead of solving the global HJB equation directly. It includes first-order methods based on the Pontryagin maximum princi-ple [19] (or function-space KKT conditions [20]), and second-order schemes such as DDP [21]–[23], iLQR [24], and SQP [1]. These methods often achieve high local efficiency, but they typically return only a nominal trajectory or a local feedback approximation near it, rather than a globally valid value certifi-cate. Consequently, under strong nonconvexity, disconnected local minima, or information updates, such trajectory objects often have limited reusability; in the presence of uncertainty or dynamic-game structure, issues of time consistency become especially acute, as is classical in dynamic game theory [5]. Local optimization, however, need not proceed along a single direction at each step. In difficult nonconvex problems, it is often more effective to update over a structured set of admissible candidates. Many sample-based MPC and path-integral methods [25]–[28] can be interpreted in this way: each iteration samples, filters, and reweights candidate corrections from a set shaped by a search distribution, constraints, or local models. This raises a broader question. Existing ideas from heuristic search [29], relaxed dynamic programming [30], and admissible-heuristic construction for kinodynamic planning [31] all suggest that globally defined value surrogates can guide local search. This motivates a framework that combines trajectory-wise efficiency with a persistent global value structure. The occupation-measure (OM) formulation provides acanonical language for this issue [32]–[35], with related parallels in information-relaxation approaches to stochastic dynamic programming [36]. It lifts nonlinear optimal control to an infinite-dimensional linear program whose classical dual is an HJB-type inequality problem with HJB subsolutions as dual-feasible variables [32], [34], [37]. This yields a unified primal–dual view: occupation measures encode the control process, while feasible HJB subsolutions provide globally valid lower bounds, as already explicit in the LP duality view-point of Vinter [32] and in later moment-based developments [34], [37], [38]. Under the OM structure, HJB subsolutions naturally serve to filter, prune, or prioritize primal updates, acting as an intrinsic mechanism rather than an external heuristic [30]–[32], [34], [36], [37], [39]–[41]. The numerical question is then not only how to search trajectories faster, but also how to maintain a finitely realizable certificate with global HJB semantics, as pursued from different angles in [30], [31], [35], [36], [40], [41]. We introduce featurized occupation measures (FOM), a finite-dimensional framework for retaining OM primal–dual 
+
+> arXiv:2603.16231v1 [math.OC] 17 Mar 2026 2
+
+structure in computation. A FOM realization consists of a realized global primal pair, a finite-dimensional certificate class, and a residual mechanism linking them. This yields two canonical realizations: explicit FOM, based on finite weak-form enforcement (with moment-SOS hierarchies [34] as a special case), and implicit FOM, in which primal objects are induced by rollout segments generated by existing ODE solvers or simulators. The significance of FOM is that rollout- and sample-based updates (e.g., MPPI [25]–[28], RL-style policy search [42]– [45]) can be reinterpreted in an OM primal–dual language with an explicit HJB-type certificate. This integrates pruning, guid-ance, warm starts, and cross-algorithm comparison directly into the numerical framework. Valid approximate certificates remain quantitatively useful for these roles; see also [46]. This paper introduces a certificate-first formulation for structured optimal control, in which one maintains not only realized tra-jectories but also a globally meaningful certificate that guides primal updates and admits finite-dimensional approximation. FOM provides the corresponding unified framework. 
+
+Contributions :1) We derive a common residual-aware certificate interface for FOM. Proposition 2 together with (13)–(14) evaluates realized primal objects through slack and residual terms, thereby placing explicit and implicit realizations under one OM-based certificate interface. 2) We prove asymptotic consistency of both realizations with the OM problem: explicit FOM by Theorem 1, and implicit FOM (segmented rollout-based FOM) by Theorem 2. 3) We establish structural efficiency and reuse properties of FOM certificates. Theorem 3 and Corollary 1 show that additive block-organized certificates admit structure-preserving approximations that remain certifying, up to explicit degradation in the lower bound. Propositions 3 and 4, along with Corollary 2 and Corollary 3, show that such approximate certificates remain reusable across time shifts, perturbations, and realizations for pruning, guid-ance, and warm starts, without altering the convergence target of the realized primal update. The paper is organized as follows. Section II reviews the exact occupation-measure primal–dual structure that motivates the certificate viewpoint. Section III formulates FOM as a finite-dimensional interface preserving this structure across explicit and implicit realizations. Section IV then develops the main computational consequences of this viewpoint, showing how structured certificates support tractable approximation, quantitative lower bounds, and reusable updates. II. P RELIMINARIES 
+
+This section recalls the occupation-measure (OM) lifting of Bolza optimal control and the associated HJB–Liouville primal–dual structure used throughout the paper. 
+
+A. From Bolza optimal control to occupation measures 
+
+Let the admissible control set be U , and the state space be 
+
+X. Let the support set of the occupation measure be Z := [t0, T ] × X × U . Denote the dual pairing ⟨ϕ, ρ ⟩ := R ϕ dρ .Consider an admissible state–control pair (x(·), u (·)) satis-fying 
+
+˙x(t) = f (t, x (t), u (t)) , t ∈ [t0, T ].
+
+Its induced occupation measure μ ∈ M +(Z) is defined by 
+
+⟨φ, μ ⟩ := 
+
+Z Tt0
+
+φ t, x (t), u (t) dt, ∀φ ∈ C(Z). (1) Equivalently, for every Borel set A ⊂ Z,
+
+μ(A) := 
+
+Z Tt0
+
+1A
+
+ t, x (t), u (t) dt, (2) that is, μ is the pushforward of the Lebesgue measure on 
+
+[t0, T ] under the map t 7 → (t, x (t), u (t)) .Let μ0 ∈ M +({t0} × X) and μT ∈ M +({T } × X) be the initial and terminal boundary measures. For shorthand, write 
+
+μ0(X) := μ0({t0} × X) and μT (X) := μT ({T } × X) for their total masses. In the single deterministic trajectory case, 
+
+μ0 = δ(t0,x 0) and μT = δ(T,x (T )) .With these measures, the Bolza cost becomes linear: 
+
+Z Tt0
+
+ℓ t, x (t), u (t) dt + g x(T ) = ⟨ℓ, μ ⟩ + ⟨g, μ T ⟩. (3) Introduce the space–time transport operator (equivalently, the Lie derivative along the extended vector field (1 , f ))
+
+Lf : C1([ t0, T ] × X) → C(Z),
+
+(Lf v)( t, x, u ) := ∂tv(t, x ) + ∇xv(t, x )⊤f (t, x, u ),
+
+and its adjoint L∗ 
+
+> f
+
+on measures, defined through 
+
+⟨Lf v, μ ⟩ = ⟨v, L ∗ 
+
+> f
+
+μ⟩.
+
+Then the trajectory dynamics lift to the weak Liouville relation 
+
+⟨v, μ T − μ0⟩ = ⟨Lf v, μ ⟩, ∀v ∈ C1([ t0, T ] × X), (4) or, equivalently, 
+
+L∗ 
+
+> f
+
+μ = μT − μ0.
+
+Thus, the nonlinear trajectory dynamics are replaced by a linear constraint on nonnegative measures. Under standard as-sumptions ensuring exactness of the deterministic occupation-measure lifting (or, more generally, under relaxed controls in the convexified setting), the Bolza problem admits an equivalent or relaxed linear formulation in measure space. When μ0 = δ(t0,x 0) and μT = δ(T,x (T )) , the weak Liou-ville identity reduces to the familiar trajectory-wise transport relation 
+
+v(T, x (T )) − v(t0, x 0) = 
+
+Z Tt0
+
+Lf v(t, x (t), u (t)) dt. (5) 
+
+B. Primal LP, dual HJB inequality, and global certificates 
+
+The occupation-measure formulation is the infinite-dimensional linear program 
+
+P := inf   
+
+> μ∈M +(Z), μ T∈M +({T}× X)
+
+⟨ℓ, μ ⟩ + ⟨g, μ T ⟩
+
+s.t. L∗ 
+
+> f
+
+μ = μT − μ0.
+
+(6) 3
+
+Its dual variable is a global function v(t, x ) ∈ C1([ t0, T ]×X),and the dual problem reads 
+
+P ⋆ := sup  
+
+> v∈C1([ t0,T ]×X)
+
+⟨v, μ 0⟩
+
+s.t. (Lf v)( t, x, u ) + ℓ(t, x, u ) ≥ 0, ∀(t, x, u ) ∈ Z, v(T, x ) ≤ g(x), ∀x ∈ X. 
+
+(7) The dual feasibility conditions are precisely the HJB inequal-ities. Equivalently, 
+
+−∂tv(t, x ) ≤ inf 
+
+> u∈U
+
+n
+
+ℓ(t, x, u ) + ∇xv(t, x )⊤f (t, x, u )
+
+o
+
+,v(T, x ) ≤ g(x),
+
+so any dual-feasible v is a smooth HJB subsolution. Under the standard compactness, continuity, and no-gap assumptions for the deterministic OM LP (as in [34]), one has strong duality, 
+
+P = P ⋆.
+
+We do not, however, assume a priori that the optimal dual is attained by a C1 function, nor do we unconditionally identify an optimal dual element with the value function. The role of the dual problem is more robust: it optimizes over smooth subsolutions, and in regular settings where the value function admits a C1 representative satisfying the HJB equation, that representative is compatible with an optimal dual certificate. For any primal-feasible (μ, μ T ) and any dual-feasible v,weak duality yields the certified lower bound 
+
+⟨v, μ 0⟩ ≤ ⟨ ℓ, μ ⟩ + ⟨g, μ T ⟩,
+
+and the corresponding primal–dual gap 
+
+gap( μ, μ T ; v) := ⟨ℓ, μ ⟩ + ⟨g, μ T ⟩ − ⟨ v, μ 0⟩
+
+= ⟨ℓ + Lf v, μ ⟩ + ⟨g − v(T, ·), μ T ⟩ ≥ 0. (8) Hence dual feasibility is not merely a formal dual constraint: it gives an absolute, globally interpretable lower certificate on the Bolza cost. 
+
+Remark 1 (From transport probe to certificate) . The ambient dual object in OM is the same smooth scalar field 
+
+v ∈ V := C1([ t0, T ] × X).
+
+Through the weak Liouville relation, 
+
+⟨v, μ T − μ0⟩ = ⟨Lf v, μ ⟩.v acts solely as a test function. In that role, v is only a probe of transport. In particular, when μ0 = δ(t0,x 0), the weak identity becomes (5) , which is simply the transport identity induced by the dynamics. The same object acquires a different semantics once the dual inequalities are enforced: 
+
+ℓ + Lf v ≥ 0, g − v(T, ·) ≥ 0.
+
+Then, along every admissible trajectory, 
+
+v(t0, x 0) ≤
+
+Z Tt0
+
+ℓ(t, x (t), u (t)) dt + g(x(T )) ,
+
+so v(t0, x 0) becomes a certified global lower bound on the total Bolza cost. C. Approximate dual feasibility and relaxed certificate bounds 
+
+In finite-dimensional FOM realizations, the maintained cer-tificate is often only approximately dual-feasible. For ε, ε T ≥
+
+0, we say that v is (ε, ε T )-feasible if 
+
+(Lf v)( t, x, u ) + ℓ(t, x, u ) ≥ − ε, ∀(t, x, u ) ∈ Z, v(T, x ) ≤ g(x) + εT , ∀x ∈ XT .
+
+(9) Then every primal-feasible pair (μ, μ T ) satisfying (6) obeys 
+
+⟨v, μ 0⟩ − ε μ (Z) − εT μT (XT ) ≤ ⟨ ℓ, μ ⟩ + ⟨g, μ T ⟩. (10) Thus, approximate dual feasibility still yields a certified lower bound, with a degradation quantified explicitly by the violation levels (ε, ε T ) and the total masses of (μ, μ T ).In the deterministic finite-horizon setting, these masses are explicit. Testing (4) with v ≡ 1 gives 
+
+μT (XT ) = μ0(X),
+
+while testing with v(t, x ) = T − t yields 
+
+μ(Z) = ( T − t0) μ0(X).
+
+Hence the relaxation term in (10) is completely explicit. In particular, when μ0 ∈ P (X), one has 
+
+μT (XT ) = 1 , μ(Z) = T − t0,
+
+so the lower-bound degradation reduces to 
+
+ε(T − t0) + εT .
+
+Proposition 1 (Approximate certificates provide OM lower bounds) . Assume the deterministic fixed-horizon setting, so that every exact OM-feasible pair (μ, μ T ) satisfies 
+
+μ(Z) = ( T − t0)μ0(X), μT (X) = μ0(X).
+
+Let v be (ε, ε T )-feasible and define 
+
+P (v) := ⟨v(t0, ·), μ 0⟩ − (T − t0)μ0(X) ε − μ0(X) εT .
+
+Then 
+
+P (v) ≤ P. 
+
+Proof. By (10), every exact OM-feasible pair (μ, μ T ) satisfies 
+
+⟨v(t0, ·), μ 0⟩ − ε μ (Z) − εT μT (X) ≤ ⟨ ℓ, μ ⟩ + ⟨g, μ T ⟩.
+
+Using 
+
+μ(Z) = ( T − t0)μ0(X), μT (X) = μ0(X),
+
+this becomes 
+
+P (v) ≤ ⟨ ℓ, μ ⟩ + ⟨g, μ T ⟩.
+
+Taking the infimum over all exact OM-feasible pairs proves the claim. 
+
+Remark 2 (Bounded dual-infeasibility preserves the HJB lower-bound role) . The role of (ε, ε T )-feasibility is not to ignore dual infeasibility, but to quantify it in a one-sided Bellman form. Indeed, (9) is equivalent to 
+
+(ℓ + ε) + Lf v ≥ 0, (g + εT ) − v(T, ·) ≥ 0.4
+
+Proposition 1 shows that this role is stable under bounded dual infeasibility: v is an exact HJB subsolution for the perturbed cost pair 
+
+(ℓ + ε, g + εT ).
+
+Thus, bounded dual infeasibility behaves as an exact HJB subsolution for a perturbed cost, yielding a rigorous corrected OM lower bound with an explicit error budget. 
+
+III. F EATURIZED OCCUPATION MEASURES 
+
+This section studies finite-dimensional realizations of the exact OM LP. Under the certificate-first viewpoint, the goal is to retain the OM primal–dual semantics at finite resolution. We focus on two such realizations. In an explicit FOM , one parameterizes a global primal pair and represents the Liouville residual through finitely many test functions. This is the default realization at the framework level, though it may be computationally expensive and is not always used in practice. In an implicit FOM , one instead uses existing ODE integrators to generate segmentwise or full rollouts, as in multiple or single shooting, and interprets the resulting weak residual through local Dirac-type representations. The resulting finite models are different, but both will be shown asymptotically consistent with the exact OM LP. Concretely, let 
+
+Z := [ t0, T ] × X × U, 
+
+M := M+(Z) × M +({T } × X),
+
+V := C1([ t0, T ] × X).
+
+We now fix notation and formalize this common structure. 
+
+A. General FOM components 
+
+We do not identify a featurized occupation measure (FOM) with a particular weak discretization of the Liouville equation. Instead, a FOM is any finite-dimensional realization that (i) produces a global primal pair, (ii) keeps a finite-capacity certificate class explicit, and (iii) equips the realized primal pair with a residual mechanism measuring departure from exact Liouville feasibility. Formally, we fix a finite-capacity trial family with capacity index M and parameterization θ on the primal side, and a finite-dimensional certificate family with parameterization ψ
+
+on the dual side. 
+
+Definition 1 (FOM framework) . A general FOM realization consists of the following objects. First, a trial realization family 
+
+Θ(M ),
+
+whose elements θ are finite-dimensional parameters. In deter-ministic optimal control, typical examples include an open-loop control uθ : [t0, T ] → U and a feedback law κθ :[t0, T ] × X → U . More generally, θ need only parameterize a realizable control mechanism that induces a global primal pair. Second, an induced global primal pair 
+
+θ 7 −→ (μθ , μ T,θ ) ∈ M ,
+
+where μθ plays the role of a realized occupation-type measure and μT,θ the role of the realized terminal measure. The realized cost is then evaluated by 
+
+J(θ) := ⟨ℓ, μ θ ⟩ + ⟨g, μ T,θ ⟩.
+
+Third, a parameterized finite-capacity certificate class 
+
+VΨ = {vψ : ψ ∈ Ψ} ⊂ C1([ t0, T ] × X),
+
+which preserves the dual side of the OM formulation at finite dimension. Fourth, for each realized primal pair (μθ , μ T,θ ), we as-sociate its Liouville residual (or primal-feasibility residual) functional 
+
+Rθ (v) := ⟨v, μ T,θ − μ0⟩ − ⟨ Lf v, μ θ ⟩, v ∈ C1([ t0, T ] × X).
+
+(11) 
+
+This is the canonical weak residual attached to the realized primal pair. Exact Liouville feasibility is equivalent to 
+
+Rθ (v) = 0 ∀v ∈ C1([ t0, T ] × X).
+
+Here θ need only generate a global primal pair. The weak residual Rθ is an abstract object, and its form depends on the realization. 
+
+B. Certificate evaluation and residual-aware bounds 
+
+In the FOM setting, we evaluate the realized trial pairs 
+
+(μθ , μ T,θ ), θ ∈ Θ(M ),
+
+which may fail exact Liouville feasibility. The additional ob-ject needed for this passage is precisely the realization residual 
+
+Rθ (vψ ). This is also the point where the structural FOM architecture becomes an optimization interface: the certificate can now be assessed against a realized primal pair through a common residual-aware gap decomposition. For a certificate vψ , define the running and terminal slacks 
+
+sψ (t, x, u ) := ℓ(t, x, u ) + ( Lf vψ )( t, x, u ),sT,ψ (x) := g(x) − vψ (T, x ). (12) By (9), the certificate vψ is (ε, ε T )-feasible iff 
+
+sψ ≥ − ε, sT,ψ ≥ − εT .
+
+For a realized pair (μθ , μ T,θ ), define the residual-corrected interface lower bound 
+
+J(θ, ψ ) := ⟨vψ , μ 0⟩ − ε μ θ (Z) − εT μT,θ (X) − |R θ (vψ )|
+
+and the corresponding certificate-relative gap 
+
+Gap( θ, ψ ) := J(θ) − J(θ, ψ ).
+
+Proposition 2 (Certificate evaluation identity and realiza-tion-relative gap) . Let vψ be (ε, ε T )-feasible. Then, for every trial parameter θ from any finite-dimensional realization class 
+
+Θ(M ),
+
+J(θ) = ⟨vψ , μ 0⟩ + ⟨sψ , μ θ ⟩ + ⟨sT,ψ , μ T,θ ⟩ + Rθ (vψ ), (13) 
+
+hence 
+
+J(θ, ψ ) ≤ J(θ),5
+
+and 
+
+Gap( θ, ψ ) = ⟨sψ + ε, μ θ ⟩ + ⟨sT,ψ + εT , μ T,θ ⟩
+
++ 2[ Rθ (vψ )] + ≥ 0, (14) 
+
+where [a]+ := max {a, 0}.Proof. By definition, 
+
+J(θ) = ⟨ℓ, μ θ ⟩ + ⟨g, μ T,θ ⟩.
+
+Adding and subtracting ⟨Lf vψ , μ θ ⟩ and ⟨vψ (T, ·), μ T,θ ⟩, and using the definition of Rθ (vψ ), gives (13). Since vψ is (ε, ε T )-feasible, 
+
+⟨sψ , μ θ ⟩ ≥ − ε μ θ (Z), ⟨sT,ψ , μ T,θ ⟩ ≥ − εT μT,θ (X).
+
+Substituting these bounds into (13) yields J(θ, ψ ) ≤ J(θ).Subtracting J(θ, ψ ) from (13) gives 
+
+Gap( θ, ψ ) = ⟨sψ + ε, μ θ ⟩ + ⟨sT,ψ + εT , μ T,θ ⟩
+
++ Rθ (vψ ) + |R θ (vψ )|,
+
+which is exactly (14) because |a| + a = 2[ a]+.Equation (13) is the common certificate interface used throughout the rest of the section. It evaluates any realized pri-mal pair through four terms: the certificate value at the initial measure, the running slack accumulated against the realized occupation measure, the terminal slack accumulated against the realized terminal measure, and the realization residual. Under exact OM primal feasibility, the residual term vanishes, and one recovers the exact OM lower-bound relations from Section II. Away from exact Liouville feasibility, by contrast, the raw realized objective J(θ) no longer automatically carries exact OM upper-bound meaning. The gap decomposition in (14) naturally motivates a saddle-point optimization scheme: at fixed θ, one updates the certifi-cate by reducing the weighted slack terms against the current realized primal pair, while maintaining approximate feasibility: 
+
+min  
+
+> ψ
+
+⟨sψ , μ θ ⟩ + ⟨sT,ψ , μ T,θ ⟩
+
+s.t. sψ (t, x, u ) ≥ − ε, ∀(t, x, u ) ∈ [t0, T ] × X × U, sT,ψ (x) ≥ − εT , ∀x ∈ XT .
+
+(15) When Rθ (vψ ) = 0, this coincides with reducing the certificate-relative gap terms in (13). More generally, (15) should be read as the slack side of the certificate update, while the residual contribution is realization-dependent and must be enforced, estimated, or controlled by the chosen realization mechanism. The same certificate also induces an admissibility structure on the primal search space. Define the shifted running slack 
+
+bsψ (t, x, u ) := sψ (t, x, u ) + ε. 
+
+For each state–time pair (t, x ) and tolerance τ ≥ 0, this yields the local gap-aware admissible action set 
+
+Uτvψ (t, x ) := 
+
+
+
+u ∈ U : bsψ (t, x, u ) ≤ inf  
+
+> ¯u∈U
+
+bsψ (t, x, ¯u) + τ
+
+
+
+.
+
+Now let aθ (t, x ) ∈ U denote the pointwise control action read out from the primal parameter θ; this may stand for uθ (t)
+
+in an open-loop parameterization or κθ (t, x ) in a feedback parameterization. Given any chosen finite decision context 
+
+Ξ ⊂ [t0, T ] × X, 
+
+for instance a rollout batch, a collocation set, or another realization-dependent sample family, the certificate induces the admissible parameter set 
+
+Aτvψ (Ξ) := 
+
+n
+
+θ ∈ Θ(M ) : aθ (t, x ) ∈ U τvψ (t, x ) ∀(t, x ) ∈ Ξ
+
+o
+
+.
+
+(16) Thus the global certificate does not merely evaluate a realized primal pair after the fact; it also prunes the primal search region by only local bsψ informations. On the primal side, one then seeks to reduce realized cost while controlling departure from exact Liouville feasibility. When the realization exposes the full residual functional Rθ ,a scalar residual monitor can be induced from it through a realization-dependent scalarization map, for instance 
+
+rM (θ) := Γ M (Rθ ).
+
+In implementations where only such a monitor is numerically available, one may take rM (θ) itself as the primitive residual-control quantity. This leads to the certificate-pruned residual-aware primal update 
+
+θ+ ∈ arg min  
+
+> θ∈A τvψ(Ξ)
+
+n
+
+J(θ) + λ r M (θ)
+
+o
+
+, λ ≥ 0. (17) When τ = + ∞, the certificate pruning disappears and (17) reduces to the unconstrained residual-aware primal update. Equivalently, one may use a constrained residual formulation on Aτvψ (Ξ) by imposing rM (θ) ≤ δ for a prescribed tolerance 
+
+δ ≥ 0.Thus the certificate is not only evaluative. Through the shifted running slack bsψ , it induces admissible local actions and, via the readout map θ 7 → aθ (t, x ), admissible param-eter updates. In this way, horizon-wide downstream cost is organized through a single global certificate rather than only through realized primal cost. 
+
+Remark 3 (Admissibility versus local update geometry) .
+
+Objects other than global certificates can also restrict updates before convergence. In second-order trajectory methods, the local quadratic surrogate and its regularization define ac-ceptable parameter directions through Hessian geometry. In sampling-based methods, the search covariance analogously restricts exploration to an ellipsoidal region. These roles are related but not equivalent: only the certificate is dual-feasible, carries global Bellman lower-bound semantics, and enters an explicit decomposition of the certified gap. 
+
+The next two subsections show how the same interface is instantiated differently in the explicit and implicit realizations, through different mechanisms for representing and controlling the residual term Rθ (vψ ).
+
+C. Explicit FOM and its asymptotic consistency 
+
+We first consider the realization in which primal feasibil-ity is represented explicitly through a finite weak Liouville 6
+
+test family. This is the canonical Eulerian form of FOM: the transport constraints remain visible at finite resolution, rather than being absorbed into rollout. It separates two different approximation layers—finite trial expressivity on the primal side, and weak-form refinement on the transport side— while keeping the certificate class independent as a finite-dimensional realization of HJB-type dual objects. In this setting, it is not convenient to enforce the full Liouville residual functional Rθ (·) directly. Instead, primal feasibility is monitored through finitely many weak tests. Fix a finite test family 
+
+Vm = span {v1, . . . , v m} ⊂ C1([ t0, T ] × X),
+
+and a finite-capacity trial family Θ(M ). For each θ ∈ Θ(M ), let 
+
+(μθ , μ T,θ ) ∈ M denote the induced global primal pair, with realized cost J(θ) := ⟨ℓ, μ θ ⟩ + ⟨g, μ T,θ ⟩.Relative to the chosen test basis, the explicit residual vector is defined by 
+
+r(m) 
+
+> θ
+
+:= 
+
+
+
+⟨vj , μ T,θ − μ0⟩ − ⟨ Lf vj , μ θ ⟩
+
+mj=1 
+
+∈ Rm, (18) and its size is measured by a norm ∥ · ∥ ∗,m on Rm.This yields the explicit restricted feasible family 
+
+Fexp  
+
+> m,M
+
+(η) := 
+
+n
+
+θ ∈ Θ(M ) : ∥r(m) 
+
+> θ
+
+∥∗,m ≤ η
+
+o
+
+,
+
+and the associated explicit restricted value 
+
+P exp  
+
+> m,M
+
+(η) := inf  
+
+> θ∈F exp
+> m,M (η)
+
+J(θ).
+
+On the exact measure side, the corresponding exact m-truncated feasible set is 
+
+Fm := 
+
+n
+
+(μ, μ T ) ∈ M : ⟨v, μ T −μ0⟩ = ⟨Lf v, μ ⟩, ∀v ∈ V m
+
+o
+
+,
+
+with truncated value 
+
+Pm := inf  
+
+> (μ,μ T)∈F m
+
+n
+
+⟨ℓ, μ ⟩ + ⟨g, μ T ⟩
+
+o
+
+.
+
+This explicit realization separates two approximation layers. The first is a realization-dependent representation approxima-tion : for fixed m, the finite trial family Θ(M ) approximates the truncated feasible set Fm as M → ∞ . The second is a 
+
+weak-form refinement : as the test family Vm is enriched, the truncated weak Liouville formulation recovers the exact OM LP as m → ∞ .The test family Vm and the certificate class VΨ play distinct roles. The test family appears here only to represent explicit primal residuals. The certificate class remains an independent finite-capacity realization of the dual side, used to represent exact or approximate HJB-type certificates. These two classes may coincide in particular implementations, but they need not be identified. 
+
+Example 1 (A deterministic optimal-control realization of explicit FOM) . Consider a deterministic optimal-control prob-lem with initial probability density ρ0, and parameterize the control by a time–state feedback kernel 
+
+πθ (· | t, x ) ∈ P (U ),
+
+Once θ is fixed, this induces the averaged drift field 
+
+bθ (t, x ) := 
+
+Z
+
+> U
+
+f (t, x, u ) πθ (du | t, x ).
+
+The induced distribution density evolves by a Liouville equa-tion 
+
+∂tρθ + ∇x ·  bθ ρθ
+
+ = 0 , ρθ (t0, ·) = ρ0.
+
+The realized cost can then be written as 
+
+J(θ) = 
+
+Z Tt0
+
+Z
+
+> X
+
+Z
+
+> U
+
+ℓ(t, x, u ) πθ (du | t, x ) ρθ (t, x ) dx dt 
+
++
+
+Z
+
+> X
+
+g(x)ρθ (T, x ) dx. 
+
+To obtain a finite-capacity explicit realization, choose a finite test space Tm = span {τ1, . . . , τ m}. Since the weak Liouville residual is linear in the test function, it is enough to enforce it on the chosen basis. This gives the explicit residual components with j = 1 , . . . , m ,
+
+r(m) 
+
+> θ,j
+
+=
+
+Z
+
+> X
+
+τj (T, x )ρθ (T, x ) dx −
+
+Z
+
+> X
+
+τj (t0, x )ρ0(x) dx 
+
+−
+
+Z Tt0
+
+Z
+
+> X
+
+Z
+
+> U
+
+(Lf τj )( t, x, u ) πθ (du | t, x ) ρθ (t, x ) dx dt 
+
+collected as r(m) 
+
+> θ
+
+∈ Rm.At a fixed implementation level m, the primal step may therefore be written in the penalized form 
+
+min  
+
+> θ∈Θ(M)
+
+n
+
+J(θ) + λ∥r(m) 
+
+> θ
+
+∥∗,m 
+
+o
+
+.
+
+On the dual side, choose a finite certificate family V(L)Ψ =
+
+{vψ : ψ ∈ Ψ(L)}, with slacks defined by (12) . With θ fixed, and with the Liouville defect already exposed on the primal side, (15) motivates the dual update 
+
+min 
+
+> ψ
+
+Z Tt0
+
+Z
+
+> X
+
+Z
+
+> U
+
+sψ (t, x, u ) πθ (du | t, x ) ρθ (t, x ) dx dt 
+
++
+
+Z
+
+> X
+
+sT,ψ (x) ρθ (T, x ) dx 
+
+s.t. sψ (t, x, u ) ≥ − ε, sT,ψ (x) ≥ − εT .
+
+on a chosen coarse space–time–control discretization. 
+
+Remark 4 (Moment–SOS as a dual-feasible explicit FOM) .
+
+Moment–SOS [34] is a canonical explicit FOM realization: primal feasibility is enforced only through a finite weak Liouville truncation, whereas dual feasibility is built in by design through restricting certificates to polynomial HJB-type subsolutions with Putinar positivity representations (SOS). Hence, at fixed relaxation order, both primal positivity and dual certificate nonnegativity are encoded by semidefinite cone constraints, yielding a primal–dual conic program rather than the more general saddle-type update mechanism in (15) –(17) .This stronger enforcement, however, also restricts applicability to problems admitting polynomial and SOS conic representa-tions. 
+
+We now state the consistency result for the explicit realiza-tion. 7
+
+Theorem 1 (Asymptotic consistency of explicit FOM) . Let P
+
+denote the optimal value of the exact OM LP, and let Pm be the truncated value defined above. Assume that the relevant supports are compact, so that the sets of induced measures are weak-⋆ relatively compact, and that the linear functionals μ 7 → ⟨ ℓ, μ ⟩ and μT 7 → ⟨ g, μ T ⟩ are weak-⋆ continuous on the relevant feasible sets. Assume moreover that for every fixed m ≥ 1, the explicit trial family is asymptotically dense in Fm, in the sense that for every (μ, μ T ) ∈ F m there exists a sequence θM ∈ Θ(M )
+
+such that 
+
+(μθM , μ T,θ M ) ⇀⋆ (μ, μ T ) and ∥r(m) 
+
+> θM
+
+∥∗,m → 0.
+
+Then, for every fixed m,
+
+lim  
+
+> η↓0
+
+lim   
+
+> M→∞
+
+P exp  
+
+> m,M
+
+(η) = Pm.
+
+If, in addition, the test families are asymptotically dense in 
+
+C1([ t0, T ] × X) in the sense that 
+
+[
+
+> m≥1
+
+VmC1
+
+= C1([ t0, T ] × X),
+
+and if the standard weak-form truncation is consistent so that 
+
+Pm → P as m → ∞ , then 
+
+lim  
+
+> m→∞
+
+lim  
+
+> η↓0
+
+lim   
+
+> M→∞
+
+P exp  
+
+> m,M
+
+(η) = P. 
+
+Proof. Fix m and write Pm,M (η) := P exp  
+
+> m,M
+
+(η).We first prove lim η↓0 lim M →∞ Pm,M (η) = Pm by match-ing upper and lower bounds. For the upper bound, fix ε > 0 and choose (με, μ εT ) ∈ F m
+
+such that 
+
+⟨ℓ, μ ε⟩ + ⟨g, μ εT ⟩ ≤ Pm + ε. 
+
+By asymptotic density of the explicit trial family, there exists a sequence θεM ∈ Θ(M ) such that 
+
+(μθεM , μ T,θ εM ) ⇀⋆ (με, μ εT ), ∥r(m)
+
+> θεM
+
+∥∗,m → 0.
+
+Now fix η > 0. Since ∥r(m)
+
+> θεM
+
+∥∗,m → 0, there exists M1(η, ε )
+
+such that 
+
+∥r(m)
+
+> θεM
+
+∥∗,m ≤ η ∀M ≥ M1(η, ε ).
+
+Since the cost functional is weak-⋆ continuous on the relevant feasible set, 
+
+J(θεM ) → ⟨ ℓ, μ ε⟩ + ⟨g, μ εT ⟩,
+
+so there exists M2(ε) such that 
+
+J(θεM ) ≤ ⟨ ℓ, μ ε⟩ + ⟨g, μ εT ⟩ + ε ≤ Pm + 2 ε ∀M ≥ M2(ε).
+
+Hence, for every M ≥ max {M1(η, ε ), M 2(ε)}, the parameter 
+
+θεM is feasible for Pm,M (η) and satisfies 
+
+Pm,M (η) ≤ J(θεM ) ≤ Pm + 2 ε. 
+
+Therefore 
+
+lim sup  
+
+> M→∞
+
+Pm,M (η) ≤ Pm + 2 ε ∀η > 0.
+
+Taking lim sup η↓0 and then letting ε ↓ 0 yields 
+
+lim sup 
+
+> η↓0
+
+lim sup  
+
+> M→∞
+
+Pm,M (η) ≤ Pm.
+
+For the lower bound, set 
+
+Lm := lim inf  
+
+> η↓0
+
+lim inf   
+
+> M→∞
+
+Pm,M (η).
+
+Choose a sequence ηn ↓ 0 such that 
+
+an := lim inf   
+
+> M→∞
+
+Pm,M (ηn) → Lm.
+
+For each n, choose Mn ≥ n such that 
+
+Pm,M n (ηn) ≤ an + 1
+
+n .
+
+By definition of the infimum, choose θn ∈ Θ(Mn) satisfying 
+
+∥r(m) 
+
+> θn
+
+∥∗,m ≤ ηn, J(θn) ≤ Pm,M n (ηn) + 1
+
+n ≤ an + 2
+
+n .
+
+It follows that 
+
+lim sup 
+
+> n→∞
+
+J(θn) ≤ Lm.
+
+By weak-⋆ relative compactness, after passing to a subse-quence we may assume 
+
+(μθn , μ T,θ n ) ⇀⋆ (¯ μ, ¯μT ).
+
+Because ∥r(m) 
+
+> θn
+
+∥∗,m → 0 in the finite-dimensional space Rm,each component of r(m) 
+
+> θn
+
+converges to zero. Thus, for every basis element vj of Vm,
+
+⟨vj , μ T,θ n − μ0⟩ − ⟨ Lf vj , μ θn ⟩ → 0.
+
+Passing to the limit by weak-⋆ continuity of the pairings gives 
+
+⟨vj , ¯μT − μ0⟩ = ⟨Lf vj , ¯μ⟩, j = 1 , . . . , m. 
+
+By linearity, the same holds for every v ∈ V m, so (¯ μ, ¯μT ) ∈Fm. Consequently, 
+
+Pm ≤ ⟨ ℓ, ¯μ⟩ + ⟨g, ¯μT ⟩.
+
+On the other hand, weak-⋆ continuity of the cost gives 
+
+⟨ℓ, ¯μ⟩ + ⟨g, ¯μT ⟩ = lim  
+
+> n→∞
+
+J(θn) ≤ lim sup 
+
+> n→∞
+
+J(θn) ≤ Lm.
+
+Hence Pm ≤ Lm, i.e. 
+
+Pm ≤ lim inf  
+
+> η↓0
+
+lim inf   
+
+> M→∞
+
+Pm,M (η).
+
+Combining the upper and lower bounds yields 
+
+lim  
+
+> η↓0
+
+lim   
+
+> M→∞
+
+Pm,M (η) = Pm.
+
+The second claim now follows immediately by taking m → ∞ 
+
+and using the assumed truncation consistency Pm → P .Theorem 1 shows that convergence relies on two decoupled approximation layers: the density of the trial family at a fixed weak semantics ( m), and the subsequent refinement of the test family ( m → ∞ ).” Whether the fixed-m density hypothesis holds is realization-dependent and depends on the expressive richness of the chosen primal family. This factorization will contrast with the implicit rollout-based realization below, which does not approximate the truncated sets Fm but instead targets exact feasibility through vanishing aggregated rollout residuals and interface defects. 8
+
+D. Implicit FOM and its asymptotic consistency 
+
+We next consider the rollout-native realization of FOM. Instead of representing primal feasibility by finitely many weak Liouville tests, this realization generates local dynamics directly on each time segment and measures global incon-sistency through interface defects and local rollout residuals. This is the natural setting for practical trajectory optimization, including single shooting, multiple shooting, and more general segmented simulation-based schemes. We now formalize this implicit realization and state its asymptotic consistency result. Fix a time-domain partition 
+
+Π := {τ0 = t0 < τ 1 < · · · < τ K = T }.
+
+For each finite capacity level M , let 
+
+Θ(M )Π
+
+denote a finite-dimensional segmented-rollout family. That is, each parameter θ specifies a segmentwise simulation-based realization, including the local rollout objects on each segment and their inter-segment coupling data. For every parameter θ ∈ Θ(M )Π , the realization produces, on each segment [τk, τ k+1 ], a local occupation-type measure 
+
+μθ,k ∈ M +([ τk, τ k+1 ] × X × U ), k = 0 , . . . , K − 1,
+
+together with endpoint measures 
+
+ν+
+
+> θ,k
+
+, ν − 
+
+> θ,k +1
+
+∈ M +(X),
+
+representing the segmentwise initial and terminal states in deterministic realizations, or more generally the corresponding endpoint distributions in empirical rollout realizations. The first segment is initialized from the prescribed initial measure, so under the boundary-slice identification we regard μ0 as its 
+
+X-marginal and write 
+
+ν+ 
+
+> θ, 0
+
+= μ0.
+
+The induced global primal pair is then 
+
+μθ := 
+
+> K−1
+
+X
+
+> k=0
+
+μθ,k , μT,θ := δT ⊗ ν− 
+
+> θ,K
+
+,
+
+which embeds the terminal X-measure back into the boundary component of M via the boundary-slice identification. The realized cost is 
+
+J(θ) := ⟨ℓ, μ θ ⟩ + ⟨g, μ T,θ ⟩.
+
+For the implicit realization, the residual mechanism relies on two sources of inconsistency. The first is the interface defect .For each interior node τk, define 
+
+dθ,k := ν− 
+
+> θ,k
+
+− ν+
+
+> θ,k
+
+, k = 1 , . . . , K − 1.
+
+This measures the defects between the terminal measure of segment k − 1 and the initial measure of segment k. If all interface defects vanish, the segmentwise realizations can be concatenated into a globally consistent object. The second is the local rollout residual . For each v ∈
+
+C1([ t0, T ] × X), define 
+
+eθ,k (v) := ⟨v(τk+1 , ·), ν −
+
+> θ,k +1
+
+⟩ − ⟨ v(τk, ·), ν +
+
+> θ,k
+
+⟩ − ⟨ Lf v, μ θ,k ⟩,k = 0 , . . . , K − 1.
+
+This is the weak Liouville defect of the local rollout on the kth segment. For an exact segmentwise rollout, one has 
+
+eθ,k (v) = 0 for every v. For a numerical ODE integrator, this term measures the local weak error of the induced segmentwise realization. These two objects are sufficient to recover the global weak residual. Indeed, defining 
+
+Rθ (v) := ⟨v, μ T,θ − μ0⟩ − ⟨ Lf v, μ θ ⟩,
+
+one has the following decomposition. 
+
+Lemma 1 (Global residual decomposition for segmented rollout) . For every θ ∈ Θ(M )Π and every v ∈ C1([ t0, T ] × X),
+
+Rθ (v) = 
+
+> K−1
+
+X
+
+> k=0
+
+eθ,k (v) + 
+
+> K−1
+
+X
+
+> k=1
+
+⟨v(τk, ·), d θ,k ⟩.
+
+Proof. By definition, 
+
+⟨Lf v, μ θ ⟩ =
+
+> K−1
+
+X
+
+> k=0
+
+⟨Lf v, μ θ,k ⟩.
+
+Substituting the definition of eθ,k (v) gives 
+
+⟨Lf v, μ θ,k ⟩ = ⟨v(τk+1 , ·), ν −
+
+> θ,k +1
+
+⟩ − ⟨ v(τk, ·), ν +
+
+> θ,k
+
+⟩ − eθ,k (v).
+
+Summing over k and rearranging yields 
+
+⟨Lf v, μ θ ⟩ =⟨v, μ T,θ ⟩ − ⟨ v(t0, ·), ν +
+
+> θ, 0
+
+⟩−
+
+> K−1
+
+X
+
+> k=1
+
+⟨v(τk, ·), d θ,k ⟩ − 
+
+> K−1
+
+X
+
+> k=0
+
+eθ,k (v).
+
+Since ν+ 
+
+> θ, 0
+
+= μ0, this is exactly the desired identity. Lemma 1 identifies the exact mechanism by which seg-mented rollout recovers the global weak residual: not through a finite test family, but through the accumulation of local rollout residuals and interface defects. This immediately yields the exact special cases of practical interest. If each segment is generated by exact rollout, then 
+
+eθ,k (v) ≡ 0 ∀v, ∀k. 
+
+If, in addition, all interface defects vanish, then 
+
+Rθ (v) = 0 ∀v ∈ C1([ t0, T ] × X),
+
+hence the induced global pair is exactly OM-feasible. To formulate a restricted optimization problem, fix a defect norm ∥ · ∥ def on signed endpoint measures such that, for every 
+
+ϕ ∈ C(X), the pairing σ 7 → ⟨ ϕ, σ ⟩ is continuous. Denote its operator norm by 
+
+∥ϕ∥def ,∗ := sup  
+
+> ∥σ∥def ≤1
+
+|⟨ ϕ, σ ⟩| .
+
+Define the aggregate interface defect 
+
+Dθ := 
+
+> K−1
+
+X
+
+> k=1
+
+∥dθ,k ∥def .9
+
+Likewise, define the aggregate rollout residual size by 
+
+Eθ := sup  
+
+> ∥v∥C1≤1
+> K−1
+
+X
+
+> k=0
+
+eθ,k (v) .
+
+The segmented-rollout restricted feasible family is then 
+
+Fimp Π,M (η, δ ) := 
+
+n
+
+θ ∈ Θ(M )Π : Dθ ≤ η, E θ ≤ δ
+
+o
+
+,
+
+and the associated restricted value is 
+
+P imp Π,M (η, δ ) := inf  
+
+> θ∈F imp Π,M (η,δ )
+
+J(θ).
+
+Accordingly, implicit consistency is organized directly around the decay of aggregated rollout residuals and interface defects, rather than approximation of a truncated weak feasible set Fm. The continuity requirement on the cost is the same as in the explicit case. What changes is the compactness and density mechanism. We say that the segmented-rollout family is asymptotically compact if every sequence Mn → ∞ , θn ∈ Θ(Mn)Π satisfying 
+
+sup 
+
+> n
+
+J(θn) < ∞, Dθn → 0, Eθn → 0,
+
+admits a weak-⋆ convergent subsequence of induced primal pairs 
+
+(μθn , μ T,θ n ) ⇀⋆ (¯ μ, ¯μT ).
+
+We say that the segmented-rollout family is asymptotically dense in the exact OM-feasible set if for every exact OM-feasible pair (μ, μ T ) there exists a sequence θM ∈ Θ(M )Π such that 
+
+(μθM , μ T,θ M ) ⇀⋆ (μ, μ T ), DθM → 0, EθM → 0.
+
+Example 2 (A deterministic optimal-control realization of implicit FOM) . Here we consider an implicit realization with 
+
+K = 1 . Let Ξ be a control-realization space, where each ξ ∈ Ξ
+
+determines an admissible control signal uξ (·), and let 
+
+qθ ∈ P (Ξ) 
+
+be a control-side measure depending on finitely many param-eters θ. Given an initial measure μ0, the deterministic ODE dynamics pushes forward (x0, ξ ) ∼ μ0 ⊗ qθ to trajectories 
+
+xx0,ξ (·), thereby inducing a primal pair (μθ , μ T,θ ) and the cost 
+
+J(θ) = ⟨ℓ, μ θ ⟩ + ⟨g, μ T,θ ⟩
+
+= Ex0∼μ0
+
+> ξ∼qθ
+
+"Z Tt0
+
+ℓ t, x x0,ξ (t), u ξ (t) dt + g xx0,ξ (T )#
+
+.
+
+When qθ collapses to a Dirac mass, this reduces to standard deterministic trajectory optimization. In contrast with the explicit realization, the primal side does not introduce a finite Liouville test family directly. Instead, one samples (x0, ξ ), rolls out the induced trajectories, and esti-mates the empirical cost. If the horizon is treated segmentwise, or if the rollout uses an approximate integrator, the resulting implicit residual indicators are precisely the rollout-based defect terms introduced in §III-D, such as within-segment defects and interface mismatches. A corresponding primal step therefore takes the form 
+
+min  
+
+> θ∈Θ(M)
+
+n
+
+J(θ) + λE Eθ + λD Dθ
+
+o
+
+,
+
+or its empirical analogue computed from sampled rollouts. The dual side remains the same finite certificate family V(L)Ψ
+
+as above, with slacks defined by (12) . With θ fixed, and Rθ
+
+monitored on the primal side, (15) yields the dual update on primal-induced samples n = 1 , . . . , N, as 
+
+min 
+
+> ψ
+
+1
+
+N
+
+> N
+
+X
+
+> n=1
+
+"Z Tt0
+
+sψ
+
+ t, x (n)(t), u (n)(t) dt + sT,ψ 
+
+ x(n)(T )#
+
+s.t. sψ ≥ − ε, sT,ψ ≥ − εT .
+
+The next result is therefore parallel to Theorem 1, except that the truncated feasible sets Fm are replaced by the ex-act OM-feasible set, and exact feasibility is recovered from vanishing rollout residuals and interface defects. 
+
+Theorem 2 (Asymptotic consistency of implicit FOM) . Let 
+
+P denote the optimal value of the exact OM LP, and write 
+
+PΠ,M (η, δ ) := P imp Π,M (η, δ ).
+
+Assume that the segmented-rollout families are nested, 
+
+Θ(M )Π ⊆ Θ(M +1) Π ∀M ≥ 1,
+
+that the cost functionals are weak-⋆ continuous on the relevant asymptotically feasible class, and that the segmented-rollout family is asymptotically compact and asymptotically dense in the exact OM-feasible set in the sense described above. Then 
+
+lim  
+
+> δ↓0
+
+lim  
+
+> η↓0
+
+lim   
+
+> M→∞
+
+P imp Π,M (η, δ ) = P. 
+
+Proof. For every fixed (η, δ ), the restricted feasible sets are nested in M . Hence 
+
+PΠ,M +1 (η, δ ) ≤ PΠ,M (η, δ ),
+
+so the inner limit 
+
+A(η, δ ) := lim   
+
+> M→∞
+
+PΠ,M (η, δ )
+
+exists in (−∞ , +∞].The proof follows the same upper/lower-bound template as Theorem 1. The only substantive difference is that the lower-bound argument must recover exact OM feasibility from the segmented-rollout residual mechanism. For the upper bound, fix ε > 0 and choose an exact OM-feasible pair (με, μ εT ) such that 
+
+⟨ℓ, μ ε⟩ + ⟨g, μ εT ⟩ ≤ P + ε. 
+
+By asymptotic density, there exists a sequence θεM ∈ Θ(M )Π
+
+such that 
+
+(μθεM , μ T,θ εM ) ⇀⋆ (με, μ εT ), DθεM → 0, EθεM → 0.
+
+Fix (η, δ ). For all sufficiently large M , one has 
+
+DθεM ≤ η, EθεM ≤ δ, J(θεM ) ≤ P + 2 ε. 10 
+
+Therefore 
+
+A(η, δ ) ≤ P + 2 ε. 
+
+Letting ε ↓ 0 yields 
+
+lim sup 
+
+> δ↓0
+
+lim sup 
+
+> η↓0
+
+A(η, δ ) ≤ P. 
+
+For the lower bound, set 
+
+L := lim inf  
+
+> δ↓0
+
+lim inf  
+
+> η↓0
+
+A(η, δ ).
+
+Repeating the diagonal selection used in Theorem 1, choose sequences 
+
+δn ↓ 0, ηn ↓ 0, Mn → ∞ ,
+
+and parameters θn ∈ Θ(Mn)Π such that 
+
+Dθn ≤ ηn, Eθn ≤ δn, J(θn) ≤ PΠ,M n (ηn, δ n) + 1
+
+n ,
+
+and hence 
+
+lim sup 
+
+> n→∞
+
+J(θn) ≤ L. 
+
+By asymptotic compactness, after passage to a subsequence, 
+
+(μθn , μ T,θ n ) ⇀⋆ (¯ μ, ¯μT ).
+
+We claim that (¯ μ, ¯μT ) is exact OM-feasible. Indeed, Lemma 1 gives, for every v ∈ C1([ t0, T ] × X),
+
+Rθn (v) = 
+
+> K−1
+
+X
+
+> k=0
+
+eθn,k (v) + 
+
+> K−1
+
+X
+
+> k=1
+
+⟨v(τk, ·), d θn,k ⟩.
+
+Hence 
+
+|R θn (v)| ≤ Eθn ∥v∥C1 + CΠ(v) Dθn ,
+
+where 
+
+CΠ(v) := 
+
+> K−1
+
+X
+
+> k=1
+
+∥v(τk, ·)∥def ,∗ < ∞.
+
+Therefore Rθn (v) → 0 for every v ∈ C1([ t0, T ]×X). Passing to the weak-⋆ limit in the definition of Rθn (v) gives 
+
+⟨v, ¯μT − μ0⟩ = ⟨Lf v, ¯μ⟩ ∀v ∈ C1([ t0, T ] × X),
+
+so (¯ μ, ¯μT ) is exact OM-feasible. Consequently, 
+
+P ≤ ⟨ ℓ, ¯μ⟩ + ⟨g, ¯μT ⟩.
+
+By weak-⋆ continuity of the cost, 
+
+⟨ℓ, ¯μ⟩ + ⟨g, ¯μT ⟩ = lim  
+
+> n→∞
+
+J(θn) ≤ lim sup 
+
+> n→∞
+
+J(θn) ≤ L. 
+
+Thus 
+
+P ≤ lim inf  
+
+> δ↓0
+
+lim inf  
+
+> η↓0
+
+lim   
+
+> M→∞
+
+PΠ,M (η, δ ).
+
+Combining the upper and lower bounds proves 
+
+lim  
+
+> δ↓0
+
+lim  
+
+> η↓0
+
+lim   
+
+> M→∞
+
+PΠ,M (η, δ ) = P. 
+
+Remark 5 (Compact support as a sufficient compactness mechanism) . A convenient sufficient condition for asymptotic compactness is that the rollout-induced occupation and ter-minal measures remain supported in fixed compact sets and have uniformly bounded total mass. We isolate asymptotic compactness in Theorem 2 because this is the property actually used in the proof; compact support is only one mechanism that guarantees it. 
+
+A useful special case is exact segmentwise rollout, for which 
+
+Eθ ≡ 0 and the consistency statement reduces to 
+
+lim  
+
+> η↓0
+
+lim   
+
+> M→∞
+
+P imp Π,M (η, 0) = P. 
+
+Single shooting corresponds to K = 1 , so Dθ ≡ 0 as well. These simplifications remove parts of the residual mechanism, but not the density requirement: exact rollout and single shooting do not by themselves imply asymptotic consistency. Both explicit and implicit realizations converge asymptoti-cally to the exact OM LP, despite utilizing different mecha-nisms to enforce primal feasibility. IV. C OMPUTATIONAL CONSEQUENCES OF FOM 
+
+A. Structural complexity over state-space complexity 
+
+The canonical curse of dimensionality in dynamic program-ming comes from representing a global state–time object on a full-state grid. From the FOM viewpoint, that object is the certificate. Thus the relevant issue is not the ambient dimension n alone, but whether the certificate admits a low-complexity structural organization, since this is what governs both tractability and online reuse. Such structure is not limited to full separability and is far from rare in practice. In particular, constructive nonlinear control for strict-feedback, strict-feedforward, and interlaced systems, especially under suitable cost shaping or inverse-optimal design, often leads to recursive, low-dimensional, and hierarchical Lyapunov or control-Lyapunov certificates, which are more faithfully viewed as block-organized than fully separable [47], [48]. A complementary source of structure comes from compositional stability theory: small-gain argu-ments yield separable Lyapunov or control-Lyapunov certifi-cates for interconnected systems [49], while weakly coupled optimal control problems may still admit approximately block-localized value representations through decaying sensitivities [49], [50]. The results below apply precisely when these structural insights can be formalized as an additive certificate organization over a block family {Sk}Kk=1 , allowing overlaps and nested blocks. Fix an index family 
+
+Sk ⊂ { 1, . . . , n }, k = 1 , . . . , K, 
+
+where overlaps and nested blocks are allowed, and let xSk
+
+denote the corresponding coordinate subvector. We assume a structured certificate class of the form 
+
+V{Sk } := 
+
+
+
+v ∈ C1([ t0, T ] × X) : v(t, x ) = 
+
+> K
+
+X
+
+> k=1
+
+vk(t, x Sk ),vk ∈ C1([ t0, T ] × XSk )
+
+ .
+
+For each block Sk, define the associated blockwise transport operator 
+
+Ak : C1([ t0, T ] × XSk ) → C(Z)11 
+
+by 
+
+(Akϕ)( t, x, u ) := ∂tϕ(t, x Sk ) + ∇xSk ϕ(t, x Sk )⊤fSk (t, x, u ).
+
+We say that the optimal control problem admits a block-organized certificate structure over {Sk}Kk=1 if there exist functions ℓk ∈ C(Z), gk ∈ C(( XT )Sk ), k = 1 , . . . , K , such that ℓ = PKk=1 ℓk on Z, and g(x) = PKk=1 gk(xSk ) on XT .For every represented certificate 
+
+v(t, x ) = 
+
+> K
+
+X
+
+> k=1
+
+vk(t, x Sk ), vk ∈ C1([ t0, T ] × XSk ),
+
+one then has 
+
+Lf v + ℓ =
+
+> K
+
+X
+
+> k=1
+
+ Akvk + ℓk
+
+ on Z, (19) and 
+
+g(x) − v(T, x ) = 
+
+> K
+
+X
+
+> k=1
+
+ gk(xSk ) − vk(T, x Sk ) on XT .
+
+(20) This is a strong structural hypothesis, and it is stated as such. Completely decoupled systems are immediate special cases, while layered or triangular systems motivate approximate versions of the same idea. 
+
+Theorem 3 (Global dual feasibility of exact OM can be certified blockwise) . Assume the block-organized certificate structure (19) –(20) . Suppose there exist functions 
+
+v⋆k ∈ C1([ t0, T ] × XSk ), k = 1 , . . . , K, 
+
+such that 
+
+Akv⋆k +ℓk ≥ 0 on Z, v⋆k(T, ·) ≤ gk on (XT )Sk , (21) 
+
+for every k. Define 
+
+v⋆(t, x ) := 
+
+> K
+
+X
+
+> k=1
+
+v⋆k(t, x Sk ).
+
+Then v⋆ is dual-feasible for the exact OM dual problem (7) ,and hence 
+
+⟨v⋆(t0, ·), μ 0⟩ ≤ P. 
+
+If, in addition, each v⋆k is represented in a local class of size rk, then v⋆ is represented by a total of 
+
+rtot := 
+
+> K
+
+X
+
+> k=1
+
+rk
+
+coefficients. Proof. By (19) and (21), 
+
+Lf v⋆ + ℓ =
+
+> K
+
+X
+
+> k=1
+
+ Akv⋆k + ℓk
+
+ ≥ 0 on Z. 
+
+Likewise, by (20) and (21), 
+
+g − v⋆(T, ·) = 
+
+> K
+
+X
+
+> k=1
+
+ gk − v⋆k(T, ·) ≥ 0 on XT .
+
+Hence v⋆ is dual-feasible, and the lower bound follows by weak duality. The parameter count is additive by construction. Theorem 3 shows that global dual feasibility can be certified blockwise whenever a block-organized exact certificate exists, avoiding a full-state tensor-product representation. We next relax this to the approximate case. For each block k, let 
+
+V(r) 
+
+> k
+
+⊂ C1([ t0, T ] × XSk )
+
+be a nested blockwise realization family. We assume only a blockwise approximation property measured directly at the level of the HJB inequalities. 
+
+Corollary 1 (Approximate blockwise certificates preserve certified lower bounds) . Under the assumptions of Theorem 3, let 
+
+v⋆(t, x ) = 
+
+> K
+
+X
+
+> k=1
+
+v⋆k(t, x Sk )
+
+be the exact globally feasible certificate assembled there. Suppose that for every η > 0 and every block k there exists 
+
+˜vk,η ∈ V (rk (η)) 
+
+> k
+
+such that 
+
+∥Ak(˜ vk,η − v⋆k)∥∞ ≤ η, ∥˜vk,η (T, ·) − v⋆k(T, ·)∥∞ ≤ η. 
+
+(22) 
+
+Define 
+
+˜vη (t, x ) := 
+
+> K
+
+X
+
+> k=1
+
+˜vk,η (t, x Sk ).
+
+Then ˜vη is (Kη, Kη )-feasible in the sense of (9) . Conse-quently, 
+
+⟨˜vη (t0, ·), μ 0⟩ − (T − t0)μ0(X) Kη − μ0(X) Kη ≤ P. 
+
+Moreover, ˜vη is represented with 
+
+rtot (η) := 
+
+> K
+
+X
+
+> k=1
+
+rk(η)
+
+blockwise coefficients. Proof. By (19), 
+
+Lf ˜vη + ℓ =
+
+> K
+
+X
+
+> k=1
+
+ Ak ˜vk,η + ℓk
+
+
+
+=
+
+> K
+
+X
+
+> k=1
+
+ Akv⋆k + ℓk
+
+ +
+
+> K
+
+X
+
+> k=1
+
+Ak(˜ vk,η − v⋆k).
+
+The first sum is nonnegative by (21), and the second is bounded below by −Kη by (22). Hence 
+
+Lf ˜vη + ℓ ≥ − Kη. 
+
+Similarly, 
+
+g − ˜vη (T, ·) = 
+
+> K
+
+X
+
+> k=1
+
+ gk − v⋆k(T, ·) +
+
+> K
+
+X
+
+> k=1
+
+ v⋆k(T, ·) − ˜vk,η (T, ·)
+
+≥ − Kη. 12 
+
+Thus ˜vη is (Kη, Kη )-feasible. The certified lower bound fol-lows from Proposition 1, and the coefficient count is additive by construction. Theorem 3 and Corollary 1 together show more than the well-known fact that structured representations can ease high-dimensional HJB computation [14], [16], [51]. The key point is that the same separable class can serve both as an exact certificate class, whenever the true HJB solution admits that structure, and as an approximate certificate class whose finite realizations still preserve a certified lower bound. In this sense, the result identifies a certificate-preserving bridge from exact structured HJB objects to finite structured approximations. For a target local accuracy η, the required coordinates scale as rtot (η) = PKk=1 rk(η). For instance, if the chosen blockwise realization families satisfy approximation estimates of the form 
+
+rk(η) ≲ η−βk , k = 1 , . . . , K, 
+
+for sufficiently small η, then 
+
+rtot (η) ≲
+
+> K
+
+X
+
+> k=1
+
+η−βk ≲ K η −β , β := max  
+
+> 1≤k≤K
+
+βk.
+
+Thus, when the exponents βk are controlled by local block complexity rather than by the full ambient dimension n, the dominant approximation burden is paid blockwise rather than globally. This is the intended sense in which certificate-first computation can mitigate the canonical curse of dimensional-ity: it does not remove hardness in the worst case, but relocates the approximation burden to the structural complexity of the certificate class. 
+
+Example 3 (A hierarchical certificate for a strict-feedback system) . Consider the autonomous strict-feedback system 
+
+˙ξ = f (ξ) + g(ξ)η, ˙η = u, 
+
+with a stabilization objective. Suppose a backstepping design yields a stabilizing feedback law together with a Lyapunov function, and that, by a suitable inverse-optimal construction, this Lyapunov function takes the form 
+
+V (ξ, η ) = v1(ξ) + 12
+
+ η − α(ξ)2.
+
+Let v2(ξ, η ) = 12
+
+ η − α(ξ)2 and take S1 = {ξ} and S2 =
+
+{ξ, η }. With the stationary transport operator (Lie derivative) 
+
+Lf v = ∂ξ v  f (ξ) + g(ξ)η + ∂η v u, 
+
+the corresponding blockwise contributions are 
+
+A1v1 = v′
+
+> 1
+
+(ξ) f (ξ) + g(ξ)η,A2v2 = ∂ξ v2(ξ, η ) f (ξ) + g(ξ)η + ∂η v2(ξ, η ) u. 
+
+Hence Lf V = A1v1 + A2v2.If the running cost admits a compatible split ℓ(ξ, η, u ) = 
+
+ℓ1(ξ, η, u ) + ℓ2(ξ, η, u ), and the blockwise inequalities 
+
+A1v1 + ℓ1 ≥ 0, A2v2 + ℓ2 ≥ 0
+
+hold, then 
+
+Lf V + ℓ = ( A1v1 + ℓ1) + ( A2v2 + ℓ2) ≥ 0.
+
+Thus the global certificate condition is verified blockwise, even though the system is coupled and the certificate is not additively separable in the original coordinates. 
+
+This does not mean that such systems are automatically easy, but that the dominant complexity is determined by the available certificate architecture. Whenever a compatible blockwise or hierarchical certificate representation exists, the FOM burden follows that structure rather than an unstructured full-state grid. This again supports the certificate-first view-point. 
+
+B. Certificates are reusable online objects 
+
+Trajectory reuse gives only an initialization. After a horizon shift, a terminal-cost change, or a mild model update, a previ-ously optimal trajectory may become infeasible or may simply lose its meaning as a guide for the new problem. Certificates behave differently because they are global inequalities rather than branch objects. This subsection records two elementary invariance properties that make that distinction precise. Write the horizon length as 
+
+H := T − t0.
+
+Proposition 3 (Time-shift invariance of approximate certifi-cates) . Assume that the problem data are time-homogeneous, so that f = f (x, u ) and ℓ = ℓ(x, u ) are independent of time, and that the terminal cost is the same function g on every horizon window of length H. Let v ∈ C1([0 , H ] × X) be 
+
+(ε, ε T )-feasible on [0 , H ], i.e., 
+
+∂tv(t, x ) + ∇xv(t, x )⊤f (x, u ) + ℓ(x, u ) ≥ − ε, 
+
+and 
+
+v(H, x ) ≤ g(x) + εT .
+
+For any shift τ ≥ 0, define 
+
+vτ (t, x ) := v(t − τ, x ), (t, x ) ∈ [τ, τ + H] × X. 
+
+Then vτ is (ε, ε T )-feasible for the shifted-horizon problem on 
+
+[τ, τ + H].Proof. Since f and ℓ are time-independent, 
+
+∂tvτ (t, x ) + ∇xvτ (t, x )⊤f (x, u ) + ℓ(x, u )=∂tv(t − τ, x ) + ∇xv(t − τ, x )⊤f (x, u ) + ℓ(x, u )
+
+≥ − ε. 
+
+At the shifted terminal time, 
+
+vτ (τ + H, x ) = v(H, x ) ≤ g(x) + εT .
+
+Hence vτ is (ε, ε T )-feasible on the shifted window. The exact shift statement already explains why certificates are natural warm-start objects in receding-horizon settings. The more realistic question is what happens under small drift in the model or the cost. Here the answer is again favorable because approximate feasibility is stable under perturbation. 13 
+
+Proposition 4 (Perturbation stability of approximate certifi-cates) . Consider two fixed-horizon problems on the same do-main with data (f, ℓ, g ) and ( ˜f , ˜ℓ, ˜g). Let v ∈ C1([ t0, T ] × X)
+
+be (ε, ε T )-feasible for (f, ℓ, g ). Assume 
+
+∥˜ℓ − ℓ∥∞ ≤ δℓ, ∥ ˜f − f ∥∞ ≤ δf , ∥˜g − g∥∞ ≤ δg ,
+
+and let 
+
+Gv := ∥∇ xv∥∞.
+
+Then v is  ε + δℓ + Gv δf , ε T + δg
+
+
+
+-feasible for the perturbed problem ( ˜f , ˜ℓ, ˜g).Proof. By direct expansion, 
+
+∂tv +∇xv⊤ ˜f + ˜ℓ = ∂tv +∇xv⊤f +ℓ+∇xv⊤( ˜f −f )+( ˜ℓ−ℓ).
+
+Since v is (ε, ε T )-feasible for (f, ℓ, g ),
+
+∂tv + ∇xv⊤f + ℓ ≥ − ε. 
+
+Moreover, 
+
+∇xv⊤( ˜f − f ) ≥ −∥∇ xv∥∞ ∥ ˜f − f ∥∞ ≥ − Gv δf ,
+
+and ˜ℓ − ℓ ≥ − δℓ.
+
+Therefore 
+
+∂tv + ∇xv⊤ ˜f + ˜ℓ ≥ −  ε + δℓ + Gv δf
+
+.
+
+At terminal time, 
+
+v(T, x ) ≤ g(x) + εT ≤ ˜g(x) + εT + δg .
+
+Hence the perturbed feasibility claim follows. 
+
+Corollary 2 (Certificate warm starts for online optimization) .
+
+In receding-horizon or online settings, a previously computed certificate remains a valid warm-start object after horizon shifts and small model or cost changes. More precisely, after applying Propositions 3 and 4, the same certificate continues to provide a certified lower bound through (10) , with degra-dation explicit in the shift or perturbation budget. Proof. Combine Propositions 3 and 4 with (10). Unlike trajectory warm-starts, which carry no built-in lower-bound guarantee and may become infeasible or sub-optimal under environmental perturbations, global certificates provide a stable lower bound that degrades smoothly according to the slack terms. 
+
+Remark 6 (Certificates as robust warm-start objects) . A pre-viously realized trajectory is often a brittle warm-start object: small changes in the initial condition or problem geometry may induce a discontinuous switch of the optimal trajectory. By contrast, an approximate global certificate is a problem-level inequality object, and can therefore be reused directly to initialize the next dual update for a new problem with similar structure. Consequently, a small continuous update of the certificate may still induce a nonsmooth change in the resulting trajectory. Figure 1 illustrates this effect for a constant-speed unicycle in a planar static obstacle-avoidance problem: Figure 1 (b) is obtained from Figure 1 (a) by a warm-started dual update after a structural obstacle change. The heat maps show the spatial component v1(x, y ) of a decomposed approximate global certificate, evaluated on a planar mesh.      
+
+> (a) Before obstacle change. (b) After obstacle change and a approximate certificate-guided search.
+
+Fig. 1: Certificate-guided replanning under a structural obsta-cle change. 
+
+C. Global certificate as an interface across FOM realizations 
+
+The certified interface provides a direct computational con-sequence of Section III. Once a method outputs an induced global primal pair together with a certificate candidate, the quantities 
+
+P (ψ), J(θ, ψ ),
+
+are already defined. Hence different realizations can be judged on the same scale even when their internal parameterizations are unrelated. 
+
+Corollary 3 (Certified comparability across realizations) . Sup-pose two algorithms, possibly based on different realizations, output pairs 
+
+(θa, ψ a), (θb, ψ b).
+
+Then the following comparisons are well-posed and realization-independent: 
+
+P (ψa) vs. P (ψb), J(θa, ψ a) vs. J(θb, ψ b).
+
+In particular, algorithmic progress need not be judged by rollout cost alone; it can be judged through a common certified lower-side interface and its induced gap information. Proof. The lower comparison 
+
+P (ψa) vs. P (ψb)
+
+is realization-independent by Proposition 1. The realized lower interface comparison 
+
+J(θa, ψ a) vs. J(θb, ψ b)
+
+is realization-independent by Proposition 2, which depends only on the induced primal pair, the certificate, and the residual term already defined in Section III. Corollary 3 shows that realizations with unrelated internal parameterizations are still comparable once they expose a certificate and residual information. Different realizations may 14 
+
+generate their primal pairs in very different ways, but once they expose a certificate and the associated residual information, they become directly comparable through the same lower-side interface and induced gap information. This is what makes cross-realization warm starts and hybrid algorithm design conceptually clean. 
+
+Remark 7 (Offline proposal measures for certificate synthe-sis) . Offline rollout distributions produced by external solvers may still be useful as proposal measures for target-specific certificate updates. What transfers is not the primal solution itself, but sampling support for the dual update. 
+
+In summary, the FOM framework integrates local trajectory search with global HJB certification. By leveraging block-wise structures and perturbation stability, certificates serve as robust, reusable objects for online optimization and cross-algorithm evaluation. V. C ONCLUSION 
+
+This paper introduces the Featurized Occupation Measure (FOM), a unified primal-dual framework for nonlinear optimal control. By maintaining a finite-dimensional interface, FOM bridges the fundamental gap between scalable local trajectory search and globally valid Hamilton-Jacobi-Bellman (HJB) certification. We established that FOM realizations are asymptotically consistent with the exact infinite-dimensional occupation mea-sure problem. This holds whether the primal feasibility is enforced through explicit weak-form tests or implicit rollout-based mechanisms. Under this framework, both trajectory exploration and dual certificate updates are evaluated through a common, residual-aware gap metric. Crucially, the FOM formulation shifts the computational burden from the ambient state dimension to the structural complexity of the certificate class. We proved that block-organized approximations preserve certified lower bounds without requiring full-state discretization for a broad class of problem formulations. Furthermore, unlike nominal tra-jectories, approximate global certificates are robust inequality objects. They naturally persist under time shifts and bounded model perturbations, serving as rigorous warm-starts for online replanning and providing a realization-independent baseline for cross-algorithm evaluation. Future work will pursue a sharper theory of structured certificates within FOM, including quantitative approxima-tion and complexity bounds, convergence guarantees for residual-aware primal–dual updates, and broader structural characterizations of problem classes admitting low-complexity global certificates. On the computational side, these questions will be tested through large-scale implementations in high-dimensional robotic systems. ACKNOWLEDGMENT 
+
+REFERENCES [1] J. T. Betts, Practical methods for optimal control and estimation using nonlinear programming . SIAM, 2010. [2] M. Posa, C. Cantu, and R. Tedrake, “A direct method for trajectory optimization of rigid bodies through contact,” The International Journal of Robotics Research , vol. 33, no. 1, pp. 69–81, 2014. [3] R. Deits and R. Tedrake, “Footstep planning on uneven terrain with mixed-integer convex optimization,” in 2014 IEEE-RAS international conference on humanoid robots . IEEE, 2014, pp. 279–286. [4] M. Zhang, D. K. Jha, A. U. Raghunathan, and K. Hauser, “Simultaneous trajectory optimization and contact selection for contact-rich manipula-tion with high-fidelity geometry,” IEEE Transactions on Robotics , 2025. [5] T. Bas ¸ar and G. J. Olsder, Dynamic noncooperative game theory . SIAM, 1998. [6] J. Lidard, H. Hu, A. Hancock, Z. Zhang, A. G. Contreras, V. Modi, J. DeCastro, D. Gopinath, G. Rosman, N. E. Leonard et al. , “Blending data-driven priors in dynamic games,” arXiv preprint arXiv:2402.14174 ,2024. [7] J. Li, G. Qu, J. J. Choi, S. Sojoudi, and C. Tomlin, “Multi-agent guided policy search for non-cooperative dynamic games,” arXiv preprint arXiv:2509.24226 , 2025. [8] M. Bardi, I. C. Dolcetta et al. , Optimal control and viscosity solutions of Hamilton-Jacobi-Bellman equations . Springer, 1997, vol. 12. [9] W. H. Fleming and H. M. Soner, Controlled Markov processes and viscosity solutions . Springer, 2006. [10] D. Bertsekas, Dynamic programming and optimal control: Volume I .Athena scientific, 2012, vol. 4. [11] R. Bellman, “Dynamic programming,” science , vol. 153, no. 3731, pp. 34–37, 1966. [12] J. Garcke and A. Kr¨ oner, “Suboptimal feedback control of pdes by solving hjb equations on adaptive sparse grids,” Journal of Scientific Computing , vol. 70, no. 1, pp. 1–28, 2017. [13] O. Bokanowski, J. Garcke, M. Griebel, and I. Klompmaker, “An adap-tive sparse grid semi-lagrangian scheme for first order hamilton-jacobi bellman equations,” Journal of Scientific Computing , vol. 55, no. 3, pp. 575–605, 2013. [14] W. Kang and L. C. Wilcox, “Mitigating the curse of dimensionality: sparse grid characteristics method for optimal feedback control and hjb equations,” Computational Optimization and Applications , vol. 68, no. 2, pp. 289–315, 2017. [15] S. Dolgov, D. Kalise, and K. K. Kunisch, “Tensor decomposition meth-ods for high-dimensional hamilton–jacobi–bellman equations,” SIAM Journal on Scientific Computing , vol. 43, no. 3, pp. A1625–A1650, 2021. [16] M. B. Horowitz, A. Damle, and J. W. Burdick, “Linear hamilton jacobi bellman equations in high dimensions,” in 53rd IEEE Conference on Decision and Control . IEEE, 2014, pp. 5880–5887. [17] J. Darbon and S. Osher, “Algorithms for overcoming the curse of dimensionality for certain hamilton–jacobi equations arising in control theory and elsewhere,” Research in the Mathematical Sciences , vol. 3, no. 1, p. 19, 2016. [18] Y. T. Chow, J. Darbon, S. Osher, and W. Yin, “Algorithm for over-coming the curse of dimensionality for state-dependent hamilton-jacobi equations,” Journal of Computational Physics , vol. 387, pp. 376–409, 2019. [19] L. S. Pontryagin, The Mathematical Theory of Optimal Processes . John Wiley, 1963. [20] P. Bosch and J. G´ omez, “A proof of a local maximum principle for optimal control problems with mixed state constraints,” Rev Invest Oper Braz , vol. 9, no. 3, pp. 239–262, 2000. [21] D. Mayne, “A second-order gradient method for determining optimal trajectories of non-linear discrete-time systems,” International Journal of Control , vol. 3, no. 1, pp. 85–95, 1966. [22] D. H. Jacobson and D. Q. Mayne, “Differential dynamic programming,” 
+
+Elsevier Press , 1970. [23] Y. Tassa, N. Mansard, and E. Todorov, “Control-limited differential dynamic programming,” in 2014 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2014, pp. 1168–1175. [24] W. Li and E. Todorov, “Iterative linear quadratic regulator design for nonlinear biological movement systems,” in First International Con-ference on Informatics in Control, Automation and Robotics , vol. 2. SciTePress, 2004, pp. 222–229. [25] H. J. Kappen, “Linear theory for control of nonlinear stochastic sys-tems,” Physical review letters , vol. 95, no. 20, p. 200201, 2005. [26] E. Theodorou, J. Buchli, and S. Schaal, “A generalized path integral control approach to reinforcement learning,” The Journal of Machine Learning Research , vol. 11, pp. 3137–3181, 2010. [27] G. Williams, A. Aldrich, and E. A. Theodorou, “Model predictive path integral control: From theory to parallel computation,” Journal of Guidance, Control, and Dynamics , vol. 40, no. 2, pp. 344–357, 2017. 15 
+
+[28] G. Williams, P. Drews, B. Goldfain, J. M. Rehg, and E. A. Theodorou, “Information-theoretic model predictive control: Theory and applications to autonomous driving,” IEEE Transactions on Robotics , vol. 34, no. 6, pp. 1603–1622, 2018. [29] E. A. Hansen and S. Zilberstein, “Lao: A heuristic search algorithm that finds solutions with loops,” Artificial Intelligence , vol. 129, no. 1-2, pp. 35–62, 2001. [30] B. Lincoln and A. Rantzer, “Relaxing dynamic programming,” IEEE Transactions on Automatic Control , vol. 51, no. 8, pp. 1249–1260, 2006. [31] B. Paden, V. Varriccho, and E. Frazzoli, “Design of admissible heuristics for kinodynamic motion planning via sum-of-squares programming,” 
+
+arXiv preprint arXiv:1609.06277 , 2016. [32] R. Vinter, “Convex duality and nonlinear optimal control,” SIAM journal on control and optimization , vol. 31, no. 2, pp. 518–538, 1993. [33] J. Warga, Optimal control of differential and functional equations .Academic press, 2014. [34] J. B. Lasserre, D. Henrion, C. Prieur, and E. Tr´ elat, “Nonlinear optimal control via occupation measures and lmi-relaxations,” SIAM journal on control and optimization , vol. 47, no. 4, pp. 1643–1666, 2008. [35] D. P. De Farias and B. Van Roy, “The linear programming approach to approximate dynamic programming,” Operations research , vol. 51, no. 6, pp. 850–865, 2003. [36] D. B. Brown and J. E. Smith, “Information relaxations and duality in stochastic dynamic programs: A review and tutorial,” Foundations and Trends in Optimization , vol. 5, no. 3, pp. 246–339, 2022. [37] A. Kamoutsi, T. Sutter, P. M. Esfahani, and J. Lygeros, “On infinite linear programming and the moment approach to deterministic infinite horizon discounted optimal control problems,” IEEE control systems letters , vol. 1, no. 1, pp. 134–139, 2017. [38] E. Pauwels, D. Henrion, and J.-B. Lasserre, “Positivity certificates in op-timal control,” in Geometric and Numerical Foundations of Movements .Springer, 2017, pp. 113–131. [39] D. R. Jiang, L. Al-Kanj, and W. B. Powell, “Optimistic monte carlo tree search with sampled information relaxation dual bounds,” Operations Research , vol. 68, no. 6, pp. 1678–1697, 2020. [40] A. Oustry and M. Tacchi, “Minimal-time nonlinear control via semi-infinite programming,” arXiv preprint arXiv:2307.00857 , 2023. [41] F. Holtorf, A. Edelman, and C. Rackauckas, “Stochastic optimal control via local occupation measures,” arXiv preprint arXiv:2211.15652 , 2022. [42] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Prox-imal policy optimization algorithms,” arXiv preprint arXiv:1707.06347 ,2017. [43] D. Silver, G. Lever, N. Heess, T. Degris, D. Wierstra, and M. Riedmiller, “Deterministic policy gradient algorithms,” in International conference on machine learning . Pmlr, 2014, pp. 387–395. [44] P. Varnai and D. V. Dimarogonas, “Path integral policy improvement: An information-geometric optimization approach,” 2020. [45] S. Cai, Z. Yin, J. Jacob, and F. Ramos, “Q-guided stein variational model predictive control via rl-informed policy prior,” 2026. [Online]. Available: https://arxiv.org/abs/2507.06625 [46] F. Holtorf, Bounds and low-rank approximation for controlled Markov processes . Massachusetts Institute of Technology, 2024. [47] R. Sepulchre, M. Jankovi´ c, and P. V. Kokotovi´ c, Constructive nonlinear control . Springer Science & Business Media, 1997. [48] P. Kokotovi´ c and M. Arcak, “Constructive nonlinear control: ahistorical perspective,” Automatica , vol. 37, no. 5, pp. 637–662, 2001. [Online]. Available: https://www.sciencedirect.com/science/article/pii/ S0005109801000024 [49] L. Gr¨ une and M. Sperl, “Examples for separable control lyapunov functions and their neural network approximation,” IFAC-PapersOnLine ,vol. 56, no. 1, pp. 19–24, 2023, 12th IFAC Symposium on Nonlinear Control Systems NOLCOS 2022. [Online]. Available: https://www.sciencedirect.com/science/article/pii/S2405896323001921 [50] M. Sperl, L. Saluzzi, L. Gr¨ une, and D. Kalise, “Separable approxima-tions of optimal value functions under a decaying sensitivity assump-tion,” in 2023 62nd IEEE Conference on Decision and Control (CDC) ,2023, pp. 259–264. [51] E. Todorov, “Compositionality of optimal control laws,” Advances in neural information processing systems , vol. 22, 2009.
