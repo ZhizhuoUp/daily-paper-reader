@@ -1,0 +1,657 @@
+Title: ReDAG-RT: Global Rate-Priority Scheduling for Real-Time Multi-DAG Execution in ROS 2
+
+URL Source: https://arxiv.org/pdf/2603.18238v1
+
+Published Time: Fri, 20 Mar 2026 00:16:00 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+> 1
+
+# ReDAG RT : Global Rate-Priority Scheduling for Real-Time Multi-DAG Execution in ROS 2 
+
+Md. Mehedi Hasan , Rafid Mostafiz , Bikash Kumar Paul , Md. Abir Hossain , and Ziaur Rahman 
+
+Abstract —ROS 2 has become the dominant middleware for robotic systems, where perception, estimation, planning, and con-trol pipelines are naturally structured as directed acyclic graphs (DAGs) of callbacks executed under a shared executor. Despite widespread adoption, default ROS 2 executors employ best-effort dispatch with no cross-DAG priority enforcement, producing uncontrolled callback contention, structural priority inversion, and deadline instability under concurrent workloads. These lim-itations restrict deployment in time-critical and safety-sensitive cyber-physical systems (CPS). This paper presents ReDAG RT ,a user-space global scheduling framework that enables deter-ministic multi-DAG execution within unmodified ROS 2. The core contribution is a Rate-Priority (RP)-driven global ready-queue architecture that orders callbacks system-wide by activa-tion rate, enforces per-DAG concurrency bounds, and mitigates cross-graph priority inversion, without modifying the ROS 2 API, executor interface, or the Linux scheduler. A multi-DAG task model is formalized for ROS 2 callback pipelines, and cross-DAG interference is characterized under RP scheduling. Response-time recurrences and schedulability conditions are derived within the classical Rate-Monotonic theory. Controlled experiments within a ROS 2 Humble execution environment compare ReDAG RT against the SingleThreadedExecutor 
+
+and MultiThreadedExecutor using synthetic multi-DAG workloads under mixed-period, mixed-criticality configurations. Results show up to 29 .7% reduction in combined deadline miss rate, 42 .9% compression of the 99 th-percentile response time, and a 13 .7% improvement in miss rate relative to the MultiThreadedExecutor under comparable utilization. Asymmetric per-DAG concurrency bounds further reduce in-terference by 40 .8% over symmetric configurations. These re-sults demonstrate that deterministic and analyzable multi-DAG scheduling is achievable entirely within the ROS 2 user-space execution layer, providing a principled foundation for real-time robotic middleware in safety-critical cyber-physical deployments. 
+
+Index Terms —Robotic Operating Systems 2 (ROS 2); Directed Acyclic Graph (DAG); Robotics. 
+
+I. I NTRODUCTION 
+
+# MODERN robotic systems deploy multiple concur-rent computation pipelines within a shared mid-dleware runtime. Perception, localization, planning, and control are commonly structured as independent directed acyclic graphs (DAGs) of callbacks, all executed un-der a unified executor. In ROS 2, these callbacks are managed by either a SingleThreadedExecutor or a 
+
+MultiThreadedExecutor , each maintaining a global ready queue [1]. While this model simplifies concurrency 
+
+The source code and experimental artifacts of ReDAG RT are openly avail-able at: https://github.com/Mehedi16009/ros2-realtime-scheduling-framework 
+
+Fig. 1. Cross-DAG priority inversion under the default ROS 2 executor and the ReDAG RT solution. (A) Multiple independent DAGs collapse into a shared FIFO queue with no global priority ordering. (B) Low-frequency callbacks execute before high-frequency ones, causing priority inversion and deadline misses. (C) ReDAG RT enforces Rate-Monotonic ordering via a unified priority queue. (D) Deterministic execution eliminates priority inversion and bounds response times. 
+
+management, it imposes no global real-time scheduling policy across application DAGs [2]. The default executor operates at the callback level without enforcing rate-based priority relations. A callback becomes eligible for execution when its triggering condition is satisfied and is then dispatched accord-ing to queue ordering and thread availability. No mechanism ensures that higher-rate callbacks dominate lower-rate ones across distinct DAGs [3], [4]. Consequently, execution order is determined by arrival timing and worker scheduling rather than real-time priority semantics. This design induces cross-DAG interference. A callback belonging to a low-frequency pipeline may execute before a high-frequency control callback if it enters the ready queue earlier or acquires a worker thread first, a phenomenon we identify as cross-DAG priority inver-sion [5], [6], as illustrated in Fig. 1. Multiple application DAGs structurally collapse into a shared callback queue under the default executor, producing priority inversion across otherwise independent pipelines. The resulting interference increases 
+
+> arXiv:2603.18238v1 [cs.RO] 18 Mar 2026 2
+
+response-time variability and degrades temporal predictability. Under moderate to high processor utilization, these effects amplify jitter and cause deadline misses. From a real-time systems perspective, this behavior directly violates classical Rate-Monotonic scheduling principles [7], [8]. Although in-dividual DAGs may internally respect precedence constraints, the executor layer collapses all graphs into a shared queue without preserving a global priority order [9], [10]. Default ROS 2 execution models therefore lack a schedulability-aware abstraction that spans multiple concurrent DAGs within a single process. The core architectural insight of ReDAG RT 
+
+is that cross-DAG interference originates from the absence of a unified rate-priority hierarchy at the executor level. Mapping all callbacks to globally ordered schedulable entities restores the applicability of classical fixed-priority analysis across the entire callback set. Enforcing Rate-Monotonic priority assign-ment across DAG boundaries eliminates structural priority inversion and recovers analyzable timing behavior [11]. ReDAG RT addresses this limitation by introducing a global rate-priority scheduler integrated directly within the ROS 2 execution layer. All ready callbacks are inserted into a cen-tralized priority queue ordered by activation period, and dis-patch decisions follow fixed-priority real-time semantics. Intra-DAG precedence constraints are preserved, while cross-DAG execution is globally arbitrated according to Rate-Monotonic ordering. This design transforms the default timing-agnostic executor into a schedulability-aware runtime without modify-ing the ROS 2 API, application-level graph structure, or the underlying operating system scheduler. By restoring determin-istic priority ordering across heterogeneous callback pipelines, ReDAG RT bounds cross-graph interference and stabilizes end-to-end response times, enabling principled real-time reasoning for multi-DAG robotic workloads executing within a shared middleware process. 
+
+Contributions. This paper makes three primary contributions:  
+
+> •
+
+Structural analysis of ROS 2 executor limitations. 
+
+Cross-DAG priority inversion is identified and character-ized as a fundamental structural deficiency of the default ROS 2 execution model, originating from the absence of global priority arbitration across concurrently executing callback pipelines.  
+
+> •
+
+Formal interference model for multi-DAG scheduling. 
+
+The absence of rate-priority enforcement is shown to pro-duce uncontrolled cross-DAG interference, timing non-determinism, and degraded deadline predictability under concurrent workloads. Interference bounds and response-time recurrences are derived within a formal multi-DAG task model grounded in classical Rate-Monotonic theory.  
+
+> •
+
+Design, evaluation, and open-source release of ReDAG RT . A unified Rate-Monotonic scheduling frame-work is presented that introduces a global ready-queue executor enforcing deterministic multi-DAG callback ar-bitration entirely within the ROS 2 user-space execution layer. The framework requires no kernel modifications, preserves full ROS 2 API compatibility, and is em-pirically validated under mixed-period, mixed-criticality workloads against standard ROS 2 executors. The full implementation is openly released to facilitate repro-ducibility and community adoption. The remainder of this paper is organized as follows. Sec-tion II reviews related work and positions ReDAG RT against existing ROS 2 real-time scheduling approaches. Building on this, Section III presents the system design, formal task model, rate-priority scheduling framework, interference characteriza-tion, and response-time analysis. Following the methodology, Section IV presents an empirical evaluation of thread scal-ability, deadline sensitivity, and cross-system comparisons. The subsequent Section V provides a scheduling-theoretic interpretation of the results. Finally, Section VI concludes and outlines future directions. II. RELATED WORK 
+
+A. Real-Time Scheduling Foundations 
+
+Classical real-time scheduling theory establishes the analyt-ical basis for predictable task execution in safety-critical sys-tems. Liu and Layland introduced Rate-Monotonic (RM) and Earliest-Deadline-First (EDF) scheduling for periodic task sys-tems, along with utilization bounds and response-time analysis for fixed-priority preemption [12]. Subsequent work extended these results to Directed Acyclic Graph (DAG) task models, characterizing intra-task parallelism, precedence constraints, and interference under multiprocessor scheduling [13]. These models formalize the conditions under which bounded re-sponse times and deadline adherence can be guaranteed. In contrast, ROS 2’s default SingleThreadedExecutor 
+
+and MultiThreadedExecutor employ best-effort FIFO callback dispatch without global priority arbitration across independent DAG pipelines. As a result, classical schedula-bility assumptions do not directly hold in practical robotic middleware deployments, motivating structured user-space scheduling mechanisms. 
+
+B. ROS 2 Real-Time Evolution 
+
+Multiple studies have examined timing behavior in ROS 2. Casini et al. [14] demonstrate that executor processing windows and callback ordering can introduce unfair dis-patch and increased end-to-end latency in chained process-ing pipelines [11]. Macenski et al. [15] describe ROS 2’s production-oriented redesign with DDS-based QoS con-trols, while acknowledging that executor-level scheduling re-mains largely FIFO-driven. Kernel-level interventions such as 
+
+PREEMPT_RT improve worst-case interrupt latency but re-quire system-level modifications and do not address callback-level arbitration within the executor [16]. Similarly, improve-ments in Linux scheduling fairness may enhance throughput but do not establish analyzable dispatch order among compet-ing callbacks [16]. These efforts improve system-level timing characteristics yet leave executor-level global prioritization largely unaddressed. 
+
+C. Chain-Aware Scheduling Approaches 
+
+Chain-aware scheduling represents a partial solution to tim-ing predictability. PiCAS assigns priorities to callbacks accord-ing to end-to-end chain deadlines and demonstrates improved 3
+
+latency bounds in embedded robotic platforms [17], [18]. However, its analysis primarily considers isolated chains and does not explicitly characterize interference among heteroge-neous DAG pipelines. RAGE adopts chain-based prioritization but lacks formal schedulability analysis and global queue arbi-tration [19]. PoDS introduces priority inheritance mechanisms for micro-ROS environments [20], focusing on MCU-scale deployments rather than multi-core robotic workloads. While these works strengthen intra-chain timing guarantees, cross-DAG contention in shared executors remains insufficiently characterized. 
+
+D. Executor-Level Scheduling Extensions 
+
+Several efforts modify ROS 2 executors to better align with classical scheduling models. Teper et al. and Bell et al. extend the EventsExecutor to support RM/EDF-compatible dispatch and enable response-time analysis under constrained triggering models [21], [22]. These approaches rely on specific DDS configurations and restricted callback models, limiting applicability to general robotic pipelines with mixed subscription and timer callbacks. ROSRT lever-ages Linux SCHED_EXT to provide flexible thread-level pre-emption without kernel patches [23]. However, scheduling decisions remain tied to DDS-topic granularity and do not introduce unified global arbitration across multiple DAGs. ROSCH synchronizes DAG timestamps for Autoware-based systems [24], yet remains application-specific and conservative in delay estimation. 
+
+E. Multi-DAG Scheduling and Analysis Gaps 
+
+Theoretical multi-DAG scheduling has been studied in broader real-time systems literature. Yano et al. apply GEDF to Autoware sub-DAGs but assume FIFO-ready queues in-consistent with asynchronous ROS 2 callback behavior [25]. Ahmed proposes an rp-sporadic DAG scheduler with self-dependency handling [26], though without integration into ROS middleware. Tang et al. derive response-time bounds under reservation-based chain models [27], primarily focusing on single-chain interference. Blass analyzes callback interfer-ence in the MultiThreadedExecutor [28], yet does not introduce priority-driven global queue arbitration. Chaaban et al. propose executor grouping heuristics to reduce resource contention [29], but without formal multi-DAG schedulability characterization. Collectively, existing work either (i) prior-itizes single chains, (ii) modifies executor backends under constrained assumptions, or (iii) analyzes interference without introducing structured global arbitration across heterogeneous DAG pipelines. 
+
+F. Positioning Against Prior Art 
+
+Table I summarizes representative approaches. Default ex-ecutors provide compatibility but no global priority ordering. Chain-aware schedulers improve end-to-end latency within in-dividual pipelines. EventsExecutor modifications enable clas-sical analysis under restricted triggering assumptions. OS-level approaches enhance thread scheduling but do not directly address callback-level multi-DAG arbitration. 
+
+G. Research Gap and Motivation 
+
+To our knowledge, no prior work provides user-space global rate-priority queue arbitration across heterogeneous DAG pipelines within unmodified ROS 2 executors while enabling multi-DAG response-time and lateness analysis. Ex-isting approaches either restrict the callback model, depend on specialized executor variants, rely on OS-level scheduling, or focus on single-chain optimization. ReDAG RT addresses this gap by introducing structured global rate-priority dispatch within the standard executor abstraction, preserving ROS 2 API compatibility and avoiding kernel modifications. Its eval-uation explicitly examines cross-DAG interference, response-time variability, and deadline behavior under stress workloads, thereby complementing prior single-chain and OS-centric approaches with a middleware-level multi-DAG scheduling framework. III. R EDAG RT : S YSTEM DESIGN AND SCHEDULING 
+
+FRAMEWORK 
+
+A. System Architecture Overview 
+
+ReDAG RT is implemented as a custom global executor within the ROS 2 user-space execution layer and is structured into three logical tiers: (i) an Application Layer hosting concurrent DAG-structured robotic pipelines, (ii) an Executor Layer enforcing deterministic Rate-Priority (RP) scheduling through a unified global ready queue, and (iii) an OS Layer comprising the standard Linux scheduler operating without kernel modification. The complete architecture and event-driven execution flow are illustrated in Fig. 2. At the applica-tion layer, the system executes multiple concurrent directed acyclic graphs Gk = (Vk, E k), where Vk denotes the set of callback tasks and Ek encodes inter-task precedence con-straints. Each DAG represents an independent robotic pipeline, such as perception, estimation, planning, or control. Tasks are released periodically according to their specified periods 
+
+Ti, consistent with implicit-deadline periodic task models. This layer remains fully compatible with standard ROS 2 APIs and does not require application-level modifications. Upon period expiration, a release event triggers the Task Release and Dependency Resolution stage. For each task 
+
+τi, the resolver verifies two conditions: (1) that its period 
+
+Ti has elapsed, and (2) that all predecessor tasks speci-fied in Ek have completed. Tasks satisfying both condi-tions are marked READY and inserted into the Global Ready Queue. This queue is a unified user-space priority struc-ture shared across all concurrent DAGs. The queue enforces Rate-Monotonic priority ordering, assigning strictly higher priority to tasks with shorter periods (i.e., Ti < Tj ⇒
+
+Pi > P j ). This establishes a single system-wide arbitration order across all DAGs, eliminating per-DAG scheduling in-consistencies and uncontrolled cross-DAG interference ob-served in the default ROS 2 SingleThreadedExecutor 
+
+and MultiThreadedExecutor , which rely on FIFO or loosely ordered callback dispatching without global priority guarantees. The RP Global Scheduler constitutes the core of ReDAG RT and implements fixed-priority preemptive schedul-ing entirely in user space. At each scheduling point, the 4                                                   
+
+> TABLE I COMPARISON OF ROS 2 R EAL -T IME SCHEDULING APPROACHES
+> Approach Multi-DAG Global Queue Kernel Mod API Compat Formal Analysis Evaluation Default Execs [11] ××✓✓×Baseline PiCAS [17], [18] ××??Chain-level Real HW EventsEx [21], [22] Tree ×✓∼RTA (restricted) Sim ROSRT [23] ✓OS-level ✓✓×Autoware ROSCH [24] ✓×?∼DAG-sync Autoware PREEMPT RT [16] ✓Linux ×✓×Throughput
+> ReDAG RT ✓✓✓✓Multi-DAG RTA Webots + Stress
+
+scheduler selects the highest-priority task from the ready queue and compares it with the currently executing task. If the selected task has strictly higher priority, preemption is triggered. The selected task τi is then dispatched to the CPU execution layer. During execution, each task runs for at most its worst-case execution time Ci under fully preemptive semantics. The underlying Linux thread scheduler remains unmodified; ReDAG RT controls dispatch ordering exclusively at the executor level and does not alter kernel-level scheduling policies. Upon completion, a completion event is forwarded to the Timing Monitor and Metrics Logger. The finish time fi is recorded, and timing metrics are computed as follows. The response time is defined as Ri = fi − ri, where ri denotes the release time. Lateness is defined as Li = fi − di, where di
+
+represents the absolute deadline. A deadline miss is registered whenever Li > 0, and the corresponding miss counter is incremented. Control then transitions to the Next Scheduling Event Check, which determines whether the triggering event corresponds to a new task release, a task completion, or the arrival of a higher-priority task. In all cases, control returns to the Global Ready Queue Arbitration stage, forming aclosed event-driven scheduling loop. This architecture ensures continuous, globally prioritized execution across all concurrent DAGs while enabling precise per-task timing analysis and systematic metric collection under user-space constraints. 
+
+B. Multi-DAG Task Model Formulation 
+
+The computational workload of ReDAG RT is modeled as a collection of directed acyclic graphs (DAGs), where each DAG captures the structural and temporal dependencies of an independent robotic processing pipeline. Formally, each DAG instance is defined as: 
+
+Gk = ( Vk, E k), (1) where Vk = {τ1, τ 2, . . . , τ n} denotes the set of callback tasks belonging to Gk, and Ek ⊆ Vk × Vk represents the set of directed precedence constraints between tasks. An edge 
+
+(τi, τ j ) ∈ Ek indicates that task τj cannot be released for execution until task τi has completed. Each task τi ∈ Vk
+
+corresponds to a ROS 2 callback, such as a timer callback, subscription callback, or computation stage within a robotic pipeline. The acyclic property of Gk guarantees the absence of circular dependencies, thereby ensuring well-defined execution orderings within each pipeline. The system hosts multiple such DAGs executing concurrently. The global workload is defined as:                    
+
+> Fig. 2. ReDAG RT layered user-space scheduling architecture. Periodic DAG workloads Gk= ( Vk, E k)release tasks upon period expiration. A dependency-aware release stage validates timing and precedence constraints before admitting ready tasks into a unified global Rate-Monotonic priority queue ordered by arg min τi∈R Ti. The ReDAG RT executor performs fixed-priority preemptive arbitration across all DAGs and dispatches to the unmod-ified Linux execution layer. An integrated Timing Monitor computes Ri,Li,and MR ionline, with event-driven re-scheduling closing the control loop.
+
+G = {G1, G 2, . . . , G m}, (2) where each Gk models an independent robotic application component, as formalized in Equation (1). The DAGs in G
+
+are assumed to be functionally independent in terms of logical correctness; that is, no precedence constraints exist across distinct DAGs. However, all DAGs share a common execution environment and compete for the same executor resources within ReDAG RT . This shared-resource assumption introduces cross-DAG contention at the scheduling level, which directly motivates the need for a unified global arbitration mecha-nism. By formally separating structural independence at the application level from resource sharing at the executor level, the model in Equations (1) and (2) captures the realistic de-ployment scenario in which multiple robotic pipelines operate concurrently while relying on a single scheduling substrate. 
+
+B.1 Task Characterization and Timing Parameters 
+
+Each task τi in the multi-DAG system is characterized by a tuple of timing and criticality parameters: 
+
+τi = ( Ci, T i, D i, χ i), (3) 5
+
+where Ci denotes the worst-case execution time (WCET), Ti
+
+represents the task period, Di is the relative deadline, and 
+
+χi specifies the criticality level of the task. This formulation captures both temporal constraints and system-level impor-tance within a unified abstraction. The WCET Ci defines an upper bound on the processor time required by τi under worst-case conditions, assumed to be known a priori through measurement, static analysis, or conservative estimation. The period Ti determines the minimum inter-arrival time between consecutive releases of the same task, reflecting the sensing or control frequency of the robotic application. The relative deadline Di constrains the maximum allowable response time from task release to completion. The criticality level χi
+
+enables differentiation between safety-critical and best-effort callbacks, providing a foundation for future extensions toward mixed-criticality scheduling. Throughout this work, implicit deadlines are assumed for all tasks: 
+
+Di = Ti. (4) This assumption, defined in Equation (4), aligns each task’s completion requirement with the arrival of its next instance, simplifying schedulability analysis and remaining consistent with periodic control and perception workloads common in robotic systems. Let N denote the total number of tasks across all DAGs in G, as defined in Equation (2). The overall processor utilization of the system is defined as: 
+
+U =
+
+> N
+
+X
+
+> i=1
+
+Ci
+
+Ti
+
+. (5) This utilization metric, given in Equation (5), provides a compact measure of aggregate computational demand relative to processor capacity. It serves as a primary indicator of schedulability under rate-based global arbitration and enables analytical reasoning about system feasibility when multiple DAGs defined in Equation (1) share the same executor re-sources within ReDAG RT .
+
+C. Rate-Priority Global Scheduling Design 
+
+ReDAG RT employs a static Rate-Monotonic priority assign-ment enforced globally across all DAGs, transforming cross-DAG callback arbitration into a formally analyzable fixed-priority scheduling problem. 
+
+C.1 Static Priority Assignment 
+
+ReDAG RT adopts a fixed-priority scheduling policy based on Rate-Monotonic (RM) ordering. Each task τi is assigned a static priority determined solely by its period, according to the relation: 
+
+Ti < T j =⇒ Pi > P j , (6) such that tasks with shorter periods receive strictly higher priorities. This mapping reflects the principle that higher-frequency tasks impose tighter timing requirements and there-fore demand stronger scheduling guarantees. Priority assign-ment is performed globally across the entire task set G, defined in Equation (2), rather than locally within individual DAGs. All tasks from all graphs are placed into a unified priority space, allowing a high-rate task in one DAG to preempt a lower-rate task in another. This global ordering, formalized in Equation (6), ensures consistent arbitration under shared executor resources and prevents priority inversion across inde-pendent robotic pipelines. Furthermore, the static nature of the assignment eliminates runtime priority recomputation, reduces scheduling overhead, and enables analytical reasoning about worst-case interference. 
+
+C.2 Schedulability Bound Under Rate-Monotonic Policy 
+
+For N independent periodic tasks scheduled under the classical Rate-Monotonic policy on a single processor, schedu-lability is guaranteed if the total processor utilization U ,defined in Equation (5), satisfies: 
+
+U ≤ N
+
+
+
+21/N − 1
+
+
+
+. (7) This bound represents a sufficient condition derived from worst-case response-time analysis. As N increases, the right-hand side of Equation (7) converges to ln(2) ≈ 0.693 , pro-viding a conservative analytical reference for system design. In the context of ReDAG RT , tasks are not fully independent due to intra-DAG precedence constraints encoded in Ek, as defined in Equation (1). These constraints restrict the set of feasible release patterns and can, in practice, reduce inter-task interference relative to the fully independent case. Nev-ertheless, the classical RM utilization bound in Equation (7) is retained as a conservative feasibility guideline. When the total system utilization U satisfies this condition, the system operates within a known safe analytical region, even before accounting for the structural restrictions imposed by the DAG topology. 
+
+D. Ready-Queue Management and Dispatch Semantics 
+
+ReDAG RT employs a single global ready queue containing all tasks eligible for execution across every DAG in G, as de-fined in Equation (2). The queue is strictly ordered according to the static Rate-Monotonic priority assignment established in Equation (6), such that tasks with shorter periods are placed ahead of tasks with longer periods, ensuring deterministic global arbitration across all concurrent pipelines. A task τi
+
+becomes eligible for insertion into the ready queue only when two conditions are simultaneously satisfied: its release time has arrived and all intra-DAG precedence constraints Ek, defined in Equation (1), have been resolved. Once both timing and dependency conditions hold, the corresponding callback is marked READY and admitted into the global priority queue. At each scheduling point, triggered by a task release, task completion, or preemption event, the scheduler performs three sequential actions: all newly eligible callbacks are enqueued, the highest-priority task is identified from the ready set, and preemption is triggered if that task holds strictly higher pri-ority than the currently executing task. Formally, the dispatch decision is defined as: 6
+
+τ ∗ = arg min  
+
+> i∈R
+
+Ti, (8) where R denotes the set of currently ready tasks. The sched-uler selects the task with the minimum period from R, which corresponds directly to the highest Rate-Monotonic priority under the assignment in Equation (6). This dispatch rule ensures that the processor is always allocated to the most time-critical eligible task, consistent with the utilization bound established in Equation (7). Deadline monitoring is performed upon task completion. When τi finishes execution, its com-pletion time fi is recorded and evaluated against its absolute deadline di = ri + Di, where Di = Ti under the implicit deadline assumption of Equation (4). Lateness Li = fi − di
+
+is computed and a deadline miss is registered if Li > 0, as defined in the timing model of Section III-A. This design keeps dispatch logic lightweight while ensuring that timing violations are detected precisely at job termination. 
+
+E. ReDAG RT Executor Algorithm 
+
+The complete runtime behavior of ReDAG RT is formalized in Algorithm 1. The algorithm integrates periodic release han-dling, precedence verification, global Rate-Priority arbitration, preemptive dispatch, and deadline monitoring within a unified execution loop, representing the concrete realization of the scheduling semantics established in Equations (6)–(8) and the interference model of Equation (9). At each iteration, the algorithm processes all tasks τi ∈ G whose period Ti has expired. For each such task, the dependency resolver evaluates the intra-DAG precedence constraints Ek, as defined in Equa-tion (1), confirming that all predecessor tasks have completed. Tasks satisfying both the temporal and precedence conditions are marked READY and inserted into the global priority queue ordered by Equation (6). The dispatcher then applies the selection rule of Equation (8) to identify the highest-priority ready task τ ∗ = arg min i∈R Ti, triggering preemption if τ ∗
+
+holds strictly higher priority than the currently executing task. Upon task completion, the Timing Monitor records f ki and evaluates lateness Lki = f ki −dki per Equation (13), registering a deadline miss and updating MR i per Equation (15) whenever 
+
+Lki > 0. The loop then advances to the next scheduling event, maintaining the closed-loop arbitration structure described in Section III-H until system termination. 
+
+F. Interference Characterization 
+
+Cross-DAG interference is analyzed under both default ROS 2 executors and ReDAG RT , establishing the structural conditions under which interference becomes bounded and analytically tractable. 
+
+F.1 Interference Under Default ROS 2 Executors 
+
+Under the default ROS 2 executor policies, callback scheduling is driven by FIFO semantics and internal queue behavior rather than formal priority rules, introducing several sources of timing unpredictability. First, FIFO-induced priority inversion occurs when lower-urgency callbacks are serviced ahead of time-sensitive ones solely because they arrived ear-lier; since no global rate-based ordering is enforced, execution order does not necessarily reflect temporal criticality. Second, cross-DAG blocking is effectively unbounded: 
+
+Algorithm 1 ReDAG RT : Rate-Priority Multi-DAG Executor 
+
+Require: DAG set G = {G1, G 2, . . . , G K }, each Gk =(Vk, E k), task parameters (Ci, T i, D i, χ i) for each τi ∈ Vk 
+
+> 1:
+
+Initialize Global Ready Queue RQ ← ∅  
+
+> 2:
+
+Initialize τcurr ← NULL  
+
+> 3:
+
+Initialize metrics logger: Lmax  
+
+> i
+
+← 0, miss count i ← 0,total jobs i ← 0 for all τi 
+
+> 4:
+
+while system is running do  
+
+> 5:
+
+for each DAG Gk ∈ G do  
+
+> 6:
+
+for each task τi ∈ Vk with period Ti expired do  
+
+> 7:
+
+if all predecessors of τi in Ek completed then  
+
+> 8:
+
+Record release time ri ← current time  
+
+> 9:
+
+Increment total jobs i 
+
+> 10:
+
+Mark τi as READY 11: Insert τi into RQ ordered by arg min Ti (Rate-Monotonic)  
+
+> 12:
+
+end if  
+
+> 13:
+
+end for  
+
+> 14:
+
+end for  
+
+> 15:
+
+if RQ ̸ = ∅ then  
+
+> 16:
+
+τnext ← arg min τi∈RQ Ti 
+
+> 17:
+
+if τcurr = NULL then  
+
+> 18:
+
+Dispatch τnext on CPU  
+
+> 19:
+
+τcurr ← τnext  
+
+> 20:
+
+else if priority( τnext ) > priority( τcurr ) then  
+
+> 21:
+
+Preempt τcurr  
+
+> 22:
+
+Dispatch τnext on CPU  
+
+> 23:
+
+τcurr ← τnext  
+
+> 24:
+
+else  
+
+> 25:
+
+Continue τcurr  
+
+> 26:
+
+end if  
+
+> 27:
+
+end if  
+
+> 28:
+
+for each task τi completed during this cycle do  
+
+> 29:
+
+Record finish time fi ← current time  
+
+> 30:
+
+Compute Ri ← fi − ri 
+
+> 31:
+
+Compute di ← ri + Di 
+
+> 32:
+
+Compute Li ← fi − di 
+
+> 33:
+
+if Li > 0 then  
+
+> 34:
+
+Increment miss count i 
+
+> 35:
+
+Lmax  
+
+> i
+
+← max( Lmax  
+
+> i
+
+, L i) 
+
+> 36:
+
+MR i ← miss count i 
+
+> total jobs i
+> 37:
+
+end if  
+
+> 38:
+
+τcurr ← NULL  
+
+> 39:
+
+end for  
+
+> 40:
+
+end while 
+
+callbacks belonging to different logical pipelines share the same executor threads without structured arbitration, allowing a computationally intensive callback in one DAG to delay unrelated callbacks in another DAG with no analytical upper bound on the resulting interference. Third, because scheduling decisions are not derived from explicit timing parameters such 7
+
+as Ti or Ci defined in Equation (3), worst-case interference cannot be expressed in closed form. Consequently, no formal priority guarantees or schedulability bounds can be established under the default execution model. 
+
+F.2 Controlled Interference Under ReDAG RT 
+
+ReDAG RT restructures interference through strict global Rate-Priority ordering. Since priorities are statically assigned according to Equation (6) and globally enforced via the dis-patch rule of Equation (8), a task τi can be delayed exclusively by tasks with strictly higher priority. Let hp (i) denote the set of tasks with higher priority than τi. The worst-case interference experienced by τi within a scheduling window is bounded by: 
+
+Ii = X 
+
+> τj∈hp (i)
+
+Cj , (9) where Cj is the WCET of each higher-priority task as defined in Equation (3). This expression captures the cu-mulative execution demand of all tasks in hp (i) that may execute before or preempt τi. Lower-priority tasks contribute no interference under the preemptive scheduling semantics enforced by Equation (8). Critically, cross-DAG interference becomes analytically tractable under ReDAG RT . Although tasks originate from structurally independent DAGs in G,as defined in Equation (2), interference is determined solely by global priority ordering rather than graph membership. This transformation converts the previously unbounded and opaque contention of the default executor into a bounded and analyzable quantity expressed in Equation (9), enabling formal reasoning about response time and schedulability across the full multi-DAG robotic workload. 
+
+G. Response-Time and Lateness Analysis 
+
+Formal worst-case response-time bounds and empirical late-ness metrics are derived to provide both analytical schedula-bility guarantees and measurement-based validation of timing behavior under ReDAG RT .
+
+G.1 Response-Time Recurrence 
+
+To establish temporal guarantees under global Rate-Priority scheduling, the worst-case response time of each task τi
+
+is computed using fixed-point iteration. The response time accounts for both the task’s own execution demand and the interference from all higher-priority tasks, bounded by Ii as defined in Equation (9). Let hp (i) denote the set of tasks with strictly higher priority than τi under the assignment of Equation (6). The response-time recurrence is defined as: 
+
+R(k+1)  
+
+> i
+
+= Ci + X 
+
+> τj∈hp (i)
+
+&
+
+R(k)
+
+> i
+
+Tj
+
+'
+
+Cj , (10) where the first term represents the intrinsic execution demand of τi, and the summation captures the cumulative workload imposed by higher-priority tasks that may execute within the response-time window R(k) 
+
+> i
+
+. The ceiling operator reflects the maximum number of arrivals of each higher-priority task τj
+
+during the interval, consistent with the periodic release model defined by Tj in Equation (3). The recurrence in Equation (10) is iterated from the initial condition R(0)  
+
+> i
+
+= Ci until either convergence: 
+
+R(k+1)  
+
+> i
+
+= R(k) 
+
+> i
+
+, (11) or the value exceeds the relative deadline Di. Upon conver-gence, the schedulability condition is: 
+
+Ri ≤ Di, (12) which, under the implicit deadline assumption of Equation (4), reduces to Ri ≤ Ti. If Equation (12) holds, task τi is guaranteed to meet all deadlines under the assumed execution and interference bounds of Equation (9). This formulation provides an exact per-task feasibility test under fixed-priority preemptive scheduling, complementing the sufficient utiliza-tion bound established in Equation (7). 
+
+G.2 Empirical Timing Metrics 
+
+While response-time analysis provides theoretical guaran-tees, runtime evaluation requires empirical timing metrics. For the k-th job of task τi, lateness is defined as: 
+
+Lki = f ki − dki , (13) where f ki denotes the observed finish time and dki is the absolute deadline of that job. A positive value Lki > 0 indicates a deadline miss, while Lki ≤ 0 confirms timely completion. To quantify worst-case temporal behavior, the maximum lateness across all jobs of τi is defined as: 
+
+Lmax  
+
+> i
+
+= max  
+
+> k
+
+max(0 , L ki ), (14) which isolates the largest observed violation while ignoring non-violating instances. In addition, the deadline miss rate for task τi is defined as: 
+
+MR i = Number of deadline misses Total jobs released , (15) providing a normalized measure of temporal reliability across the full execution history of τi. Together, the response-time bound of Equation (12) and the empirical metrics of Equations (13)–(15) establish a unified framework for both analytical guarantees and measurement-based validation of timing behavior under ReDAG RT .
+
+H. End-to-End Scheduling Execution Cycle 
+
+The runtime behavior of ReDAG RT follows a deterministic execution cycle that integrates task release, dependency val-idation, priority arbitration, and timing observation within a unified closed-loop control structure, as illustrated in Fig. 2. The workflow begins with periodic task release. When the period Ti of task τi expires, as defined in Equation (3), a new job instance is generated and becomes a candidate for execution. Release alone, however, does not immediately ren-der the task schedulable. All intra-DAG precedence constraints 8
+
+Ek, defined in Equation (1), are first evaluated to confirm that every required predecessor has completed. Only when both the temporal and dependency conditions are simultaneously satisfied is the callback marked READY and admitted into the scheduling pipeline. Eligible callbacks are inserted into the single global ready queue, which maintains strict Rate-Monotonic priority ordering across all DAGs in G according to Equation (6). At each scheduling point, the dispatcher applies the selection rule of Equation (8) to identify the highest-priority ready task τ ∗. If τ ∗ holds strictly higher priority than the currently executing task, preemption is triggered and the processor is immediately reassigned; otherwise, execution proceeds without interruption. Once dispatched, τ ∗ executes on the CPU for at most its worst-case execution time Ci,as bounded in Equation (3). Upon completion, the Timing Monitor records the finish time f ki and computes the per-job response time Ri = fi − ri and lateness Lki = f ki − dki ,as defined in Equations (13) and (14). A deadline miss is registered and the miss rate MR i updated according to Equation (15) whenever Lki > 0.Following task completion or any new release event, the scheduler evaluates the next scheduling point by checking for newly released tasks, completed tasks, or pending preemption conditions. Control returns to global ready-queue arbitration, and the cycle repeats. This closed-loop execution continues throughout system operation, ensuring structured dispatch de-cisions, interference bounded by Equation (9), and continuous timing observability consistent with the schedulability condi-tion of Equation (12) until system termination. IV. E XPERIMENTAL RESULTS 
+
+A. Experimental Setup 
+
+This section presents a controlled empirical evaluation com-paring ReDAG RT against the default ROS 2 executors under structurally identical workload conditions. ReDAG RT imple-ments the rate-priority global scheduling framework developed in Section III-C, designed to bound cross-DAG interference and enforce per-DAG callback concurrency. The two base-lines are the standard SingleThreadedExecutor and 
+
+MultiThreadedExecutor (configured with four worker threads), representing the default execution semantics of contemporary ROS 2 deployments. All experiments employ synthetic multi-DAG workloads constructed to expose struc-tured precedence constraints and cross-DAG contention. Each workload consists of two interacting DAGs, formalized as 
+
+G = {G1, G 2} per Equation (2), with configurable concur-rency bounds enforced through a max_active parameter that limits the maximum number of simultaneously active callbacks per DAG. The deadline model follows the im-plicit formulation Di = Ti established in Equation (4), preserving analytical alignment with classical fixed-priority scheduling theory. To evaluate scalability and sensitivity to computational slack, the number of executor threads is varied across {4, 6, 8, 10 }, and deadline tightness is modulated via a multiplicative scaling factor drawn from {0.8, 0.9, 1.1, 1.2}.Scale factors below unity represent constrained timing budgets approaching overload, while values above unity introduce             
+
+> TABLE II BASELINE ROS 2 E XECUTOR PERFORMANCE
+> Executor Utilization Miss Rate Max Lateness ( μs)
+> SingleThreadedExecutor 0.6 0.748 1,764,841
+> MultiThreadedExecutor (4T) 0.8 0.552 7,153
+
+increasing slack. This parametric design enables systematic observation of interference amplification, contention collapse, and scheduling degradation regimes across utilization levels relative to the bound of Equation (7). The two baseline configurations employ complementary task structures. The SingleThreadedExecutor is eval-uated under harmonic periods to expose serialization-induced blocking, while the MultiThreadedExecutor uses non-harmonic periods to reflect realistic robotic workloads with irregular activation patterns. This distinction isolates the be-havioral pathologies of each executor under conditions most likely to amplify their respective limitations. Evaluation met-rics follow standard real-time systems practice and directly correspond to the theoretical quantities defined in Section II-E: (i) deadline miss rate MR i per Equation (15), measuring the fraction of jobs completing after their deadlines; (ii) maximum lateness Lmax  
+
+> i
+
+per Equation (14), capturing worst-case tempo-ral violation; (iii) mean response time ¯Ri, reflecting average scheduling responsiveness; and (iv) executor-level behavioral indicators, including deferred and executed callback counts, which provide insight into contention dynamics and dispatch fairness. Across all ReDAG RT configurations, the DAG concurrency validator reports all_enforced = 1 , confirming that per-DAG concurrency bounds were never violated during exe-cution. This structural guarantee ensures that all observed performance characteristics arise strictly from scheduling dy-namics rather than enforcement inconsistencies, preserving experimental integrity and result interpretability throughout the evaluation. All timing metrics follow the formal definitions established in Section III-G, specifically Equations (13)–(15). 
+
+B. Baseline ROS 2 Behavior 
+
+We first characterize the timing behavior of the de-fault ROS 2 executors to establish a reference base-line; results are summarized in Table II. Under the 
+
+MultiThreadedExecutor with four worker threads at 
+
+U = 0 .8, the deadline miss rate reaches 55 .2% , maximum lateness Lmax = 7 ,153 μs , and mean response time ¯R =680 .43 μs . Despite parallel execution support, more than half of all jobs miss their deadlines, indicating substantial cross-DAG interference and limited temporal isolation between call-backs. The SingleThreadedExecutor exhibits consider-ably more severe behavior at U = 0 .6. As shown in Table II, the miss rate rises to 74 .8% and maximum lateness escalates to 1,764 ,841 μs , over two orders of magnitude larger than the multi-threaded case, while mean response time reaches 
+
+118 ,218 μs . This dramatic lateness growth reveals pathological response-time amplification caused by strict callback serial-ization and the complete absence of interference regulation. Collectively, Table II confirms that default ROS 2 execution 94 6 8 10   
+
+> Number of Threads
+> 0.55
+> 0.60
+> 0.65
+> 0.70
+> 0.75
+> 0.80
+> 0.85
+> 0.90
+> Combined Miss Rate
+> Miss Rate vs Thread Count (ReDAG RT )
+> Fig. 3. Effect of thread count on ReDAG RT deadline miss rate. Increasing worker threads reduces interference until saturation near eight threads.
+
+semantics exhibit substantial deadline instability even at mod-erate utilization. From a fixed-priority scheduling perspective, this behavior is consistent with unbounded blocking terms 
+
+Bi and uncontrolled interference growth in Equation (18), as analyzed in Section III-F. Without rate-based priority enforcement or DAG-aware arbitration, cross-task contention inflates response times and drives high deadline violation rates, precisely the structural pathologies that ReDAG RT is designed to eliminate. 
+
+C. ReDAG RT : Thread Scalability Analysis 
+
+Fig. 3 illustrates the effect of executor thread count on per-DAG and combined deadline miss rates. The combined miss rate decreases monotonically from 0.8509 at 4 threads to 
+
+0.6865 at 6 threads and 0.5984 at 8 threads, yielding a relative reduction of approximately 29 .7% :
+
+0.8509 − 0.5984 0.8509 ≈ 0.297 . (16) At 10 threads, the combined miss rate marginally increases to 0.6379 , confirming a scalability saturation point visible in Fig. 3. Per-DAG trends corroborate this observation: DAG 1
+
+improves from 0.9111 at 4 threads to 0.7554 at 8 threads, while DAG 2 exhibits a more pronounced reduction from 0.7907 to 
+
+0.4414 over the same range. This asymmetric gain, clearly visible in the diverging DAG 1 and DAG 2 curves of Fig. 3, suggests that DAG 2 benefits more substantially from increased parallel capacity, likely due to differences in structural depth or interference exposure within Ek as defined in Equation (1). The monotonic improvement up to 8 threads reflects effective contention mitigation through bounded concurrency and rate-priority dispatch per Equation (8), with additional workers reducing queueing delays and shortening interference chains, directly lowering Ii per Equation (9). The plateau and subse-quent reversal beyond 8 threads, however, indicate diminish-ing returns attributable to synchronization overhead, shared-queue contention, and increased scheduling coordination costs. ReDAG RT thus demonstrates meaningful scalability under moderate parallel expansion while exposing a practical upper bound beyond which architectural overhead offsets additional computational capacity. 0.80 0.85 0.90 0.95 1.00 1.05 1.10 1.15 1.20            
+
+> Deadline Scaling Factor
+> 0.55
+> 0.60
+> 0.65
+> 0.70
+> 0.75
+> 0.80
+> 0.85
+> 0.90
+> Combined Miss Rate
+> Sensitivity to Deadline Tightness
+> Fig. 4. Sensitivity of ReDAG RT performance to deadline scaling. Moderate deadline relaxation reduces miss rate, while excessive slack increases inter-ference windows.
+> Fig. 5. Impact of per-DAG concurrency limits on combined deadline miss rate. Asymmetric concurrency bounds significantly reduce cross-DAG interference.
+
+D. Deadline Scaling Sensitivity 
+
+Fig. 4 illustrates the sensitivity of the combined miss rate to deadline scaling factor δ ∈ { 0.8, 0.9, 1.1, 1.2}. As δ increases from 0.8 to 1.1, the combined miss rate decreases from 
+
+0.8509 to 0.5984 , a relative reduction of 29 .7% consistent with Equation (16), before rising to 0.6379 at δ = 1 .2. This non-monotonic behavior, clearly visible in Fig. 4, reveals that moderate slack mitigates interference by relaxing the schedula-bility bound of Equation (12), while excessive slack enlarges overlapping execution windows across DAGs, reintroducing cross-DAG contention. Interference coupling effects therefore persist even under relaxed timing constraints, confirming that deadline slack alone is insufficient to eliminate cross-DAG priority inversion without the rate-priority enforcement mech-anism of Equation (6). 10              
+
+> Fig. 6. Cumulative distribution function (CDF) of callback response times comparing default ROS 2 executors and ReDAG RT . A leftward shift indicates reduced latency and tighter tail bounds under rate-priority scheduling. TABLE III RESPONSE TIME PERCENTILES : D EFAULT ROS 2 E XECUTORS VS .REDAG RT
+> Scheduler Median (ms) 95th %ile (ms) 99th %ile (ms) ROS 2 Default 21 37 49 ReDAG RT 14 22 28
+
+E. Concurrency Pair Sensitivity 
+
+Fig. 5 presents a heatmap of combined deadline miss rates across all evaluated (max_active 1, max_active 2)
+
+concurrency pairs, where color intensity reflects the magnitude of scheduling degradation. The heatmap reveals a clear asymmetry effect: symmetric but constrained configurations produce the worst outcomes, with 
+
+(max_active 1, max_active 2) = (2 , 2) yielding acombined miss rate of 0.835 and (3 , 2) yielding 0.815 . In contrast, the asymmetric configuration (2 , 5) achieves the lowest observed combined miss rate of 0.494 , representing a relative improvement of approximately 40 .8% over the worst case. This pattern, visually reinforced by the dark-to-light gradient across asymmetric regions of Fig. 5, confirms that symmetric high-concurrency bounds amplify mutual interference by allowing both DAGs to simultaneously expand their runnable sets. Asymmetric caps, by contrast, limit one DAG’s parallel footprint, reducing the effective size of the higher-priority interference set hp (i) and directly constraining Ii per Equation (9). These results empirically validate interference-aware bounded parallelism as a necessary and effective strategy for controlling cross-DAG contention within the global scheduling framework of ReDAG RT .
+
+F. Response Time Distribution Analysis 
+
+To evaluate latency stability across scheduling strategies, we analyze the cumulative distribution of callback response times for the default ROS 2 executors and ReDAG RT . A tighter, left-shifted CDF indicates reduced response variability and improved tail-latency control, both critical properties for real-time robotic workloads operating under the schedulability bound of Equation (12).                
+
+> TABLE IV COMPARISON BETWEEN DEFAULT ROS 2 E XECUTORS AND REDAG RT
+> System Configuration Miss Rate
+> SingleThreadedExecutor U= 0 .60.748
+> MultiThreadedExecutor 4 Threads 0.552 ReDAG RT Best Configuration 0.476 ReDAG RT Avg. (6 Threads) 0.686
+
+As shown in Figure 6 and quantified in Table III, ReDAG RT 
+
+substantially shifts the response time distribution toward lower latency with significantly tighter tail bounds. The median response time reduces from 21 ms to 14 ms , while the 99 th percentile decreases from 49 ms to 28 ms , a reduction of approximately 42 .9% . This tail compression directly reflects the bounded interference Ii enforced by Equation (9) and the elimination of cross-DAG priority inversion through global rate-priority arbitration per Equation (8). The steeper CDF slope of ReDAG RT confirms not only lower average la-tency but also improved temporal predictability across the full response time distribution, a property unattainable under the unregulated dispatching semantics of the default ROS 2 executors. 
+
+G. Operating Envelope and Configuration Bounds 
+
+The best observed configuration, 8 threads at deadline scale 
+
+1.1, yields a combined miss rate of 0.476 , while the worst, 4 threads at scale 0.8, reaches 0.975 . The relative improvement between these extremes is: 
+
+0.975 − 0.476 0.975 ≈ 51 .2% , (17) Demonstrating that coordinated concurrency scaling and moderate deadline slack can halve worst-case deadline viola-tions. This range quantifies the practical operating envelope of ReDAG RT and underscores the importance of joint parallelism and timing parameter selection. 
+
+H. Cross-System Comparison 
+
+Table IV summarizes the cross-system comparison of deadline miss rates across all evaluated executor config-urations. ReDAG RT consistently reduces deadline viola-tions relative to both default ROS 2 executors. Against the MultiThreadedExecutor (MR = 0.552 at U =0.8), the best ReDAG RT configuration achieves MR =0.476 , a relative improvement of 13 .7% . Against the 
+
+SingleThreadedExecutor (MR = 0 .748 at U = 0 .6), ReDAG RT with 6 threads achieves MR = 0 .686 , correspond-ing to an 8.3% reduction in deadline violations. As evidenced by Table IV, performance gains are most pronounced under multi-threaded contention scenarios, where rate-priority global arbitration per Equation (8) most effectively suppresses the cross-DAG priority inversion characterized in Section III-F and bounds the interference term Ii of Equation (9). These results collectively confirm that ReDAG RT delivers measurable and consistent scheduling improvements over default ROS 2 exe-cution semantics across all evaluated utilization regimes. 11 
+
+V. S CHEDULING -T HEORETIC INTERPRETATION OF 
+
+RESULTS 
+
+A. Interference-Aware Scheduling Effects 
+
+The experimental results expose fundamental limitations of the default ROS 2 execution model under structured multi-DAG workloads. In both baseline executors, cross-DAG interference is effectively unbounded: callbacks from inde-pendent graphs compete for shared worker threads without concurrency regulation or admission control. This produces interference amplification and callback-level priority inversion, consistent with the structural pathology identified in Sec-tion III-F. The SingleThreadedExecutor compounds this further through strict serialization, accumulating blocking across precedence chains and driving the pathological late-ness values reported in Equations (14) and (13). ReDAG RT 
+
+addresses this through three structural mechanisms: (i) per-DAG concurrency bounds limiting simultaneously active call-backs per graph, (ii) rate-priority dispatch preserving temporal ordering across competing tasks per Equation (8), and (iii) structured admission control preventing uncontrolled expan-sion of runnable sets. Together, these mechanisms directly constrain the interference term Ii of Equation (9), reducing cumulative blocking and shortening queueing delays within the response-time recurrence of Equation (10). Empirically, this interference-aware regulation manifests as lower combined miss rates MR per Equation (15), improved scalability under thread expansion, and significantly reduced worst-case lateness 
+
+Lmax per Equation (14) relative to default executors. These results confirm that bounding parallelism at the DAG level is not merely a structural refinement but a necessary control mechanism for mitigating response-time inflation in concur-rent multi-DAG robotic workloads. 
+
+B. Fixed-Priority Scheduling Interpretation 
+
+The observed behavior admits direct interpretation through classical fixed-priority response-time analysis (RTA). For task 
+
+τi, the worst-case response time is given by Equation (10), restated here with an explicit blocking term: 
+
+Ri = Ci + X 
+
+> τj∈hp (i)
+
+ Ri
+
+Tj
+
+
+
+Cj + Bi, (18) where Bi captures blocking from lower-priority or non-preemptable callbacks. Under the default ROS 2execution model, both terms inflate significantly. The effective higher-priority set hp (i) expands dynamically due to uncontrolled cross-DAG competition, amplifying the cumulative interference summation. Simultaneously, 
+
+Bi grows through serialization-induced blocking in the 
+
+SingleThreadedExecutor and contention-driven queueing delays in the MultiThreadedExecutor , neither of which are bounded at the framework level. Response times consequently exceed analytical expectations derived under isolated task assumptions, consistent with the pathological lateness values observed in Section IV-B. ReDAG RT 
+
+mitigates both inflation sources. Per-DAG concurrency caps limit the number of simultaneously interfering callbacks, directly bounding Ii per Equation (9). Rate-priority dispatch per Equation (8) enforces stable dominance relations, constraining the effective size of hp (i) and suppressing uncontrolled growth of Bi. The empirically observed reductions in MR and Lmax are therefore analytically consistent with a reduction in the interference term of Equation (18). ReDAG RT thus operationalizes interference control at the executor level, aligning observed runtime behavior with classical schedulability theory. 
+
+C. Parallelism Scalability and Saturation Behavior 
+
+Although ReDAG RT demonstrates clear scalability im-provements from 4 to 8 threads, reducing the combined miss rate by 29 .7% per Equation (16), performance gains plateau beyond this point. At 10 threads, the miss rate marginally increases, indicating diminishing returns from additional par-allel capacity. This saturation is attributable to growing lock contention in shared executor structures, increased inter-thread coordination overhead, and reduced effective parallel slack once the global ready queue is sufficiently drained. Beyond a critical concurrency level, scheduling overhead offsets com-putational gains, establishing a practical parallelism ceiling. Future optimizations should therefore target synchronization cost reduction through lock-free or partitioned dispatch mech-anisms that preserve the interference bounds of Equation (9) while minimizing coordination overhead. 
+
+D. Utilization Sensitivity 
+
+Under tight deadline scaling ( δ = 0.8), the system ap-proaches overload conditions, with elevated miss rates across all configurations. In this regime, even modest interference amplification drives response times beyond the schedulabil-ity bound of Equation (12). Crucially, however, ReDAG RT 
+
+exhibits graceful degradation under increasing utilization, in sharp contrast to the SingleThreadedExecutor ’s catas-trophic lateness escalation reported in Section IV-B. This con-trolled behavior confirms that per-DAG concurrency bounds and rate-priority dispatch moderate the growth of both the interference term Ii and blocking component Bi in Equa-tion (18) under high utilization, improving temporal robustness relative to unregulated execution semantics. 
+
+E. Enforcement Validation 
+
+Across all 64 experimental configurations, the DAG con-currency validator reports all_enforced = 1 in every run, confirming that per-DAG concurrency bounds were never violated throughout the evaluation. This structural invariant en-sures that all observed performance characteristics, miss rates, lateness values, and response times reported in Equations (15)– (14) and Equation (13) are strictly derived from schedul-ing dynamics, rather than policy breaches or implementation inconsistencies. Universal enforcement confirmation thereby strengthens the internal validity of the experimental study and independently verifies the correctness of the concurrency-control mechanism within ReDAG RT .12 
+
+VI. CONCLUSION AND FUTURE WORK This paper presented ReDAG RT , a rate-priority global scheduling framework that addresses fundamental real-time limitations of the default ROS 2 execution model. By identify-ing cross-DAG priority inversion and unbounded interference as structural deficiencies of existing executors, ReDAG RT 
+
+introduces per-DAG concurrency bounds, rate-monotonic dis-patch per Equation (6), and structured admission control to enforce analyzable timing behavior within unmodified ROS 2. Empirical evaluation demonstrates consistent and measurable improvements across all configurations. Thread scalability ex-periments yield a 29 .7% reduction in combined miss rate from 4 to 8 threads before saturation, while deadline sensitivity anal-ysis confirms graceful degradation under tight timing budgets in contrast to the pathological lateness escalation of default executors reported in Table II. Cross-system comparison in Table IV establishes up to 13 .7% miss rate reduction over the MultiThreadedExecutor and a 42 .9% reduction in 
+
+99 th percentile response time per Table III. Concurrency pair analysis further confirms that asymmetric DAG bounds suppress mutual interference more effectively than symmetric configurations, directly validating the interference model of Equation (9). These results establish that interference-aware, rate-priority scheduling is both practically achievable and analytically grounded within the ROS 2 middleware stack, without kernel modification or application restructuring. Several directions remain open for future investigation. First, lock-free or wait-free executor data structures should be explored to overcome the synchronization bottleneck identified beyond 8 threads. Second, tighter integration with formal response-time analysis per Equation (10) may enable hard schedulability guarantees for bounded DAG workloads. Third, extension to heterogeneous compute platforms, including GPU-accelerated and asymmetric CPU architectures common in perception pipelines, represents a natural and necessary generalization. Finally, validation on large-scale, real-world ROS 2 deployments will establish the production-readiness of interference-aware scheduling for safety-critical robotic systems. REFERENCES [1] Stark and Tobias, “Real-time execution management in the ros 2framework,” 2022. [2] A. Al Arafat, K. Wilson, K. Yang, and Z. Guo, “Dynamic priority scheduling of multithreaded ros 2 executor with shared resources,” 
+
+IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems , vol. 43, no. 11, pp. 3732–3743, 2024. [3] X. Yang and B. Hu, “An adaptive ros2 node deployment framework in mobile edge-robot systems,” in 2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2025, pp. 12 652–12 658. [4] H. R. George TH Ellison, “Directed acyclic graphs as conceptual and an-alytical tools in applied and theoretical epidemiology: advances, setbacks and future possibilities,” Mathematical Biosciences and Engineering ,vol. 22, no. 11, 2025. [5] C. B´ edard, P.-Y. Lajoie, G. Beltrame, and M. Dagenais, “Message flow analysis with complex causal links for distributed ros 2 systems,” 
+
+Robotics and Autonomous Systems , vol. 161, p. 104361, 2023. [6] L. Castri, M. H. Gloria Beraldo, Sariah Mghames, and N. Bellotto, “Ros- causal: A ros-based causal analysis framework for human-robot interaction applications,” arXiv , vol. 22, no. 11, 2025. [7] A. A. Bertossi and A. Fusiello, “Rate-monotonic scheduling for hard-real-time systems,” European Journal of Operational Research , vol. 96, no. 3, pp. 429–443. [8] L. Sha, R. Rajkumar, and S. Sathaye, “Generalized rate-monotonic scheduling theory: a framework for developing real-time systems,” 
+
+Proceedings of the IEEE , vol. 82, no. 1, pp. 68–82. [9] S. Macenski, A. Soragna, M. Carroll, and Z. Ge, “Impact of ros 2 node composition in robotic systems,” IEEE Robotics and Automation Letters ,vol. 8, no. 7, pp. 3996–4003, 2023. [10] H. Teper, T. Betz, M. G¨ unzel, D. Ebner, G. Von Der Br¨ uggen, J. Betz, and J.-J. Chen, “End-to-end timing analysis and optimization of multi-executor ros 2 systems,” in 2024 IEEE 30th Real-Time and Embedded Technology and Applications Symposium (RTAS) , 2024, pp. 212–224. [11] D. Casini, F. R. Jian-Jia Chen, Jing Li, and H. Teper, “A survey of real-time support, analysis, and advancements in ros 2,” arXiv , vol. 22, no. 11, 2025. [12] C. L. Liu and J. W. Layland, “Scheduling algorithms for multiprogram-ming in a hard-real-time environment,” J. ACM , vol. 20, no. 1, p. 46–61, Jan. 1973. [13] S. Zhao, X. Dai, and I. Bate, “Dag scheduling and analysis on multi-core systems by modelling parallelism and dependency,” IEEE Transactions on Parallel and Distributed Systems , vol. 33, no. 12, pp. 4019–4038, 2022. [14] D. Casini, T. Blaß, I. L¨ utkebohle, and B. B. Brandenburg, “Response-time analysis of ros 2 processing chains under reservation-based schedul-ing,” S. Quinton, Ed., vol. 133. Dagstuhl, Germany: Schloss Dagstuhl – Leibniz-Zentrum f¨ ur Informatik, 2019, pp. 6:1–6:23. [15] S. Macenski, T. Foote, B. Gerkey, C. Lalancette, and W. Woodall, “Robot operating system 2: Design, architecture, and uses in the wild,” Science Robotics , vol. 7, no. 66, p. eabm6074, 2022. [16] L. Z. Y. Yanlei; N. Zhenguo; L. Xinjun; X. Fugui and L. Peng, “Ros2 real-time performance optimization and evaluation,” Chinese Journal of Mechanical Engineering , vol. 36, no. 144, 2023. [17] H. Choi, Y. Xiang, and H. Kim, “Picas: New design of priority-driven chain-aware scheduling for ros2,” in 2021 IEEE 27th Real-Time and Embedded Technology and Applications Symposium (RTAS) , 2021, pp. 251–263. [18] H. Sobhani, H. Choi, and H. Kim, “Timing analysis and priority-driven enhancements of ros 2 multi-threaded executors,” in 2023 IEEE 29th Real-Time and Embedded Technology and Applications Symposium (RTAS) , 2023, pp. 106–118. [19] H. Choi, Y. X. Daniel Enright, Hoora Sobhani, and H. Kim, “Priority-driven real-time scheduling in ros 2:potential and challenges,” in 2023 IEEE 29th Real-Time and Embedded Technology and Applications Symposium (RTAS) , 2022, pp. 106–118. [20] Z. Wang, S. Liu, D. Ji, and W. Yi, “Improving real-time performance of micro-ros with priority-driven chain-aware scheduling,” Electronics ,vol. 13, no. 9, 2024. [21] H. Teper, C. G. Oren Bell, Mario G¨ unzel, and J.-J. Chen, “Bridging the gap between ros 2 and classical real-time scheduling for periodic tasks,” 
+
+arXiv.org , vol. 13, no. 9, 2024. [22] O. Bell, C. G. Harun Teper, Mario G¨ unzel, and J.-J. Chen, “Fixed-priority and edf schedules for ros2 graphs on uniprocessor,” arXiv.org ,vol. 13, no. 9, 2025. [23] S. Liu, R. Wagle, S. Ahmed, Z. Tong, and J. H. Anderson, “Ros rt :Enabling flexible scheduling in ros 2*,” in 2025 IEEE Real-Time Systems Symposium (RTSS) , 2025, pp. 42–54. [24] Y. Saito, F. Sato, T. Azumi, S. Kato, and N. Nishio, “Rosch:real-time scheduling framework for ros,” in 2018 IEEE 24th International Confer-ence on Embedded and Real-Time Computing Systems and Applications (RTCSA) , 2018, pp. 52–58. [25] A. Yano and T. Azumi, “Work-in-progress: Multi-deadline dag schedul-ing model for autonomous driving systems,” in 2024 IEEE Real-Time Systems Symposium (RTSS) , 2024, pp. 451–454. [26] S. Ahmed and J. H. Anderson, “Exact response-time bounds of periodic dag tasks under server-based global scheduling,” in 2022 IEEE Real-Time Systems Symposium (RTSS) , 2022, pp. 447–459. [27] Y. Tang, Z. Feng, N. Guan, X. Jiang, M. Lv, Q. Deng, and W. Yi, “Response time analysis and priority assignment of processing chains on ros2 executors,” in 2020 IEEE Real-Time Systems Symposium (RTSS) ,2020, pp. 231–243. [28] S. Liu, X. Jiang, N. Guan, Z. Wang, M. Yu, and W. Yi, “Rtex: An efficient and timing-predictable multithreaded executor for ros 2,” IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems , vol. 43, no. 9, pp. 2578–2591, 2024. [29] A. K. Chaaban, “A new algorithm for real-time scheduling and resource mapping for robot operating systems (ros),” Applied Sciences , vol. 13, no. 3, 2023.

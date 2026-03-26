@@ -6,73 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-03-25
-- 运行时间：2026-03-25 20:15:39 UTC
+- 最新运行日期：2026-03-26
+- 运行时间：2026-03-26 19:44:35 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日聚焦空间多臂机器人与四足足式机器人的前沿控制，深度解析 17 篇论文中的安全规划新范式。
-重点推荐强化学习驱动的在轨机器人路径规划及基于 ADMM 的分布式 MPC 算法，实现了复杂动态环境下的高精度安全避障。
-建议关注多智能体协同与轻量化模型预测控制的结合，探索在受限非线性系统中的性能优化路径。
-- 详情：[/202603/25/README](/202603/25/README)
+今日精选 17 篇前沿论文，重点攻克实时视觉动作模仿与复杂系统的最优路径规划。
+推荐关注 MIRROR 系统的实时重定向技术，以及为非微分平坦系统提供连续安全保障的时间最优规划算法。
+建议优先研读两篇 9.0 分的高质量论文，掌握机器人实时遥操作与安全控制的最新突破。
+- 详情：[/202603/26/README](/202603/26/README)
 
 ### 精读区论文标签
-1. [Path Planning and Reinforcement Learning-Driven Control of On-Orbit Free-Flying Multi-Arm Robots](/202603/25/2603.23182v1-path-planning-and-reinforcement-learning-driven-control-of-on-orbit-free-flying-multi-arm-robots)  
-   标签：评分：10.0/10、query:profile-1
-   evidence：轨道自由飞行多臂机器人的轨迹优化与运动规划
-2. [ADMM-Based Distributed MPC with Control Barrier Functions for Safe Multi-Robot Quadrupedal Locomotion](/202603/25/2603.19170v1-admm-based-distributed-mpc-with-control-barrier-functions-for-safe-multi-robot-quadrupedal-locomotion)  
+1. [MIRROR: Visual Motion Imitation via Real-time Retargeting and Teleoperation with Parallel Differential Inverse Kinematics](/202603/26/2603.23995v1-mirror-visual-motion-imitation-via-real-time-retargeting-and-teleoperation-with-parallel-differential-inverse-kinematics)  
    标签：评分：9.0/10、query:profile-1
-   evidence：基于CBF的分布式MPC用于安全轨迹规划
-3. [Auction-Based Task Allocation with Energy-Conscientious Trajectory Optimization for AMR Fleets](/202603/25/2603.21545v1-auction-based-task-allocation-with-energy-conscientious-trajectory-optimization-for-amr-fleets)  
+   evidence：具备自碰撞规避的实时约束安全逆运动学
+2. [Accelerated Spline-Based Time-Optimal Motion Planning with Continuous Safety Guarantees for Non-Differentially Flat Systems](/202603/26/2603.24133v1-accelerated-spline-based-time-optimal-motion-planning-with-continuous-safety-guarantees-for-non-differentially-flat-systems)  
    标签：评分：9.0/10、query:q3
-   evidence：针对自主移动机器人集群的轨迹优化及避障细化
-4. [Trajectory Generation for Underactuated Soft Robot Manipulators using Discrete Elastic Rod Dynamics](/202603/25/2603.22604v1-trajectory-generation-for-underactuated-soft-robot-manipulators-using-discrete-elastic-rod-dynamics)  
-   标签：评分：9.0/10、query:q8
-   evidence：利用杆动力学进行软体机器人操作臂的轨迹生成
-5. [Dynamic Control Barrier Function Regulation with Vision-Language Models for Safe, Adaptive, and Realtime Visual Navigation](/202603/25/2603.21142v1-dynamic-control-barrier-function-regulation-with-vision-language-models-for-safe-adaptive-and-realtime-visual-navigation)  
+   evidence：具有连续安全保证的时间最优运动规划
+3. [Toward Generalist Neural Motion Planners for Robotic Manipulators: Challenges and Opportunities](/202603/26/2603.24318v1-toward-generalist-neural-motion-planners-for-robotic-manipulators-challenges-and-opportunities)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：针对杂乱环境中机器人操作臂的神经运动规划器
+4. [From Singleton Obstacles to Clutter: Translation Invariant Compositional Avoid Sets](/202603/26/2603.22146v1-from-singleton-obstacles-to-clutter-translation-invariant-compositional-avoid-sets)  
    标签：评分：8.0/10、query:q1
-   evidence：通过控制屏障函数实现实时避障
-6. [Collision-Free Velocity Scheduling for Multi-Agent Systems on Predefined Routes via Inexact-Projection ADMM](/202603/25/2603.21913v1-collision-free-velocity-scheduling-for-multi-agent-systems-on-predefined-routes-via-inexact-projection-admm)  
+   evidence：使用 Hamilton Jacobi 公式和规避集进行障碍物规避
+5. [Enhancing Drone Light Shows Performances: Optimal Allocation and Trajectories for Swarm Drone Formations](/202603/26/2603.24401v1-enhancing-drone-light-shows-performances-optimal-allocation-and-trajectories-for-swarm-drone-formations)  
    标签：评分：8.0/10、query:q1
-   evidence：多智能体系统的无碰撞速度调度
+   evidence：无人机集群的无碰撞轨迹生成
+6. [Model Predictive Path Integral Control as Preconditioned Gradient Descent](/202603/26/2603.24489v1-model-predictive-path-integral-control-as-preconditioned-gradient-descent)  
+   标签：评分：8.0/10、query:q3
+   evidence：非线性环境下轨迹优化的采样方法
 
 ### 速读区论文标签
-1. [GMT: Goal-Conditioned Multimodal Transformer for 6-DOF Object Trajectory Synthesis in 3D Scenes](/202603/25/2603.17993v1-gmt-goal-conditioned-multimodal-transformer-for-6-dof-object-trajectory-synthesis-in-3d-scenes)  
-   标签：评分：8.0/10、query:q6
-   evidence：3D场景中的6自由度物体操作轨迹合成
-2. [Lightweight Model Predictive Control for Spacecraft Rendezvous Attitude Synchronization](/202603/25/2603.18921v1-lightweight-model-predictive-control-for-spacecraft-rendezvous-attitude-synchronization)  
-   标签：评分：8.0/10、query:q2
-   evidence：用于航天器姿态同步的轻量化模型预测控制
-3. [Safety-Aware Performance Boosting for Constrained Nonlinear Systems](/202603/25/2603.19361v1-safety-aware-performance-boosting-for-constrained-nonlinear-systems)  
-   标签：评分：8.0/10、query:q2
-   evidence：带有安全过滤器的非线性约束系统控制架构
-4. [Exact and Approximate Convex Reformulation of Linear Stochastic Optimal Control with Chance Constraints](/202603/25/2603.19454v1-exact-and-approximate-convex-reformulation-of-linear-stochastic-optimal-control-with-chance-constraints)  
-   标签：评分：8.0/10、query:q3
-   evidence：随机最优控制与轨迹生成的凸重构
-5. [Constricting Tubes for Prescribed-Time Safe Control](/202603/25/2603.17003v1-constricting-tubes-for-prescribed-time-safe-control)  
-   标签：评分：7.0/10、query:q1
-   evidence：使用控制屏障函数的指定时间安全控制
-6. [KineVLA: Towards Kinematics-Aware Vision-Language-Action Models with Bi-Level Action Decomposition](/202603/25/2603.17524v1-kinevla-towards-kinematics-aware-vision-language-action-models-with-bi-level-action-decomposition)  
+1. [ReDAG-RT: Global Rate-Priority Scheduling for Real-Time Multi-DAG Execution in ROS 2](/202603/26/2603.18238v1-redag-rt-global-rate-priority-scheduling-for-real-time-multi-dag-execution-in-ros-2)  
+   标签：评分：8.0/10、query:q5
+   evidence：机器人规划与控制流水线的实时调度
+2. [Directional Mollification for Controlled Smooth Path Generation](/202603/26/2603.21831v1-directional-mollification-for-controlled-smooth-path-generation)  
+   标签：评分：8.0/10、query:q4
+   evidence：自主和工业机器人的平滑路径生成
+3. [HeiSD: Hybrid Speculative Decoding for Embodied Vision-Language-Action Models with Kinematic Awareness](/202603/26/2603.17573v1-heisd-hybrid-speculative-decoding-for-embodied-vision-language-action-models-with-kinematic-awareness)  
+   标签：评分：7.0/10、query:q5
+   evidence：机器人控制的实时推理与轨迹模式分析
+4. [Consistency-Driven Dual LSTM Models for Kinematic Control of a Wearable Soft Robotic Arm](/202603/26/2603.17672v1-consistency-driven-dual-lstm-models-for-kinematic-control-of-a-wearable-soft-robotic-arm)  
    标签：评分：7.0/10、query:q6
-   evidence：用于操作任务的运动学感知视觉语言动作模型
-7. [ProbeFlow: Training-Free Adaptive Flow Matching for Vision-Language-Action Models](/202603/25/2603.17850v1-probeflow-training-free-adaptive-flow-matching-for-vision-language-action-models)  
-   标签：评分：7.0/10、query:q8
-   evidence：连续机器人控制与操作的自适应推理
-8. [Minimum-Energy Control For Control-Affine Systems](/202603/25/2603.17933v1-minimum-energy-control-for-control-affine-systems)  
-   标签：评分：7.0/10、query:q2
-   evidence：使用不动点方程的控制仿射系统最小能量控制
-9. [Dexterous grasp data augmentation based on grasp synthesis with fingertip workspace cloud and contact-aware sampling](/202603/25/2603.16609v1-dexterous-grasp-data-augmentation-based-on-grasp-synthesis-with-fingertip-workspace-cloud-and-contact-aware-sampling)  
+   evidence：软体机器人手臂的运动学控制
+5. [Specification-Aware Distribution Shaping for Robotics Foundation Models](/202603/26/2603.17969v1-specification-aware-distribution-shaping-for-robotics-foundation-models)  
+   标签：评分：7.0/10、query:q4
+   evidence：机器人安全与约束的动作分布优化
+6. [Rapid Adaptation of Particle Dynamics for Generalized Deformable Object Mobile Manipulation](/202603/26/2603.18246v1-rapid-adaptation-of-particle-dynamics-for-generalized-deformable-object-mobile-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：具有未知动力学的柔性物体操纵
+7. [ManiDreams: An Open-Source Library for Robust Object Manipulation via Uncertainty-aware Task-specific Intuitive Physics](/202603/26/2603.18336v2-manidreams-an-open-source-library-for-robust-object-manipulation-via-uncertainty-aware-task-specific-intuitive-physics)  
+   标签：评分：7.0/10、query:q4
+   evidence：基于直觉物理模型的不确定性感知操作规划
+8. [Learn for Variation: Variationally Guided AAV Trajectory Learning in Differentiable Environments](/202603/26/2603.18853v2-learn-for-variation-variationally-guided-aav-trajectory-learning-in-differentiable-environments)  
+   标签：评分：7.0/10、query:q3
+   evidence：自主飞行器的梯度信息轨迹学习
+9. [Shielded Reinforcement Learning Under Dynamic Temporal Logic Constraints](/202603/26/2603.17152v1-shielded-reinforcement-learning-under-dynamic-temporal-logic-constraints)  
+   标签：评分：6.0/10、query:q5
+   evidence：机器人安全与操作约束的屏蔽强化学习
+10. [Optimal Path Planning in Hostile Environments](/202603/26/2603.18958v1-optimal-path-planning-in-hostile-environments)  
+   标签：评分：6.0/10、query:q1
+   evidence：存在障碍物和危险环境中的多智能体路径规划
+11. [OmniVTA: Visuo-Tactile World Modeling for Contact-Rich Robotic Manipulation](/202603/26/2603.19201v1-omnivta-visuo-tactile-world-modeling-for-contact-rich-robotic-manipulation)  
    标签：评分：6.0/10、query:q6
-   evidence：机器人抓取与灵巧操作的数据增强
-10. [CABTO: Context-Aware Behavior Tree Grounding for Robot Manipulation](/202603/25/2603.16809v1-cabto-context-aware-behavior-tree-grounding-for-robot-manipulation)  
-   标签：评分：6.0/10、query:q4
-   evidence：机器人操作规划中的行为树落地
-11. [MolmoB0T: Large-Scale Simulation Enables Zero-Shot Manipulation](/202603/25/2603.16861v1-molmob0t-large-scale-simulation-enables-zero-shot-manipulation)  
-   标签：评分：6.0/10、query:q6
-   evidence：用于零样本机器人操作和专家轨迹的大规模仿真
+   evidence：针对接触密集型机器人操作的视触觉世界建模
 
 
 <div class="dpr-home-promo-card">
