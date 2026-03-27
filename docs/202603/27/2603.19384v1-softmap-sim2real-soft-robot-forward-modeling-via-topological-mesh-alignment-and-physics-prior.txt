@@ -1,0 +1,524 @@
+Title: SOFTMAP: Sim2Real Soft Robot Forward Modeling via Topological Mesh Alignment and Physics Prior
+
+URL Source: https://arxiv.org/pdf/2603.19384v1
+
+Published Time: Mon, 23 Mar 2026 00:07:33 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# SOFTMAP: Sim2Real Soft Robot Forward Modeling via Topological Mesh Alignment and Physics Prior 
+
+Ziyong Ma B,1 , Uksang Yoo 1, Jonathan Francis 1,2 , Weiming Zhi *,3,4,5 , Jeffrey Ichnowski *,1 , Jean Oh *,1 
+
+Abstract — While soft robot manipulators offer compelling advantages over rigid counterparts, including inherent compli-ance, safe human-robot interaction, and the ability to conform to complex geometries, accurate forward modeling from low-dimensional actuation commands remains an open challenge due to nonlinear material phenomena such as hysteresis and manufacturing variability. We present SOFTMAP, a sim-to-real learning framework for real-time 3D forward modeling of tendon-actuated soft finger manipulators. SOFTMAP com-bines four components: (1) As-Rigid-As-Possible (ARAP)-based topological alignment that projects simulated and real point clouds into a shared, topologically consistent vertex space; (2) a lightweight MLP forward model pretrained on simulation data to map servo commands to full 3D finger geometry; (3) a residual correction network trained on a small set of real observations to predict per-vertex displacement fields that compensate for sim-to-real discrepancies; and (4) a closed-form linear actuation calibration layer enabling real-time inference at 30 FPS. We evaluate SOFTMAP on both simulated and physical hardware, achieving state-of-the-art shape prediction accuracy with a Chamfer distance of 0.389 mm in simulation and 3.786 mm on hardware, millimeter-level fingertip trajectory tracking across multiple target paths, and a 36.5% improve-ment in teleoperation task success over the baseline. Our results show that SOFTMAP provides a data-efficient approach for 3D forward modeling and control of soft manipulators. Supplemental materials, experiment data, and visualizations are available at https://ziyongma.github.io/SOFTMAP .
+
+I. I NTRODUCTION 
+
+Soft robot manipulators offer compelling advantages over their rigid counterparts, including inherent compliance, safe human-robot interaction, and the ability to conform to com-plex geometries [1]. The infinite-dimensional deformation space of soft bodies resists compact analytical descriptions, making accurate state representation, estimation, and con-trol challenging [2]. Further complicating forward model-ing, tendon-driven actuation introduces nonlinear material phenomena such as hysteresis, creep, and manufacturing variability that are difficult to capture from first principles alone [2]. These challenges make accurate real-time 3D forward modeling remain an open problem for soft manipulators. Prior approaches generally fall into two categories, each with its own limitations. Physics-based simulation can generate rich shape data at low cost but suffers from a persistent reality gap, where unmodeled nonlinearities cause predic-tions to diverge from hardware behavior [3], [4]. Purely data-
+
+> 1
+
+Robotics Institute, Carnegie Mellon University, USA; 2Bosch Center for Artificial Intelligence, USA; 3School of Computer Science, The University of Sydney, Australia; 4Australian Centre for Robotics, The University of Sydney, Australia; 5College of Connected Computing, Vanderbilt University, USA; *Equal Advising. Soft Finger     
+
+> Real-World
+> 3D Recontruction
+> Simulation
+> 3D Mesh
+> What We Collect
+> ARAP Aligned
+> Dataset
+> What We Have What We Build What We Use
+> Servo Command
+> ( x , y )
+> FingerMLP
+> Accurate 3D Predictions
+> Trajectory Tracking
+> Teleoperation
+> ARAP-CSM
+> Multi-view
+> ARAP-Based Alignment
+> Multi-view
+> Soft Finger
+> Real-World Multi-View Data FEM Simulation Dataset
+> ARAP-CSM
+> Tendon-Actuated Soft Robot
+> Desired Position
+> Current Position
+> ARAP-Based Alignment
+> Geometry-Action Pair Geometry-Action Pair
+> FingerMLP
+> Train
+> Commanded Actions
+> Tendons Actuated By Servo 1
+> Tendons Actuated By Servo 2
+> Soft Finger
+> Real-World Multi-View Data
+> FEM Simulation Dataset
+> ARAP-CSM
+> Tendon-Actuated Soft Robot
+> Desired Position
+> Current Position
+> Prediction Model
+> Commanded Actions
+> Tendons Actuated By Servo 1
+> Tendons Actuated By Servo 2
+> Sim-to-Real Alignment
+> Train
+> Real-Time Control
+
+Fig. 1: SOFTMAP overview. Simulation and real multi-view data are aligned via ARAP into a shared topology, enabling a lightweight learned forward model to predict full 3D soft finger geometry from servo commands for real-time control and teleoperation. 
+
+driven methods can capture real-world dynamics but require prohibitively large annotated datasets collected on physical hardware [5]. In this work, we propose SOFTMAP, a sim-to-real learn-ing framework that combines the complementary strengths of both paradigms to achieve accurate, real-time 3D shape prediction of soft finger manipulators. The framework con-sists of four stages. First, we employ As-Rigid-As-Possible (ARAP) deformation [6], [7] to project both simulated and real point cloud observations into a shared topologically consistent vertex space, establishing reliable cross-domain correspondences that enable accurate sim-to-real transfer with minimal real-world data. Second, we train a lightweight model, SOFTMAP’s model, on simulation data to serve as a forward model mapping servo commands to full-finger geometry. Third, we train a residual correction network on a small set of real observations to predict per-vertex displacement fields that compensate for residual sim-to-real discrepancies. Finally, a closed-form linear calibration layer aligns the actuation command spaces, enabling real-time inference at high frequencies suitable for closed-loop control. We evaluate SOFTMAP on both simulated and real hard-ware, and we demonstrate state-of-the-art forward shape prediction accuracy and millimeter-level fingertip trajectory tracking across multiple target paths. We further demonstrate the utility of the learned forward model in downstream applications, including trajectory generation and real-time teleoperation, yielding more accurate fingertip localization and improved teleoperation performance compared to base-line models. The main contributions of this paper are: 
+
+• We present SOFTMAP, a sim-to-real learning frame-          
+
+> arXiv:2603.19384v1 [cs.RO] 19 Mar 2026 Applications
+> Trajectory
+> Generation Teleoperation
+> Residual
+> Correction
+> Servo
+> Command
+> Physics Prior
+> Pretraining
+> 3D Shape
+> Prediction
+> Simulation Data
+> Multiview Pictures
+> VGGT
+> 3D Reconstruction
+> SAM
+> Real Data
+> ARAP Encoder ARAP Encoder
+> Aligned Dataset
+
+Fig. 2: SOFTMAP pipeline. Simulation data and real multi-view images are independently processed into 3D representations, then encoded via ARAP into a shared topologically consistent vertex space to form an aligned dataset. A learned MLP maps servo commands to 3D shape predictions, which are subsequently refined by a residual correction network. The resulting forward model enables downstream applications, including trajectory generation and real-time teleoperation. 
+
+work combining ARAP-based topological alignment, simulation pretraining, and lightweight residual cor-rection for accurate 3D forward modeling of tendon-actuated soft finger manipulators.  
+
+> •
+
+A data-efficient residual correction mechanism that bridges the sim-to-real gap by learning per-vertex dis-placement fields from a small set of real observations, reducing Chamfer distance by 33.4% over the sim-only model.  
+
+> •
+
+Experimental evaluation of SOFTMAP on millimeter-level fingertip trajectory tracking and real-time vision-based teleoperation on physical hardware, outperform-ing baselines across all evaluated tasks. II. R ELATED WORK 
+
+Accurate forward modeling of soft robot manipulators re-mains an open challenge, requiring methods that can handle the complexity introduced by soft robots’ actuation mecha-nism, can represent and estimate continuous 3D deformation states, and will enable reliable control despite nonlinear dynamics and sim-to-real gaps. 
+
+A. Soft Robot Manipulators 
+
+Soft robot manipulators have garnered significant attention due to their inherent compliance, adaptability, and capacity for safe interaction in unstructured environments [1], [8], [9]. Among actuation strategies, tendon-driven designs [10] offer finer control over deformation compared to pneumatic alternatives [11], [12], making them well-suited for dexterous manipulation tasks [13]. However, the nonlinear material properties inherent to soft bodies, including hyperelasticity, hysteresis, and manufacturing variability, make accurate for-ward modeling directly from low-dimensional actuation com-mands fundamentally challenging [14]. SOFTMAP directly addresses this challenge for tendon-actuated soft fingers, learning a forward model that maps servo commands to full 3D finger geometry. 
+
+B. Soft Robot State Representation 
+
+Accurate state representation is a prerequisite for model-based control of soft robots. Classical approaches rely on finite element method (FEM) simulations [15] or Cosserat rod models [16] to approximate the continuous deforma-tion field, but these methods are computationally expen-sive and sensitive to material parameter uncertainty. Vision-based approaches have emerged as a practical alternative, leveraging RGB images to reconstruct 3D shape [3] and enable soft robot proprioception through mesh-based and point cloud representations. However, these methods typi-cally operate within a single domain, either simulation or real, limiting their ability to exploit complementary data sources. ARAP deformation [6] provides a principled way to establish topologically consistent shape correspondences across observations, which we leverage to bridge the sim-to-real gap. SOFTMAP extends this by projecting both simulated and real point clouds into a shared ARAP-encoded vertex space, enabling cross-domain supervision and accurate forward modeling with minimal real-world data. 
+
+C. Soft Robot Control 
+
+Control of soft robots presents unique challenges due to their high degrees of freedom and nonlinear dynamics. Model-based controllers have been developed using analyt-ical forward models [16], [14], but their computational cost and sensitivity to unmodeled nonlinearities limit applicability to real-time settings. Learning-based approaches, including neural network-based forward models, have shown promise in capturing complex input-output mappings directly from data, with DeepSoRo [5] demonstrating the feasibility of end-to-end learned models for soft robot shape prediction and control on physical hardware. However, purely data-driven methods require large amounts of real-world data that is costly and time-consuming to collect. Sim-to-real transfer offers a compelling alternative by leveraging cheap simula-tion data, but the persistent reality gap due to unmodeled ma-terial nonlinearities remains a key obstacle [3]. SOFTMAP addresses this by combining a simulation-pretrained forward model with lightweight residual correction to bridge the reality gap, and a model-based inverse kinematics solver that enables accurate real-time trajectory tracking on physical hardware without requiring large real-world datasets. III. M ETHOD 
+
+SOFTMAP aims to achieve real-time, accurate 3D forward modeling for tendon-actuated soft finger manipulators by bridging the reality gap between physics-based simulation and physical hardware. A core challenge is that purely Coupled Cables 3+4    
+
+> Finger
+> Simulation
+> 3D Mesh
+> Accurate 3D Predictions
+> Soft Finger
+> Real-World Multi-View Data FE
+> ARAP-CSM
+> Tendon-Actuated Soft Robot
+> Desired Position
+> Current Position
+> FingerMLP
+> Train
+> Tendons Actuated By Servo 1
+> Tendons Actuated By Servo 2
+> Soft Finger
+> Real-World Multi-View Data FEM Simulation Dataset
+> ARAP-CSM
+> Tendon-Actuated Soft Robot
+> Desired Position
+> Current Position
+> ARAP-Based Alignment
+> Geometry-Action Pair Geometry-Action Pair
+> FingerMLP
+> Train
+> Commanded Actions
+> Tendons Actuated By Servo 1
+> Tendons Actuated By Servo 2
+> ARAP-CSM
+> Simulation Mesh
+> Sample
+> FEM Simulation Dataset
+> Generated Mesh
+> Cable 1 Cable 2 Cable3 Cable4
+> Coupled Cables 1+2
+> Simulated Servo Actions
+
+Fig. 3: Simulation environment. The soft finger is modeled in the SOFA Framework using a Neo-Hookean hyperelastic material with four embedded tendons. Actuation commands u(i)
+
+sim ∈ R2 are swept across a dense grid to generate shape observations Y (i)
+
+sim ∈ R548 ×3,forming the simulation dataset used to pretrain SOFTMAP’s model. 
+
+data-driven methods require prohibitively large real-world datasets, while purely simulation-based methods fail to capture unmodeled physical nonlinearities such as material hysteresis, manufacturing variability, and sensor noise. To address this, SOFTMAP combines a simulation-pretrained neural network as a physics prior with a lightweight residual correction network, enabling accurate sim-to-real transfer with minimal real-world data. In this work, we use the open-source tendon-driven soft-robot platform MOE [8]. 
+
+A. Data Collection 
+
+To enable supervised sim-to-real learning for the shape forward model, we collect simulation and real-world defor-mation data of a soft finger. Simulation is done modeling tendon actuation in SOFA Framework [17] and in the real world using two robot arms. 
+
+Simulation. To generate clean and physics-consistent data that match the real physical finger, we simulate a soft elastomer finger using a Neo-Hookean hyperelastic material model within the SOFA Framework [17]. The finger has four tendons embedded along the finger’s length to mimic cable-driven actuation, with tendon tensions serving as the control inputs. As shown in Fig. 3, to cover the finger’s reachable deformation space, we sweep across a dense grid of actuation commands to generate a large dataset of {(u(i)
+
+sim ,Y (i)
+
+sim )}Nsim 
+
+i=1
+
+pairs, where u(i)
+
+sim ∈ R2 is the servo command and Y (i)
+
+sim ∈
+
+R548 ×3 is the corresponding 548-vertex mesh exported di-rectly from the simulator. 
+
+Real World. We actuate the physical soft finger by two servo motors, each controlling one tendon pair, producing real servo commands u(i)
+
+real ∈ R2 measured in encoder ticks. To obtain 3D shape observations, we capture synchronized multi-view RGB images from two cameras mounted at fixed, calibrated viewpoints around the finger, as shown in Fig. 4. By this setup, we ensure complete angular cover-age of multiview captures for accurate 3D reconstruction while avoiding inter-view latency and the resulting multi-view inconsistencies. We then apply VGGT [18] for multi-view reconstruction to preserve accurate geometric details of the finger, followed by SAM [19] for segmenting the finger from the reconstructed scene, to produce finger-only Soft Robot Finger  
+
+> Robot Arms
+> Cameras
+> Data Collection
+> Multiview Observations
+> 3D Reconstruction Finger Segmentation
+> Finger Geometry
+
+Fig. 4: Real-world data collection setup. Two RGB cameras are mounted at distinct viewpoints around a soft finger actuated by an xArm 7 robot. For each servo command, synchronized multi-view images are captured and fed into our reconstruction pipeline to produce 3D point clouds used for real world deployment. 
+
+3D point clouds Y (i)
+
+real of the finger at each actuation state. Real-world data collection covers a representative grid of servo commands, yielding a dataset of paired observations 
+
+{(u(i)
+
+real ,Y (i)
+
+real )}Nreal 
+
+i=1 for downstream alignment and residual training. 
+
+B. Data Alignment 
+
+To enable sim-to-real transfer, consistent pairing between simulation and real observations is essential [20]. However, since simulated and real shapes are produced by different pipelines, the raw observations differ in sampling density, vertex correspondence and scale, making directly match-ing ill-posed. To overcome this, we employ As-Rigid-As-Possible (ARAP) [6] alignment, which fits a common tem-plate mesh to observations from both simulated and real do-mains while preserving local rigidity, thus projecting the data into a shared, topologically-consistent state space. This yields stable correspondences that are robust to missing points and non-uniform sampling typical of real-world reconstructions. Formally, let the template mesh be defined as T = ( V0, E),comprising rest vertices V0 = {v0
+
+i }Mi=1 and edges E. Given an observed point cloud P = {pk}Kk=1, the ARAP registration solves for the deformed template vertices V = {vi}Mi=1 and optimal local rotations {Ri ∈ SO (3)} by minimizing the following objective: min 
+
+{vi}, {Ri} ∑
+
+(i, j)∈E
+
+wi j (vi − v j) − Ri (v0
+
+i − v0
+
+j ) 22
+
++ λ
+
+M
+
+# ∑
+
+i=1
+
+vi − ΠP(vi) 22 ,
+
+(1) where the first term enforces locally rigid deformations across the template edges (weighted by wi j ), and the second term anchors the deformed template to the observation via a nearest-neighbor projection ΠP(·) onto P, scaled by a regularization weight λ .After fitting, we extract a fixed subset of N ≤ M handle vertices H ⊂ { 1, . . . , M}. Their corresponding 3D coordi-nates serve as our final aligned representation: ˆY (P) = { vi }i∈H ∈ RN×3. (2) This provides a compact, N-dimensional representation that maintains topological consistency across both simulation and reality. Using the ARAP-aligned representation, we construct one-to-one correspondences between real and simulated samples by nearest-neighbor matching in shape space. For each real sample with actuation command u(i) 
+
+> real
+
+and ARAP-aligned shape ˆY (i)
+
+> real
+
+, we search over a set of simulated candidates 
+
+{(u( j)
+
+> sim
+
+, ˆY ( j)
+
+> sim
+
+)} and select the simulation input whose aligned shape is most similar under mean absolute error (MAE): 
+
+j∗(i) = arg min  
+
+> j
+
+MAE 
+
+ ˆY (i)
+
+> real
+
+, ˆY ( j)
+
+> sim
+
+
+
+, u∗
+
+> sim
+
+(i) = u( j∗(i))  
+
+> sim
+
+.
+
+We then fit a global calibration map that predicts the matched simulation command directly from the real servo command. Let uhome denote the home tick position and define relative ticks r(i) = u(i) 
+
+> real
+
+− uhome . We fit an affine mapping g(r) = 
+
+Ar + b to minimize the squared error between g(r(i)) and the matched simulation commands u∗
+
+> sim
+
+(i):
+
+usim ≈ g(ureal ) = A (ureal − uhome ) + b.
+
+After this alignment procedure, every real sample is as-signed a calibrated simulation-space command usim ≈ g(ureal )
+
+and both domains share a consistent ARAP-aligned shape representation. 
+
+C. Pre-training Physics Prior 
+
+Our goal is to learn a forward model that maps low-dimensional actuation to a geometrically accurate 3D fin-ger shape. In practice, real-world reconstructions can ex-hibit noise and inconsistent sampling, which may obscure the underlying physics-consistent deformation behavior. We therefore pre-train a physics prior on clean simulation data before adapting the model to real observations. Let u ∈ R2 denote the 2D actuation input (two coupled servo commands), and let Y ∈ RN×3 denote the correspond-ing finger surface geometry represented as a fixed-topology vertex set with N = 548 vertices. We flatten the output as 
+
+y = vec (Y ) ∈ R3N and train a regression network ˆy = fθ (u), fθ : R2 → R3N , (3) where fθ is a multilayer perceptron (MLP) with parameters 
+
+θ and ˆ Y = unvec ( ˆy) ∈ RN×3 is the predicted vertex set. The model architecture is a fully-connected MLP with five hidden layers of widths [256 , 512 , 1024 , 512 , 256 ]. Each hidden block applies a linear layer followed by Batch Normalization, a ReLU nonlinearity, and dropout ( p = 0.1) for regulariza-tion, while the final output layer is linear without activation to directly regress the 3 N vertex coordinates. At inference time, the predicted vector ˆ y is reshaped back into ˆ Y ∈ RN×3.To stabilize optimization under the high-dimensional out-put, we normalize both inputs and outputs using dataset statistics computed over the simulation corpus. Specifically, with per-dimension mean and standard deviation (μu, σu) for 
+
+u and (μy, σy) for y, we train the network in normalized coordinates: ˜u = u − μu
+
+σu + ε , ˜y = y − μy
+
+σy + ε , ˆ˜y = fθ ( ˜u), (4) and recover predictions in metric space using ˆy = ˆ˜y ⊙ σy + μy, (5) where ⊙ denotes element-wise multiplication. We pre-train fθ on simulation-generated deformations by minimizing a mean-squared error over vertices: 
+
+Lsim (θ ) = 1
+
+|Dsim | ∑
+
+> (u,y)∈Dsim
+
+∥ fθ ( ˜u) − ˜y∥22 . (6) Although the model does not explicitly integrate dynamics, it is physics-consistent in the sense that it is trained exclusively on simulation-consistent shapes produced by the underly-ing soft-body simulator; as a result, the learned mapping is smooth over the actuation space and outputs plausible deformations across the dataset range, which is critical for downstream inverse problems such as trajectory generation (Sec. III-E) and real-time teleoperation (Sec. III-F). Vision-based teleoperation is increasingly common [21], but applying it to soft robots remains challenging due to their highly compliant, hard-to-model deformations. Leveraging the learned forward shape predictor, we demonstrate a real-time teleoperation interface (Fig. 6) that maps human motion to soft-finger actuation with continuous shape feedback. 
+
+D. Residual Correction 
+
+After pre-training the simulation model as a strong physics prior, we adapt it to real observations by learning a lightweight residual correction module. Given that the sim-ulation model predicts a dense vertex set Vsim = fsim (usim ) ∈
+
+RN×3 with N = 548, We then train a correction network to predict a per-vertex displacement field ∆φ (usim ) ∈ RN×3,and form the real-domain prediction by Vreal (usim ) = Vsim +
+
+∆φ (usim ).
+
+This residual correction network is a compact MLP that maps the same 2D input to a (548 , 3) displacement output, using LayerNorm, Gaussian Error Linear Unit (GELU) ac-tivations, and dropout for regularization. Here we replace BatchNorm and ReLU in Sec. III-C with LayerNorm and GELU because the real-world residuals have small batch size and larger distribution shift. LayerNorm avoids dependence on batch statistics, and the smoother GELU nonlinearity better supports learning subtle, continuous displacement cor-rections. Because real observations are reconstructed as point clouds with variable sampling density and without vertex correspondence, we supervise the corrected prediction using the symmetric chamfer distance (CD) between the predicted vertices Vreal and the real point set Preal .To prevent overfitting and to keep the refined shape close to the simulation prior, we regularize the magnitude of the displacement field, 
+
+Ll2 = 1
+
+N
+
+> N
+
+# ∑
+
+> i=1
+
+∥∆i∥22,
+
+and encourage spatial smoothness by penalizing differences across mesh edges E (from a reference template mesh), 
+
+Llap = 1
+
+|E| ∑ 
+
+> (i,j)∈E
+
+∥∆i − ∆ j∥22.Simulation Mesh Ground Truth      
+
+> SoftMap (Proposed) DeepSoro [15] Comparison Comparison DeepSoro [15] SoftMap (Proposed)
+> Real World Ground Truth
+> Rest
+> Bended Right
+> Bending Right-Back
+> Bended Right
+> Shape
+
+Simulated Evaluation Real-World Evaluation Fig. 5: Evaluation Comparison. Left: Point Cloud Comparisons in Simulation Data; Right: Point Cloud Comparisons in Real Data Human 
+
+> Motion
+> Capture
+> 3D
+> Prediction
+> Physical
+> Finger
+> Move
+
+Fig. 6: Vision-based teleoperation demonstration. Top: human motion capture with hand landmarks. Middle: real-time 3D shape prediction. Bottom: corresponding physical soft-finger motion. 
+
+The final training objective is a weighted combination of the chamfer loss and the regularizers: 
+
+L = CD (Vreal , Preal ) + λl2 Ll2 + λlap Llap .
+
+This residual formulation yields an accurate real-domain forward model while retaining the simulation-trained physics prior, providing a reliable foundation for downstream control tasks such as trajectory generation and teleoperation. 
+
+E. Trajectory Tracking 
+
+Real-time trajectory tracking is a fundamental task to evaluate the capability for soft robots’ control. Building on the calibrated forward model introduced above, we use the network as a fast differentiable predictor to enable model-based trajectory generation. Rather than manually tuning servo commands, we specify a desired fingertip path in Cartesian space and solve for the corresponding sequence of 2D actuation commands that reproduces this motion in both simulation and on hardware. To define a consistent task-space reference, we reduce each predicted shape to a single fingertip point. We identify the fingertip ptip (u) ∈ R3 as the centroid of the vertices that experience the largest deformation under actuation. This fingertip point is tracked over time to form the executed trajectory. 
+
+TABLE I: Shape prediction evaluation in simulation and real settings (lower is better). Mean vertex error is not reported for real data as point cloud observations lack vertex-level correspondence. Model Chamfer ↓ (mm) Mean vertex ↓ (mm) 
+
+Simulation 
+
+Laplacian-Encoded Model 8.739 ± 3.67 8.757 ± 4.811 DeepSoRo 4.520 ± 2.437 7.970 ± 4.127 Linear Model 2.726 ± 1.043 2.620 ± 1.143 XGBoost Model 1.28 ± 0.58 0.868 ± 0.563 ARAP-Encoded Model 0.867 ± 0.53 0.438 ± 0.274 
+
+SOFTMAP (Proposed) 0.389 ± 0.188 0.196 ± 0.098 
+
+Real 
+
+DeepSoRo 6.386 ± 1.367 –SOFTMAP (w/o residual) 5.681 ± 0.939 –
+
+SOFTMAP (Proposed) 3.786 ± 0.61 –
+
+We generate target trajectories as parametric curves cen-tered at the rest fingertip position, parameterized by ampli-tude (mm), duration (s), and waypoint rate (Hz), producing a time-ordered set of waypoints {p∗ 
+
+> t
+
+}Tt=1. For each waypoint 
+
+p∗ 
+
+> t
+
+, we solve a 2D inverse-kinematics problem using the learned forward model by selecting an actuation command ut
+
+within bounds [ℓ, h] that minimizes the distance between the model-predicted fingertip and the target. When a trajectory is defined in a lower-dimensional plane, we apply a projection 
+
+Π onto the active axes: 
+
+ut = arg min  
+
+> u∈[ℓ, h]
+
+Π ptip (u) − p∗
+
+> t
+
+ 
+
+> 2
+
+.
+
+Because this objective is generally non-convex, we adopt a hybrid solver. For the first waypoint, we perform a coarse grid search over the actuation bounds to obtain a robust ini-tialization, followed by Nelder–Mead refinement [22] and a short gradient-based polish using the Adam optimizer by dif-ferentiating through the network. For subsequent waypoints, we skip the grid search by warm-starting from the previous solution and refine each ut using local optimization, which yields temporally smooth command sequences with low per-waypoint computation. The resulting actuation sequence {ut }
+
+can then be replayed in simulation and on hardware. 
+
+F. Real-Time Visual Teleoperation 1) Human Motion Capture: We capture human finger motion using an Intel RealSense RGB stream (640×480 at T = 6 s T = 15 s T = 28 s T = 8 s T = 17 s T = 30 s T = 7 s T = 12 s T = 18 s   
+
+> Simulation
+> DeepSoro
+> SOFTMAP [Proposed]
+> Target
+> DeepSoRo
+> SOFTMAP
+> T = 8 s T = 15 s T = 29 s
+> Target
+> DeepSoRo
+> SOFTMAP
+> Target
+> DeepSoRo
+> SOFTMAP
+> Target
+> DeepSoRo
+> SOFTMAP
+> Trajectories
+
+Fig. 7: Qualitative trajectory tracking results. Each column shows snapshots at three timesteps for trajectories S, H, O, and E, comparing SOFTMAP against the DeepSoRo baseline and simulation ground truth. SOFTMAP consistently produces tighter fingertip paths with less drift and distortion, particularly on asymmetric strokes. TABLE II: Trajectory tracking error comparison (lower is better). Each trajectory is evaluated in simulation (Sim) and on real hardware (Real) using Mean Squared Error (MSE) ± standard deviation and maximum error, all in mm. Trajectory Method Sim Real MSE [mm] Max [mm] MSE [mm] Max [mm] Letter S DeepSoRo 2.685 ± 1.109 3.646 5.917 ± 5.12 23.154 SOFTMAP (Proposed) 1.124 ± 0.617 1.95 3.458 ± 2.976 15 .38 
+
+Letter H DeepSoRo 2.766 ± 0.999 4.319 5.854 ± 3.816 14.7 SOFTMAP (Proposed) 1.214 ± 0.652 2.55 3.569 ± 2.343 10 .3
+
+Letter O DeepSoRo 1.336 ± 0.918 1.582 3.164 ± 1.683 6.887 SOFTMAP (Proposed) 1.184 ± 0.182 1.499 1.387 ± 0.831 3.839 
+
+Letter E DeepSoRo 1.889 ± 0.92 3.015 4.791 ± 3.174 14.76 SOFTMAP (Proposed) 1.174 ± 0.755 2.509 2.616 ± 1.777 8.05 
+
+30 FPS) and estimate hand pose using MediaPipe Hands. For each frame, MediaPipe provides 21 3D landmarks per detected hand. We use the wrist and middle Metacarpopha-langeal (MCP) landmarks pwrist , pmid to define a stable for-ward direction of the palm in the image plane, and the index MCP and index fingertip landmarks pmcp , ptip to measure index-finger motion relative to the palm. These landmarks define the basic displacement signal d = ptip − pmcp .
+
+2) From Human Motion to Model Actuation: To convert tracked landmarks into model actuation, we compute a hand-local coordinate frame in the image plane to obtain control signals that are robust to hand orientation and distance from the camera. We define the forward unit vector ˆ f using the wrist-to-middle-MCP direction and the right unit vector ˆ r as its in-plane perpendicular: ˆf = pmid − pwrist 
+
+∥pmid − pwrist ∥2 + ε , ˆr =
+
+ ˆfy
+
+− ˆfx
+
+
+
+. (7) Using the fingertip displacement d, we compute scale-normalized projections c f (forward component) and cr (right component) by dividing the hand scale s to remove scale changes caused by the user moving closer to or farther from the camera. 
+
+s = ∥pmid − pwrist ∥2 + ε, c f = d⊤ˆf
+
+s , cr = d⊤ ˆr
+
+s . (8) We then map these components to the actuation commands 
+
+(ulat , uvert ) by scaling with the actuation range. This produces direct and continuous actuation commands in the same units used by our forward model. 
+
+3) Real-Time Shape Prediction and Control: At each timestep, we query SOFTMAP’s model to predict the full 3D finger geometry. This predicted shape serves as a real-time proprioceptive state estimate for the soft finger, enabling accurate fingertip localization. To actuate the physical finger, we convert the model-space commands into servo goal positions. We compute goal ticks using the linear calibration layer that maps millimeter actuation to tick displacement. Each command is then hard-clamped to remain within a fixed safety window by setting the limit of ticks around the home position before being transmitted to the servos. This safety clamp prevents aggressive teleoperation gestures from exceeding mechanical limits or stressing the soft structure. IV. E VALUATION 
+
+We evaluate SOFTMAP across three tasks of increasing complexity. First, we assess 3D shape prediction accuracy in both simulated and real settings, including an ablation of the residual correction network. Second, we evaluate the learned forward model on continuous fingertip trajectory tracking in both simulation and on hardware. Finally, we demonstrate the practical utility of the full system through real-time vision-based teleoperation on contact-rich pushing tasks. 
+
+A. Shape Prediction 
+
+We evaluate shape prediction performance in both simula-tion and real settings. In all experiments, the model predicts a fixed-topology vertex set with N = 548 vertices in R3, and we report (i) symmetric Chamfer distance (mm) between predicted vertices and the target point set, and (ii) mean per-vertex error (mm) in the simulation environment. 
+
+1) Simulation evaluation.: We first evaluate the forward model trained on simulation data only. As shown in Table I, SOFTMAP achieves the lowest error among all baselines, with Chamfer distance of 0 .389 mm and mean vertex error of 0 .196 mm. We compare against alternative encodings and regressors trained on the same dataset, including ARAP-encoded and Laplacian-encoded [23] representations as well as linear and XGBoost models. While ARAP encoding remains competitive, Laplacian encoding and simpler regres-sors substantially degrade accuracy, indicating that preserv-ing the full geometry in a dense vertex representation is important for precise shape prediction under actuation. We additionally compare against DeepSoRo [3], which performs worse in this setting, suggesting that the forward prediction model is well-suited for the simulator’s deformation distri-bution. 
+
+2) Real-World Evaluation: Next, we evaluate sim-to-real residual correction by comparing predictions to real reconstructed point clouds. As shown in Table I, sim-only models exhibit a clear sim-to-real gap, which we attribute to unmodeled physical nonlinearities such as material hys-teresis and manufacturing variability that are not captured by the SOFA simulation. Applying residual learning (Sec. III-D) reduces this gap by 33.4%, relative to the sim-only SOFTMAP model, and outperforms DeepSoRo by 40.7% in Chamfer distance on real data, despite being trained on a significantly smaller real-world dataset. Notably, even the sim-only SOFTMAP model without residual correction outperforms DeepSoRo, suggesting that the ARAP-aligned physics prior alone provides a strong geometric foundation. The additional residual correction then refines this foundation by learning systematic per-vertex corrections that account for the remaining domain shift. These results indicate that (i) the simulation-trained SOFTMAP model provides a strong geometric prior, (ii) a lightweight residual correction network is an effective and data-efficient mechanism for bridging the remaining sim-to-real gap, and (iii) the two components are complementary, each contributing to the accuracy. In Fig. 5, we provide qualitative comparisons of predicted shapes against ground-truth point clouds in both simulation and real settings. Across a range of rest and bent configura-tions, SOFTMAP produces point clouds that closely match the overall curvature and global pose of the finger, with noticeably smaller geometric deviation than baseline. The overlap visualizations further highlight that our predictions maintain better spatial alignment with the ground truth, es-pecially in highly curved states where small actuation errors Starting Position   
+
+> Target Position
+> Starting Position
+> Target Position Target Position
+> Starting Position
+> Fig. 8: Teleoperation task progression. From left to right, the soft finger pushes the T, Cube and a triangle prism from its starting pose toward the marked target region.
+
+can lead to large tip displacement. DeepSoRo, by contrast, struggles particularly in extreme bend configurations, where its predictions diverge significantly from the groundtruth geometry. Consistent with the quantitative results, these qualitative comparisons indicate that SOFTMAP better pre-serves the underlying geometry across domains, and that the combination of ARAP alignment and residual correction is key to achieving accurate real-world shape prediction. 
+
+B. Trajectory Tracking 
+
+We evaluate trajectory tracking by commanding the soft finger to follow four target fingertip paths (letters S/H/O/E) and measuring the Euclidean tracking error between the desired waypoint p∗ 
+
+> t
+
+and the executed fingertip position pt in millimeters. Each trajectory is tested both in simulation and on hardware using the same solved command sequence. Across all trajectories, SOFTMAP consistently outper-forms DeepSoRo in both simulation and real-hardware track-ing (Table II). On real hardware, SOFTMAP achieves sub-stantially lower mean errors and reduces worst-case de-viations across all letter trajectories, which matches the qualitative overlays in Fig. 7 where DeepSoRo exhibits larger drift and distortion on asymmetric strokes. In simulation, SOFTMAP also shows markedly smaller residual errors, indicating a tighter coupling between the learned forward model and our inverse-kinematics solver. This improved model–solver consistency carries over to more reliable ex-ecution on the physical system. 
+
+C. Teleoperation 
+
+Inspired by robot control benchmarks [24], we evaluate vision-based teleoperation on three pushing tasks (letter T, cube, and triangular prism), where the goal is to push a target object into a goal region from different directions (Fig. 8). For each trial, we compute (i) the intersection-over-union (IoU) between the final object footprint and the goal region and (ii) an overlap percentage measuring how much of the object lies inside the goal region (higher is better). As summarized in Table III, SOFTMAP consistently outperforms DeepSoRo across all tasks. The largest gains are observed on Push-T, the most geometrically constrained task, where SOFTMAP improves IoU by 89.5% and overlap by 73.9%, suggesting that accurate 3D shape prediction is par-ticularly critical when precise fingertip placement is required. More symmetric objects such as the cube and triangular prism show smaller but consistent improvements of 27.0% and 10.9% in IoU respectively, indicating that SOFTMAP’s TABLE III: Teleoperation push-task comparisons (higher is better).                                              
+
+> Task Method IoU ↑Overlap ↑(%)
+> Push-T DeepSoRo 0.38 ±0.26 46 ±27 SOFTMAP (Proposed) 0.72 ±0.13 80 ±11
+> Cube DeepSoRo 0.63 ±0.16 71 ±15 SOFTMAP (Proposed) 0.80 ±0.10 87 ±8
+> Triangular Prism DeepSoRo 0.55 ±0.10 67 ±6.5SOFTMAP (Proposed) 0.61 ±0.18 72 ±15
+
+shape-aware forward model generalizes across object geome-tries. Overall, averaged across tasks, SOFTMAP improves IoU by 36.5% and overlap by 29.9% relative to DeepSoRo, indicating more accurate control in real-time teleoperation. The evaluation indicates that improving 3D shape predic-tion directly benefits downstream manipulation. SOFTMAP provides real-time estimates of the full finger geometry, en-abling more accurate fingertip localization and reducing off-axis contacts and drift during contact-rich pushing. Overall, these results suggest that shape-aware sim-to-real modeling yields more reliable control for soft manipulation. V. C ONCLUSION AND FUTURE WORK 
+
+We present SOFTMAP, a sim-to-real learning frame-work for accurate, real-time 3D forward modeling of tendon-actuated soft finger manipulators. By combining ARAP-based topological alignment, simulation pretraining, lightweight residual correction, and a closed-form actuation calibration layer, SOFTMAP bridges the reality gap with minimal real-world data. Experiments demonstrate state-of-the-art shape prediction accuracy in both simulation and real settings, fingertip trajectory tracking across multiple target paths, and improved teleoperation performance. Despite these results, several limitations remain. The current framework assumes a fixed finger morphology and requires re-collection of real-world data and retraining of the residual correction network when the hardware changes. Ad-ditionally, while the forward model enables accurate fingertip tracking, it does not yet account for contact forces, which are critical for robust manipulation. Future work will explore extending SOFTMAP to multi-finger systems and dexterous hands, where inter-finger interactions introduce additional modeling complexity. Incorporating contact-aware model-ing and force feedback could further improve reliability in contact-rich tasks. More expressive network architectures or uncertainty-aware models could also improve generalization under larger sim-to-real gaps or across different soft designs. REFERENCES [1] S. Abondance, C. B. Teeple, and R. J. Wood, “A dexterous soft robotic hand for delicate in-hand manipulation,” IEEE Robotics and Automation Letters , vol. 5, no. 4, pp. 5502–5509, 2020. [2] P. Polygerinos, N. Correll, S. A. Morin, B. Mosadegh, C. D. Onal, K. Petersen, M. Cianchetti, M. T. Tolley, and R. F. Shepherd, “Soft Robotics: Review of Fluid-Driven Intrinsically Soft Devices; Manufacturing, Sensing, Control, and Applications in Human-Robot Interaction,” Advanced Engineering Materials , vol. 19, no. 12, p. 1700016, 2017. [3] U. Yoo, H. Zhao, A. Altamirano, W. Yuan, and C. Feng, “Toward zero-shot sim-to-real transfer learning for pneumatic soft robot 3d proprioceptive sensing,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2023, pp. 544–551. [4] U. Yoo, J. Francis, J. Oh, and J. Ichnowski, “Kinesoft: Learning propri-oceptive manipulation policies with soft robot hands,” in Conference on Robot Learning . PMLR, 2025, pp. 633–651. [5] R. Wang, S. Wang, S. Du, E. Xiao, W. Yuan, and C. Feng, “Real-time soft body 3d proprioception via deep vision-based sensing,” IEEE Robotics and Automation Letters , vol. 5, no. 2, pp. 3382–3389, 2020. [6] O. Sorkine, M. Alexa, et al. , “As-rigid-as-possible surface modeling,” in Symposium on Geometry processing , vol. 4, 2007, pp. 109–116. [7] U. Yoo, A. Hung, J. Francis, J. Oh, and J. Ichnowski, “Ropotter: Toward robotic pottery and deformable object manipulation with structural priors,” in 2024 IEEE-RAS 23rd International Conference on Humanoid Robots (Humanoids) . IEEE, 2024, pp. 843–850. [8] U. Yoo, N. Dennler, E. Xing, M. Matari´ c, S. Nikolaidis, J. Ichnowski, and J. Oh, “Soft and compliant contact-rich hair manipulation and care,” in 2025 20th ACM/IEEE International Conference on Human-Robot Interaction (HRI) . IEEE, 2025, pp. 610–619. [9] Y. Yao, U. Yoo, J. Oh, C. G. Atkeson, and J. Ichnowski, “Soft robotic dynamic in-hand pen spinning,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 1–7. [10] I. A. Seleem, M. A. Naeem, H. Takemura, and H. Ishii, “Tendon-driven based extensible soft robot with variable stiffness,” Robotics and Autonomous Systems , vol. 190, p. 104988, 2025. [11] S. Puhlmann, J. Harris, and O. Brock, “Rbo hand 3: A platform for soft dexterous manipulation,” IEEE Transactions on Robotics , vol. 38, no. 6, pp. 3434–3449, 2022. [12] U. Yoo, Y. Liu, A. D. Deshpande, and F. Alamabeigi, “Analytical design of a pneumatic elastomer robot with deterministically adjusted stiffness,” IEEE robotics and automation letters , vol. 6, no. 4, pp. 7773–7780, 2021. [13] A. Bhatt, A. Sieler, S. Puhlmann, and O. Brock, “Surprisingly robust in-hand manipulation: An empirical study,” arXiv preprint arXiv:2201.11503 , 2022. [14] C. Della Santina, C. Duriez, and D. Rus, “Model-based control of soft robots: A survey of the state of the art and open challenges,” IEEE control systems magazine , vol. 43, no. 3, pp. 30–65, 2023. [15] L. Qin, H. Peng, X. Huang, M. Liu, and W. Huang, “Modeling and simulation of dynamics in soft robotics: A review of numerical approaches,” Current Robotics Reports , vol. 5, no. 1, pp. 1–13, 2024. [16] Y. Liu, S. H. Ahn, U. Yoo, A. R. Cohen, and F. Alambeigi, “Toward analytical modeling and evaluation of curvature-dependent distributed friction force in tendon-driven continuum manipulators,” in 2020 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2020, pp. 8823–8828. [17] J. Westwood et al. , “Sofa–an open source framework for,” Medicine Meets Virtual Reality 15: In Vivo, in Vitro, in Silico: Designing the Next in Medicine , vol. 125, p. 13, 2007. [18] J. Wang, M. Chen, N. Karaev, A. Vedaldi, C. Rupprecht, and D. Novotny, “Vggt: Visual geometry grounded transformer,” in Pro-ceedings of the Computer Vision and Pattern Recognition Conference ,2025, pp. 5294–5306. [19] N. Ravi, V. Gabeur, Y.-T. Hu, R. Hu, C. Ryali, T. Ma, H. Khedr, R. R¨ adle, C. Rolland, L. Gustafson, et al. , “Sam 2: Segment anything in images and videos,” arXiv preprint arXiv:2408.00714 , 2024. [20] Y. Tian, G. Fang, R. Su, A. Lyu, N. Dutta, W. Wang, S. Gill, A. Weightman, and C. C. Wang, “Correspondence-free, function-based sim-to-real learning for deformable surface control,” IEEE Transactions on Robotics , vol. 42, pp. 653–672, 2026. [21] Y. Qin, W. Yang, B. Huang, K. Van Wyk, H. Su, X. Wang, Y.-W. Chao, and D. Fox, “Anyteleop: A general vision-based dexterous robot arm-hand teleoperation system,” in Robotics: Science and Systems , 2023. [22] J. A. Nelder and R. Mead, “A simplex method for function minimiza-tion,” Comput. J. , vol. 7, pp. 308–313, 1965. [23] O. Sorkine, D. Cohen-Or, Y. Lipman, M. Alexa, C. R¨ ossl, and H.-P. Seidel, “Laplacian surface editing,” in Proceedings of the 2004 Eurographics/ACM SIGGRAPH Symposium on Geometry Processing ,ser. SGP ’04. New York, NY, USA: Association for Computing Machinery, 2004, p. 175–184. [24] C. Chi, Z. Xu, S. Feng, E. Cousineau, Y. Du, B. Burchfiel, R. Tedrake, and S. Song, “Diffusion policy: Visuomotor policy learning via action diffusion,” The International Journal of Robotics Research , vol. 44, no. 10-11, pp. 1684–1704, 2025.
