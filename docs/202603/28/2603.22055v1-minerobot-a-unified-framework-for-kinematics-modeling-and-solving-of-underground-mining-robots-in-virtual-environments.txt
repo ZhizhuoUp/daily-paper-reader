@@ -1,0 +1,1428 @@
+Title: MineRobot: A Unified Framework for Kinematics Modeling and Solving of Underground Mining Robots in Virtual Environments
+
+URL Source: https://arxiv.org/pdf/2603.22055v1
+
+Published Time: Tue, 24 Mar 2026 02:28:54 GMT
+
+Number of Pages: 61
+
+Markdown Content:
+# Graphical Abstract 
+
+MineRobot : A Unified Framework for Kinematics Modeling and Solving of Underground Mining Robots in Virtual Environments 
+
+Shengzhe Hou, Xinming Lu, Tianyu Zhang, Changqing Yan, Xingli Zhang 30512678 03RR RRRRRRR241R0237599 4P 401234RPRG GG0 3504290A BC DForward Kinematics Inverse Kinematics Algo. 2 Algo. 3 GP RGRRR40,3 120,5 5,7 
+
+> Algo. 4 Algo. 1
+
+MineRobot : A Unified Framework for Kinematics Modeling and Solving of Underground Mining Robots in Virtual Environments KinematicsSolvers Kinematics Modeling Mining Robot Description Format (MRDF ) Topology Construction Independent Topologically Equivalent Paths (ITEPs) 
+
+> arXiv:2603.22055v1 [cs.GR] 23 Mar 2026
+
+# Highlights 
+
+MineRobot : A Unified Framework for Kinematics Modeling and Solving of Underground Mining Robots in Virtual Environments 
+
+Shengzhe Hou, Xinming Lu, Tianyu Zhang, Changqing Yan, Xingli Zhang 
+
+• Unified framework for kinematics modeling and solving of underground mining robots in virtual environments. 
+
+• MRDF: a domain-specific description that parameterizes kinematics for mining robots with native semantics for actuators and loop-closure constraints. 
+
+• Topology pipeline: contracts four-bars to generalized joints and extracts Independent Topologically Equivalent Paths (ITEPs) for each actuator. 
+
+• Forward Kinematics Solver: a linearly scalable, sequential FK pipeline by exploiting ITEP independence. 
+
+• Inverse Kinematics Solver: formulates inverse kinematics as a bound-constrained optimization problem and solves it with a Gauss-Seidel-style optimizer. MineRobot : A Unified Framework for Kinematics Modeling and Solving of Underground Mining Robots in Virtual Environments 
+
+Shengzhe Hou a, ∗, Xinming Lu a,b , Tianyu Zhang a, Changqing Yan c, Xingli Zhang a
+
+> aCollege of Computer Science and Engineering, Shandong University of Science and Technology, Qingdao, 266590, PR China
+> bShandong Lionking Software Co., Ltd., Tai’an, 271000, PR China
+> cCollege of Intelligent Equipment, Shandong University of Science and Technology, Tai’an, 271000, PR China
+
+Abstract 
+
+Underground mining robots are increasingly operated in virtual environments (VEs) for training, planning, and digital-twin applications, where reliable kinematics is essential for avoiding hazardous in-situ trials. Unlike typical open-chain industrial manipulators, mining robots are often closed-chain mechanisms driven by linear actuators and involving planar four-bar linkages, which makes both kinematics modeling and real-time solving challenging. We present MineRobot , a unified framework for modeling and solving the kinematics of underground mining robots in VEs. First, we introduce the Mining Robot Description Format (MRDF), a domain-specific representation that parameterizes kinematics for mining robots with native semantics for ac-tuators and loop closures. Second, we develop a topology-processing pipeline that contracts four-bar substructures into generalized joints and, for each actuator, extracts an Independent Topologically Equivalent Path (ITEP), which is classified into one of four canonical types. Third, leveraging ITEP independence, we compose per-type solvers into an actuator-centered sequen-tial forward-kinematics (FK) pipeline. Building on the same decomposition, we formulate inverse kinematics (IK) as a bound-constrained optimization problem and solve it with a Gauss–Seidel-style procedure that alternates   
+
+> ∗Corresponding Author
+> Email address: housz@sdust.edu.cn (Shengzhe Hou)
+
+actuator-length updates. By converting coupled closed-loop kinematics into a sequence of small topology-aware solves, the framework avoids robot-specific hand derivations and supports efficient computation. Experiments demon-strate that MineRobot provides the real-time performance and robustness required by VE applications. 
+
+Keywords: 
+
+Forward kinematics, Inverse kinematics, Kinematics modeling, Loop-closure constraints, Virtual environments, Underground mining robots 21. Introduction 
+
+Virtual environments (VEs), including virtual reality (VR) interfaces and digital twins (DTs), are increasingly used to support robot operation, simulation, and validation in safe and repeatable settings [ 1, 2, 3]. Within these visual computing pipelines, kinematics is a critical per-frame component of the interactive loop: the system must update articulated robot configurations at interactive rates while remaining numerically stable and responsive under continuous user input [ 4, 5, 6, 7]. Unlike offline analysis, VE interaction requires forward kinematics to maintain hard geometric constraints throughout the motion, often in the presence of closed-chain mechanisms, while inverse kinematics must additionally handle partially infeasible user- or task-specified targets by returning a closest-feasible configuration rather than failing [ 4, 8, 5]. These requirements make robust kinematics modeling and solving a core challenge for interactive visual computing systems [4, 9]. (a) (b) (c) (d) 
+
+> Figure 1: Representative mining-robot platforms. (a) Roadheader for tunnel excavation; (b)-(c) hydraulic supports for stabilizing the longwall face; (d) shearer for mineral cutting.
+
+Underground mining robots provide a representative and high-impact setting where this challenge becomes particularly acute [ 10 , 11 , 12 ]. Mining robots operate in harsh, confined environments with persistently high safety risks, and Fig. 1 shows typical platforms that are structurally complex and topologically diverse [ 10 , 12 , 13 ]. In practice, high-fidelity virtual models of mining robots are deployed for VR training, DTs, and task planning to reduce hazardous in-situ trials and improve operational efficiency toward automated, unmanned, and intelligent mines [ 14 , 15 , 16 , 17 ]. However, enabling these VE applications at interactive rates hinges on accurate and robust kinematics under loop-closure constraints [18, 17]. 330512678 03RR RRRRRRR241R0237599 4P 401234RPRG GG0 3504290A BC DForward Kinematics Inverse Kinematics Algo. 2 Algo. 3 GP RGRRR40,3 120,5 5,7 (a) A mining robot topology described by the Mining Robot Description Format (MRDF). (b) The topology after the contraction of four-bar loop closures. (c) Independent Topologically Equivalent Paths (ITEPs). (d) The Forward and Inverse Kinematics Solvers. 
+
+> Algo. 4 Algo. 1
+
+Figure 2: MineRobot framework. (a) Robot topology modeled by the Mining Robot Description Format (MRDF)—links (nodes), revolute/prismatic joints (light/dark blue arrows), and linear actuators (orange arrows). (b) Four-bar linkages are contracted into generalized joints (green), after which the joint topology excluding actuators is acyclic. (c) For each actuator, we extract its Independent Topologically Equivalent Path (ITEP) and categorize ITEPs into four types. (d) Sequentially solving actuator ITEPs yields a forward kinematics pipeline. Inverse kinematics is formulated as an FK-aligned optimization problem. 
+
+Unlike typical open-chain industrial manipulators, mining robots are fre-quently built as closed-chain mechanisms driven by linear actuators (hydraulic or pneumatic) [ 19 , 3, 20 ]. This design is driven by stringent requirements on load capacity, stability, and intrinsic safety in gas-prone environments [ 10 , 19 ]. Closed chains introduce loop-closure constraints, and linear actuators cou-ple multiple joint motions through actuator stroke (length), making both modeling and solving substantially more challenging than in open-chain sys-tems [ 21 , 22 ]. Open-chain robots are well supported by established kinematics pipelines and widely used description formats such as URDF [ 23 , 24 ]; by contrast, mining robots commonly employ linear actuators and planar four-bar linkages that induce loop closures, often forcing practitioners to encode constraints explicitly and to rely on constrained numerical solving [ 25 , 26 , 27 ]. As a result, many existing VE systems rely on bespoke, robot-specific models and hand-crafted loop equations [ 28 , 25 , 26 ]. Such ad hoc pipelines hinder scalability across platforms and complicate authoring and maintenance in VE workflows. Moreover, directly solving large nonlinear loop-closure systems can be ill-posed and brittle in interactive settings, sometimes requiring auxiliary sensing or manual stabilization [ 29 , 30 ]. In summary, VE applications call for a unified, authorable representation and a topology-aware kinematics solver that is robust and efficient under loop-closure constraints. We present MineRobot , a unified framework for modeling and solving the kinematics of mining robots in virtual environments. An overview is shown 4in Fig. 2. First, we introduce the Mining Robot Description Format (MRDF) ,which parameterizes links, joints, and actuators with explicit support for loop closures induced by linear actuators and four-bar linkages (Fig. 2(a)). Second, we propose four-bar contraction, which reduces each four-bar to a generalized joint while preserving its connectivity to the rest of the mechanism, yielding an acyclic topology once actuators are ignored (Fig. 2(b)). Third, from this contracted topology we automatically extract, for every actuator, an Independent Topologically Equivalent Path (ITEP) —the set of links and joints influenced when all other actuators are locked—and classify ITEPs into four types (Fig. 2(c)). Finally, leveraging ITEP independence, we design an intuitive forward kinematics (FK) pipeline that solves each actuator along its ITEP and updates the robot configuration sequentially. Building on this FK, we formulate inverse kinematics (IK) as an optimization problem that minimizes the discrepancy between the end-effector and a target configuration, and propose a Gauss–Seidel–style procedure that alternates actuator-length updates (Fig. 2(d)). We also provide an open-source online interactive demo of MineRobot implemented as a simplified JavaScript version 1.
+
+Scope. MineRobot is not intended as a general-purpose framework for arbi-trary robot mechanisms. Instead, it is distilled from the dominant kinematic patterns of major underground mining robots used in core operations such as excavation, roadheading, haulage, and ventilation. Within this scope, we provide an automatic topology-processing and kinematics-solving framework for VE applications. We focus on kinematics only; dynamics, contact, collision, and environment interactions are outside the scope, and can be addressed by higher-level physics/constraint solvers that use our FK/IK routines as a kinematic sublayer. Limitations and out-of-scope cases are discussed in Appendix A. This paper makes the following contributions: 
+
+• MRDF. A unified description format that natively models links, joints, and actuators with explicit loop-closure support, forming the basis for kinematics computation and visualization (Sec. 3) 
+
+• Topology pipeline. A pipeline comprising four-bar contraction to generalized joints (Algorithm 1) and automatic per-actuator ITEP extraction with a four-type classification (Algorithm 2) (Sec. 4) 
+
+> 1https://github.com/Housz/MineRobot
+
+5• FK solver. Four per-type ITEP solvers composed sequentially to realize an intuitive and efficient forward kinematics solver for the full robot (Sec. 5, Algorithm 3). 
+
+• IK solver. An FK-aligned optimization formulation of inverse kinematics and a Gauss-Seidel-style optimizer that alternately updates actuator lengths for efficient solution (Sec. 5, Algorithm 4). The paper is organized as follows. Section 2 reviews related work on kine-matics modeling and solving for mining robots in virtual environments. Section 3 formally parameterizes mining robots and introduces the Mining Robot Description Format (MRDF). Section 4 develops the topology-processing pipeline, including four-bar contraction and the construction of Independent Topologically Equivalent Paths (ITEPs). Section 5 presents the core kine-matics algorithms: we derive solutions for each ITEP type and then describe the forward- and inverse-kinematics procedures. Section 6 reports qualitative and quantitative evaluations. Section 7 demonstrates several VE applications built on MineRobot. Section 8 concludes and discusses avenues for future work. 
+
+2. Related Work 
+
+We review related work from three perspectives: (i) mining robots in virtual environments, (ii) robot description formats for kinematics modeling, and (iii) kinematics solvers. 
+
+Mining robots in virtual environments. Modeling, design, simulation, planning, and testing of robots in virtual environments have attracted sus-tained attention across computer graphics, robotics, and industry. Compared with general industrial robots, mining robots are large, heavy, and operate in hazardous underground settings. Virtual reality (VR) and digital twins (DT) enable risk-free training [ 15 , 14 , 31 , 32 ], testing [ 33 ], and monitoring [ 29 ], and have been widely adopted for human-robot interaction [ 34 ], structural design [ 35 ], and physically based simulation [ 18 ]. Beyond domains such as medical, construction, humanoid, and mobile robots, underground mining has seen increasing interest in tunneling, mineral cutting, and coordinated multi-robot operations. However, most efforts build robot-specific models and hand-crafted kinematics solvers inside game engines or simulation platforms, 6targeting a single robot class at a time [ 36 , 29 ]. A general modeling-and-solving framework that scales to the complex, loop-closure configurations prevalent in mining robots remains underexplored. 
+
+Kinematics modeling and description of robots. Robot description formats act as domain-specific languages (DSLs) [ 37 , 38 ], structuring a robot’s components and topology for downstream pipelines [ 28 ]. Our focus is kine-matics ; we do not consider dynamics, sensors, or environmental semantics in the format. The Unified Robot Description Format (URDF) [ 24 ]—originating from ROS [ 23 ]—has become a de facto standard, but primarily targets open-chain mechanisms and lacks native semantics for linear actuators and four-bar linkages. Subsequent formats and stacks (e.g., SDFormat (SDF) for Gazebo [ 39 ], MJCF for MuJoCo [ 40 ], and Drake’s modeling pipeline [ 41 ]) provide varying degrees of loop support, and there are URDF extensions toward loop closures [ 25 , 26 ]. These formats have been employed in con-struction [ 42 ], modular [ 43 ], surgical [ 44 ], grasping [ 45 ], assembly [ 46 ], and humanoid robots [ 47 ], as well as in computer vision [ 9, 48 , 49 ], embod-ied intelligence [ 2], and digital twins [ 50 , 51 ]. In parallel, scene formats from graphics (e.g., glTF [ 52 ] and USD [ 53 ]) have been adapted to robotics pipelines. Nevertheless, existing descriptions are often tied to specific soft-ware stacks, do not treat linear actuators as first-class entities , and lack 
+
+native four-bar/loop-closure semantics, limiting their suitability for mining robots’ topologies and actuation. These gaps motivate our Mining Robot Description Format (MRDF), which encodes actuator/joint/link topology with explicit loop-closure semantics and supports subsequent topological processing (Sec. 3). 
+
+Kinematics solvers. Two foundational problems underpin kinematics in virtual environments: forward kinematics (FK) maps actuator lengths to the configuration, and inverse kinematics (IK) determines actuator com-mands for a target link pose. For open chains, FK is straightforward and IK admits analytic, Jacobian-based, optimization-based, and data-driven approaches [ 4, 6]. In contrast, the loop-closure constraints common in mining robots complicate FK: one must satisfy loop-closure equations while handling multiple solutions, singularities, and numerical instability [ 54 , 55 , 22 ]. Prevail-ing practices derive loop-specific equations and numerically solve the resulting nonlinear systems—effective but typically mechanism-specific [ 29 , 36 ]. For IK, analytic or local numerical solutions may exist when targets are feasible [ 22 ]; when targets lie outside the workspace (common in planning and human-robot collaboration), IK is posed as a constrained optimization to obtain 7the closest feasible pose [ 8, 5]. Despite substantial progress, there is still no systematic FK/IK method tailored to the loop-closure and linear-actuator specifics of mining robots that scales across platforms. We address this gap by (i) contracting four-bar linkages into generalized joints to obtain an acyclic 
+
+joint topology once actuators are ignored, (ii) automatically extracting an 
+
+Independent Topologically Equivalent Path (ITEP) for each actuator and classifying ITEPs into four types, and (iii) composing per-type solvers into a 
+
+sequential FK pipeline and an FK-aligned IK optimization (Secs. 3 and 5). 
+
+3. Parametric Modeling of Mining Robots 
+
+In this section, we formalize a mining robot and its constituent ele-ments—links, joints, and actuators—together with their attributes that col-lectively encode the robot’s geometric and topological information. We then introduce the Mining Robot Description Format (MRDF), which records this information in a structured form and serves as the primary information carrier of the MineRobot framework. Finally, we outline the matrix-form data structures obtained by parsing MRDF, which will be used to concisely specify the algorithms that follow. 
+
+3.1. Robot Definition 
+
+We consider a mining robot R to be composed of links, joints, and actuators: 
+
+R = ( L, J , A), (1) where L = {Li}, J = {Ji}, and A = {Ai} denote the sets of links, joints, and actuators, respectively. Let nL = |L| , nJ = |J | , and nA = |A| . Figure 3 illustrates these three categories and their topological relations. Based on common underground platforms and industry practice, the mining robots considered in this paper satisfy the following assumptions: (i) actuation is provided by linear actuators, and each actuator redundancy group (defined in Actuators in this section) corresponds to one degree of freedom (DoF) of the robot; (ii) the robot joints are restricted to revolute, prismatic, and fixed joints; (iii) the robot may contain planar four-bar linkages, and after contracting all such four-bars (defined in Sec. 4.1), the joint topology becomes acyclic when all actuators are ignored. 812214312(b1) (a1) (c1) 121234(b2) (a2) (c2) PRFigure 3: Illustrations of links, joints, and actuators and their directed topologies. 
+
+This scope captures the dominant kinematic structures of major underground mining robots. Our contribution is a unified framework that enables automatic topology processing and kinematics computation within this scope, rather than a general-purpose solution intended to cover arbitrary robot mechanisms. ……  
+
+> ijTiTij TjJij
+> Figure 4: Transformations of links and joints
+
+Links . Li = ( i, T, V ) denotes a link, modeled as an ideal rigid body with 6-DoF in three-dimensional (3D) space. The index i ∈ { 0, . . . , n L − 1} is the unique identifier; by convention, the base link is 
+
+L0, whose parent is the world coordinate system (WCS). The links are connected in pairs by joints, directionally. Topologically, the closer a component is to L0, the smaller its ID is. We use Ti ∈ SE (3) to denote the transformation of link Li relative to its parent. Figure 4 illustrates the transformations between links and joints. The component V stores the visual model (geometry and its local offset), detailed in Sec. 3.2. 
+
+Joints . Ji = ( i, p, c, τ, a, To) denotes a joint with unique ID i ∈ { 0, . . . , n J −
+
+1}. A joint is a kinematics constraint that directionally connects a parent link 
+
+Lp to a child link Lc. For notational convenience we also use Jpc to refer to the joint from Lp to Lc. The joint type τ ∈ { P, R, F } specifies prismatic ( P ), revolute ( R), or fixed ( F ); links connected by a fixed joint can be merged topologically. Fig. 3(a1) and (a2) show examples of R and P from L1 to L2;their directed topologies are indicated in light/dark blue. 
+
+a ∈ R3 is a normalized direction vector, which represents the rotation axis of the revolute joint or the direction of the prismatic joint (see the blue dotted line in Fig. 3(a1) and the blue arrow in Fig. 3(a2)). The constant 
+
+To ∈ SE (3) is the joint’s origin transform relative to its parent link Lp. Let 9θ be the joint parameter (angle for R, displacement for P ). We adopt the following parent-to-child transform: 
+
+Tpc (θ) = T(a, θ ) To, (2) where T(a, θ ) = 
+
+( I θ a0⊤ 1
+
+ , τ = P, h R(a,θ ) 00⊤ 1
+
+i
+
+, τ = R, and R(a, θ ) = I + sin θ [a]× + (1 −
+
+cos θ) [ a]2 
+
+> ×
+
+(Rodrigues’ formula), with [a]× the skew-symmetric matrix of a.For τ = F , Tpc = To. Fig. 4 illustrates the transformation Tij of the joint Jij 
+
+between Li and Lj . Given a path from Ls to Lt through intermediate links 
+
+Ll0 , . . . , L lk−1 with joints Jsl 0 , J l0l1 , . . . , J lk−1t, the cumulative transform is 
+
+Tst = Tsl 0
+
+> k−2
+
+Y
+
+> i=0
+
+Tlili+1 
+
+!
+
+Tlk−1t, (3) with the product ordered along the path direction. 
+
+Actuators . Ai = ( i, t, r, b, Rd ) represents an actuator of the robot. An actuator produces telescopic motion under hydraulic or pneumatic pressure. It consists of a tube link and a rod link: t = ( t, p t), r = ( r, p r), where t and r
+
+are the tube/rod link IDs and pt, pr are their respective parent links. The tube and rod mount to their parents via revolute joints Jptt and Jpr r. We depict the actuator topology by an orange arrow from Lpt to Lpr (Fig. 3(c1) and (c2)). The scalar bounds [ℓi, u i] constrain the actuator length li, defined as the distance between the two mounting joint origins in world coordinates, i.e., the distance between Jptt and Jpr r.The Rd is a set of actuator IDs that represent the redundant actuators of the actuator. To improve load capacity and stability, multiple actuators may synchronously realize the same motion [ 56 , 21 , 7]. We define an equivalence relation ∼ on A: Ai ∼ Aj iff Ai and Aj are mutually redundant. Each equivalence class is a redundant actuator group . The cardinality of the quotient set A/ ∼ equals the system DoF of R. In mechanical design, redundant actuators are commonly arranged symmetrically and connected in parallel or series hydraulic circuits—for example, paired columns in hydraulic supports (see Fig. 15, A0–A1 and A2–A3) and paired cylinders for the rotary mechanism of roadheaders (see Fig. 16(c), A0–A1) [ 57 ]. These relations are recorded at modeling time and used later in topology processing and solver scheduling. 10 3.2. Mining Robot Description Format 
+
+The tuple R = ( L, J , A) specifies the kinematics content we require. We therefore design a simple, human- and machine-readable format— Mining Robot Description Format (MRDF) —that records links, joints, and actuators as first-class entities and serves as the primary input to the MineRobot framework. A comparison with existing robot description formats is provided later in Sec. 6.3.1. Unlike URDF/SDF, MRDF explicitly models actuators because our solvers are actuator-centric (Sec. 5). We adopt JSON (rather than XML) for concise structure and compatibility with modern web stacks [ 58 ]. Fig. 5 lists representative snippets for a link (Fig. 5(a)), a joint (Fig. 5(b)), an actuator (Fig. 5(c)), and the overall file layout (Fig. 5(d)). {"name": “canopy", "translation": [0, 0, 0], "orientation": [0, 0, 0], "visual": { "translation": [0, 0, 0], "orientation": [0, 0, 0], "geometry": { "type": "box", "x": 2.8284, "y": 0.25, "z": 0.5 }, "material": { "color": [140, 80, 0] }}}{"name": "joint_shield_canopy", "parent": “shield", "child": “canopy", "type": "revolute", "origin_translation": [0, 0, 0], "origin_orientation": [0, 0, 0], "axis": [0, 0, 1], }{"name": "actuator_base_canopy0", "tube": "tube0", "rod": "rod0", "tube_parent": "base", "rod_parent": "canopy", "bound": { "lower": 1.70, "upper": 3.80 }, "redundants": ["actuator_base_canopy1"] }{"name": "hydraulic_support0", "links": [ {"name": "base", // ... }, // Other links ], "joints": [ {"name": "joint_base_side", // ... }, // Other joints ], "actuators": [ {"name": "actuator_base_canopy0", // ... }, // Other actuators ]}(a) (b) (c) (d) 
+
+Figure 5: MRDF elements and overall file structure. (a) Link entry with name, pose, and visual. (b) Joint entry with parent/child, type, pose, and axis. (c) Actuator entry with tube/rod and their parent links, length bounds, and redundancy. (d) Overall JSON layout of an MRDF file. 
+
+A link entry stores three attributes: name , transformation (translation and orientation), and visual . The orientation uses RPY angles [ 59 ]. The visual contains an offset (also given by translation and orientation) and a geometry 
+
+specification. As in Fig. 5(a), geometry can be a parameterized primitive (box, cylinder, capsule, etc.) or a reference to an external asset (e.g., OBJ, glTF). These fields map directly to the link tuple Li = ( i, T, V ). A joint entry includes name , parent/child link names , type (P/R/F ), origin transformation 
+
+(translation and orientation), and axis for P/R . These data correspond to 
+
+Ji = ( i, p, c, τ, a, To). During parsing, fixed joints ( F ) enable merging adjacent links before downstream processing. An actuator entry records name , tube/rod 
+
+11 link names and their parent link names , the length bounds [ℓi, u i], and the set of redundant actuator IDs. This mirrors Ai = ( i, t, r, b, Rd ) with t = ( t, p t),
+
+r = ( r, p r). The bounds constrain the telescopic length li defined in world coordinates between the tube/rod mounting joint origins. In preprocessing, the framework reads MRDF, assigns unique IDs to all names, merges links connected by fixed joints, and converts translation/ori-entation fields into SE (3) matrices. For concise algorithm specification, we maintain the following matrices. 
+
+Joint matrix. J ∈ RnL×nL encodes directed joint types from Li to Lj :
+
+Ji,j =
+
+
+
+1, Ji,j is revolute ,
+
+2, Ji,j is prismatic ,
+
+3, Ji,j is fixed ,
+
+4, Ji,j is generalized ,
+
+0, otherwise .
+
+(4) We use 1/2/3/4 for R/P/F/G , and 0 when no joint exists from Li to Lj . The value 4 indicates a generalized joint , which represents a contracted four-bar linkage (Sec. 4). 
+
+Actuator incidence. At , Ar ∈ RnA×nL mark tube/rod links per actuator (rows index actuators, columns index links): 
+
+At i,j , Ar i,j =
+
+(
+
+1, Lj is the tube/rod link of Ai,
+
+0, otherwise . (5) 
+
+Redundancy matrix. Rd ∈ RnA×nA records actuator redundancy: 
+
+Rd i,j =
+
+(
+
+1, Aj is redundant to Ai,
+
+0, otherwise . (6) 
+
+Rd i,j is 1 if actuator Aj is redundant for Ai and 0 otherwise. By convention, 
+
+Rd i,i = 1 . These matrices, together with per-link transforms and joint origins, constitute the minimal kinematics state used by our topology processing (four-bar contraction and ITEP extraction) and by the kinematics solvers described later. 12 4. Topology Construction Algorithms 
+
+In this section, we introduce a two-stage topology-construction pipeline. We first detect four-bar linkages and contract each into a generalized joint 
+
+while preserving its connectivity to the rest of the robot (Algorithm 1). Af-ter contraction, the joint topology becomes acyclic with actuators ignored, ensuring that subsequent path searches are well defined. On this contracted topology, for every actuator we extract its Independent Topologically Equiv-alent Path (ITEP) —the ordered set of links and joints influenced when all other actuators are fixed (Algorithm 2)—and assign each ITEP to one of four canonical types. These ITEPs serve as inputs to the kinematics solver in Sec. 5. 
+
+4.1. Four-bar Linkage and Generalized Joints 
+
+A four-bar is a closed-loop mechanism composed of a fixed ground link and three moving links connected in sequence by revolute joints [ 60 ]. In computer graphics and computational design, linkages and related multi-link mechanisms have been widely studied for applications such as mechanical automata and motion synthesis, deployable structures, and path-generation mechanisms [ 61 ,62 , 7, 63 ]. In underground mining robots, however, planar four-bars play a more specific role: they act as compact 1-DoF transmission modules that shape end-effector trajectories while improving load capacity and structural stability through closed-loop force redistribution. Compared with spatial linkages or higher-order multi-link mechanisms, standard planar 1-DoF four-bars provide a favorable trade-off among robustness, manufacturability, maintainability, and predictable motion in heavy-duty, confined mining environments [ 64 , 60 ]. Accordingly, we focus on the planar, single-DoF, reciprocating four-bars that are prevalent in practice (e.g., double-rocker and parallelogram linkages), and exclude atypical spatial closed-chain designs and singular configurations such as link interference or branch crossing that fall outside our target scope [19, 65, 20]. Formally, a four-bar is the ordered quadruple 
+
+F b = ( La, L b, L c, L d),
+
+where links are connected by directed revolute joints (Jab , J bc , J cd ), and the loop-closure between Ld and La is encoded by a fixed pair (Jda , J ad ). The same directed convention is used in MRDF. Fig. 6 illustrates the structure and its corresponding topological graph (with Jad omitted for clarity). By 13 abcd                    
+
+> dbac
+> adbc
+> (a) (b) (c) Figure 6: Four-bar linkage. (a) Links La, L b, L c, L dare connected in sequence by revolute joints Jab , J bc , J cd ; the pair Jda –Jad encodes the closure between Ldand La. (b) Same geometry with Jad omitted. (c) Corresponding topological graph. The ground link Lais stationary. We treat Jab (bold) as the designated input joint ; prescribing its rotation θ
+> uniquely determines the linkage configuration.
+
+the Chebychev-Grübler-Kutzbach criterion [ 66 ], the DoF of a four-bar is 1. Without loss of generality, we designate Jab as the designated input joint with parameter θ. Given θ, the remaining joint variables α and β (at Jbc and Jcd )are uniquely determined; their computation is detailed in Sec. 5. A four-bar acts as a single-DoF transmission from the ground link La to the remaining members of F b . We abstract this transmission by a generalized joint (type 4 in the joint matrix J; abbreviated as G), which denotes a single-DoF map from La to a target link within the same four-bar. This abstraction operation is called contraction . Algorithm 1 contracts each four-bar into generalized joints while preserving its incidence to the rest of the mechanism; it takes the joint matrix J and actuator incidence At , Ar as input and updates J in place. We first compute strongly connected components (SCCs) using Tarjan’s classic algorithm [ 67 ] to obtain all four-bars F (Step 1), and discard trivial two-node SCCs introduced solely by auxiliary closure joints (e.g., Jda –Jad 
+
+in Fig. 6). Because four-bars are modeled with a consistent ordering, each extracted F b follows the sequence in Fig. 6(c). Given F b = ( La, L b, L c, L d), the contraction operator acts on J via the following minimal yet sufficient rules: (i) Remove loop-internal joints. 
+
+Delete all joints among {La, L b, L c, L d} (Step 3). (ii) Expose ground-to-member transmission. For each non-ground member Lx ∈ { Lb, L c, L d}, if 
+
+Lx has any child outside F b (Steps 5–6) or Lx is a parent of any actuator endpoint (tube or rod; Steps 7–8), insert a generalized joint from La to 
+
+Lx. (iii) Respect actuator-directed coupling inside F b . If an actuator 14 e cbdage cbha                                          
+
+> ………
+> h…
+> g……
+> ecbdagedbha
+> ………
+> h…
+> g……
+> (a1) (a2) (b1) (b2) Figure 7: Contraction of four-bars. A four-bar F b = ( Lb, L c, L d, L e)(green) and its adjacent links; here the ground is Lb(a1, b1). First, all joints inside F b are removed. Then, if Lx∈ { Lc, L d, L e}has external children (e.g., Lein a1 and b1) or is an actuator parent (e.g., Lcin a1; Ldand Lein b1), a generalized joint from Lbto Lxis added (green arrows). Finally, if an actuator attaches between Lu, L v∈ { Lb, L c, L d}(e.g., Ldand Lein b1), a generalized joint between Luand Lvis also added, consistent with the actuator’s direction.
+
+attaches between two non-ground members Lu, L v ∈ { Lb, L c, L d} (e.g., tube parent at Lu and rod parent at Lv), add a generalized joint consistent with the actuator’s direction (Steps 9–10). Intuitively, (i) removes the cycle that enforces loop closure, while (ii)–(iii) reintroduce precisely those single-DoF transmission edges needed to propagate motion from the ground and to encode actuator-induced coupling among non-ground members. Algorithm 1 implements these rules over all detected four-bars and updates 
+
+J in place. With adjacency-based bookkeeping, four-bar contraction runs in linear time in the size of the robot graph and actuator set, i.e., O(nL +nJ +nA)
+
+time and O(nL + nJ + nA) space. Fig. 7 illustrates typical cases using two examples. After contracting all four-bars, the joint graph (actuators excluded) becomes a directed acyclic graph (DAG), laying the groundwork for Algorithm 2. 
+
+4.2. Independent Topologically Equivalent Paths (ITEPs) 
+
+We observe that each actuator redundancy group corresponds to one independent DoF of the robot; with all other groups locked, the ordered chain of links and joints influenced by that group defines its Independent Topologically Equivalent Path (ITEP). Formally, let A be the set of actuators and ∼ the redundancy relation recorded in MRDF; each equivalence class 
+
+Gi ⊂ A contributes one DoF. Choosing a representative Ai ∈ G i, we construct its ITEP Pi while locking all actuators in A \ G i. We categorize ITEPs into four types (A–D). Algorithm 2 then extracts, for each actuator, the associated 15 Algorithm 1: Contracting Four-Bar Linkages into Generalized Joints 
+
+Input: Joint matrix J; actuator incidence At , Ar 
+
+Output: Updated J with generalized joints ( G) 
+
+> 1
+
+F ← getFourbars (J); 
+
+> 2
+
+foreach F b = [ La, L b, L c, L d] ∈ F do  
+
+> // remove internal four-bar joints
+> 3
+
+Ja,b , Jb,c , Jc,d , Jd,a , Ja,d ← 0;   
+
+> // add Gjoints to keep external incidence
+> 4
+
+for x ∈ { b, c, d } do  
+
+> 5
+
+if P 
+
+> j
+
+Jx,j > 0 then // has external children  
+
+> 6
+
+Ja,x ← 4 
+
+> 7
+
+if ∃i : At i,x = 1 ∨ Ar i,x = 1 then // is tube/rod parent  
+
+> 8
+
+Ja,x ← 4 
+
+> // if an actuator spans two non-ground links
+> 9
+
+foreach actuator Ai with parents (pt, p r) ∈ { b, c, d } do  
+
+> 10
+
+Jpt,p r ← 4;
+
+ITEP from the contracted topology, providing the inputs to the per-type kinematics solvers in Sec. 5. Algorithm 2 takes as input the contracted joint graph J, actuator incidence 
+
+At , Ar , and the redundancy matrix Rd ; it outputs the ITEP Pi for each actuator Ai. We maintain a marking vector M ∈ RnA×1 to record whether an actuator has been processed ( Mi = 1 ) or not ( Mi = 0 ) (Step 1). For each unprocessed Ai, we create a working copy J′ of the joint matrix J (Step 5) and then lock all actuators outside its redundancy group Gi (Steps 6–21). For each other actuator Aj , we retrieve the tube link Lt, the rod link Lr,and their parent links Lpt and Lpr via the auxiliary function getActuatorLinks 
+
+(Step 9). We define a path P in a directed graph as the ordered sequence of nodes traversed from one node to another, including both endpoints. Let 
+
+|P | denote the node count of P , and let [ ] denote the empty path. For actuator Aj , extract the path from Lpt to Lpr (Step 10) or Lpr to Lpt (Step 17), whichever exists. After Algorithm 1, if configurations like Fig. 7(b2) are absent, the robot’s topology forms a tree with unique paths between any two connected nodes. Even if such cases exist, the mechanical design avoids actuators driving already actuated four-bar linkages, ensuring that no path passes through actuated generalized joints. Thus, the path between two 16 Algorithm 2: Topology Construction Algorithm for Actuators 
+
+Input: Joint matrix J; actuator incidence At , Ar ; redundancy matrix Rd 
+
+Output: ITEP Pi for each actuator Ai 
+
+> 1
+
+M ← 0nA×1 // 0=unprocessed, 1=processed  
+
+> 2
+
+for i ← 0 to nA − 1 do  
+
+> 3
+
+if Mi̸ = 0 then  
+
+> 4
+
+continue  
+
+> 5
+
+J′ ← J
+
+// lock all other actuators  
+
+> 6
+
+for j ← 0 to nA − 1 do  
+
+> 7
+
+if Rd i,j ̸ = 0 then  
+
+> 8
+
+continue  
+
+> 9
+
+t, r, p t, p r ← getActuatorLinks (At , Ar , J, j ) 
+
+> 10
+
+P ← getTopoPath (J′, p t, p r) 
+
+> 11
+
+if P̸ = [ ] then  
+
+> 12
+
+if |P | = 2 then  
+
+> 13
+
+J′ 
+
+> pt,p r
+
+← 3 
+
+> 14
+
+else  
+
+> 15
+
+J′ 
+
+> r,t
+
+← 3; J′ 
+
+> t,p t
+
+← 1; J′ 
+
+> pt,t
+
+← 0 
+
+> 16
+
+else  
+
+> 17
+
+P ← getTopoPath (J′, p r, p t) 
+
+> 18
+
+if |P | = 2 then  
+
+> 19
+
+J′  
+
+> pr,p t
+
+← 3 
+
+> 20
+
+else  
+
+> 21
+
+J′ 
+
+> t,r
+
+← 3; J′ 
+
+> r,p r
+
+← 1; J′  
+
+> pr,r
+
+← 0 
+
+> 22
+
+pt, p r ← getActuatorLinks (At , Ar , J, i ) 
+
+> 23
+
+Pa ← getTopoPath (J′, p t, p r) 
+
+> 24
+
+Pb ← getTopoPath (J′, p r, p t) 
+
+> 25
+
+Pi ← mergePaths (Pa, P b) 
+
+> 26
+
+for j ← 0 to nA − 1 do  
+
+> 27
+
+if Rd i,j ̸ = 0 then  
+
+> 28
+
+Pj ← Pi; Mj ← 1
+
+17 connected nodes is unique and can be retrieved using a standard depth-first or breadth-first search through the auxiliary function getTopoPath .R/P/G FaGR raRGtFRRp tp rp tp rp tp r p rp t(a2) r RtFRp tp rR/P/G 
+
+=
+
+> aRG
+
+=        
+
+> (a1) prptRR(a3) (b2) (b1) (b3)
+> Figure 8: Locking other actuators (schematics). (a1–a3) If a direct edge between the tube/rod parents exists, set it to F. (b1–b3) Otherwise, fix Jtr and reverse the adjacency to form and collapse a 1–DoF loop, which is equivalent to merging the tube and rod.
+
+The locking operation for every other actuator Aj is as follows. If a path P exists from Lpt to Lpr (Step 11), we distinguish two cases. (i) Direct connection. If Lpt and Lpr are connected by a single-DoF joint Jptpr
+
+(R/P/G ), as in Fig. 8(a1). Fixing the rod–tube joint Jrt is kinematically equivalent to locking Jptpr ; therefore we directly set Jptpr to fixed (Step 13; Fig. 8(a3)). (ii) Indirect connection. Otherwise, the tube/rod parents are connected by a directed path P with |P | > 2. Locking Aj closes a local loop that is topologically equivalent to merging the tube and rod into a single link connected to Lpt and Lpr by two revolute joints (Fig. 8(b1–b3)). Under our scope assumptions, such a loop is necessarily 1-DoF and unique; moreover, a mobility-counting argument implies |P | = 3 , yielding a four-link generalized four-bar (detailed in Appendix A). In our mining-robot models, this indirect pattern appears as a contracted transmission ( G) adjacent to a revolute joint ( R). We fix Jrt and reverse Jtp t to close a local loop (Step 15; Fig. 8(b2)), which is topologically equivalent to merging Lr and Lt into a single node (Fig. 8(b3)). By the Chebychev–Grübler–Kutzbach criterion, the resulting loop has DoF 1. Conversely, if instead the path exists in the reverse direction, i.e., from Lpr to Lpt , we apply the symmetric operations with the joint directions swapped (Steps 16–21). After locking all other actuators, we extract the links and joints influenced 18 by Ai, namely its ITEP. Let Lpt and Lpr denote the parent links of the tube and rod of Ai, respectively (Step 22). The paths from Lpt to Lpr and from Lpr
+
+to Lpt are obtained and are denoted as Pa and Pb, respectively (Steps 23–24). If J′ contains no local closed-loop configuration like Fig. 8(b2), exactly one of Pa or Pb is nonempty, yielding the unique simple path between Lpt and 
+
+Lpr . If such loops exist, each has one DoF, and since all other actuators are locked, the robot’s overall DoF is also 1. Therefore, there can be only one such loop, and Lpt and Lpr must lie on it. The ITEP Pi of actuator Ai is obtained by merging Pa and Pb into a single path via the auxiliary function 
+
+mergePaths (Step 25). Given Pa = [ i, . . . , j ] and Pb = [ j, . . . , i ], the merged path is P = [ i, . . . , j, . . . , i ]. Finally, because mutually redundant actuators share the same topology, Pi is assigned to all Aj ∈ G i (Steps 26–27). With an adjacency-list representation of the robot topology, the algorithm runs in 
+
+O(nGnA(nL + nJ )) time and O(nL + nJ ) space, where nG denotes the number of redundant actuator groups (i.e., the robot DoF). P RG d bGRRRp tp rp tp rp tp rp tp r
+
+A BC D
+
+Figure 9: Topological graphs of four ITEP types. Darker backgrounds indicate higher complexity. (a) (b) (c1) (c2) (d1) (d2) bd babdadp rp tp tp rp tp r p tp rp tp rp tp r
+
+Figure 10: Illustrative mech-anism examples for the four ITEP types. 
+
+We classify the ITEP Pi of actuator Ai into four topological equivalence classes (A–D) according to the single-DoF relation between its tube and rod parents Lpt and Lpr . ITEP topological graphs are shown in Fig. 9, and the corresponding mechanism examples illustrated in Fig. 10. 
+
+Type A (Prismatic-equivalent). Lpt and Lpr are connected by a prismatic joint whose telescopic motion is driven by the actuator (e.g., Fig. 10(a)). 19 Type B (Revolute-equivalent). Lpt and Lpr are connected by a revolute joint whose rotational motion is driven by the actuator (e.g., Fig. 10(b)). 
+
+Type C (Four-bar-equivalent). Lpt and Lpr lie on the same contracted four-bar, i.e., they are connected through a generalized joint that mediates a single-DoF four-bar transmission (e.g., Fig. 10(c1, c2)). 
+
+Type D (Generalized-four-bar-equivalent). A 1-DoF closed loop formed by four links connected in sequence by one generalized joint and three revolute joints; Lpt and Lpr are arbitrary links on this loop (e.g., Fig. 10(d1, d2)). Types A/B are two-link, single-joint ( P/R ) cases; Type C is a four-bar; Type D is a more complex configuration obtained by nesting one four-bar within another, which we refer to as a generalized four-bar . In this view, Types A/B can be regarded as trivial four-bars. After contracting all planar four-bars, the actuator-free joint graph is a DAG by Assumption (iii). Consider one actuator redundancy group G
+
+and lock all other groups. Since each redundancy group contributes exactly one DoF (Assumption (i)), the remaining mobility is 1 DoF. If locking all other actuators never introduces a local loop (i.e., all locked actuators have a direct |P |=2 connection between their parent links), the resulting topology remains acyclic; hence Lpt and Lpr of the current actuator must be directly connected by exactly one 1-DoF joint ( P/R/G ), corresponding to Type A/B/C. Otherwise, locking an indirectly connected actuator creates a single local 1-DoF cycle (Fig. 8(b)), and because the overall mobility is 1 DoF, such a cycle can exist at most once; the active actuator must lie on this cycle, yielding Type D (generalized four-bar). The completeness holds under our scope assumptions; spatial closed chains or multi-loop mechanisms that remain multi-cyclic after contraction are out of scope. A detailed proof and limitations discussion are provided in Appendix A. The independence of ITEPs refers to the motion independence across redundant actuator groups. The topological equivalence of ITEPs is charac-terized by three allowances: (i) the actuator may connect any two links on the ITEP, in either direction; (ii) the attachment points may lie arbitrarily along those links; and (iii) any link on the ITEP may itself be a rigid aggregate of links joined by fixed joints. Let S denote the set of all actuator structures in the robot, and let ∼ be the topological-equivalence relation. The four ITEP types then form the quotient set S/ ∼= {Type A , Type B , Type C , Type D }.20 The kinematics independence and topological equivalence of ITEPs enable the general kinematics solvers developed in Sec. 5. 
+
+5. Kinematics Solvers 
+
+In this section, we build kinematics solvers on the ITEP structure obtained in Sec. 4. We first show that forward kinematics for each ITEP type reduces to a one-dimensional root-finding problem. Leveraging ITEP independence, we compose these per-ITEP solvers into an intuitive, sequential forward kinematics pipeline for the full robot. On top of this FK, we formulate inverse kinematics as a bound-constrained optimization problem and solve it via a Gauss-Seidel-style iterative scheme. The resulting methods are stable, easy to implement, and efficient, making them suitable for real-time applications in virtual environments. 
+
+5.1. Kinematics Solvers for Four Types of ITEPs 
+
+We cast the forward kinematics of each ITEP as a unified one-dimensional root-finding problem. Given a target actuator length l∗, we determine the joint transformations along the ITEP that realize this length. Let φ denote the per-ITEP FK solver, and let T = {T} be the set of all joint transformations (the robot configuration). Starting from the current configuration T ′, we set 
+
+T = φ(l∗, T ′), (7) which updates the transformations on the ITEP so that the actuator attains 
+
+l∗.For any actuator Ai, let θ denote the single driving variable along its ITEP (a prismatic displacement, a revolute angle, or a designated input angle inside a four-bar/generalized four-bar). Let f : R −→ R denote the function that maps θ to the actuator length l. Then all four ITEP types reduce to the scalar equation 
+
+f (θ) − l∗ = 0 .
+
+We solve this equation by Newton-Raphson iterations with finite-difference derivatives and a tolerance of 10 −6, warm-started from the previous configu-ration. Under our modeling assumptions, the actuator length always satisfies 
+
+l∗ ∈ [ℓi, u i], and the mechanism configurations are assumed to stay away from singularities. 21 For clarity, we introduce the following notation. The operator t(T) extracts the translation vector from a homogeneous transformation T. The notation 
+
+∥·∥ denotes the Euclidean ( ℓ2) norm. Consistent with the earlier notation, the actuator’s tube and rod links are denoted by Lt and Lr, and their parent links by Lpt and Lpr , respectively. 
+
+5.1.1. Type A 
+
+Figure 11: Type A. The tube- and rod-parent links Lpt and Lpr are connected by a prismatic joint Jptpr with displacement θ. Orange/blue paths show transforms from Lpt to 
+
+Lt/Lr .
+
+In Type A, Lpt and Lpr are connected by a prismatic joint Jptpr with displacement θ. We solve for θ so that the actuator length equals l∗. Trans-formations from Lpt to Lt (orange) and from Lpt to Lr (blue) are illustrated in Fig. 11. Based on the relative positions of Lpt , Jpr r, and Jptt (illustrated by the green triangle in Fig. 11 (right)) the actuator length l can be computed as: 
+
+l = ∥t(Tptt) − t(Tptr)∥ (8) where Tptr = Tptpr (θ)Tpr Tpr r, according to (2) and (3). Let f 0 
+
+> A
+
+: R −→ R
+
+denote the function that maps θ to the actuator length l. For Type A, the FK solver φ reduces to solving a root-finding problem: given the target actuator length l∗, find θ such that 
+
+f 0
+
+> A
+
+(θ) − l∗ = 0 . (9) 
+
+5.1.2. Type B 
+
+Figure 12: Type B. The tube- and rod-parent links Lpt and Lpr are connected by a revolute joint Jptpr with rotation θ. Orange/blue paths show transformations from Lpt to Lt/Lr .
+
+22 In Type B, Lpt and Lpr are connected by a revolute joint Jptpr with rotation 
+
+θ. We solve for θ so that the actuator length equals l∗. Transformations from Lpt to Lt (orange) and from Lpt to Lr (blue) are illustrated in Fig. 12. Based on the relative positions of Lpt , Jpr r, and Jptt (illustrated by the green triangle in Fig. 12(right)), the actuator length l can be computed as: 
+
+l = ∥t(Tptt) − t(Tptr)∥ . (10) According to (2) and (3), the path transformation is Tptr = Tptpr (θ) Tpr Tpr r.
+
+Let f 0 
+
+> B
+
+: R → R denote the function that maps θ to the actuator length l.For Type B, the FK solver φ reduces to solving the scalar equation 
+
+f 0 
+
+> B
+
+(θ) − l∗ = 0 . (11) 
+
+5.1.3. Type C              
+
+> Figure 13: Type C. The actuator lies on a four-bar F b = [ La, L b, L c, L d]with designated input Jab (angle θ) and loop angles α, β at Jbc , J cd . Orange/blue paths show transformations from Lato Lt/Lr.
+
+In Type C, the actuator lies on a four-bar F b = [ La, L b, L c, L d] (Fig. 13). We solve for the designated input angle θ at Jab so that the actuator length equals l∗. Let α and β be the angles at Jbc and Jcd , respectively. The four-bar loop-closure is enforced by 
+
+t Tad 
+
+ − t(Tad ) = 0, (12) where Tad = Tab (θ) Tb Tbc (α) Tc Tcd (β) Td Tda according to (2) and (3). Given θ, the values of α and β can be efficiently obtained using a standard Newton-Raphson procedure. Transformations from La to Lt (orange) and from La to Lr (blue) are illustrated in Fig. 13. Based on the relative positions of La, Jpr r, and Jptt (the green triangle in Fig. 13(right)), the actuator length is 
+
+l = ∥t(Tat ) − t(Tar )∥ , (13) where Tat and Tar are the path transformations from La to Lt and Lr,respectively. For example, Tat = Tptt, Tar = Tab TbTbc TcTpr r in Fig. 10(c1), and Tat = Tab TbTbc TcTcd TdTptt, Tar = Tab TbTbc TcTpr r in Fig. 10(c2). 23 Let f : R → R map θ to the actuator length l. Unlike Types A and B, where the actuator length l can be computed directly from θ, the function 
+
+f here implicitly involves first solving the loop-closure constraint in (12) to obtain α and β, and then computing l accordingly. For Type C, the FK solver 
+
+φ reduces to the scalar equation 
+
+f (θ) − l∗ = 0 . (14) 
+
+5.1.4. Type D 
+
+Figure 14: Type D. The actuator lies on two nested four-bars: the inner F b 1 =[La, L b1 , L c1 , L d1 ] (left, light blue) and the outer F b 2 = [ La, L b2 , L c2 , L d2 ] (middle, dark blue), which share the link Lc1 ≡ Lb2 . The designated input is Jab 1 (angle θ); solving the inner closure for α1, β 1 and then the outer closure for α2, β 2 determines the configuration. Orange/blue paths show transformations from La to Lt/Lr (right). 
+
+In Type D, the actuator lies on two nested four-bars—an inner F b 1 =[La, L b1 , L c1 , L d1 ] and an outer F b 2 = [ La, L b2 , L c2 , L d2 ]—with the shared link 
+
+Lc1 ≡ Lb2 (Fig. 14). We solve for the designated input angle θ at Jab 1 so that the actuator length equals l∗. Let α1, β 1 be the angles at Jb1c1 and Jc1d1 , and 
+
+α2, β 2 the angles at Jb2c2 and Jc2d2 , respectively. The inner-loop closure is enforced by 
+
+t Tad 1
+
+ − t(Tad 1 ) = 0, (15) where Tad 1 = Tab 1 (θ) Tb1 Tb1c1 (α1) Tc1 Tc1d1 (β1) Td1 Td1a. Given θ, we obtain 
+
+α1(θ), β 1(θ) by a standard Newton–Raphson procedure and then enforce the outer-loop closure 
+
+t Tad 2
+
+ − t(Tad 2 ) = 0, (16) with Tad 2 = Tab 1 (θ) Tb1 Tb1c1 (α1) Tb2 Tb2c2 (α2) Tc2 Tc2d2 (β2) Td2a which yields 
+
+α2(θ), β 2(θ).Transformations from La to Lt (orange) and from La to Lr (blue) are illustrated in Fig. 14. Based on the relative positions of La, Jpr r, and Jptt
+
+(the green triangle in Fig. 14(right)), the actuator length is 
+
+l = ∥t(Tat ) − t(Tar )∥ , (17) 24 where Tat and Tar are the path transformations from La to Lt and Lr,respectively. Let f 2 : R → R map θ to the actuator length l (the superscript indicates the two nested closures). Here, f 2 is defined implicitly: solve the inner closure (15) for α1, β 1, then the outer closure (16) for α2, β 2; compute l
+
+thereafter. For Type D, the FK solver φ reduces to the scalar equation 
+
+f 2(θ) − l∗ = 0 . (18) The superscript in f 2 signifies two nested loop closures (a generalized four-bar). By contrast, f in (14) corresponds to a single four-bar, whereas f 0 
+
+> A
+
+and f 0
+
+> B
+
+in (9) and (11) denote the prismatic- and revolute-equivalent (trivial) cases. 
+
+5.2. Forward Kinematics 
+
+With the per-ITEP forward solvers φ established, the joint transformations along the ITEP of actuator Ai can be computed from its target length l∗ 
+
+> i
+
+.Leveraging ITEP independence, the robot-level forward kinematics reduces to sequentially solving the FK of each actuator. Formally, the forward kinematics of the mining robot can be expressed as 
+
+T = Φ ( L∗, T ′) (19) where L∗ = {l∗ 
+
+> i
+
+} denotes the set of target lengths for all actuators. More specifically, the computation is carried out sequentially by applying the kinematics solver φ to each actuator in turn: 
+
+Φ ( L∗, T ′) = φ  l∗
+
+> nA−1
+
+, φ  l∗
+
+> nA−2
+
+, · · · φ (l∗
+
+> 0
+
+, T ′) · · ·  (20) which represents the iterative update of joint transformations along the ITEPs, one actuator at a time. The complete procedure for solving the forward kinematics of a mining robot is presented in Algorithm 3. The input to the algorithm is the set of target actuator lengths L∗ and the current configuration T ′ of the robot. The output is an updated configuration T in which all actuators satisfy their respective target lengths. For each actuator Ai, if the target length l∗ 
+
+> i
+
+is equal to its current length l′ 
+
+> i
+
+(that is, the actuator is inactive ), the algorithm proceeds directly to the next actuator (Steps 2–3). Otherwise, the actuator is considered active , and the corresponding root-finding problem is solved according to its ITEP type Pi. (i) For Type A, the solver computes θ by solving the root-finding problem in (9), and updates the joint transformation 25 Tptpr (θ) accordingly (Steps 4–6). (ii) For Type B, θ is obtained by solving (11), and the transformation Tptpr (θ) is subsequently updated (Steps 7–9). (iii) For Type C, the solver returns θ, α, and β by solving (14), followed by updating the joint transformations Tab (θ), Tbc (α), and Tcd (β) (Steps 10–12). (iv) For Type D, the root-finding problem in (18) yields θ, α1, β1, α2,and β2, and the corresponding transformations Tab 1 (θ), Tb1c1 (α1), Tc1d1 (β1),
+
+Tb2c2 (α2), and Tc2d2 (β2) are updated accordingly (Steps 13–15). Detailed solution strategies for each case are provided in Section 5.1. 
+
+Algorithm 3: Forward Kinematics Solver 
+
+Input: Target actuator lengths L∗ and current configuration T ′ of a mining robot R
+
+Output: Updated configuration T satisfying L∗ 
+
+> 1
+
+for Ai ∈ A do  
+
+> 2
+
+if l∗ 
+
+> i
+
+= l′ 
+
+> i
+
+then  
+
+> 3
+
+continue  
+
+> 4
+
+if type of Pi = A then  
+
+> 5
+
+θ ← Solve (9)  
+
+> 6
+
+Update Tptpr ∈ T  
+
+> 7
+
+else if type of Pi = B then  
+
+> 8
+
+θ ← Solve (11)  
+
+> 9
+
+Update Tptpr ∈ T  
+
+> 10
+
+else if type of Pi = C then  
+
+> 11
+
+θ, α, β ← Solve (14)  
+
+> 12
+
+Update {Tab , Tbc , Tcd } ⊂ T  
+
+> 13
+
+else  
+
+> 14
+
+θ, α 1, β 1, α 2, β 2 ← Solve (18)  
+
+> 15
+
+Update {Tab 1 , Tb1c1 , Tc1d1 , Tb2c2 , Tc2d2 } ⊂ T  
+
+> 16
+
+for Ai ∈ A do  
+
+> 17
+
+t, r, p t, p r ← getActuatorLinks (At , Ar , J, i ) 
+
+> 18
+
+θt, θ r ← Solve (B.1)  
+
+> 19
+
+Update {Tptt, Tpr r} ∈ T 
+
+After solving the actuator ITEPs, all actuators satisfy their target lengths, although the tube and rod orientations may remain stale. We therefore apply a lightweight look-at refinement that reorients the tube and rod of each actuator to face each other (Steps 16–17). This step is purely a post-processing for 26 visual plausibility and does not affect subsequent FK/IK solver iterations. Its detailed formulation is provided in Appendix B.1. The runtime of Algorithm 3 is dominated by solving the ITEP subproblems for active actuators. The final look-at refinement involves only constant-cost vector operations and is negligible compared to the ITEP solving process. Let 
+
+m be the number of active actuators and a, b, c, d the counts of Types A–D (m = a+b+c+d). With per-type constant costs tA, t B , t C , t D, the total time is t ≈ a t A + b t B + c t C + d t D, hence the overall complexity is O(m).Quantitative details are reported in Section 6. In summary, the forward kinematics computes the full joint configuration T from L∗ by exploiting the preconstructed ITEPs. Leveraging ITEP independence, it avoids the manual construction and complex solving of the large nonlinear systems required by conventional approaches, and supports independent updates for arbitrary actuator subsets—satisfying flexibility and performance requirements in VE applications such as digital twins and VR. 
+
+5.3. Inverse Kinematics 
+
+The inverse kinematics of the mining robot aims to determine the set of actuator target lengths L∗ that minimizes the discrepancy between the global transformation T0e of a designated end-effector link Le and a given target transformation T∗. See Fig. 17 for an example in which the roadheader cutter head and the hydraulic support canopy are solved by the IK solver to meet the given target transformations. Given a set of actuator lengths L
+
+and an initial configuration T ′, the corresponding robot configuration can be obtained via the forward kinematics algorithm as Φ (L, T ′). Based on this configuration, the global transformation of the end-effector link Le is computed according to (3), and is denoted as T0e (Φ ( L, T ′)) .We measure the difference between two transformations Ta and Tb using the Lie algebra norm ∥log (T−1 
+
+> a
+
+Tb)∨∥, where log (·) denotes the matrix log-arithm and (·)∨ maps the result to R6 [ 68 ]. The optimization objective is defined as 
+
+Ψ( L, T∗) = ∥log  T−10e (Φ ( L, T ′)) T∗∨∥. (21) This implies that the evaluation of the objective function Ψ relies on solving the forward kinematics Φ. Inverse kinematics is thus formulated as the 27 following optimization problem: 
+
+L∗ = arg min 
+
+> L
+
+Ψ( L, T∗)
+
+s.t. ∀li ∈ L , ℓ i ≤ li ≤ ui (22) where ℓi and ui denote the lower and upper bounds of actuator i.
+
+Algorithm 4: Inverse Kinematics Solver 
+
+Input: Target transformation T∗ of the end-effector; current configuration 
+
+T ′ of mining robot R
+
+Output: Optimal actuator lengths L∗ 
+
+> 1
+
+M ← 0nA×1 
+
+> 2
+
+for i ← 0 to nA − 1 do  
+
+> 3
+
+if Mi̸ = 0 then  
+
+> 4
+
+continue  
+
+> 5
+
+for j ← 0 to nA − 1 do  
+
+> 6
+
+if Rd i,j ̸ = 0 then  
+
+> 7
+
+Mj ← 1 
+
+> 8
+
+pt, p r ← getActuatorLinks (At , Ar , J, i ) 
+
+> 9
+
+Pa ← getTopoPath (J′, p t, e ) 
+
+> 10
+
+Pb ← getTopoPath (J′, p r, e ) 
+
+> 11
+
+if Pa̸ = [ ] ∨ Pb̸ = [ ] then  
+
+> 12
+
+Mi ← 0 
+
+> 13
+
+for k ← 0 to maxIter do  
+
+> 14
+
+for i ← 0 to nA − 1 do  
+
+> 15
+
+if Mi = 0 then  
+
+> 16
+
+lki ← GoldenSectionSearch (i) 
+
+> 17
+
+Ψk ← Ψ( Lk, T∗) 
+
+> 18
+
+if |Ψk − Ψk−1| < tol then  
+
+> 19
+
+L∗ ← L k 
+
+> 20
+
+break 
+
+To solve the optimization problem (22), we propose a stable, efficient and easy-to-implement algorithm, as detailed in Algorithm 4. The algorithm iteratively optimizes actuator lengths and converges when the difference in objective function between successive steps falls below a tolerance (set to 28 10 −6). First, a marking vector M ∈ RnA×1 is used to record whether an actuator needs to be optimized Mi = 0 or not Mi = 1 (Step 1). For each actuator i, it and all of its redundant actuators are directly marked with 1
+
+(Steps 5-7). Next, we check whether the parent links of the tube and rod of 
+
+Ai, denoted Lpt and Lpr , are connected to the end-effector link Le. If neither is connected, the motion of Ai has no effect on Le, and we refer to such an actuator as an irrelevant actuator . For example, in Fig. 15, the motion of A10 
+
+does not affect the canopy L4. Otherwise, the actuator is relevant (i.e., needs to be optimized) (Steps 8-12). This preprocessing procedure eliminates all irrelevant actuators, ensuring that only one actuator per redundancy group needs to be optimized. In each iteration step k, the algorithm sequentially optimizes the length of each actuator using Golden Section Search (GSS) over its bound [ℓi, u i] (Steps 14–16). After the search over all marked actuators is completed, the current objective value Ψk is evaluated (Step 17). If the absolute difference from the previous iterate is below the tolerance ( 10 −6), the IK procedure is declared converged (Step 18). Each objective evaluation invokes the FK routine to update all actuator states; consequently, upon termination the current lengths are returned as the optimal set L∗. The detailed GSS procedure is provided in Appendix B.2.2. Ignoring preprocessing and treating each objective evaluation Ψ( ·) as a constant-cost FK call ( CFK ), with S optimized actuators and K outer iterations, GSS needs O( ln (( ui − ℓi)/tol )) evaluations per variable. One sweep thus uses O(S ln (Wmax /tol )) evaluations, and the overall time complexity is 
+
+O K S C FK ln( Wmax /tol ), where Wmax = max i(ui − ℓi).Due to the independence of ITEPs, the multidimensional optimization problem in (22) is decomposed at each iteration into a sequence of bounded one-dimensional subproblems. This decomposition, together with the Gauss– Seidel-style outer update strategy, is the primary source of the efficiency gain of our IK solver. A detailed numerical comparison against classical gradient-based and global optimization methods is provided in Section 6. In the implementation reported in this paper, each one-dimensional sub-problem is solved by Golden Section Search (GSS). We adopt GSS because it is derivative-free, simple to implement, and operates directly on the ac-tuator bounds [ℓi, u i], making it a practical and robust choice for bounded one-dimensional optimization. GSS is also a common optimization tool in graphics applications that favor robust and lightweight numerical proce-dures [ 69 , 70 ]. A comparative ablation with classical one-dimensional solvers 29 is provided in Appendix B.2.2, where we show that the dominant efficiency gain comes from the ITEP-based decomposition itself, while the specific choice of the 1D solver plays a secondary role. 
+
+6. Experiments and Results 
+
+In this section, we present experimental evaluations and analysis of the four algorithms proposed in this paper. The effectiveness of topology construc-tion Algorithms 1 and 2 in processing robot topologies is first qualitatively demonstrated using several representative mining robot examples. This is followed by a quantitative evaluation of the kinematics solving Algorithms 3 and 4 through numerical experiments. 
+
+6.1. Topology Construction Algorithms 
+
+We begin with a detailed demonstration of Algorithms 1 and 2 on a complex mining robot, the Top Coal Caving Hydraulic Support Robot. Several other representative mining robot examples are then briefly presented in topological graphs. 0                     
+
+> 1
+> 0
+> 3
+> 2
+> 1
+> 2
+> 3
+> 4
+> 5
+> 6
+> 5
+> 6
+> 7
+> 8
+> 7
+> 910
+> 8
+> 89
+> 10 4
+> 5
+> 6
+> 7
+> 730412895610 0,1 2,3 4,5 6,7 8,9 10 RRRRRRRRRRRP72049560,1 2,3 4,5 6,7 8,9 10 RRPGGRAlgo. 1 (a1) (a2) (a3) (b) (c) (d) Algo. 2 204GRRR204GRRR52R97G65P0,1 2,3 4,5 6,7 74R8,9 2,3 0,1 10
+
+Figure 15: Topology construction of Top Coal Caving Hydraulic Support Robot. 
+
+Fig. 15 shows the model and topology processing of the Top Coal Caving Hydraulic Support Robot. Figs. 15 (a1), (a2) and (a3) show the rendered model, where the indices of links and actuators are marked in black and orange, respectively. For brevity, we omit the link indices of all actuator tubes and rods. This robot has a complex structure, featuring two pairs of supporting hydraulic actuators, front ( A0, A1) and rear ( A2, A3), as well as a multilevel front beam (see Fig. 15(a2)) and a telescopic tail beam (see Fig. 15(a3)). In the topological graph shown in Fig. 15(b), the links, joints, and actuators are represented as nodes, blue directed edges, and orange directed edges, 30 respectively. Redundant actuators are visualized using a shared arrow. This topological information is encoded in the MRDF and is parsed into matrices 
+
+J, Rd , At , and Ar (see Eq. (23) for J and Rd ). 
+
+J =0 1 2 3 4 5 6 7 8 9 10 11 · · · 32 
+
+
+
+0 0 1 0 0 0 0 0 0 0 0 0 0 · · · 01 0 0 1 0 0 0 0 0 0 0 0 0 · · · 02 0 0 0 1 1 1 0 0 0 0 0 0 · · · 03 1 0 0 0 0 0 0 0 0 0 0 0 · · · 04 0 0 0 0 0 0 0 1 0 0 0 0 · · · 05 0 0 0 0 0 0 2 0 0 0 0 0 · · · 06 0 0 0 0 0 0 0 0 0 0 0 0 · · · 07 0 0 0 0 0 0 0 0 1 0 0 0 · · · 08 0 0 0 0 0 0 0 0 0 1 0 0 · · · 09 0 0 0 0 0 0 0 0 0 0 1 0 · · · 010 0 0 0 0 0 0 0 1 0 0 0 0 · · · 011 0 0 0 0 0 0 0 0 0 0 0 0 · · · 0
+
+... ... ... ... ... ... ... ... ... ... ... ... ... . . . ...
+
+32 0 0 0 0 0 0 0 0 0 0 0 0 · · · 0
+
+, Rd =0 1 2 3 4 5 6 7 8 9 10 
+
+
+
+0 1 1 0 0 0 0 0 0 0 0 01 1 1 0 0 0 0 0 0 0 0 02 0 0 1 1 0 0 0 0 0 0 03 0 0 1 1 0 0 0 0 0 0 04 0 0 0 0 1 1 0 0 0 0 05 0 0 0 0 1 1 0 0 0 0 06 0 0 0 0 0 0 1 1 0 0 07 0 0 0 0 0 0 1 1 0 0 08 0 0 0 0 0 0 0 0 1 1 09 0 0 0 0 0 0 0 0 1 1 010 0 0 0 0 0 0 0 0 0 0 1
+
+(23) After Algorithm 1, all four-bars ( [L0, L 1, L 2, L 3] and [L7, L 8, L 9, L 10 ]) have been contracted into generalized joints, as indicated by the green directed arrows in Fig. 15(c). The ITEPs of all actuators are then obtained by Algorithm 2 (see Fig.15(d)). In addition, the topology processing results of several other representative mining robots are shown in Fig. 16. These include two important types of hydraulic support robots: the Shield-Type Hydraulic Support Robot (Fig. 16(a)) and the Support-Shield Hydraulic Support Robot (Fig. 16(b)), as well as the Roadheader Robot (Fig. 16(c)). Several other robots with relatively simple topologies—namely, the Load-Haul-Dump Robot, Ventilation Door Robot, Drilling Jumbo Robot, and Shearer Robot—are illustrated in Fig. 16(d). The numbers of links, joints, and actuators for all mining robots, after merging fixed-joint chains during preprocessing, are summarized in Table 1. 1023RRR R20 G002134RRR R10 0R103RG1010 R02134RRR R10 0R521035RP G31G110 R0 31G1 54 P2201Algo. 1 Algo. 2 Algo. 1 Algo. 2 Algo. 1 Algo. 1 Algo. 2                           
+
+> 0
+> 0
+> 1
+> 2
+> 3
+> 4
+> 10
+> 010
+> 033
+> 1
+> 10
+> 0
+> 01
+> 2
+> 2
+> 2
+> 3
+> 1
+> 45
+> 0
+> 1
+> 2
+> P
+> (i) (ii) (iii)
+> 20312,…,7 1RRR010R20P0130R2,…,7
+> 0
+> 01
+> 31
+> 4327652
+> Algo. 2 Algo. 1 (iv) 304125670,1 3RRRRRRRRR262040,1 3GGR2Algo. 1
+> 0
+> 1
+> 0
+> 2
+> 1
+> 3
+> 2
+> 45
+> 673
+> 204GRRR52G65G20,1 30,1 Algo. 2 (a) (b) (c) (d) 30412650,1 2,3 RRRRR74,5 6,7 8RPR204RGR6576,7 8PR0,1 2,3 4,5
+
+0
+
+5
+
+7
+
+1
+
+0
+
+3
+
+2 1
+
+3
+
+2
+
+4
+
+45
+
+6
+
+7
+
+7
+
+6
+
+8   
+
+> 76R865P6,7 204GRRR0,1 2,3 204GRRR2,3 0,1 Algo. 2 Algo. 1 (a) (b) (c) (d) 54R4,5
+
+0
+
+0   
+
+> 6015320,1 2,3 P445,6 78RRR RR
+
+1
+
+2
+
+3
+
+4
+
+5 6
+
+1
+
+23
+
+6 5
+
+7 8   
+
+> 10R21R0,1 2,3 32P440R50R60RAlgo. 1 Algo. 2 (a) (b) (c) 5,6
+
+4 
+
+> 78
+
+(a) Shield-Type Hydraulic Support Robot (b) Support-Shield-Type Hydraulic Support Robot (c) Roadheader Robot (d) (i) Load–Haul–Dump; (ii) Ventilation Door; (iii) Drilling Jumbo; (iv) Shearer Robot 
+
+Figure 16: Topology construction of various mining robots. 
+
+These examples demonstrate the topology construction process for mining robots. Algorithm 1 contracts all four-bar linkages into generalized joints, after which Algorithm 2 constructs the ITEP for each actuator. As the pre-processing stage of the MineRobot framework, these algorithms automatically 31 construct ITEPs from the topological information recorded in the MRDF, serving as the foundation for forward and inverse kinematics and avoiding the tedious manual kinematics analysis required by traditional methods. 
+
+Table 1: Mining Robots and Their Structural Information                                         
+
+> Mining Robot Links Joints Actuators End-Effector
+> Top Coal Caving Hydraulic Support Robot (TCCHS) (Fig. 15) 11 34 11 Canopy ( L4)Shield-Type Hydraulic Support Robot (STHS) (Fig. 16(a)) 816 4Canopy ( L4)Support-Shield Hydraulic Support Robot (SSHS) (Fig. 16(b)) 822 7Canopy ( L4)Roadheader Robot (RH) (Fig. 16(c)) 725 9Cutter Head ( L3)Load-Haul-Dump Robot (LHD) (Fig. 16(d-i)) 592Bucket ( L3)Ventilation Door Robot (VD) (Fig. 16(d-ii)) 461Door Leaf ( L1or L3)Drilling Jumbo Robot (DJ) (Fig. 16(d-iii)) 612 3Rock Drill ( L5)Shearer Robot (SH) (Fig. 16(d-iv)) 420 8Cutter Drum ( L1or L2)
+
+6.2. Numerical Results of Kinematics Solvers 
+
+The following presents the quantitative evaluation and analysis of the proposed kinematics solvers. We first evaluate the forward kinematics com-putation time on various mining robots and analyze the scalability of the algorithm. Then, we present the convergence behavior and performance of the inverse kinematics algorithm and compare it with several alternative methods. All timing results were obtained on a laptop equipped with an AMD Ryzen 7 5800H CPU, 32 GB of RAM, and an NVIDIA GeForce RTX 3060 Laptop GPU. The solver was implemented in C++ using the Eigen library. 
+
+6.2.1. Forward Kinematics Solver 
+
+To evaluate the performance of the forward kinematics solver (Algorithm 3), we design the following experiment. For a given robot R, each actuator may be active or inactive. Let a, b, c, and d denote the number of active actuators of each ITEP type, respectively. Each valid combination of (a, b, c, d ) corresponds to one experimental case. For each case, we randomly generate a set of target actuator lengths L∗, where the target length l∗ 
+
+> i
+
+of each active actuator Ai is sampled uniformly from the interval [ℓi, u i]. The initial configuration T ′ of the robot is also randomly initialized. The solver is then executed to compute the resulting configuration T . Each case is repeated 100 times with randomized inputs, and the average execution time is recorded. Table 2 presents a subset of the results, specifically the average runtime when all actuators are active. The experimental results demonstrate that our forward kinematics al-gorithm is highly efficient. For the most complex robot, TCCHS, the com-putation time is approximately 1 ms when all actuators are active, which meets the requirements for real-time applications. Conventional methods formulate one closed-loop constraint equation per actuator, yielding a coupled 32 Table 2: Forward Kinematics Computation Time                                                
+
+> TCCHS STHS SSHS RH LHD VD DJ SH
+> a20211010
+> b40380018
+> c13001110
+> d41400000Time (ms) 1.0557 0.5623 0.8693 0.0091 0.1762 0.1764 0.1691 0.0072
+
+nonlinear system that scales with the total number of actuators. This system must be solved in full, regardless of actuator activity. By exploiting the independence of ITEPs, our approach decouples the problem and achieves linear scalability—the computational cost scales linearly with the number of active actuators. According to the procedure of Algorithm 3, the total execution time t can be approximated as 
+
+t ≈ a · tA + b · tB + c · tC + d · tD, (24) where a, b, c, and d denote the number of active actuators of each ITEP type, and tA, tB , tC , and tD represent the average time required to solve each type, 0.0 0.5 1.0 
+
+> Predicted Time (ms)
+> 0.0
+> 0.5
+> 1.0
+> Measured Time (ms)
+
+including both numerical root-finding and auxiliary overhead. We perform a linear re-gression using the values of a, b, c, and d from each experimental case to fit the execution time t. The resulting coefficients are tA =0.0025 ms, tB = 0 .0022 ms, tC = 0 .1850 ms, and tD = 0 .2396 ms. Using these coefficients, the predicted execution times closely match the measured values, achieving a coefficient of determination R2 = 0 .9936 and a root mean squared error (RMSE) of 0.02948 ms, supporting the scalability of our algorithm. As shown in the figure on the right, the scatter plot compares the measured execution times and the predicted values (orange dots), along with the 45-degree reference line (blue). The close alignment of the points with the diagonal indicates excellent agreement between prediction and measurement. 
+
+6.2.2. Inverse Kinematics Solver 
+
+To evaluate the convergence behavior and performance of the inverse kinematics solver (Algorithm 4), we conduct comparative experiments on 33 Table 3: Inverse kinematics performance comparison over 100 randomized trials per robot. All methods use the same stopping criterion and tolerance. Gradient Descent was also tested, but is omitted from the table due to non-competitive performance. For (1+1)-ES, only the first 200 iterations are reported.                                                                                                       
+
+> TCCHS STHS SSHS RH LHD VD DJ SH
+> Iteration Time (ms) Iteration Time (ms) Iteration Time (ms) Iteration Time (ms) Iteration Time (ms) Iteration Time (ms) Iteration Time (ms) Iteration Time (ms)
+> Ours 11 78.63 14 96.27 10 73.91 10.21 14.21 14.06 14.45 10.15
+> Quasi-Newton (BFGS) 40 263.04 19 137.34 18 123.18 60.48 726.02 935.31 628.18 70.63 Conjugate Gradient 33 174.76 29 122.03 28 144.18 60.34 821.33 719.20 720.41 60.47 CMA-ES 34 143.56 58 253.07 27 129.31 34 1.39 37 127.45 29 113.21 45 192.34 23 4.28 (1+1)-ES 200 278.81 200 283.70 200 302.13 200 9.35 200 177.08 200 153.83 200 147.61 200 12.15
+
+all robots in Table 1. For each robot, we generate a random target end-effector transform in the world frame, denoted by T0e, which may lie inside or outside the reachable workspace, and we also randomize the initial robot configuration. Figure 17 shows two representative examples (Roadheader and TCCHS) before and after IK solving. 
+
+(a) Roadheader in initial config-uration 
+
+(b) Roadheader after IK solving 
+
+(c) TCCHS in initial configuration 
+
+(d) TCCHS after IK solving 
+
+Figure 17: Inverse kinematics results for two mining robots. (a) Roadheader in a random initial configuration; the target end-effector position is indicated by the yellow sphere. (b) Roadheader after IK solving. (c) TCCHS in a random initial configuration; the target canopy position is shown in yellow. (d) TCCHS after IK solving. 
+
+For each robot, we run 100 randomized IK trials. In each trial, we record the objective value Ψ at every outer iteration of Algorithm 4. We compare against commonly used optimizers under the same bounds and stopping criterion, including gradient-based methods (BFGS, conjugate gradient, and basic gradient descent) and two global optimization methods commonly 34 adopted in graphics and robotics (CMA-ES and (1+1)-ES) [71, 72]. The experimental results are summarized in Table 3 and Fig. 18. We declare convergence using the same tolerance as in Algorithm 4 ( 10 −6), based on the change of Ψ between consecutive outer iterations. For (1+1)-ES, which converges slowly, we report the first 200 iterations. Figure 18 illustrates the convergence behavior on three hydraulic support robots and the Roadheader; the remaining robots exhibit similar trends to the Roadheader and are omitted for brevity. As gradient descent converges substantially more slowly, it is included only as a visual baseline in Fig. 18 and omitted from Table 3 due to non-competitive performance. The IK objective Ψ( L, T0e) is generally nonconvex because it composes FK with closed-chain constraints and measures pose discrepancy through the Lie-algebra mapping on SE(3) . Accordingly, as with other local optimizers such as BFGS and CG, our Gauss–Seidel-style solver (i.e., a coordinate-descent method) is not guaranteed to find a global optimum. In VE applications, our goal is not a global-optimality guarantee, but robust and efficient convergence to a high-quality feasible solution under a consistent stopping criterion.   
+
+> (a) TCCHS (b) STHS
+> (c) SSHS (d) Roadheader
+> Figure 18: Comparison of convergence performance of our IK solver and other optimization methods on four mining robots.
+
+As shown in Fig. 18, our method reduces Ψ to a low value within a small number of iterations on all tested robots. BFGS and conjugate gradient show 35 similar early-stage progress but typically require more iterations near the optimum. In practice, BFGS and conjugate gradient operate directly on the original high-dimensional coupled variable space, where multiple actuator variables are optimized jointly. By contrast, the main advantage of our method lies in the ITEP-based decomposition of the original bound-constrained IK problem into a sequence of low-dimensional subproblems within a Gauss– Seidel-style outer framework. This decomposition substantially reduces the difficulty of each update and leads to faster convergence in our benchmark. Moreover, gradient-based methods typically require gradient information, line search, and additional handling for bound constraints, whereas our method avoids these requirements by solving bounded one-dimensional subproblems directly. The global methods are gradient-free, but they require substantially more iterations and runtime on these problems, making them less suitable for real-time VE applications, as shown in Table 3. Robots whose end-effector is jointly affected by multiple actuators, such as the canopies of TCCHS and SSHS driven by the front legs ( A0, A 1) and rear legs ( A2, A 3), and the canopy of STHS driven by the legs ( A0, A 1) and a balance jack ( A2), typically require more iterations due to coupling. This behavior is expected because updating one actuator changes the best response of others, so multiple sweeps are needed before the iterates stabilize. This distinction is important: stronger coupling mainly affects convergence speed, but it does not necessarily imply a higher risk of converging to poor local minima. To assess this empirically, we report success rates and final objective statistics over 100 randomized trials per robot in Appendix B.2.1 (Table B.7). Across all robots, including the coupled hydraulic supports, Ours, BFGS, and CG converge reliably under the same tolerance, and the reported statistics show no systematic degradation of the final solutions on coupled systems. In summary, our IK solver exploits ITEP independence to decompose the bound-constrained problem into a sequence of bounded one-dimensional subproblems per iteration. It converges efficiently to actuator lengths that bring the end-effector close to the target transform, even when the target lies outside the reachable workspace. 
+
+6.3. Comparison with General-Purpose Robotics Formats and Frameworks 
+
+To better position MineRobot against widely used robotics formats and frameworks, we compare them from two perspectives. First, we provide a qualitative comparison of representation-level modeling expressiveness and framework-level functionality and support for the kinematics of mining robots. 36 Second, we report quantitative runtime evaluations on the same set of mining robots and tasks. 
+
+6.3.1. Modeling Expressiveness and Framework Support 
+
+To better position MineRobot with respect to widely used robotics de-scriptions and frameworks, we compare prior work from two complementary perspectives. Table 4 focuses on representation-level semantics , i.e., whether a robot description format itself can natively encode the structures that are central to underground mining robots. Table 5, in contrast, focuses on 
+
+framework-level functionality and support , i.e., whether a robotics framework natively provides solver interfaces or dedicated handling pipelines for such mechanisms. This distinction is important: a format may be expressive at the representation level, while a framework may still lack a native pipeline to directly exploit that information. 
+
+Table 4: Comparison of robot description formats in terms of kinematics-modeling expres-siveness for mining robots.                             
+
+> Format Closed loop support Linear actuator semantics Four-bar semantics Redundant actuator semantics MRDF ✓✓✓✓
+> URDF[24] ✗◦✗◦
+> SDFormat[39] ✓◦◦◦
+> MJCF[40] ✓✓◦◦
+> USD[73] ◦◦◦◦
+> Note: This table compares representation-level semantics. ✓Native (directly supported as a first-class semantic concept); ◦Conditional (representable, but not as a first-class semantic concept); ✗No (not supported).
+
+Table 4 shows that existing general-purpose robot description formats only partially cover the kinematics patterns prevalent in mining robots. URDF is effective for tree-structured robots, but it does not natively support closed loops, and its support for linear actuators and redundant actuation is only indirect. SDFormat and MJCF improve the situation by allowing closed-loop mechanisms to be encoded in the file, and MJCF further provides an explicit cylinder actuator primitive. However, for these formats, planar four-bars and redundant actuator groups are still not treated as first-class semantic concepts. USD is highly flexible as a general scene and physics representation, but from the viewpoint of mining-robot kinematics it remains largely generic and indirect. In contrast, MRDF natively represents all four structures considered here: closed-loop mechanisms, linear actuators, four-bars, and redundant actuators. This comparison clarifies the role of MRDF in our framework: it is not introduced merely as another robot file format, but as a 37 domain-specific representation whose semantics are aligned with the dominant kinematic patterns of underground mining robots. This distinction is particularly important for linear actuators and re-dundant actuation. In general-purpose formats, linear actuation is usually represented indirectly through prismatic joints, drives, generic actuators, or controllers, while redundancy is typically approximated through mimic rela-tions, equality constraints, or external synchronization logic. Such encodings may be sufficient for simulation or control in specific software stacks, but they do not explicitly expose the actuator-level topology required by our topology construction and solver scheduling. By contrast, MRDF treats the actuator itself as a first-class modeling entity, together with its mounting relations, bounds, and redundancy-group membership. This actuator-centric representation is the key enabler of the subsequent four-bar contraction, ITEP extraction, and sequential FK/IK pipeline developed in MineRobot. 
+
+Table 5: Comparison of general-purpose robotics frameworks in terms of kinematics support for mining robots.                                                           
+
+> Framework Formats FK solver IK solver Closed loop pipeline Actuator-centric kinematics Four-bar handling Redundant actuator handling MineRobot MRDF ✓✓✓✓✓✓
+> Drake[41] URDF, SDFormat, etc. ✓✓◦✗✗✗
+> MuJoCo[40] MJCF, URDF ✓✗✓✗✗◦
+> Gazebo[74] SDFormat, etc. ◦✗◦✗◦◦
+> PyBullet[75] URDF, SDFormat, etc. ✓✓◦✗✗✗
+> Isaac Sim[76] USD, etc. ✓✓◦✗✗✗
+> DART[77] URDF, SDFormat, etc. ✓✓◦✗✗✗
+> Note: This table compares framework-level functionality and support. ✓Native (natively provided through solver interfaces, import capability, or dedicated handling pipelines); ◦Conditional (partially supported under additional conditions); ✗No (not supported).
+
+Table 5 complements the format-level analysis by comparing general-purpose robotics frameworks in terms of mining-robot kinematics support. Here, FK solver and IK solver indicate native solver interfaces; closed loop pipeline indicates whether closed-loop information can be imported from supported standard formats without manual constraint coding; and actuator-centric kinematics , four-bar handling , and redundant actuator handling indi-cate whether these mining-robot-specific structures are natively incorporated into the kinematics pipeline. A fair reading of the table is not that existing frameworks are weak in general. On the contrary, several of them provide strong support for standard kinematics tasks and closed-loop modeling un-der various conditions. Among them, Drake and MuJoCo are particularly representative: Drake provides strong native support for general FK/IK and multibody modeling, while MuJoCo provides native support for closed-loop 38 import through MJCF together with explicit actuator modeling. Therefore, MineRobot is not motivated by the absence of general FK/IK functionality in the literature. Instead, the main gap lies in the combination of capabilities required by mining robots, and more importantly, in how these capabilities are organized into the kinematics pipeline. As Table 5 shows, none of the compared general-purpose frameworks natively provide actuator-centric kinematics, dedicated four-bar handling, and redundant-actuator-aware processing in a unified pipeline. Even when closed loops can be represented or imported, they are generally handled as generic constraints within a joint-centric formulation. As a result, the corresponding FK/IK problems remain coupled at the mechanism level, and the user typically has to rely on generic numerical solvers over the full constrained system. MineRobot differs precisely in this respect. By contracting four-bars into generalized joints and extracting Independent Topologically Equivalent Paths (ITEPs), it reorganizes the original coupled closed-loop mechanism into actuator-centered subproblems associated with independent actuator groups. This decomposition turns the original kinematics problem into a sequence of small, topology-aware local solves, which improves not only computational efficiency but also numerical robustness and solver stability in interactive settings. Consequently, FK no longer needs to resolve the entire mechanism as one generic constrained system, and IK can alternate over actuator variables in a Gauss–Seidel-style manner aligned with the same decomposition. In other words, MineRobot does not merely add support for mining-robot-specific mechanisms; it uses their topology to decouple the kinematics computation itself. Taken together, Tables 4 and 5 highlight the intended scope of our contri-bution. General-purpose formats and frameworks are broad and versatile, but they are not designed around the characteristic kinematics of underground mining robots. MineRobot addresses this gap by coupling a domain-specific representation (MRDF) with a topology-aware kinematics pipeline. The practical consequence is that the information needed by our FK/IK solvers is available natively in the representation and can be exploited directly, rather than being reconstructed indirectly from generic joints, constraints, or ex-ternal control logic. This stronger alignment between modeling semantics and solver design is the main reason why MineRobot provides both clearer authoring for mining robots and a more direct route to efficient closed-loop kinematics, which will be reflected in the runtime comparison of Sec. 6.3.2. 39 6.3.2. Runtime Comparison 
+
+We next compare runtime performance with representative general-purpose frameworks. Based on the analysis in Sec. 6.3.1, we choose Drake and MuJoCo as the most informative baselines. Drake provides strong native support for generic FK/IK and multibody modeling, whereas MuJoCo provides native sup-port for closed-loop import through MJCF together with an explicit cylinder actuator primitive. They therefore represent two strong yet complementary points of comparison for MineRobot. 
+
+Table 6: Runtime comparison with MineRobot, Drake, and MuJoCo over 100 randomized trials per robot. Under each robot, FK and IK entries report the average runtime in milliseconds, with the success rate in parentheses. All methods use the same task setup, tolerance, and time budget. Iteration counts are omitted because the compared frameworks use substantially different internal update mechanisms, making runtime and success rate more meaningful for comparison. ∗ indicates results measured using a hand-implemented C++/Eigen version because the engine does not natively provide the corresponding FK or IK workflow; these results are reported only for reference.                                                                       
+
+> TCCHS STHS SSHS RH LHD VD DJ SH
+> FK IK FK IK FK IK FK IK FK IK FK IK FK IK FK IK
+> MineRobot 1.06 (100%) 78.63 (100%) 0.56 (100%) 96.27 (100%) 0.87 (100%) 73.91 (100%) 0.01 (100%) 0.21 (100%) 0.18 (100%) 4.21 (100%) 0.18 (100%) 4.06 (100%) 0.17 (100%) 4.45 (100%) 0.01 (100%) 0.15 (100%)
+> Drake 25.35 (100%) 252.62 (86%) 11.84 (100%) 141.30 (92%) 18.72 (100%) 128.45 (90%) 0.26 (100%) 0.92 (100%) 1.94 (100%) 31.85 (98%) 1.73 (100%) 39.60 (97%) 1.88 (100%) 33.12 (98%) 0.22 (100%) 0.96 (100%) MuJoCo 6.23 (100%) 189.40 (82%) ∗3.15 (100%) 151.72 (89%) ∗4.78 (100%) 137.55 (87%) ∗0.07 (100%) 0.78 (100%) ∗0.62 (100%) 26.44 (97%) ∗0.58 (100%) 32.18 (96%) ∗0.61 (100%) 27.06 (97%) ∗0.06 (100%) 0.84 (100%) ∗
+
+Table 6 reports the average runtime and success rate over 100 randomized trials for each robot. All methods use the same robot instances, task setup, tolerance, and time budget. We emphasize runtime and success rate rather than iteration counts because the compared frameworks rely on substantially different internal update mechanisms, making direct iteration-to-iteration comparison less meaningful. For MuJoCo, the IK results marked with ∗
+
+are reported only for reference, since MuJoCo does not natively provide the corresponding IK workflow and the measurements are obtained from a hand-implemented C++/Eigen version. More generally, the reported im-plementations are research-oriented and not specially optimized; therefore, the absolute runtimes should be interpreted as reference values, whereas the relative trends and success rates are the main points of comparison. Several consistent trends can be observed. First, MineRobot achieves the best overall FK efficiency across all tested robots while maintaining a 100% success rate. This advantage is especially clear on the more complex hydraulic-support robots, but it also remains consistent on simpler mechanisms. Second, the advantage becomes more pronounced in IK, where MineRobot again attains 100% success on all robots and consistently outperforms the compared baselines in runtime. By contrast, Drake and the MuJoCo-based reference 40 implementation show lower success rates on several of the more strongly cou-pled robots, indicating that the practical difference is not only computational speed, but also solution robustness. The main reason for this advantage is the topology-aware decomposition introduced by MineRobot. As discussed in Sec. 6.3.1, general-purpose frame-works typically handle these robots through joint-centric formulations and generic closed-loop constraints, so FK/IK remains a coupled problem at the mechanism level. In contrast, MineRobot contracts four-bars, extracts ITEPs, and solves the resulting actuator-centered subproblems sequentially. This decoupling substantially reduces the size of each local solve in FK and enables the Gauss–Seidel-style IK solver to operate directly on actuator variables rather than repeatedly resolving the full constrained system. The runtime comparison therefore provides quantitative evidence that the ITEP-based decomposition improves not only efficiency, but also stability under repeated randomized tests. At the same time, these results should be interpreted within scope. Drake and MuJoCo are general-purpose frameworks designed for a much broader class of robots and simulation tasks, whereas MineRobot is specialized for the dominant kinematic patterns of underground mining robots. Our claim is therefore not that general-purpose frameworks are ineffective, but that their broad formulations do not directly exploit the structural regularities of mining robots. MineRobot gains efficiency and robustness precisely because its representation and solver are co-designed around those regularities. 
+
+7. Applications 
+
+We briefly demonstrate how MineRobot supports several representative mining-robot applications in virtual environments. As summarized in Fig. 19, the framework can be directly integrated into workspace visualization, tra-jectory generation, virtual reality (VR) interaction, and digital twins. These applications are enabled by the same actuator-centric kinematics layer: FK maps actuator states to robot configurations for visualization and interaction, while IK maps task-space targets to actuator commands for planning and control. Specifically, workspace visualization (Fig. 19(a)) is realized by sampling the relevant actuator space and evaluating FK to obtain the corresponding end-effector poses. Trajectory generation (Fig. 19(b)) is realized by discretiz-ing a target path in task space and solving IK at each sample. For VR 41 Physical World Virtual World   
+
+> User Interface
+> FK Solver IK Solver Sensors Controllers
+> (a) Workspace Visualization (b) Trajectory Generation (c) Virtual Reality (d) Digital Twins
+
+Figure 19: Representative applications enabled by MineRobot in virtual environments. (a) Workspace visualization using FK-based sampling of reachable end-effector poses. (b) Trajectory generation by solving IK along a target path. (c) Virtual reality interaction with real-time robot updates driven by FK. (d) Digital twin synchronization between physical robots and their virtual counterparts through FK/IK. 
+
+interaction (Fig. 19(c)), virtual controls are mapped to actuator targets, and the robot is updated online through FK at interactive rates. For digital twins (Fig. 19(d)), measured actuator lengths are sent to FK for physical-to-virtual synchronization, while desired end-effector targets are sent to IK for virtual-to-physical command generation. These examples illustrate that MineRobot is not only a kinematics solver, but also a practical computational substrate for interactive virtual-environment applications of underground mining robots. These examples illustrate that MineRobot can serve as a prac-tical computational basis for interactive virtual-environment applications of underground mining robots. Additional implementation details are provided in Appendix C. 
+
+8. Conclusion and Future Work 
+
+We presented MineRobot, a unified framework for modeling and solving the kinematics of mining robots in virtual environments. We first introduce the Mining Robot Description Format (MRDF), a domain-specific language for parametric kinematics modeling that explicitly supports linear actuators and 42 four-bar linkages, forming the framework’s data backbone. On top of MRDF, we build a topology pipeline that contracts four-bar linkages into generalized joints and automatically extracts per-actuator Independent Topologically Equivalent Paths (ITEPs) in four types. Leveraging the independence of ITEPs, we build an intuitive, sequential forward-kinematics pipeline and cast inverse kinematics as an FK-aligned, bound-constrained optimization problem. We propose a Gauss-Seidel-style optimizer that alternates actuator-length updates using derivative-free golden-section search. Our kinematics solvers meet the real-time requirements for interactive virtual environments. Our study is intentionally focused on the kinematics layer for underground mining robots in virtual environments. Accordingly, the present formulation addresses fixed-base configurations and does not model mobile bases or base motion planning. It also does not include dynamics, contact, collision, or broader environment interaction, which would need to be handled by higher-level physics, sensing, or control modules in a more complete simulation or deployment pipeline. In this sense, MineRobot is intended as a domain-specific kinematics framework that can serve as a computational sublayer for VE, VR, and digital-twin systems, rather than as a full physics-based simulator. In future work, we plan to: (i) extend the FK/IK stack to include base motion on 
+
+SE (3) and integrate it with trajectory planning; (ii) incorporate physics-based actuator dynamics together with contact and collision modeling; and (iii) generalize MRDF into a richer schema that describes robot groups and their operating environments. 
+
+Appendix A. Details on ITEP Completeness and Limitations 
+
+This appendix provides the detailed argument behind the completeness claim of the four ITEP types (A–D) used in Sec. 4. Specifically, we show that, under the robot scope assumptions in Sec. 3, the set of links and joints influenced by a given actuator redundancy group when all other groups are locked must fall into one of the four ITEP types. We also summarize the main limitations and out-of-scope cases where these assumptions may be violated and the taxonomy may no longer apply. 
+
+Appendix A.1. Completeness of ITEPs 
+
+Preliminaries and notation. We restrict attention to robots within the scope of Sec. 3. After preprocessing (merging fixed-joint chains) and planar four-bar contraction, all remaining joints on the actuator-free graph are 1-DoF 43 joints of type R, P , or generalized G (a contracted four-bar transmission), and the graph is a DAG by Assumption (iii). Hence between any two connected vertices there is at most one simple directed path. For an actuator Aj , let Lpt
+
+and Lpr be the tube/rod parent links, and let P be the directed path between them in the contracted DAG (if it exists), with |P | the number of links on P .
+
+Lemma 1. Locking an actuator Aj is kinematically equivalent to merging its tube and rod into a single rigid link Lrt attached to Lpt and Lpr by two revolute joints (Fig. 8). If |P | = 2 , locking introduces no loop; if |P | > 2,locking creates a local loop consisting of P and the two revolute attachments via Lrt .Proof. Fixing the rod–tube relative motion removes the actuator’s internal DoF, so the tube and rod behave as one rigid body. They remain connected to the mechanism through their mounting revolute joints, yielding the merged link Lrt . If Lpt and Lpr are adjacent ( |P | = 2 ), fixing that single joint suffices and no cycle is created. Otherwise, the existing path P together with the new two-edge connection through Lrt forms a cycle. 
+
+Lemma 2. Assume all actuator redundancy groups except one are locked. If locking creates a local loop as in Lemma 1, then the unique path P between the endpoints satisfies |P | = 3 .Proof. By Assumption (i), after locking all other groups the mechanism has total DoF equal to 1. Let n and j denote the numbers of links and 1-DoF joints in the induced loop, respectively. The loop contains the |P | links on P plus the merged rigid link Lrt , hence n = |P | + 1 . It contains |P | − 1 joints along 
+
+P and two additional revolute joints incident to Lrt , hence j = |P | + 1 . Under our scope, this loop is planar, so the planar Chebychev–Grübler–Kutzbach criterion gives 
+
+DoF = 3( n − 1) − 2j = 3 |P | − 2( |P | + 1) = |P | − 2.
+
+Since DoF = 1 , we obtain |P | = 3 .
+
+Theorem 1. Under the scope assumptions of Sec. 3, every actuator-induced structure obtained by locking all other actuator redundancy groups falls into one of the four ITEP types (A–D). Proof. Lock all actuator groups except the current one G; by Assumption (i) the remaining DoF is 1. There are two cases. If no local loop is created during 44 locking, the contracted graph remains acyclic. Since the active mechanism has only 1 DoF, the influence of the current actuator must reduce to a unique 1-DoF transmission between its endpoint parents (Lpt , L pr ). In the contracted representation, such a transmission can only be prismatic, revolute, or generalized, i.e., P , R, or G, which yields Type A/B/C. Otherwise, by Lemma 1 a local loop is created, and by Lemma 2 it must be a four-link loop, i.e., a generalized four-bar in our taxonomy, which yields Type D. 
+
+Appendix A.2. Limitations and out-of-scope cases 
+
+The completeness result above holds only within the target scope and has the following limitations. 
+
+(L1) Spatial or multi-DoF closed chains. MineRobot assumes planar single-DoF four-bars as the dominant loop primitive. Spatial closed chains and multi-DoF loops are out of scope, since contraction into a 1-DoF generalized joint is no longer valid and the corresponding ITEP may not reduce to a 1D subproblem. 
+
+(L2) Topologies that remain multi-cyclic after contraction. If the actuator-free topology remains multi-cyclic after contraction, the locked actuator-induced structure may not be a simple path or a single 1-DoF loop, and the A–D taxonomy may fail or become non-unique. 
+
+(L3) Theoretical variants of the indirect-lock loop. Lemma 2 implies |P | = 3 
+
+for the indirect-lock loop, but the two joints along P can in principle be any 1-DoF types in {R, P, G }. In our benchmark mining robots and common industrial designs, we only observed the G–R and R–G variants, corresponding to hydraulic-support base mechanisms that shape end-effector trajectories and improve stability and load capacity. Other combinations are theoretically possible but were not observed in our target domain and are therefore outside the present scope. 
+
+(L4) Non-length-driven transmissions and additional constraints. The frame-work is actuator-length-driven and kinematics-centric. Mechanisms dominated by other transmissions (e.g., gear trains, cams, or cable systems), or scenarios requiring dynamics, contact, collision, or environment constraints, are outside the present scope. MineRobot does not claim universality beyond the defined scope. Within the major underground mining-robot classes considered in this paper, all 45 actuators in our benchmarks were successfully classified into Types A–D, with no unclassified cases observed. 
+
+Appendix B. Additional Details of the Kinematics Algorithms 
+
+This appendix provides additional details of the kinematics algorithms described in Sec. 5. We first present the FK post-processing step used for visual plausibility. We then provide supplementary details for the IK solver, including additional robustness statistics, the detailed Golden Section Search (GSS) procedure, and the ablation of different one-dimensional solvers within the same decomposed IK framework. 
+
+Appendix B.1. FK Post-processing: Look-at Reorientation 
+
+After solving the forward kinematics, all actuators satisfy their target lengths; however, the tube and rod orientations may be stale, as illustrated in Fig. B.20. In the final stage of the implementation, we revisit each actuator to reorient the tube and rod so that they “look at” each other. This step is a post-processing solely for visual correctness. It is applied after all actuator-length constraints have been satisfied, and it does not affect subsequent FK/IK solver iterations.      
+
+> Figure B.20: Look-at reorientation. (a)–(b) After length updates, tube/rod orientations may be stale; (c) we realign Jpttand Jprrso that the tube and rod face each other while preserving length.
+
+By convention, let the actuator tube and rod be denoted by Lt and Lr,and their parent links by Lpt and Lpr , respectively. Let T0t and T0r denote the transformations from the world frame L0 to Lt and Lr, and let R0t and 
+
+R0r be their rotational components. The rotation angles of joints Jptt and 
+
+Jpr r are then 
+
+θt = arccos 
+
+
+
+(R−10t ˆdtr )⊤ ˆd0
+
+
+
+, θr = arccos 
+
+
+
+(R−10r ˆdrt )⊤ ˆd0
+
+
+
+(B.1) where 
+
+ˆdtr = t(T0r) − t(T0t)
+
+∥t(T0r) − t(T0t)∥, ˆdrt = −ˆdtr ,
+
+46 and ˆd0 is the initial orientation, by default aligned with the x-axis, 
+
+ˆd0 = [1 , 0, 0] ⊤.
+
+The corresponding transformations Tptt(θt) and Tpr r(θr) are then updated accordingly. 
+
+Appendix B.2. Additional Details of the IK Solver 
+
+This subsection complements the IK description in Sec. 5. We first provide additional robustness statistics under randomized targets and initialization, and then give the detailed GSS procedure together with an ablation of different one-dimensional solvers within the same decomposed IK framework. 
+
+Appendix B.2.1. IK Robustness Statistics 
+
+This subsection provides additional statistics for the inverse kinematics experiments in Sec. 6.2.2. Our goal is to complement Table 3 and Fig. 18 with robustness evidence under randomized targets and randomized initial actuator states. In particular, these statistics help assess whether stronger actuator coupling mainly slows convergence or also leads to degraded final solutions. Table B.7 shows that Ours, BFGS, and CG all converge reliably under the same tolerance across the tested robots. For the more strongly coupled hydraulic supports (TCCHS, STHS, and SSHS), the median iteration counts and runtimes are indeed higher than for more weakly coupled robots such as RH, LHD, VD, DJ, and SH. However, the final objective statistics remain stable: both the median and the P95 values of Ψ∗ stay at the same order of magnitude as those of BFGS and CG, without indicating systematic degra-dation on the coupled systems. These results support the interpretation in Sec. 6.2.2: in our benchmark, stronger coupling primarily affects convergence speed rather than increasing the observed risk of poor local minima. 
+
+Appendix B.2.2. GSS Details and 1D-Solver Ablation 
+
+Algorithm 5 gives the detailed Golden Section Search (GSS) procedure used for each bounded one-dimensional IK subproblem in Sec. 5. To clarify whether the IK speed-up mainly comes from the ITEP-based decomposition or from the specific choice of the one-dimensional solver, we compare four 1D solvers within the same IK framework: Golden Section 47 Table B.7: IK robustness under randomized targets and initialization (100 trials per robot). In each trial, the target T∗ and the initial actuator state are randomized. All methods use the same tolerance and stopping criterion as Sec. 5. We report success rate, final objective statistics ( Ψ∗, in units of 10 −6), median iterations, and median runtime.                                                                                                                                   
+
+> Robot Method Succ. (%) Med. Ψ∗(10 −6)P95 Ψ∗(10 −6)Med. Iters Med. Time (ms)
+> TCCHS Ours 100 0.25 0.60 10 71.48 BFGS 100 0.22 0.55 35 230.16 CG 100 0.23 0.57 29 153.58
+> STHS Ours 100 0.28 0.65 12 82.52 BFGS 100 0.24 0.58 16 115.65 CG 100 0.25 0.60 25 105.20
+> SSHS Ours 100 0.24 0.58 966.52 BFGS 100 0.23 0.56 15 102.65 CG 100 0.24 0.58 24 123.58
+> RH Ours 100 0.05 0.12 10.20 BFGS 100 0.06 0.15 50.40 CG 100 0.06 0.14 50.28
+> LHD Ours 100 0.08 0.18 14.12 BFGS 100 0.10 0.25 622.30 CG 100 0.11 0.27 718.66
+> VD Ours 100 0.06 0.15 13.95 BFGS 100 0.09 0.22 831.39 CG 100 0.09 0.24 616.46
+> DJ Ours 100 0.07 0.16 14.38 BFGS 100 0.08 0.20 523.48 CG 100 0.08 0.22 617.50
+> SH Ours 100 0.04 0.10 10.14 BFGS 100 0.05 0.14 60.54 CG 100 0.05 0.15 50.39
+
+Search (GSS), Brent, Newton–Raphson, and Secant. All four solvers are used under the same ITEP-based Gauss–Seidel-style outer iterations, the same bounds, and the same stopping criterion as in Sec. 5. All four solvers converged reliably to the same tolerance and produced comparable final objectives in our trials; therefore, Table B.8 reports only iteration and runtime statistics. Table B.8 shows that the average and median outer iteration counts are nearly identical across the four one-dimensional solvers. This indicates that the dominant convergence behavior is governed by the ITEP-based decomposition and the Gauss–Seidel-style outer update framework, rather than by the specific one-dimensional solver. The runtime differences are comparatively modest: Brent is slightly faster than GSS, whereas Newton– Raphson and Secant are slightly slower. In this setting, GSS remains a practical and robust choice because it is derivative-free, simple to implement, and operates directly on the actuator bounds, thereby avoiding derivative computation and extra boundary handling. Other classical one-dimensional solvers are also effective within the same decomposed IK framework. 48 Algorithm 5: Golden Section Search 
+
+Input: Actuator index i; current actuator set L; target transformation T∗
+
+Output: Updated actuator length l∗ 
+
+> i
+> 1
+
+a ← ℓi; b ← ui; ϕ ← 
+
+> √5−12
+> 2
+
+c ← b − ϕ(b − a); d ← a + ϕ(b − a) 
+
+> 3
+
+Ψc ← Ψ( L | li = c, T∗) 
+
+> 4
+
+Ψd ← Ψ( L | li = d, T∗) 
+
+> 5
+
+while |b − a| > tol do  
+
+> 6
+
+if Ψc < Ψd then  
+
+> 7
+
+b ← d; d ← c; Ψd ← Ψc 
+
+> 8
+
+c ← b − ϕ(b − a) 
+
+> 9
+
+Ψc ← Ψ( L | li = c, T∗) 
+
+> 10
+
+else  
+
+> 11
+
+a ← c; c ← d; Ψc ← Ψd 
+
+> 12
+
+d ← a + ϕ(b − a) 
+
+> 13
+
+Ψd ← Ψ( L | li = d, T∗) 
+
+> 14
+
+return l∗ 
+
+> i
+
+← a+b
+
+> 2
+
+Appendix C. Application Details 
+
+This appendix provides additional details for the applications briefly sum-marized in Sec. 7. These examples illustrate how the proposed MineRobot framework supports a spectrum of mining-robot applications in virtual envi-ronments. Workspace visualization is implemented using the FK solver, while trajectory generation is driven by the IK solver. We also developed virtual reality (VR) interfaces for robot operation and a digital twin architecture that leverages the kinematics solvers for bidirectional synchronization between physical and virtual systems. 
+
+Appendix C.1. Workspace Visualization 
+
+Workspace visualization is essential for assessing reachability, task feasibil-ity, and safe operation envelopes of mining robots. Leveraging our FK solver, we realize this capability with a simple sampling pipeline. A representative result is shown in Fig. 19(a). For a designated end-effector, let Arel denote the set of relevant actuators, and for each Ai ∈ A rel let the length interval be bi = [ ℓi, u i]. We discretize 49 Table B.8: Ablation of 1D solvers within the same IK decomposition framework 
+
+(100 trials per robot). All methods use the same ITEP-based Gauss–Seidel-style outer iterations, bounds, and stopping criterion; only the 1D subproblem solver is changed. All four solvers converged reliably to the same tolerance and produced comparable final objectives, so we report average and median outer iterations, and average and median runtime.                                                                                                                                      
+
+> Robot 1D solver Avg. Iter. Med. Iter. Avg. Time (ms) Med. Time (ms)
+> TCCHS GSS 11.43 11 78.63 71.48 Brent 11.21 11 74.25 68.94 Newton 11.35 11 84.90 77.35 Secant 11.52 11 82.10 75.62
+> STHS GSS 14.28 14 96.27 82.52 Brent 14.05 14 91.40 78.36 Newton 14.17 14 103.15 88.70 Secant 14.33 14 100.82 86.94
+> SSHS GSS 10.31 10 73.91 67.26 Brent 10.14 10 69.47 63.22 Newton 10.22 10 79.82 72.64 Secant 10.45 10 77.61 70.63
+> RH GSS 1.02 10.21 0.20 Brent 1.01 10.18 0.17 Newton 1.03 10.24 0.22 Secant 1.04 10.23 0.21
+> LHD GSS 1.08 14.21 4.12 Brent 1.05 13.98 3.91 Newton 1.12 14.86 4.73 Secant 1.14 14.62 4.49
+> VD GSS 1.06 14.06 3.95 Brent 1.03 13.82 3.73 Newton 1.09 14.40 4.27 Secant 1.11 14.26 4.13
+> DJ GSS 1.07 14.45 4.30 Brent 1.04 14.18 4.05 Newton 1.11 14.81 4.67 Secant 1.13 14.67 4.53
+> SH GSS 1.02 10.15 0.14 Brent 1.01 10.13 0.12 Newton 1.04 10.17 0.16 Secant 1.03 10.16 0.15
+
+each interval into Ni samples and form the Cartesian grid 
+
+B = Y
+
+Ai∈A rel 
+
+n
+
+ℓi + k (ui − ℓi)/(Ni − 1) k = 0 , . . . , N i − 1
+
+o
+
+.
+
+For every sampled vector lArel ∈ B , we assemble a complete target-length set 
+
+L∗ by assigning lArel to the corresponding entries in A, and evaluate FK as 
+
+T = Φ( L∗, T ′). From T , we then extract the end-effector transformation T0e.Rendering the collection of these configurations in the virtual environment produces the workspace. In our roadheader example in Fig. 19(a), this process is used to visualize both sampled end-effector center positions and the corresponding end-effector poses within the roadway environment. 
+
+Appendix C.2. Trajectory Generation 
+
+Trajectory generation is fundamental for motion planning and task ex-ecution in mining robotics. In our framework, the inverse-kinematics (IK) 50 solver serves as the computational backbone for trajectory synthesis. Arepresentative example is shown in Fig. 19(b). In a roadheader example, a set of end-effector via points is specified in the workspace and interpolated into a continuous trajectory curve C(t), t ∈ [0 , 1] ,with collision constraints omitted for clarity. The curve is discretized over 
+
+[0 , 1] . For each sample tk, the corresponding target transformation is set to 
+
+T∗ 
+
+> k
+
+= C(tk), and IK is solved to obtain the optimized actuator length set 
+
+L∗ 
+
+> k
+
+and the resulting configuration. By evaluating IK sequentially along the sampled path, the framework produces a feasible actuator-space trajectory together with the corresponding robot motion sequence. This procedure also supports animation playback and interpolation in the virtual environment, as illustrated by the trajectory-following sequence in Fig. 19(b). 
+
+Appendix C.3. Virtual Reality 
+
+Virtual reality (VR) provides a safe, repeatable, and cost-effective alterna-tive to hazardous on-site training and evaluation in mining environments. We developed an immersive VR system for interactive robot training, as shown in Fig. 19(c). In our prototype, a user operates a virtual roadheader using a head-mounted display with hand tracking. To mirror real hardware, we implement a virtual control panel for hydraulic support groups and a virtual console with levers for the roadheader. All 3D user interfaces are procedurally generated from actuator parameters encoded in MRDF [ 78 ]. The virtual button states and the lever angles are mapped to actuator target lengths L∗,and the FK solver computes the resulting configuration T at interactive rates. The updated robot pose is then immediately rendered in the virtual scene. This design enables intuitive operator interaction while preserving a direct correspondence between virtual controls and actuator-level robot motion, as shown by the VR interface examples in Fig. 19(c). 
+
+Appendix C.4. Digital Twins 
+
+A digital twin is a bidirectionally coupled representation that synchronizes a physical system and its virtual model. Such coupling is useful for safe mon-itoring, operator training, and decision-support workflows in mining robotics. Our kinematics solvers provide the kinematics layer for this bidirectional synchronization. We designed a digital twin architecture that maps motion in both di-rections. Physical robots, such as those used in longwall production and 51 roadheading, are modeled in the virtual world via MRDF. In the physical-to-virtual direction, sensor streams provide actuator lengths L∗, which are fed to the FK solver to compute the configuration T and update the virtual robot. In the virtual-to-physical direction, an interactively specified or automatically planned end-effector target T∗ is passed to the IK solver to obtain the tar-get actuator lengths L∗ for downstream control modules. The bidirectional synchronization workflow is illustrated in Fig. 19(d). Our framework is actuator-centric, requiring only a low-cost linear-displacement sensor on each actuator to reconstruct the full configuration in virtual environ-ments, thereby reducing reliance on auxiliary sensing pipelines. This makes the approach particularly suitable for mining scenarios in which sensing and deployment conditions are constrained by cost, safety, and environmental robustness. 
+
+References 
+
+[1] F. Tao, H. Zhang, C. Zhang, Advancements and challenges of digital twins in industry, Nature Computational Science 4 (2024) 169–177. [2] J. Li, S. X. Yang, Digital twins to embodied artificial intelligence: review and perspective, Intelligence & Robotics 5 (2025) 202–227. [3] L. Pérez, E. Diez, R. Usamentiaga, D. F. García, Industrial robot control and operator training using virtual reality interfaces, Computers in Industry 109 (2019) 114–120. [4] A. Aristidou, J. Lasenby, Y. Chrysanthou, A. Shamir, Inverse kinematics techniques in computer graphics: A survey, in: Computer graphics forum, volume 37, Wiley Online Library, 2018, pp. 35–58. [5] K. Erleben, S. Andrews, Solving inverse kinematics using exact hessian matrices, Computers & Graphics 78 (2019) 1–11. [6] T. Le Naour, N. Courty, S. Gibet, Kinematics in the metric space, Computers & Graphics 84 (2019) 13–23. [7] G. Maloisel, C. Schumacher, E. Knoop, R. Grandia, M. Bächer, Optimal design of robotic character kinematics, ACM Transactions on Graphics (TOG) 42 (2023) 1–15. 52 [8] J. Zhao, N. I. Badler, Inverse kinematics positioning using nonlinear pro-gramming for highly articulated figures, ACM Transactions on Graphics (TOG) 13 (1994) 313–336. [9] J. Liu, M. Savva, A. Mahdavi-Amiri, Survey on modeling of human-made articulated objects, in: Computer Graphics Forum, Wiley Online Library, 2025, p. e70092. [10] S. Peng, Longwall mining, CRC Press, 2019. [11] J. C. Ralston, C. O. Hargrave, M. T. Dunn, Longwall automation: Trends, challenges and opportunities, International Journal of Mining Science and Technology 27 (2017) 733–739. [12] S. Deshmukh, A. Raina, V. Murthy, R. Trivedi, R. Vajre, Roadheader–a comprehensive review, Tunnelling and underground space technology 95 (2020) 103148. [13] C. Yan, G. Zhao, S. Hou, X. Lu, Advancing unmanned roadheader-based tunneling: a framework for challenging underground environments, Geo-spatial Information Science (2025) 1–18. [14] L. P. Soares, F. Pires, R. Varela, R. Bastos, N. Carvalho, F. Gaspar, M. S. Dias, Designing a highly immersive interactive environment: The virtual mine, in: Computer Graphics Forum, volume 29, Wiley Online Library, 2010, pp. 1756–1769. [15] S. Gürer, E. Surer, M. Erkayaoğlu, Mining-virtual: A comprehensive virtual reality-based serious game for occupational health and safety training in underground mines, Safety science 166 (2023) 106226. [16] P. Nobahar, C. Xu, P. Dowd, R. S. Faradonbeh, Exploring digital twin systems in mining operations: A review, Green and Smart Mining Engineering 1 (2024) 474–492. [17] J. Xie, S. Liu, X. Wang, Framework for a closed-loop cooperative human cyber-physical system for the mining industry driven by vr and ar: Mhcps, Computers & Industrial Engineering 168 (2022) 108050. [18] S. Hou, X. Lu, W. Gao, S. Jiang, X. Zhang, Interactive physically based simulation of roadheader robot, Arabian Journal for Science and Engineering 48 (2023) 2441–2454. 53 [19] E. Guan, H. Miao, P. Li, J. Liu, Y. Zhao, Dynamic model analysis of hydraulic support, Advances in Mechanical Engineering 11 (2019) 1687814018820143. [20] X. Guo, H. Wang, H. Liu, Adaptive sliding mode control with disturbance estimation for hydraulic actuator systems and application to rock drilling jumbo, Applied Mathematical Modelling 136 (2024) 115637. [21] J.-P. Merlet, Parallel robots, volume 128, Springer Science & Business Media, 2006. [22] H. D. Taghirad, Parallel robots: mechanics and control, CRC press, 2013. [23] M. Quigley, K. Conley, B. Gerkey, J. Faust, T. Foote, J. Leibs, R. Wheeler, A. Y. Ng, et al., Ros: an open-source robot operating system, in: ICRA workshop on open source software, volume 3, Kobe, 2009, p. 5. [24] D. Tola, P. Corke, Understanding urdf: A survey based on user experience, in: 2023 IEEE 19th International Conference on Automation Science and Engineering (CASE), IEEE, 2023, pp. 1–7. [25] M. Chignoli, J.-J. Slotine, P. M. Wensing, S. Kim, Urdf+: An enhanced urdf for robots with kinematic loops, in: 2024 IEEE-RAS 23rd Interna-tional Conference on Humanoid Robots (Humanoids), IEEE, 2024, pp. 197–204. [26] V. Batto, L. De Matteïs, N. Mansard, Extended urdf: Accounting for parallel mechanism in robot description, in: International Conference on Robotics in Alpe-Adria Danube Region, Springer, 2025, pp. 332–340. [27] I. Prebil, S. Krašna, I. Ciglarič, Synthesis of four-bar mechanism in a hydraulic support using a global optimization algorithm, Structural and Multidisciplinary Optimization 24 (2002) 246–251. [28] M. Ivanou, S. Mikhel, S. Savin, Robot description formats and ap-proaches, in: 2021 International Conference" Nonlinearity, Information and Robotics"(NIR), IEEE, 2021, pp. 1–5. [29] Z. Mei, X. Wang, J. Xie, S. Li, J. Liu, A sensing system and solving method for dynamic detection of relative pose of hydraulic support group, Measurement 243 (2025) 116145. 54 [30] X. Ge, J. Xie, X. Wang, Y. Liu, H. Shi, A virtual adjustment method and experimental study of the support attitude of hydraulic support groups in propulsion state, Measurement 158 (2020) 107743. [31] H. Zhang, X. He, H. Mitri, Fuzzy comprehensive evaluation of virtual reality mine safety training system, Safety Science 120 (2019) 341–351. [32] H. Zhang, Head-mounted display-based intuitive virtual reality training system for the mining industry, International Journal of Mining Science and Technology 27 (2017) 717–722. [33] J. Xie, F. Ge, T. Cui, X. Wang, A virtual test and evaluation method for fully mechanized mining production system with different smart levels, International Journal of Coal Science & Technology 9 (2022) 41. [34] T. Mielke, F. Heinrich, C. Hansen, Sensary substitution: Augmented reality techniques to enhance force perception in touchless robot control, IEEE Transactions on Visualization and Computer Graphics (2025). [35] V. Megaro, J. Zehnder, M. Bächer, S. Coros, M. H. Gross, B. Thomaszewski, A computational design tool for compliant mech-anisms., ACM Trans. Graph. 36 (2017) 82–1. [36] Y. Wang, J. Xie, Z. Zheng, Y. Wang, X. Wang, Method for collision relationship of hydraulic supports considering multilayer sensing errors, IEEE Sensors Journal (2024). [37] A. Nordmann, N. Hochgeschwender, S. Wrede, A survey on domain-specific languages in robotics, in: International conference on simulation, modeling, and programming for autonomous robots, Springer, 2014, pp. 195–206. [38] N. Qiu, C. Song, F. Wan, Describing robots from design to learning: Towards an interactive lifecycle representation of robots, in: 2024 Inter-national Conference on Advanced Robotics and Mechatronics (ICARM), IEEE, 2024, pp. 1081–1086. [39] Open Source Robotics Foundation, SDFormat: Simulation Description Format, http://sdformat.org , 2019. Accessed: 2025-06-12. 55 [40] E. Todorov, T. Erez, Y. Tassa, Mujoco: A physics engine for model-based control, in: 2012 IEEE/RSJ international conference on intelligent robots and systems, IEEE, 2012, pp. 5026–5033. [41] R. Tedrake, the Drake Development Team, Drake: Model-based design and verification for robotics, 2019. URL: https://drake.mit.edu .[42] J. Chen, W. Lu, Y. Pan, Y. Fu, Building “roboavatar”: industry founda-tion classes–based digital representation of robots in the built environ-ment, Journal of Computing in Civil Engineering 38 (2024) 04024013. [43] J. Külz, M. Mayer, M. Althoff, Timor python: A toolbox for industrial modular robotics, in: 2023 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), IEEE, 2023, pp. 424–431. [44] Y. Long, W. Wei, T. Huang, Y. Wang, Q. Dou, Human-in-the-loop embodied intelligence with interactive simulation environment for surgical robot learning, IEEE Robotics and Automation Letters 8 (2023) 4441– 4448. [45] B. León, S. Ulbrich, R. Diankov, G. Puche, M. Przybylski, A. Morales, T. Asfour, S. Moisio, J. Bohg, J. Kuffner, et al., Opengrasp: a toolkit for robot grasping simulation, in: Simulation, Modeling, and Programming for Autonomous Robots: Second International Conference, SIMPAR 2010, Darmstadt, Germany, November 15-18, 2010. Proceedings 2, Springer, 2010, pp. 109–120. [46] N. Kousi, C. Gkournelos, S. Aivaliotis, C. Giannoulis, G. Michalos, S. Makris, Digital twin for adaptation of robots’ behavior in flexible robotic assembly lines, Procedia manufacturing 28 (2019) 121–126. [47] P. R. Vanteddu, G. Nava, F. Bergonti, G. L’Erario, A. Paolino, D. Pucci, From cad to urdf: Co-design of a jet-powered humanoid robot including cad geometry, in: 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), IEEE, 2024, pp. 11325–11331. [48] J. Lin, L. Zhang, K. Lee, J. Ning, J. Goldfeder, H. Lipson, Autourdf: Unsupervised robot modeling from point cloud frames using cluster registration, in: Proceedings of the Computer Vision and Pattern Recognition Conference, 2025, pp. 27628–27637. 56 [49] Y. Shi, Y. Tao, M. Yang, Y. Liu, L. Yi, B. Zhou, Articulated motion-aware nerf for 3d dynamic appearance and geometry reconstruction by implicit motion states, IEEE transactions on visualization and computer graphics (2024). [50] Z. Wang, B. Benes, A. H. Qureshi, C. Mousas, Evolution-based shape and behavior co-design of virtual agents, IEEE Transactions on Visualization and Computer Graphics 30 (2024) 7579–7591. [51] T. Jiang, Y. Guan, L. Ma, J. Xu, J. Meng, W. Chen, Z. Zeng, L. Li, D. Wu, R. Chen, Dexsim2real 2: Building explicit world model for precise articulated object dexterous manipulation, IEEE Transactions on Robotics (2025). [52] R. Izawa, M. Koga, An extension of gltf for robot description, in: 2019 19th International Conference on Control, Automation and Systems (ICCAS), IEEE, 2019, pp. 1010–1014. [53] G. H. Nguyen, D. Beßler, S. Stelter, M. Pomarlan, M. Beetz, Trans-lating universal scene descriptions into knowledge graphs for robotic environment, in: 2024 IEEE International Conference on Robotics and Automation (ICRA), IEEE, 2024, pp. 9389–9395. [54] B. Siciliano, O. Khatib, Robotics and the handbook, in: Springer Handbook of Robotics, Springer, 2016, pp. 1–6. [55] S. Staicu, Dynamics of parallel robots, Springer, 2019. [56] C. Gosselin, L.-T. Schreiber, Redundancy in parallel mechanisms: A review, Applied Mechanics Reviews 70 (2018) 010802. [57] J. Tian, S. Wang, M. Wu, Kinematic models and simulations for tra-jectory planning in the cutting of spatially-arbitrary crosssections by a robotic roadheader, Tunnelling and Underground Space Technology 78 (2018) 115–123. [58] A. M. McNutt, No grammar to rule them all: A survey of json-style dsls for visualization, IEEE Transactions on Visualization and Computer Graphics 29 (2022) 160–170. 57 [59] L. Sciavicco, B. Siciliano, Modelling and control of robot manipulators, Springer Science & Business Media, 2012. [60] S. Ebrahimi, P. Payvandy, Efficient constrained synthesis of path generat-ing four-bar mechanisms based on the heuristic optimization algorithms, Mechanism and Machine Theory 85 (2015) 189–204. [61] B. Thomaszewski, S. Coros, D. Gauge, V. Megaro, E. Grinspun, M. Gross, Computational design of linkage-based characters, ACM Transactions on Graphics (TOG) 33 (2014) 1–9. [62] V. Commin, S. Peltier, A. Cavalier, S. Horna, Clock mechanism genera-tion using interaction graphs, Computers & Graphics (2025) 104317. [63] Y. Cheng, P. Song, Y. Lu, W. J. J. Chew, L. Liu, Exact 3d path genera-tion via 3d cam-linkage mechanisms, ACM Transactions on Graphics (TOG) 41 (2022) 1–13. [64] R. L. Norton, J. Han, Design of machinery, Higher Education Press, 2007. [65] X. Li, G. Wang, S. Miao, X. Li, Optimal design of a hydraulic excavator working device based on parallel particle swarm optimization, Journal of the Brazilian Society of Mechanical Sciences and Engineering 39 (2017) 3793–3805. [66] J. M. McCarthy, G. S. Soh, Geometric design of linkages, volume 11, Springer Science & Business Media, 2010. [67] R. Tarjan, Depth-first search and linear graph algorithms, SIAM journal on computing 1 (1972) 146–160. [68] K. M. Lynch, F. C. Park, Modern robotics, Cambridge University Press, 2017. [69] J. Pelletier-Guénette, A. Mercier-Aubin, S. Andrews, Real-time triangle-sdf continuous collision detection, Proceedings of the ACM on Computer Graphics and Interactive Techniques 8 (2025) 1–22. [70] M. Macklin, K. Erleben, M. Müller, N. Chentanez, S. Jeschke, Z. Corse, Local optimization for robust signed distance field collision, Proceedings 58 of the ACM on Computer Graphics and Interactive Techniques 3 (2020) 1–17. [71] Z. Li, Q. Xu, X. Ye, B. Ren, L. Liu, Difffr: Differentiable sph-based fluid-rigid coupling for rigid body control, ACM Transactions on Graphics (TOG) 42 (2023) 1–17. [72] M. Geilinger, D. Hahn, J. Zehnder, M. Bächer, B. Thomaszewski, S. Coros, Add: Analytically differentiable dynamics for multi-body systems with frictional contact, ACM Transactions on Graphics (TOG) 39 (2020) 1–15. [73] Pixar Animation Studios, Universal Scene Description (OpenUSD), 
+
+https://openusd.org/ , 2016. [74] N. Koenig, A. Howard, Design and use paradigms for gazebo, an open-source multi-robot simulator, in: 2004 IEEE/RSJ international conference on intelligent robots and systems (IROS)(IEEE Cat. No. 04CH37566), volume 3, Ieee, 2004, pp. 2149–2154. [75] E. Coumans, Y. Bai, Pybullet, a python module for physics simulation for games, robotics and machine learning, http://pybullet.org , 2021. Official recommended citation. [76] NVIDIA, NVIDIA Isaac Sim: Robotics simulation and synthetic data generation, https://developer.nvidia.com/isaac/sim , 2021. [77] J. Lee, M. X. Grey, S. Ha, T. Kunz, S. Jain, Y. Ye, S. S. Srinivasa, M. Stilman, C. K. Liu, DART: Dynamic animation and robotics toolkit, Journal of Open Source Software 3 (2018) 500. doi: 10.21105/joss.00500 .[78] S. Hou, B. H. Thomas, X. Lu, Vrmenudesigner: A toolkit for automati-cally generating and modifying vr menus, in: 2021 IEEE International Conference on Artificial Intelligence and Virtual Reality (AIVR), IEEE, 2021, pp. 154–159. 59

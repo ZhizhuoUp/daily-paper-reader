@@ -6,73 +6,61 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-03-27
-- 运行时间：2026-03-27 19:38:58 UTC
+- 最新运行日期：2026-03-28
+- 运行时间：2026-03-28 20:11:02 UTC
 - 运行状态：成功
-- 本次总论文数：17
-- 精读区：6
+- 本次总论文数：13
+- 精读区：2
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 17 篇机器人前沿论文，重点攻克复杂环境下的推抓协同与控制避障难题。
-几何感知抓取（GAPG）与基于 CBF 的奇异位形规避显著提升了操作鲁棒性，MoE 架构则为装配技能学习带来新突破。
-建议关注视觉-触觉融合建模及电动车自动化拆解平台，探索机器人向垂直工业场景的深度迁移。
-- 详情：[/202603/27/README](/202603/27/README)
+今日聚焦多机器人协同控制，深度解析四足机器人协作搬运与分布式路径跟踪技术。
+核心突破在于耦合四足机器人的避障算法与分布式MPC框架，显著提升了群体协作的稳定性与精准度。
+建议关注跨具身导航与地下采矿机器人建模，了解机器人如何从通用视觉规划走向极端环境应用。
+- 详情：[/202603/28/README](/202603/28/README)
 
 ### 精读区论文标签
-1. [GAPG: Geometry Aware Push-Grasping Synergy for Goal-Oriented Manipulation in Clutter](/202603/27/2603.21195v1-gapg-geometry-aware-push-grasping-synergy-for-goal-oriented-manipulation-in-clutter)  
-   标签：评分：8.0/10、query:q6
-   evidence：杂乱环境中机器人操作的推抓协同
-2. [Task-Space Singularity Avoidance for Control Affine Systems Using Control Barrier Functions](/202603/27/2603.23753v1-task-space-singularity-avoidance-for-control-affine-systems-using-control-barrier-functions)  
+1. [Learning Multi-Agent Local Collision-Avoidance for Collaborative Carrying tasks with Coupled Quadrupedal Robots](/202603/28/2603.23278v1-learning-multi-agent-local-collision-avoidance-for-collaborative-carrying-tasks-with-coupled-quadrupedal-robots)  
+   标签：评分：8.0/10、query:q1
+   evidence：四足机器人协作搬运中的局部避障
+2. [Distributed MPC For Coordinated Path-Following](/202603/28/2603.24748v1-distributed-mpc-for-coordinated-path-following)  
    标签：评分：8.0/10、query:q2
-   evidence：用于控制仿射系统奇异性规避的控制屏障函数
-3. [Characterization of Constraints in Flexible Unknown Environments](/202603/27/2603.24813v1-characterization-of-constraints-in-flexible-unknown-environments)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：未知环境下安全自主操作的在线路径规划
-4. [Integrated Multi-Drone Task Allocation, Sequencing, and Optimal Trajectory Generation in Obstacle-Rich 3D Environments](/202603/27/2603.24908v1-integrated-multi-drone-task-allocation-sequencing-and-optimal-trajectory-generation-in-obstacle-rich-3d-environments)  
-   标签：评分：8.0/10、query:q3
-   evidence：复杂3D环境下的安全轨迹生成
-5. [A Minimum-Energy Control Approach for Redundant Mobile Manipulators in Physical Human-Robot Interaction Applications](/202603/27/2603.25259v1-a-minimum-energy-control-approach-for-redundant-mobile-manipulators-in-physical-human-robot-interaction-applications)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：具有性能优化的移动机械臂控制方法
-6. [Connectivity-Aware Representations for Constrained Motion Planning via Multi-Scale Contrastive Learning](/202603/27/2603.25298v1-connectivity-aware-representations-for-constrained-motion-planning-via-multi-scale-contrastive-learning)  
-   标签：评分：8.0/10、query:q4
-   evidence：冗余机械臂的有约束运动规划
+   evidence：用于协同路径跟随的分布式模型预测控制
 
 ### 速读区论文标签
-1. [ATG-MoE: Autoregressive trajectory generation with mixture-of-experts for assembly skill learning](/202603/27/2603.19029v1-atg-moe-autoregressive-trajectory-generation-with-mixture-of-experts-for-assembly-skill-learning)  
-   标签：评分：8.0/10、query:q8
-   evidence：用于操作技能的自回归轨迹生成
-2. [Robotic Agentic Platform for Intelligent Electric Vehicle Disassembly](/202603/27/2603.18520v1-robotic-agentic-platform-for-intelligent-electric-vehicle-disassembly)  
+1. [CeRLP: A Cross-embodiment Robot Local Planning Framework for Visual Navigation](/202603/28/2603.19602v1-cerlp-a-cross-embodiment-robot-local-planning-framework-for-visual-navigation)  
+   标签：评分：7.0/10、query:q4
+   evidence：视觉导航中的机器人局部规划
+2. [Affordance-Guided Enveloping Grasp Demonstration Toward Non-destructive Disassembly of Pinch-Infeasible Mating Parts](/202603/28/2603.21143v1-affordance-guided-enveloping-grasp-demonstration-toward-non-destructive-disassembly-of-pinch-infeasible-mating-parts)  
    标签：评分：7.0/10、query:q6
-   evidence：工业机械臂的感知驱动操作
-3. [OmniVTA: Visuo-Tactile World Modeling for Contact-Rich Robotic Manipulation](/202603/27/2603.19201v2-omnivta-visuo-tactile-world-modeling-for-contact-rich-robotic-manipulation)  
+   evidence：机器人拆卸与多指包络抓取
+3. [MineRobot: A Unified Framework for Kinematics Modeling and Solving of Underground Mining Robots in Virtual Environments](/202603/28/2603.22055v1-minerobot-a-unified-framework-for-kinematics-modeling-and-solving-of-underground-mining-robots-in-virtual-environments)  
    标签：评分：7.0/10、query:q6
-   evidence：用于接触密集型机器人操作的视触觉世界建模
-4. [Accurate Open-Loop Control of a Soft Continuum Robot Through Visually Learned Latent Representations](/202603/27/2603.19655v1-accurate-open-loop-control-of-a-soft-continuum-robot-through-visually-learned-latent-representations)  
-   标签：评分：7.0/10、query:q2
-   evidence：软体连续机器人在潜空间中的最优控制
-5. [LASER: Level-Based Asynchronous Scheduling and Execution Regime for Spatiotemporally Constrained Multi-Robot Timber Manufacturing](/202603/27/2603.20577v1-laser-level-based-asynchronous-scheduling-and-execution-regime-for-spatiotemporally-constrained-multi-robot-timber-manufacturing)  
+   evidence：采矿机器人的运动学建模与实时求解
+4. [Parallel OctoMapping: A Scalable Framework for Enhanced Path Planning in Autonomous Navigation](/202603/28/2603.22508v1-parallel-octomapping-a-scalable-framework-for-enhanced-path-planning-in-autonomous-navigation)  
    标签：评分：7.0/10、query:q1
-   evidence：基于屏障机制的多机器人避障
-6. [Speedup Patch: Learning a Plug-and-Play Policy to Accelerate Embodied Manipulation](/202603/27/2603.20658v1-speedup-patch-learning-a-plug-and-play-policy-to-accelerate-embodied-manipulation)  
+   evidence：用于实时路径规划和安全的高效建图
+5. [DiSCo: Diffusion Sequence Copilots for Shared Autonomy](/202603/28/2603.22787v1-disco-diffusion-sequence-copilots-for-shared-autonomy)  
    标签：评分：7.0/10、query:q6
-   evidence：加速具身操作策略的执行
-7. [Geometrically Plausible Object Pose Refinement using Differentiable Simulation](/202603/27/2603.20992v1-geometrically-plausible-object-pose-refinement-using-differentiable-simulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：机器人手部操作的姿态精细化
-8. [Optimal Solutions for the Moving Target Vehicle Routing Problem with Obstacles via Lazy Branch and Price](/202603/27/2603.21880v1-optimal-solutions-for-the-moving-target-vehicle-routing-problem-with-obstacles-via-lazy-branch-and-price)  
+   evidence：机械臂的共享自主控制
+6. [CATNAV: Cached Vision-Language Traversability for Efficient Zero-Shot Robot Navigation](/202603/28/2603.22800v1-catnav-cached-vision-language-traversability-for-efficient-zero-shot-robot-navigation)  
    标签：评分：7.0/10、query:q1
-   evidence：多智能体避障轨迹规划
-9. [Learn for Variation: Variationally Guided AAV Trajectory Learning in Differentiable Environments](/202603/27/2603.18853v1-learn-for-variation-variationally-guided-aav-trajectory-learning-in-differentiable-environments)  
-   标签：评分：6.0/10、query:q3
-   evidence：梯度引导的轨迹学习框架
-10. [Bridging Semantic and Kinematic Conditions with Diffusion-based Discrete Motion Tokenizer](/202603/27/2603.19227v1-bridging-semantic-and-kinematic-conditions-with-diffusion-based-discrete-motion-tokenizer)  
+   evidence：成本感知的可通行性导航与轨迹选择
+7. [Unlabeled Multi-Robot Motion Planning with Improved Separation Trade-offs](/202603/28/2603.19502v1-unlabeled-multi-robot-motion-planning-with-improved-separation-trade-offs)  
    标签：评分：6.0/10、query:q4
-   evidence：基于扩散的运动合成与运动学控制
-11. [SOFTMAP: Sim2Real Soft Robot Forward Modeling via Topological Mesh Alignment and Physics Prior](/202603/27/2603.19384v1-softmap-sim2real-soft-robot-forward-modeling-via-topological-mesh-alignment-and-physics-prior)  
+   evidence：多机器人运动规划及障碍物规避
+8. [StreamingClaw Technical Report](/202603/28/2603.22120v2-streamingclaw-technical-report)  
+   标签：评分：6.0/10、query:q5
+   evidence：实时感知-决策-动作闭环
+9. [UniDex: A Robot Foundation Suite for Universal Dexterous Hand Control from Egocentric Human Videos](/202603/28/2603.22264v1-unidex-a-robot-foundation-suite-for-universal-dexterous-hand-control-from-egocentric-human-videos)  
    标签：评分：6.0/10、query:q6
-   evidence：软体手指操作器的实时前向建模
+   evidence：通用灵巧手控制与轨迹生成
+10. [Goal-Oriented Reactive Simulation for Closed-Loop Trajectory Prediction](/202603/28/2603.24155v1-goal-oriented-reactive-simulation-for-closed-loop-trajectory-prediction)  
+   标签：评分：6.0/10、query:q3
+   evidence：闭环轨迹预测与收缩时域自我预测
+11. [Relaxing Constraints in Anonymous Multi Agent Path Finding for Large Agents](/202603/28/2603.24442v1-relaxing-constraints-in-anonymous-multi-agent-path-finding-for-large-agents)  
+   标签：评分：6.0/10、query:q1
+   evidence：考虑尺寸约束的移动机器人轨迹规划
 
 
 <div class="dpr-home-promo-card">
