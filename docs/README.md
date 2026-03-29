@@ -6,61 +6,70 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-03-28
-- 运行时间：2026-03-28 20:11:02 UTC
+- 最新运行日期：2026-03-29
+- 运行时间：2026-03-29 19:24:02 UTC
 - 运行状态：成功
-- 本次总论文数：13
-- 精读区：2
+- 本次总论文数：16
+- 精读区：5
 - 速读区：11
 
 ### 今日简报（AI）
-今日聚焦多机器人协同控制，深度解析四足机器人协作搬运与分布式路径跟踪技术。
-核心突破在于耦合四足机器人的避障算法与分布式MPC框架，显著提升了群体协作的稳定性与精准度。
-建议关注跨具身导航与地下采矿机器人建模，了解机器人如何从通用视觉规划走向极端环境应用。
-- 详情：[/202603/28/README](/202603/28/README)
+今日聚焦具身智能前沿，深度解析了空间感知移动操作与人形机器人实时控制等 16 篇最新研究。
+SG-VLA 与 SafeFlow 揭示了通过空间对齐和物理引导流实现精准任务执行与安全交互的新路径。
+建议重点关注空间建模与安全门控技术，这是实现从自然语言指令到复杂物理动作精准跨越的关键。
+- 详情：[/202603/29/README](/202603/29/README)
 
 ### 精读区论文标签
-1. [Learning Multi-Agent Local Collision-Avoidance for Collaborative Carrying tasks with Coupled Quadrupedal Robots](/202603/28/2603.23278v1-learning-multi-agent-local-collision-avoidance-for-collaborative-carrying-tasks-with-coupled-quadrupedal-robots)  
+1. [SG-VLA: Learning Spatially-Grounded Vision-Language-Action Models for Mobile Manipulation](/202603/29/2603.22760v1-sg-vla-learning-spatially-grounded-vision-language-action-models-for-mobile-manipulation)  
+   标签：评分：8.0/10、query:q6
+   evidence：涉及底座运动和机械臂关节协调的移动操作
+2. [SafeFlow: Real-Time Text-Driven Humanoid Whole-Body Control via Physics-Guided Rectified Flow and Selective Safety Gating](/202603/29/2603.23983v1-safeflow-real-time-text-driven-humanoid-whole-body-control-via-physics-guided-rectified-flow-and-selective-safety-gating)  
+   标签：评分：8.0/10、query:q5
+   evidence：实时类人机器人全身控制与安全门控
+3. [C-STEP: Continuous Space-Time Empowerment for Physics-informed Safe Reinforcement Learning of Mobile Agents](/202603/29/2603.24241v1-c-step-continuous-space-time-empowerment-for-physics-informed-safe-reinforcement-learning-of-mobile-agents)  
    标签：评分：8.0/10、query:q1
-   evidence：四足机器人协作搬运中的局部避障
-2. [Distributed MPC For Coordinated Path-Following](/202603/28/2603.24748v1-distributed-mpc-for-coordinated-path-following)  
-   标签：评分：8.0/10、query:q2
-   evidence：用于协同路径跟随的分布式模型预测控制
+   evidence：用于避障的安全强化学习
+4. [$π$, But Make It Fly: Physics-Guided Transfer of VLA Models to Aerial Manipulation](/202603/29/2603.25038v1--but-make-it-fly-physics-guided-transfer-of-vla-models-to-aerial-manipulation)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：将操作模型转移到具有负载感知引导的空中平台
+5. [CTS-PLL: A Robust and Anytime Framework for Collaborative Task Sequencing and Multi-Agent Path Finding](/202603/29/2603.25121v1-cts-pll-a-robust-and-anytime-framework-for-collaborative-task-sequencing-and-multi-agent-path-finding)  
+   标签：评分：8.0/10、query:q1
+   evidence：多智能体路径规划与避障
 
 ### 速读区论文标签
-1. [CeRLP: A Cross-embodiment Robot Local Planning Framework for Visual Navigation](/202603/28/2603.19602v1-cerlp-a-cross-embodiment-robot-local-planning-framework-for-visual-navigation)  
-   标签：评分：7.0/10、query:q4
-   evidence：视觉导航中的机器人局部规划
-2. [Affordance-Guided Enveloping Grasp Demonstration Toward Non-destructive Disassembly of Pinch-Infeasible Mating Parts](/202603/28/2603.21143v1-affordance-guided-enveloping-grasp-demonstration-toward-non-destructive-disassembly-of-pinch-infeasible-mating-parts)  
+1. [Simple Trajectory Smoothing for UAV Reference Path Planning Based on Decoupling, Spatial Modeling and Linear Programming](/202603/29/2603.21713v1-simple-trajectory-smoothing-for-uav-reference-path-planning-based-on-decoupling-spatial-modeling-and-linear-programming)  
+   标签：评分：7.0/10、query:q3
+   evidence：使用线性规划进行无人机路径规划的轨迹平滑
+2. [Interaction-Aware Predictive Environmental Control Barrier Function for Emergency Lane Change](/202603/29/2603.21958v1-interaction-aware-predictive-environmental-control-barrier-function-for-emergency-lane-change)  
+   标签：评分：7.0/10、query:q2
+   evidence：基于控制屏障函数 (CBF) 的运动规划安全性评估
+3. [Make Tracking Easy: Neural Motion Retargeting for Humanoid Whole-body Control](/202603/29/2603.22201v1-make-tracking-easy-neural-motion-retargeting-for-humanoid-whole-body-control)  
+   标签：评分：7.0/10、query:q2
+   evidence：基于优化的重定向和全身控制
+4. [Fault-Tolerant Design and Multi-Objective Model Checking for Real-Time Deep Reinforcement Learning Systems](/202603/29/2603.23113v1-fault-tolerant-design-and-multi-objective-model-checking-for-real-time-deep-reinforcement-learning-systems)  
+   标签：评分：7.0/10、query:q5
+   evidence：实时深度强化学习与延迟诱发故障
+5. [Strain-Parameterized Coupled Dynamics and Dual-Camera Visual Servoing for Aerial Continuum Manipulators](/202603/29/2603.23333v1-strain-parameterized-coupled-dynamics-and-dual-camera-visual-servoing-for-aerial-continuum-manipulators)  
    标签：评分：7.0/10、query:q6
-   evidence：机器人拆卸与多指包络抓取
-3. [MineRobot: A Unified Framework for Kinematics Modeling and Solving of Underground Mining Robots in Virtual Environments](/202603/28/2603.22055v1-minerobot-a-unified-framework-for-kinematics-modeling-and-solving-of-underground-mining-robots-in-virtual-environments)  
+   evidence：空中连续体机械臂的动力学建模
+6. [ABot-PhysWorld: Interactive World Foundation Model for Robotic Manipulation with Physics Alignment](/202603/29/2603.23376v1-abot-physworld-interactive-world-foundation-model-for-robotic-manipulation-with-physics-alignment)  
    标签：评分：7.0/10、query:q6
-   evidence：采矿机器人的运动学建模与实时求解
-4. [Parallel OctoMapping: A Scalable Framework for Enhanced Path Planning in Autonomous Navigation](/202603/28/2603.22508v1-parallel-octomapping-a-scalable-framework-for-enhanced-path-planning-in-autonomous-navigation)  
-   标签：评分：7.0/10、query:q1
-   evidence：用于实时路径规划和安全的高效建图
-5. [DiSCo: Diffusion Sequence Copilots for Shared Autonomy](/202603/28/2603.22787v1-disco-diffusion-sequence-copilots-for-shared-autonomy)  
-   标签：评分：7.0/10、query:q6
-   evidence：机械臂的共享自主控制
-6. [CATNAV: Cached Vision-Language Traversability for Efficient Zero-Shot Robot Navigation](/202603/28/2603.22800v1-catnav-cached-vision-language-traversability-for-efficient-zero-shot-robot-navigation)  
-   标签：评分：7.0/10、query:q1
-   evidence：成本感知的可通行性导航与轨迹选择
-7. [Unlabeled Multi-Robot Motion Planning with Improved Separation Trade-offs](/202603/28/2603.19502v1-unlabeled-multi-robot-motion-planning-with-improved-separation-trade-offs)  
-   标签：评分：6.0/10、query:q4
-   evidence：多机器人运动规划及障碍物规避
-8. [StreamingClaw Technical Report](/202603/28/2603.22120v2-streamingclaw-technical-report)  
-   标签：评分：6.0/10、query:q5
-   evidence：实时感知-决策-动作闭环
-9. [UniDex: A Robot Foundation Suite for Universal Dexterous Hand Control from Egocentric Human Videos](/202603/28/2603.22264v1-unidex-a-robot-foundation-suite-for-universal-dexterous-hand-control-from-egocentric-human-videos)  
-   标签：评分：6.0/10、query:q6
-   evidence：通用灵巧手控制与轨迹生成
-10. [Goal-Oriented Reactive Simulation for Closed-Loop Trajectory Prediction](/202603/28/2603.24155v1-goal-oriented-reactive-simulation-for-closed-loop-trajectory-prediction)  
+   evidence：具有物理对齐功能的机器人操作交互式世界模型
+7. [Proximal Policy Optimization in Path Space: A Schrödinger Bridge Perspective](/202603/29/2603.21621v1-proximal-policy-optimization-in-path-space-a-schrdinger-bridge-perspective)  
    标签：评分：6.0/10、query:q3
-   evidence：闭环轨迹预测与收缩时域自我预测
-11. [Relaxing Constraints in Anonymous Multi Agent Path Finding for Large Agents](/202603/28/2603.24442v1-relaxing-constraints-in-anonymous-multi-agent-path-finding-for-large-agents)  
-   标签：评分：6.0/10、query:q1
-   evidence：考虑尺寸约束的移动机器人轨迹规划
+   evidence：生成式优化的路径空间表述
+8. [CaP-X: A Framework for Benchmarking and Improving Coding Agents for Robot Manipulation](/202603/29/2603.22435v1-cap-x-a-framework-for-benchmarking-and-improving-coding-agents-for-robot-manipulation)  
+   标签：评分：6.0/10、query:q6
+   evidence：自主机器人操作控制的代码智能体基准测试
+9. [Learning Safe-Stoppability Monitors for Humanoid Robots](/202603/29/2603.22703v1-learning-safe-stoppability-monitors-for-humanoid-robots)  
+   标签：评分：6.0/10、query:q5
+   evidence：实时安全监测与回退控制
+10. [Bio-Inspired Event-Based Visual Servoing for Ground Robots](/202603/29/2603.23672v1-bio-inspired-event-based-visual-servoing-for-ground-robots)  
+   标签：评分：6.0/10、query:q5
+   evidence：地面机器人的实时视觉伺服
+11. [Communication-Aware Dissipative Output Feedback Control](/202603/29/2603.24509v1-communication-aware-dissipative-output-feedback-control)  
+   标签：评分：6.0/10、query:q2
+   evidence：基于优化的输出反馈控制综合算法
 
 
 <div class="dpr-home-promo-card">
