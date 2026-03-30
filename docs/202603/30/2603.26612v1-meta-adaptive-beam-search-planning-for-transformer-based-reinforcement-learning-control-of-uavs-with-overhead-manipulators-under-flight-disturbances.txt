@@ -1,0 +1,958 @@
+Title: Meta-Adaptive Beam Search Planning for Transformer-Based Reinforcement Learning Control of UAVs with Overhead Manipulators under Flight Disturbances
+
+URL Source: https://arxiv.org/pdf/2603.26612v1
+
+Published Time: Mon, 30 Mar 2026 01:16:44 GMT
+
+Number of Pages: 29
+
+Markdown Content:
+Meta-Adaptive Beam Search Planning for Transformer-Based Reinforcement Learning Control of UAVs with Overhead Manipulators under Flight Disturbances 1
+
+Hazim Alzorgan a(halzorg@clemson.edu) Sayed Pedram Haeri Boroujeni a (shaerib@g.clemson.edu) Abolfazl Razi a∗ (arazi@clemson.edu) 
+
+> a
+
+School of Computing, Clemson University, Clemson, SC 29632, USA 
+
+Corresponding Author: 
+
+Abolfazl Razi School of Computing, Clemson University, Clemson, SC 29632, USA Email 1: arazi@clemson.edu Email 2: halzorg@clemson.edu 
+
+> 1
+
+This work is supported by the National Science Foundation under Grant Number 2204721 and MIT Lincoln Lab under Grant Number 7000565788. 
+
+> arXiv:2603.26612v1 [cs.RO] 27 Mar 2026
+
+# Meta-Adaptive Beam Search Planning for Transformer-Based Reinforcement Learning Control of UAVs with Overhead Manipulators under Flight Disturbances 
+
+Hazim Alzorgan, Sayed Pedram Haeri Boroujeni, Abolfazl Razi 
+
+> aSchool of Computing, Clemson University, Clemson, 29632, SC, USA
+
+Abstract 
+
+Drones equipped with overhead manipulators offer unique capabilities for inspection, main-tenance, and contact-based interaction. However, the motion of the drone and its manipulator is tightly linked, and even small attitude changes caused by wind or control imperfections shift the end-effector away from its intended path. This coupling makes reliable tracking difficult and also limits the direct use of learning-based arm controllers that were originally designed for fixed-base robots. These effects appear consistently in our tests whenever the UAV body expe-riences drift or rapid attitude corrections. To address this behavior, we develop a reinforcement-learning (RL) framework with a transformer-based double deep Q learning (DDQN), with the core idea of using an adaptive beam-search planner that applies a short-horizon beam search over candidate control sequences using the learned critic as the forward estimator. This allows the controller to anticipate the end-effector’s motion through simulated rollouts rather than executing those actions directly on the actual model, realizing a software-in-the-loop (SITL) approach. The lookahead relies on value estimates from a Transformer critic that processes short sequences of states, while a DDQN backbone provides the one-step targets needed to keep the learning process stable. We observed that the optimal beam search parameters depend on the geometrical features of the target trajectory. Specifically, sharper trajectory curvatures required wider and shorter beams to yield agile transitions via exploring a richer search space, whereas smoother trajec-tories that exhibit reasonable performance with narrower and longer beams for cost efficiency and exploiting predictability. To address this observation and maintain minimal tracking er-ror, we proposed a meta-policy that adapts the beam width and depth to trajectory features on the fly. Evaluated on a 3-DoF aerial manipulator under identical training conditions, the proposed meta-adaptive planner shows the strongest overall performance with a 10.2% reward increase, a substantial reduction in mean tracking error (from about 6% to 3%), and a 29.6% improvement in the combined reward-error metric relative to the DDQN baseline. Our method exhibits elevated stability in tracking target tip trajectory (by maintaining 5 cm tracking error) when the drone base exhibits drifts due to external disturbances, as opposed to the fixed-beam and Transformer-only variants. 
+
+Keywords: Meta-Learning, Beam Search, Reinforcement Learning (RL), Transformer-based RL, Unmanned Aerial Vehicles (UAVs), Aerial Manipulators  
+
+> Preprint submitted to Journal March 30, 2026
+
+1. Introduction 
+
+Unmanned Aerial Vehicles (UAVs) [1] equipped with robotic manipulators have evolved from remote sensing platforms into aerial robots capable of physical interaction, including contact inspection and surface maintenance [2, 3, 4]. Mounting an articulated arm on a UAV, however, introduces strong dynamic coupling: arm motions shift the center of mass, induce attitude changes, and interact with aerodynamic effects. As a result, the flight controller and manipulator controller cannot be treated independently; end-effector tracking requires coordinated planning of both systems. Model-based control techniques such as Model Predictive Control (MPC) have been ap-plied to aerial manipulation[5, 6, 7]. Although MPC offers principled handling of constraints and disturbances, solving high-dimensional optimization problems online becomes challenging when multiple arm joints and external disturbances are present. Estimation-based methods (e.g., extended Kalman filters) manage sensor noise but rely on local linearization and Gaus-sian assumptions, which may degrade under rapid attitude variations or manipulator-induced loading. These limitations have motivated the use of reinforcement learning (RL), where policies are optimized directly through interaction. Early RL-based approaches demonstrated UAV navigation and stabilization[8, 9, 10], but scaling to articulated aerial manipulators remains challenging. Two issues dominate: (i) long-term dependencies in the tracking task are not captured effectively by feedforward networks, and (ii) exploration in the enlarged state–action space is inefficient and may destabilize the platform. Transformer-based RL offers a partial remedy. The attention mechanism enables temporal credit assignment over longer horizons and has shown promise in decision-transformer and trajectory-modeling frameworks[11, 12]. However, exploration in these models typically relies on stochastic noise added to the policy output, which is insufficient when unsafe exploration can produce large attitude deviations or loss of contact consistency. To address these challenges, this work introduces an RL framework that combines Transformer-based value estimation with adaptive beam-search planning. Instead of committing to a single noisy action at each timestep, the agent evaluates a small set of candidate torque actions using short-horizon rollouts guided by the learned Q-function. The search width and depth, denoted (Bt, D t), are adapted online using meta-learned signals derived from tracking error and value-function disagreement. This produces a planning mechanism that expands during dynamically complex or uncertain segments and contracts in predictable regimes, balancing accuracy and computational cost [13, 14]. Furthermore, the method integrates the full forward and inverse kinematics of a 3-DoF aerial manipulator together with a coupled system dynamic model capturing manipulator-induced attitude changes. This ensures physically consistent rollouts during beam expansion and contributes to stable end-effector tracking on the wall surface. The result is a unified framework that combines temporal representation learning, structured decision-time planning, and meta-adaptive search, suitable for precision aerial manipulation under flight instability. 
+
+Key Contributions 
+
+• Uncertainty-Aware Transformer Reinforcement Learning. A Transformer-based Double DQN architecture encodes short temporal sequences of manipulator states, im-proving temporal consistency and dynamic stability. Action-value uncertainty is esti-mated using the disagreement between online and target critics together with entropy 2of the softened Q-values, providing an explicit uncertainty signal that guides exploration and meta-adaptation. 
+
+• Uncertainty-Guided Meta-Adaptive Beam Planning. A meta-adaptive beam search mechanism regulates beam width Bt and search depth Dt in real time using smoothed tracking error, Q-value disagreement, error trend, and remaining horizon. The planner expands its search breadth when uncertainty is high and increases depth when confidence improves or long-horizon reasoning is beneficial, achieving an adaptive balance between computational cost and control accuracy. 
+
+• Integrated 3D Control Framework with Kinematic and Dynamic Consistency. 
+
+The complete system unifies Transformer-based value estimation, meta-adaptive beam planning, and the full forward–inverse kinematic model of a 3-DOF aerial manipulator with a complete dynamic model. This integration ensures physically consistent motion generation and stable end-effector tracking under dynamic disturbances, establishing a foundation for real-time adaptive control in aerial manipulation tasks. 
+
+2. Related Work 
+
+2.1. Model-Based Approaches 
+
+Recent surveys outline the current state of aerial manipulation research, touching on co-operative schemes, vehicle–arm integration, and practical limits in real-time operation [15]. In trajectory planning, much of the earlier work leaned on optimization and estimation tools. MPC is still a common choice for motion in cluttered settings [16, 17]. It handles constraints well, but once the model includes the manipulator, the solver burden grows quickly. This is especially noticeable in compact platforms where the arm strongly influences vehicle attitude [18]. Some studies instead formulate the problem through static-equilibrium interaction models [19], although these require similarly heavy computation. Differential-flatness-based planning and minimum-snap methods continue to be used widely [20]. They generate smooth trajecto-ries but usually assume a rigid-body vehicle, so the manipulator is ignored. Sampling planners such as RRT* [21] and trajectory optimizers like CHOMP [22] have been extended to aerial robots, yet the dimensionality of the search space makes real-time execution difficult once joint states are included. State estimation forms the other core component in model-based control. Variants of the Kalman filter (EKF, UKF) [23] remain standard for fusing GPS, IMU, and camera measurements. Their assumptions on noise and linearization can become limiting when the arm moves, since the induced coupling and aerodynamic effects break many of those ap-proximations. Control Barrier Function–based schemes attempt to maintain safe interaction [24], but they depend on accurate models and reliable sensing, which are not always available during aggressive motion. 
+
+2.2. Data-Driven Approaches 
+
+RL avoids building a full dynamic model and instead adjusts a control policy directly from trial interactions. Early attempts showed that this could handle basic UAV navigation and simple stabilization tasks [25, 26, 27]. The downside was that credit assignment over long horizons was weak, and exploration tended to stall. Later work shifted toward actor–critic algorithms such as PPO [28], SAC [29], TD3 [30, 31], and these have been used in UAV settings, mostly for path tracking and avoidance problems. These methods improve stability but rely on Gaussian or OU-process noise for exploration, which is inefficient in high-dimensional action spaces and unsafe for aerial manipulators. 3To improve temporal reasoning, Transformer-based RL methods such as Decision Trans-formers and Trajectory Transformers [32] have been introduced. By framing control as se-quence modeling, Transformers leverage attention to capture long-range dependencies. While promising in robotic control, their exploration strategies remain simplistic, typically limited to stochastic perturbations of policy outputs [33]. Structured search-based exploration has recently been proposed. Beam search was adapted for discrete RL tasks [34, 35], and Monte Carlo Beam Search (MCBS) extended this to a hybrid model for continuous domains [31], where candidate actions are scored using short-horizon rollouts. These methods demonstrate improved exploration but rely on fixed beam width and depth, which is inefficient when the environment complexity varies. [31] addressed this by introducing a threshold to switch MCBS off after convergence. Meta-learning offers another avenue. Model-Agnostic Meta-Learning (MAML) [36] and subsequent methods [37] have enabled rapid policy adaptation to new environments and explo-ration schedules. However, integration of meta-learning with structured exploration remains limited. The present framework addresses this by combining Transformer-based sequence mod-eling with adaptive beam search regulated by a meta-learner, allowing beam parameters to adjust dynamically. 
+
+3. Model Environment 
+
+> Figure 1: Overhead aerial manipulator (manipulator kinematics).
+
+Figure 1 shows the overhead aerial manipulator prototype and a simplified free-body dia-gram. The platform comprises a quadrotor UAV with a three-DoF manipulator mounted above the body: a rotating base (yaw joint) with angle q0 and a planar two-link arm with joint an-gles ( q1, q 2). The UAV base follows a predefined trajectory generated by a Time-To-Collision (TTC)-based motion plan used in [10]. The path is generated relative to the work surface. Our RL agent does not command the UAV base; its trajectory is predefined using the TTC model. The manipulator is torque-controlled and must track a target curve on the wall while compensating for UAV attitude changes and external disturbances. Note that q0 is strictly the manipulator base yaw, which is controlled by our RL agent, while the UAV attitude appears separately through the body pose ( pwb , R wb ) and is maintained using a simple PID controller. 
+
+3.1. State and Action Spaces 
+
+At each timestep t, the simulator maintains the UAV base pose ( pwb (t), R wb (t)) along a predefined TTC-governed path and propagates the manipulator joint state qt = [ q0,t , q 1,t , q 2,t ]⊤
+
+4with velocities ˙ qt. The end-effector position in the world frame, pwe (qt) is obtained using the kinematics described in the coming section. The RL state passed to the critic is 
+
+st = q0,t , q 1,t , q 2,t , ˙q0,t , ˙q1,t , ˙q2,t , x ee ,t , y ee ,t , z ee ,t , e t
+
+, (1) which implicitly contains the UAV base motion and attitude through the end-effector coor-dinates and tracking error. The agent controls only the manipulator torques. Actions are continuous joint torques, later discretized for planning: 
+
+at = τ t = ( τ0,t , τ 1,t , τ 2,t ), τi,t ∈ [τmin , τ max ]. (2) The UAV thrust and body moments are not actuated by the agent; they are governed by the TTC planner and a disturbance-aware PID controller. 
+
+3.2. Manipulator Kinematics 
+
+The 2–link arm has joint angles q0 (manipulator base yaw about z), q1 (shoulder pitch about local y), q2 (elbow pitch about local y), and link lengths L1, L 2 aligned with each link’s local x
+
+axis. The UAV/body (drone) pose in the world is ( pwb , R wb ), where pwb ∈ R3 and Rwb ∈ SO (3) [38]. All intermediate formulas below are first written in the UAV body frame {b} (origin at the drone’s CoM), then mapped to the world {w} at the end. 
+
+Step 1: Two–link planar kinematics in the local arm plane (x′, z ′).
+
+Let the arm plane be the x′−z′ plane obtained after yawing the arm about z by q0. The 2D forward kinematics in that plane are 
+
+rx(q1, q 2) = L1 cos q1 + L2 cos( q1+q2) (3) 
+
+rz (q1, q 2) = L1 sin q1 + L2 sin( q1+q2) (4) As a 3D vector in the arm plane coordinates, rpl =
+
+
+
+rx
+
+0
+
+rz
+
+
+
+Step 2: Embed the arm plane in the body frame via base yaw q0.
+
+With the standard z–axis rotation 
+
+Rz (q0) = 
+
+
+
+cos q0 − sin q0 0sin q0 cos q0 00 0 1
+
+ (5) the end–effector position in the body frame is 
+
+pbe (q) = Rz (q0) rpl =
+
+
+
+cos q0 rx
+
+sin q0 rx
+
+rz
+
+ (6) 
+
+End–effector orientation in the body frame. 
+
+Since the planar chain pitches about local y, the arm orientation in the body frame is 
+
+Rbe (q) = Rz (q0) Ry
+
+ q1+q2
+
+, Ry(θ) = 
+
+
+
+cos θ 0 sin θ
+
+0 1 0
+
+− sin θ 0 cos θ
+
+ (7) 5Step 3: Map to the world frame (general UAV pose). 
+
+Let the UAV/body pose in world be ( pwb , R wb ); no restriction on roll/pitch/yaw. Then the end–effector pose in the world is 
+
+pwe (q) = pwb + Rwb pbe (q), Rwe (q) = Rwb Rbe (q). (8) 
+
+Expanded component form. 
+
+If the UAV has only pitch α about y (i.e., Rwb = Ry(α)) and base position ( xb, y b, z b), then from (6)–(8): 
+
+
+
+xee 
+
+yee 
+
+zee 
+
+ =
+
+
+
+xb
+
+yb
+
+zb
+
+ + Ry(α)
+
+
+
+cos q0 rx
+
+sin q0 rx
+
+rz
+
+ =
+
+
+
+xb + cos α (cos q0 rx) + sin α r z
+
+yb + sin q0 rx
+
+zb − sin α (cos q0 rx) + cos α r z
+
+ . (9) 
+
+Homogeneous transform form (body frame). 
+
+With link–frame steps, 
+
+T01 (q0) = 
+
+Rz (q0) 00⊤ 1
+
+
+
+, T12 (q1) = 
+
+Ry(q1)
+
+
+
+L1
+
+00
+
+
+
+0⊤ 1
+
+ , T23 (q2) = 
+
+Ry(q2)
+
+
+
+L2
+
+00
+
+
+
+0⊤ 1
+
+ ,Tbe (q) = T01 (q0) T12 (q1) T23 (q2) =
+
+Rbe (q) pbe (q)
+
+0⊤ 1
+
+
+
+(10) Then the world transform is Twe (q) = 
+
+Rwb pwb 
+
+0⊤ 1
+
+
+
+Tbe (q), consistent with (8). 
+
+Analytic position Jacobian in the body frame. From (6), the columns of ∂pbe  
+
+> ∂q i
+
+are 
+
+∂pbe 
+
+∂q 0
+
+=
+
+
+
+− sin q0 rx
+
+cos q0 rx
+
+0
+
+
+
+∂pbe 
+
+∂q 1
+
+=
+
+
+
+cos q0 (−L1 sin q1 − L2 sin( q1+q2)) sin q0 (−L1 sin q1 − L2 sin( q1+q2)) 
+
+L1 cos q1 + L2 cos( q1+q2)
+
+
+
+∂pbe 
+
+∂q 2
+
+=
+
+
+
+cos q0 (−L2 sin( q1+q2)) sin q0 (−L2 sin( q1+q2)) 
+
+L2 cos( q1+q2)
+
+
+
+(11) Stacking these gives the translational Jacobian Jp,be (q) ∈ R3×3 (body frame). The corre-sponding world Jacobian is simply 
+
+Jp,we (q) = Rwb Jp,be (q). (12) 
+
+Angular velocity mapping. The joint axes expressed in the body frame are ˆω0 =
+
+
+
+001
+
+ , ˆω1 = ˆ ω2 = Rz (q0)
+
+
+
+010
+
+ .
+
+6Thus, the body frame angular velocity of the EE is ωbe = ˆ ω0 ˙q0 + ˆ ω1 ( ˙ q1 + ˙ q2), and in the world frame ωwe = Rwb ωbe .
+
+Summary (world placement). Equations (6)–(8) provide the full mapping: compute 
+
+pbe (q) and Rbe (q) from arm angles, then translate/rotate by the UAV pose ( pwb , R wb ) to obtain the world end–effector pose ( pwe , R we ). This enforces that q0 is strictly the arm’s base yaw, while ( pwb , R wb ) independently set the UAV position and attitude in the world. 
+
+3.3. Drone Dynamics 
+
+The UAV dynamics follow Newton–Euler equations [39], but the base trajectory is generated by TTC-based motion planning model and is subjected to environmental and model-induced disturbances. To understand how such disturbances migh affect the UAV’s attitude during flight, we begin by deriving its generalized motion formula. Translational motion can be gen-eralized as: 
+
+m ¨r = −mg ˆk + R T + Fdrag (13) and rotational motion is: 
+
+I ˙ω = M − ω × (I ω). (14) Here m is the mass, r = ( xb, y b, z b), R body-to-world rotation, T thrust, Fdrag aerodynamic drag, I inertia, and ω body angular velocity. The agent does not actuate T or M.
+
+3.4. Manipulator Dynamics 
+
+The 3-DoF manipulator is modeled by Lagrangian dynamics: 
+
+Mm(q) ¨ q + Cm(q, ˙q) ˙ q + Gm(q) = τ
+
+q = [ q0, q 1, q 2]⊤
+
+τ = [ τ0, τ 1, τ 2]⊤
+
+(15) where Mm is the mass matrix, Cm collects Coriolis/centrifugal terms, and Gm gravity. 
+
+3.5. Coupling: Manipulator-Induced Pitch (Angle of Attack) 
+
+Manipulator motion shifts the system center of mass, inducing moments on the UAV. Ap-proximating gravity-fixed loading in world z and evaluating pitch about the y axis, the dominant moment is 
+
+Mpitch ≈ marm g  xCoM − xUAV 
+
+ (16) with marm the manipulator mass and xCoM the combined CoM relative to the UAV base. The pitch kinematics are ˙α = ωy, (17) ˙ωy = Mpitch − cα ωy
+
+Iy
+
+(18) 7where Iy is the pitch inertia and cα a small damping. In discrete time, 
+
+αt+1 = αt + ∆ t ω y,t (19) 
+
+ωy,t +1 = ωy,t + ∆ t Mpitch (t) − cα ωy,t 
+
+Iy
+
+. (20) Thus, arm torques alter α, which rotates the arm vector in x–z and changes the geometric errors.The agent does not actuate the UAV propellers, meaning it doesn’t directly affect T or 
+
+M; in our simulator the TTC-based planner prescribes ( pwb (t), R wb (t)), and we utilize a PID controller to maintain the UAV’s pose to account for external disturbances. 
+
+3.6. Modeling Simplifications 
+
+To keep the simulation tractable while preserving the dominant coupling effects, we adopt several standard simplifying assumptions: 
+
+• Independent manipulator control. The RL agent actuates only the manipulator torques ( τ0, τ 1, τ 2). UAV thrust and body moments are governed externally by the TTC planner and a low-level PID controller. 
+
+• UAV pose as an exogenous rigid transform. Manipulator kinematics are evaluated in the UAV body frame and mapped to the world via ( pwb , R wb ), assuming a rigid mount and no structural deformation. 
+
+• Dominant pitch coupling . Center-of-mass shifts from arm motion primarily induce a gravitational disturbance about the pitch axis. Roll and yaw coupling are neglected due to the arm’s small lateral offset and modest base yaw excursions. 
+
+• Reduced UAV attitude dynamics. Only pitch dynamics are propagated, ˙ α = ωy, ˙ωy =(Mpitch − cαωy)/I y, with a PID controller maintaining the nominal UAV attitude under disturbance. 
+
+• Geometric nearest-point tracking. The tracking error uses the closest point on the target curve, ensuring that performance evaluation is independent of the UAV’s speed along the wall. 
+
+3.7. Geometric Error and Reward 
+
+The target curve is represented as a parametric path C(s) on the work surface. At each timestep, the simulator identifies the closest point on the curve to the current end-effector position: 
+
+s⋆t = arg min  
+
+> s
+
+pwe (qt) − C (s) 2, C⋆t = C(s⋆t ). (21) The geometric tracking error is then 
+
+et = pwe (qt) − C ⋆t 2. (22) The error is normalized using a saturation radius emax :˜et = min 
+
+ et
+
+emax 
+
+, 1
+
+
+
+. (23) 8The per-step reward balances tracking accuracy, torque effort, smoothness, and joint-limit violations: 
+
+rt = Wpos (1 − ˜et) − Wτ
+
+> 2
+
+X
+
+> i=0
+
+|τi,t | − Wsm ∥ ˙qt∥22 − Wviol I{qt /∈ Q feas }. (24) 
+
+4. Methodology 
+
+Our proposed framework integrates a Transformer-based Double Deep Q-Network (DDQN) with an adaptive beam-search planner to achieve efficient and stable end-effector tracking for the UAV-manipulator system. The overall architecture, illustrated in Fig. 2, combines high-level decision making and low-level control within a unified RL loop. At each control step, the agent observes the system state (position, attitude, and joint configuration) and encodes it into a latent representation processed by the Transformer Q-network. This critic estimates the value of candidate torque actions while the adaptive beam-search module explores multiple promising action sequences in parallel, balancing exploitation and exploratory diversity. The resulting control policy continuously adapts to task complexity and dynamic disturbances, ensuring smooth tracking along the wall curve. The learning process relies on a standard experience-replay and target-network mechanism to stabilize temporal-difference updates. Transitions collected from the environment are stored in the replay buffer and sampled as mini-batches for training the Transformer Q-network. The current and target critics share the same Transformer backbone, consisting of stacked multi-head attention, feed-forward, and normalization layers, followed by dueling value and advantage heads. The Double DQN loss computes the temporal-difference residual between current and target estimates, while Polyak averaging periodically updates the target network parameters. This hierarchical structure spanning the agent, beam-search planner, and Transformer-based critics forms the basis for the subsequent subsections detailing the baseline DDQN formulation and its Transformer extension. 
+
+4.1. Beam Search Action Planning 
+
+Decision quality in sequential control depends on how extensively the agent explores future action outcomes. Two classical extremes [40] define this trade-off: 
+
+Greedy search evaluates only the immediate reward or one-step value estimate. It is computationally light but shortsighted—prone to local optima and oscillatory tracking near high-curvature regions. In RL, greedy selection corresponds to the conventional DQN policy 
+
+at = arg max a Qθ(st, a), which neglects multi-step interactions among actions. 
+
+Exhaustive search , on the other hand, expands all possible action sequences of depth D,totaling |A| D nodes. While theoretically optimal under accurate value estimates, this approach scales exponentially and is impractical for real-time robotic control, especially when |A| grows with multiple actuated joints or continuous torque bins. Beam search provides a principled middle ground between these two extremes. It retains the foresight benefits of look-ahead while maintaining tractable computational cost. At each decision step, only the top-B action prefixes (according to predicted return) are expanded to the next depth level. This selective expansion maintains a focused search over the most promising trajectories, allowing the agent to anticipate future rewards without evaluating the full combinatorial action tree. The resulting breadth–depth trade-off is tunable via ( B, D ) and 9Figure 2: High-level architecture of the proposed Transformer-DDQN framework with adaptive beam search. The UAV manipulator (agent) interacts with the wall-tracking environment through discretized torque actions. The Transformer Q-network estimates Qθ (s, a ) using self-attention layers and dueling heads ( Vθ , A θ ), while the target network Q¯θ provides stable bootstrapped targets for the Double DQN loss. Beam search expands multiple candidate trajectories to improve decision consistency and robustness. 
+
+later made adaptive through meta-learning. Figure 3 provides an illustration of how beam search works. In this specific example with beam width B = 2, beam search retains and expands the top two branches at each level by continuously calculating the total return at every step, which ensures selecting a better overall action sequence unlike greedy search which only chooses the action with the highest immediate score, this provides a good middle ground between greedy search and exhaustive search in which all nodes are visited which leads to an exponential cost. The RL agent outputs the joint–torque action vector at as defined in (2). Each torque component is discretized into na bins, producing an action space of size |A| = n3
+
+> a
+
+. The beam planner searches over this discrete space to identify high-value multi-step action sequences. 
+
+Search formulation. Given the current state st and the discretized action space A, beam search maintains a beam Bℓ containing the top-B partial action sequences of length ℓ. Each sequence πt:t+ℓ = ( at, . . . , at+ℓ) is scored by its estimated cumulative discounted reward: 
+
+J(πt:t+ℓ) = 
+
+> ℓ
+
+X
+
+> k=0
+
+γkrt+k + γℓ+1 Vleaf (st+ℓ+1 ), (25) where Vleaf approximates the value of the final state. 
+
+Leaf evaluation. To stabilize bootstrapping and mitigate Q-value overestimation, the leaf value is computed using a conservative double-critic formulation: 
+
+Vleaf (s) = max  
+
+> a∈A
+
+min  Qθ(s, a), Q ¯θ(s, a), (26) where Qθ and Q¯θ denote the online and target critics. This ensures the planner favors actions consistently rated high by both critics, reducing bias during exploration. 10 Figure 3: Conceptual illustration of beam search in the action tree with B = 2. Orange: visited nodes; Blue: expanded nodes. Beam Search retains only the highest-valued branches for expansion. 
+
+Expansion and pruning. At each depth ℓ ∈ { 0, . . . , D − 1}, every beam element (˜ s, π, J )is expanded by all actions a ∈ A . The environment (or learned model) propagates the next state ˜s′ = f (˜ s, a) and computes reward r(˜ s, a). All candidate extensions are ranked by cumulative score J′ = J +γℓr, and only the top-B are retained for the next level. After depth D, leaf values 
+
+Vleaf are added, and the first action of the best-scoring sequence is executed in the environment. 
+
+Computational complexity. The complexity of a beam search algorithm can be described as: 
+
+O( B D |A| ) (27) The greedy baseline ( B, D ) = (1 , 1) reduces to standard one-step DQN selection, while larger ( B, D ) enable deeper foresight and smoother control in high-curvature wall segments. 
+
+Role in the proposed framework. Within the Transformer-based Double-DQN archi-tecture, beam search acts as a structured planner that queries the critic for sequence valuation. The Transformer critic provides Qθ(s, a ) for all candidate actions in a batched fashion, and beam expansion is performed entirely within the learned value landscape. Subsequent sections detail the meta-learning policy that adaptively tunes ( B, D ) online to balance tracking accuracy and computational efficiency across varying trajectory complexities. 
+
+4.2. Double Deep Q-Network (DDQN) Baseline 
+
+As a baseline, we implement a Double DQN model [41] to approximate the optimal action-value function. The system state includes the UAV base position, pitch angle, and manipulator configuration as shown in equation (1). and the action is the continuous torque vector in equation (2) In practice, actions are discretized into bins A during planning, so Qθ(s, a ) estimates the value for each candidate torque triple. The target for DDQN is defined as: 
+
+yt = rt + γ Q ¯θ
+
+
+
+st+1 , arg max  
+
+> a′∈A
+
+Qθ(st+1 , a ′)
+
+
+
+(28) and the critic minimizes the squared temporal-difference error: 
+
+LDDQN = E(s,a,r,s ′)
+
+h Qθ(s, a ) − yt
+
+2i
+
+. (29) 11 Algorithm 1: Transformer Q-Network Forward Pass 
+
+Input: Temporal state window St = ( st−Th+1 , . . . , s t); Parameters θ = {Wemb , PE , Encoder , W out }.
+
+Output: Qθ(st, ·), Q-values for all discretized actions  
+
+> 1
+
+for i = 1 to Th do  
+
+> 2
+
+h(0)  
+
+> i
+
+← Wemb st−Th+i + PE( i) // state tokenization  
+
+> 3
+
+H(0) ← (h(0) 1 , . . . , h(0)  
+
+> Th
+
+) 
+
+> 4
+
+for ℓ = 0 to L − 1 do  
+
+> 5
+
+Z(ℓ) ← MHA( H(ℓ)) + H(ℓ) 
+
+> 6
+
+H(ℓ+1) ← FFN( Z(ℓ)) + Z(ℓ) 
+
+> 7
+
+zt ← Pool( H(L)) // mean or last-token pooling  
+
+> 8
+
+return Qθ(st, ·) = Wout zt
+
+Experience replay buffers ( st, a t, r t, s t+1 , done) break correlations between successive sam-ples, and the target network ¯θ is updated via soft Polyak averaging. Exploration follows an 
+
+ϵ-greedy policy with exponential decay, ensuring early randomization and later exploitation. This baseline provides stable convergence, but suffers from two structural issues: (i) the critic is typically an MLP with limited capacity to model long-term dependencies in trajectories, and (ii) ϵ-greedy noise scales poorly in high-dimensional torque spaces. 
+
+4.3. Transformer Q-Network 
+
+While the DDQN baseline provides stable learning, its MLP critic lacks the capacity to capture temporal correlations in line tracking dynamics [42]. Tracking errors often evolve over multiple steps, and the effect of corrective torques may only materialize after a delay. To address these limitations, the MLP critic is replaced with a Transformer-based Q-network fθ
+
+that models the decision process as a sequence of recent states. 
+
+4.3.1. Architecture 
+
+State tokenization. At each timestep t, the state st is projected into a d-dimensional token 
+
+h(0)  
+
+> t
+
+= Wemb st + PE( t), (30) where Wemb is a linear embedding and PE( t) is sinusoidal positional encoding. A window of the past Th states, 
+
+H(0) = ( h(0) 
+
+> t−Th+1
+
+, . . . , h(0)  
+
+> t
+
+),
+
+forms the input sequence to the encoder. 
+
+Self-attention encoder. The sequence is processed by L Transformer encoder layers, each consisting of multi-head self-attention (MHA) and a feedforward network (FFN): 
+
+Z(ℓ) = MHA  H(ℓ) + H(ℓ),
+
+H(ℓ+1) = FFN  Z(ℓ) + Z(ℓ), (31) for ℓ = 0 , . . . , L − 1. For a query–key–value triplet ( Q, K, V ), attention is computed as Attention( Q, K, V ) = softmax 
+
+QK ⊤
+
+√dk
+
+
+
+V. (32) 12 This mechanism allows the critic to relate distant timesteps and model delayed cause–effect relationships arising from coupled UAV–manipulator dynamics. 
+
+Q-value prediction. The final encoded sequence H(L) is pooled (mean or last-token pool-ing) to produce a feature vector zt. The Q-values for all discretized torque triples a ∈ A are obtained in a single batched projection: 
+
+Qθ(st, a ) = W (a)out zt. (33) 
+
+Training objective. The Transformer critic is trained with the standard DDQN target, 
+
+yt = rt + γ Q ¯θ
+
+ st+1 , arg max  
+
+> a′
+
+Qθ(st+1 , a ′), (34) minimizing the temporal-difference loss 
+
+LTrans -DDQN = E(Qθ(st, a t) − yt)2. (35) Replay buffers and target network updates are identical to DDQN, with the only difference being the richer sequence-based critic. 
+
+Benefits and complexity. The Transformer critic offers: 
+
+• Long-horizon credit assignment: attention links distant states, improving value estimation when errors accumulate gradually. 
+
+• Context conditioning: predictions depend on recent motion history, capturing pitch oscil-lations and manipulator-induced disturbances. 
+
+• Compatibility with beam search: all Qθ(st, ·) values are evaluated in a single batched forward pass, enabling efficient expansion during planning. Its complexity increases to 
+
+O(Ld 2 + |A| ), (36) due to the quadratic attention term, but the overhead is modest because Th is small and all action evaluations are fully batched on GPU. In practice, the Transformer critic provides substantially improved stability and value consistency with manageable runtime overhead. 
+
+4.4. Meta-Learning for Adaptive Beam Control 
+
+Beam search parameters ( Bt, D t) directly determine the breadth–depth trade-off in plan-ning. Greedy selection ( Bt=1 , D t=1) incurs minimal cost but lacks foresight, while large fixed beams improve accuracy at the expense of substantial computation. Because tracking diffi-culty varies along the trajectory (easy straight segments vs. high-curvature transitions; stable dynamics vs. disturbance-rich phases), fixed ( Bt, D t) are either too expensive or insufficiently exploratory. We therefore introduce an online meta-policy that selects ( Bt, D t) adaptively from contextual features. 13 Algorithm 2: Adaptive Beam Search Meta-Policy (per timestep)  
+
+> 1
+
+for each timestep t do  
+
+> 2
+
+qon , q tg ← Qθ(st), Q ¯θ(st) 
+
+> 3
+
+h ← entropy(softmax( qon /τ )) / log |A|  
+
+> 4
+
+ˆu ← tanh 
+
+mean a|qon − qtg |
+
+MAD( qon ) + δ
+
+ 
+
+> 5
+
+f ← [log(1+ et), |εt|/W, ˆu, h, B prev /B max , D prev /D max , η t] 
+
+> 6
+
+z = ( B, D ) ∼ πϕ(·| f ) // meta-policy selects beam  
+
+> 7
+
+a ← BeamPlan( Qθ, Q ¯θ, s t, B, D ) // conservative leaf  
+
+> 8
+
+s′, r ← env.step( a) 
+
+> 9
+
+∆ ← αe(eprev −et) + αε(|εprev |−| εt|) 
+
+> 10
+
+cost ← αf BD |A| + αs(|B−Bprev |+|D−Dprev |) 
+
+> 11
+
+rmeta ← ∆ − λ · cost  
+
+> 12
+
+ϕ ← ϕ + η (rmeta −¯r)∇ log πϕ + β∇H 
+
+> 13
+
+λ ← max  0, λ + ηλ(cost −b) 
+
+> 14
+
+Qθ ← Conservative Rescaled Double-DQN Update(replay)  
+
+> 15
+
+Bprev , D prev , e prev , ε prev ← B, D, e t, ε t 
+
+> 16
+
+end 
+
+4.4.1. Beam Planner with Conservative Leaf Evaluation 
+
+Given state st, the planner expands partial action sequences πt:t+ℓ = ( at, . . . , a t+ℓ) up to depth Dt. The cumulative score is 
+
+J(πt:t+ℓ) = 
+
+> ℓ
+
+X
+
+> k=0
+
+γkrt+k + γℓ+1 Vcons (st+ℓ+1 ), (37) with conservative leaf evaluation 
+
+Vcons (s) = max  
+
+> a∈A
+
+min  Qθ(s, a ), Q ¯θ(s, a ). (38) At each depth level, only the top-Bt prefixes are retained. 
+
+4.4.2. Difficulty and Uncertainty Features 
+
+To adapt ( Bt, D t) online, we construct a feature vector ft summarizing the local task diffi-culty. Let pτ (a|st) denote the softened value-induced distribution: 
+
+pτ (a|st) = softmax 
+
+Qθ(st, a )
+
+τ
+
+
+
+, (39) and define the normalized entropy 
+
+ht = − P 
+
+> a
+
+pτ (a|st) log pτ (a|st)log |A| . (40) Critic disagreement is 
+
+ut = 1
+
+|A| 
+
+X
+
+> a
+
+Qθ(st, a ) − Q¯θ(st, a ) , (41) 14 scaled into [0 , 1] using a robust MAD normalizer, ˆut = tanh 
+
+ ut
+
+MAD( Qθ(st, ·)) + δ
+
+
+
+. (42) The meta-feature vector is 
+
+ft =  log(1+ et), |εt|/W, ˆut, h t, B t−1/B max , D t−1/D max , η t
+
+. (43) 
+
+4.4.3. Meta-Policy, Objective, and Updates 
+
+The meta-policy selects a beam configuration zt = ( Bt, D t) from a discrete menu Z:
+
+πϕ(zt|ft) = Cat( gϕ(ft)) , (44) where gϕ is a two-layer MLP. A shaped meta-reward balances improvement against computational cost:  
+
+> t
+
+= αe(et−1 − et) + αε(|εt−1| − | εt|),ct = αf BtDt|A| + αs(|Bt−Bt−1| + |Dt−Dt−1|) ,rmeta  
+
+> t
+
+= ∆ t − λtct.
+
+(45) The meta-objective is the entropy-regularized return 
+
+J(ϕ) = E
+
+"X
+
+> t
+
+γtm
+
+ rmeta  
+
+> t
+
++ βH (πϕ(·| ft)) #
+
+. (46) With a baseline ¯ rt, the update is 
+
+∇ϕJ ≈ (rmeta  
+
+> t
+
+− ¯rt) ∇ϕ log πϕ(zt|ft) + β ∇ϕH, λt+1 = λt + ηλ(cost t − b)
+
+> +
+
+(47) where b is the target computational budget. The dual variable λt rises when the average compute exceeds b and falls otherwise, ensuring budget feasibility. 
+
+4.4.4. Adaptive vs. Fixed Beam Parameters 
+
+Table 1 quantifies the trade-off between accuracy and search efficiency for fixed ( B, D ). The test is ran with a simplified one-joint sandbox with five actions. Large beams produce better tracking but with drastically reduced search efficiency, calculated as follows: Search Eff = 100 ×
+
+ B
+
+5D
+
+
+
+%. (48) Hard gating heuristics (e.g. increasing B or D when et exceeds a threshold) react sharply, oscillate near boundary conditions, and ignore budget constraints. The learned meta-policy allocates compute smoothly using ( et, ε t, ˆut, h t), expanding search only when the expected gain justifies the cost. This yields a better accuracy–efficiency Pareto frontier. 15 Table 1: Accuracy–efficiency trade-offs for fixed beams. Tracking (%) is empirical; search efficiency uses (48). 
+
+Curve Type (B, D ) Tracking (%) Search Eff (%) 
+
+Straight (1,1) 93.9 20.00 (2,3) 94.2 16.00 (4,6) 94.3 0.13 (5,6) 94.3 0.16 Single Curve (1,1) 89.1 20.00 (2,3) 92.1 16.00 (4,6) 93.4 0.13 (5,6) 94.2 0.16 Nonuniform Wave (1,1) 64.2 20.00 (2,3) 79.5 16.00 (4,6) 90.1 0.13 (5,6) 93.0 0.16 
+
+4.4.5. Implementation Notes and Complexity 
+
+The meta-network gϕ is a two-layer MLP (width 64, ReLU); the entropy feature uses a softmax with temperature parameter τ , and the disagreement feature employs a robust MAD normalizer. The configuration set is Z = {(1 , 1) , (1 , 2) , ..., (6 , 6) } with Bmax = 6 and Dmax = 6. Per-step computational cost is cost t = Cmeta + BtDtCQ + Cenv ,
+
+where Cmeta ≪ CQ and batching makes the wall-time overhead scale nearly linearly in BtDt.
+
+4.4.6. Summary 
+
+Adaptive control of ( Bt, D t) allows the agent to devote computation proportionally to task difficulty. Small beams suffice on straight, predictable segments, while larger beams are allo-cated to curvature transitions or high-uncertainty regions. By optimizing a shaped meta-reward with explicit cost penalties, the meta-policy achieves significantly better accuracy–efficiency trade-offs than fixed beams or manually tuned gating heuristics. 
+
+5. Experimental Setup 
+
+5.1. Trajectory Generation and Path Planning 
+
+The experiments were conducted on a simulated 3-DOF aerial manipulator consisting of a quadrotor base and a planar two-joint arm. A reference end-effector trajectory was first generated to emulate a continuous surface-tracking task. This target trajectory was constructed using a parametric curve with controlled curvature and frequency, defining a desired motion of the manipulator along the wall or inspection surface. The corresponding UAV base path was then determined using a TTC based planner, ensuring that the end-effector remains within the operational workspace while maintaining a safe standoff distance from the surface. The resulting plan yields two synchronized trajectories: a target end-effector curve and a dynamically feasible UAV base path. 16 Figure 4: Illustration of a sample experimental setup. The target trajectory (red) defines the desired end-effector motion, while the UAV base trajectory (blue) is generated based on the target trajectory using a motion planner to maintain a stable flight, achieve a feasible reach, and maintain consistent surface clearance. 
+
+5.2. Control Policy and Training Phases 
+
+Each experiment begins with a short warm-up phase in which random exploratory ac-tions are applied to populate the replay buffer and stabilize the Transformer-DDQN target estimates. During this phase, the meta-adaptive module is inactive, and beam search oper-ates with its nominal parameters ( B, D ) = (1 , 1) corresponding to greedy action selection. After the warm-up threshold is reached, the meta-controller becomes active and begins adjust-ing the beam width Bt and search depth Dt at the end of each episode based on smoothed indicators of tracking error, Q-value disagreement, temporal error trend, and time remain-ing. The Transformer-DDQN network continues to update its parameters through off-policy temporal-difference learning, while the meta-module refines its output through episodic feed-back, achieving gradual adaptation of search behavior over time. The results obtained in the coming section were averaged over 50 runs for each method, ensuring consistent tendencies across multiple algorithm structures and environments. 
+
+5.3. Evaluation Protocol 
+
+The framework was evaluated across multiple trajectory profiles (Figure 4 shows a sample trajectory as an example) with varying curvatures and temporal frequencies to examine its robustness under diverse motion patterns. These include smooth sinusoidal paths, piecewise polynomial curves, and complex composite waveforms that simulate irregular inspection sur-faces. For statistical consistency, each algorithm variant (DDQN, Transformer-DDQN, Beam Search, and Meta-Adaptive Beam Search) was trained and tested independently over twenty complete runs with identical hyperparameters and random seeds. The reported results corre-spond to the averaged performance across these twenty runs, with error bars representing the standard deviation of the mean reward and tracking error metrics. This procedure ensures that observed improvements reflect consistent behavior rather than stochastic variability in initialization or sampling. 17 Figure 5: Model Performance Summary over 1500 episodes. Left: final average reward; middle: tracking efficiency; right: relative improvement over DDQN. 
+
+5.4. Performance Metrics 
+
+Evaluation focuses on three primary indicators: (i) the cumulative episodic reward reflecting overall control performance, (ii) the mean end-effector tracking error across all timesteps in an episode, and (iii) the temporal stability index derived from the rolling standard deviation of episodic returns. Additional diagnostics include the evolution of beam parameters ( Bt, D t), un-certainty disagreement between Q-heads, and computational load per decision step. Together, these metrics provide a comprehensive assessment of both tracking accuracy and adaptive effi-ciency across different trajectory regimes. 
+
+6. Results and Discussion 
+
+To ensure a fair comparison across all variants, the overall agent structure and training pipeline were kept identical. Each model employed the same replay buffer size, target net-work update rate, learning rate, optimizer (Adam), discount factor, and ϵ-greedy exploration schedule. Consequently, any observed difference arises solely from the decision-time mecha-nism, namely, (i) the Transformer-based temporal encoder, (ii) beam-search lookahead using the learned Q(s, a ) estimates, and (iii) the proposed meta-learning controller that adaptively selects beam width Bt and depth Dt. All models were trained for 1500 episodes under identical random seeds and dynamic disturbance settings. 
+
+6.1. Overall Performance Comparison 
+
+Figure 5 summarizes the final performance in terms of average episode reward, mean track-ing efficiency, and relative improvement with respect to the baseline DDQN. Under identi-cal training conditions, both planning-based variants deliver substantial gains. The Beam Search agent improves the mean reward from 825 → 889 and the tracking efficiency from 93 .8% → 95 .6%, while the Meta-Learning agent further elevates performance to 909 reward and 96.8% efficiency, representing a 10.2% reward gain, a 49% reduction in tracking error, and a 29.6% combined reward–error improvement over the baseline. Despite sharing identi-cal optimization settings and action heads, Transformer-DDQN attains 881 reward (+6.8% reward gain) and 95.2% efficiency (22.5% error reduction), corresponding to 14.6% combined improvement. 18 Figure 6: Model comparison—rewards (left) and tracking error (right) over training with 50-episode smoothing. 
+
+These findings indicate that, when the agent structure is held constant, decision-time search and adaptive search allocation provide measurable and consistent improvements in both asymp-totic accuracy and control smoothness. 
+
+6.2. Learning Dynamics and Convergence Behavior 
+
+Figure 7 compares episode rewards and mean tracking errors over training (50-episode smoothing). The DDQN curve exhibits a distinct performance dip around episodes 200–300, followed by recovery. We attribute this dip to replay buffer saturation (transition distribution shift) combined with delayed propagation from the target network, producing temporary over-estimation as the system transitions from highly exploratory to predominantly greedy behavior. Because all models share the same schedules, this dip appears uniformly; however, beam and meta variants remain more resilient, confirming that decision-time lookahead mitigates the effect of local value over-estimation. The Transformer-DDQN converges slower than the MLP-based DDQN despite its higher final performance. This slower convergence stems from the Transformer’s larger parameteriza-tion and the need for long-horizon temporal credit assignment. It must first populate the replay buffer with sufficiently diverse sequences before attention patterns stabilize. Once stabilized, its error trajectory aligns with beam-based agents but remains less stable than the adaptive meta-learner. Figure 6 (right) quantitatively summarizes convergence speed. To reach 95% of its final reward, DDQN requires ≈ 573 episodes, Transformer-DDQN ≈ 942, Beam Search ≈ 478, and Meta-Learning only ≈ 429. Hence, under identical conditions, adaptive planning accelerates convergence by roughly 25% relative to non-planning agents. 
+
+6.3. Learning Efficiency and Stability 
+
+Figure 8 depicts the error-reduction rate (left) and the rolling standard deviation of per-formance (right). The proposed Meta-Learning agent achieves the steepest initial improve-ment—surpassing 80% error reduction within the first 500 episodes—and maintains the highest plateau ( ∼ 85%). The rolling standard deviation confirms the same trend: DDQN shows the largest oscillations ( > 140), Transformer-DDQN exhibits moderate variability, Beam Search stabilizes below 20 after 600 episodes, and Meta-Learning remains consistently under 10. This 19 Figure 7: Final performance and convergence speed analysis. Left: normalized reward and inverse error; right: episodes to reach 80–95% of final performance.     
+
+> Figure 8: Learning efficiency and stability. Left: error-reduction rate; right: rolling standard deviation of performance.
+
+demonstrates that adaptive beam scheduling not only improves mean accuracy but also en-hances training stability, effectively suppressing policy oscillations caused by local Q-value inconsistency. 
+
+6.4. Reward and Error Distributions 
+
+The violin plots in Fig. 9 visualize the reward and error distributions over the last 100 episodes. The reward density progressively shifts rightward and tightens from DDQN →
+
+Transformer-DDQN → Beam → Meta-Learning. On the error side, the dashed line at 0 .05 m marks the tracking-accuracy target. Only the Meta-Learning agent maintains the majority of its distribution below this threshold, with a mean error of 0 .0315 m and notably shorter tails. This confirms that adaptive search not only improves expected performance but also reduces variance and catastrophic deviations, which is crucial for safe aerial manipulation. 
+
+6.5. Effect of Planning Under a Shared Backbone 
+
+Because all agents employ the same training and network backbone, the relative improve-ments isolate the effect of planning and adaptive planning at decision time. The beam-search 20 Figure 9: Reward and error distributions over the last 100 episodes. Dashed red line denotes the 0.05 m accuracy threshold. Table 2: Performance Summary Over the Last 100 Episodes (1500 total). Gain [%] denotes the combined improvement metric defined as the average of reward gain (%) and error reduction (%). 
+
+Model Reward Error [m] 95% Conv. [ep] Eff. [%] Gain [%] 
+
+DDQN 825.1 0.0618 573 93.8 –Transformer-DDQN 881.0 0.0479 942 95.2 14.6 Beam Search 889.3 0.0440 478 95.6 18.3 
+
+Meta-Learning 909.2 0.0315 429 96.8 29.6 
+
+expansion, operating on the same learned Q-function, provides a more informed estimate of future returns without modifying gradients or replay contents. Consequently, beam search mit-igates the short-sightedness of one-step greedy selection and yields higher asymptotic reward. The meta-learner extends this principle by contextually modulating ( Bt, D t) according to task difficulty: it widens the search during high-curvature or high-uncertainty segments and narrows it in near-linear, confident regimes. This adaptive allocation of search effort explains both the faster convergence and the lower steady-state variance observed in Figs. 6–8. 
+
+6.6. Quantitative Summary 
+
+Table 2 consolidates the quantitative metrics extracted from Figs. 5–9. Under a fully con-trolled backbone, the Meta-Learning Transformer-DDQN with adaptive beam search achieves the best reward, fastest convergence, and lowest tracking error. These results confirm that the gains—10.2% higher reward, tracking error reduced by half, and 29.6% combined improve-ment—stem from decision-time intelligence rather than structural or hyperparameter bias. 
+
+6.7. Interpretive Summary 
+
+• DDQN Dip: The transient degradation around episodes 200–300 originates from syn-chronized decay of exploration and delayed target updates, leading to temporary over-estimation bias. 
+
+• Transformer Convergence: The Transformer encoder requires longer experience to stabilize temporal attention weights, producing a slower yet higher-ceiling learning curve. 21 • Beam Search Benefit: Fixed-parameter beam search improves decision quality by evaluating multiple candidate futures using the same Q estimates, enhancing robustness without retraining. 
+
+• Meta-Adaptation Advantage: The adaptive controller refines beam behavior through data-driven scheduling of ( Bt, D t), yielding faster convergence, lower variance, and supe-rior final precision. 
+
+• Controlled Fairness: Since all agents share identical optimization, exploration, and architectural scaffolds, the observed improvements directly quantify the incremental value of planning and adaptive planning. 
+
+6.8. Practical Implications 
+
+In realistic UAV-manipulation tasks such as wall-curve tracking or contact inspection, main-taining sub-5 cm accuracy under dynamic disturbances is essential. The proposed meta-learner achieves this margin consistently while reducing control variability, suggesting better generaliza-tion and reliability under identical computational budgets. Moreover, its adaptive mechanism balances performance and efficiency by expanding the search only when necessary—a property particularly valuable for embedded or on-board deployment. 
+
+6.9. Ablation Study: Frequency–Dependent Beam Adaptation 
+
+To isolate how the beam controller responds to variations in geometric difficulty, we con-ducted a controlled ablation study using a modified version of the Pendulum-v1 environment from Gymnasium [43, 44]. Rather than regulating the pendulum to the upright equilibrium, the task was redefined as a tracking problem in which the system follows a sinusoidal reference trajectory: 
+
+θ⋆(t) = sin(2 πf t ),
+
+where the temporal frequency f determines the curvature and rate of change of the target mo-tion. Higher frequencies produce rapidly varying references with larger instantaneous curvature, mimicking the sharp geometric transitions that occur in aerial–manipulation trajectories. To evaluate the behavior of the beam controller in isolation, we replaced the full meta-policy with a deterministic heuristic rule that selects the beam parameters ( Bt, D t) based on instanta-neous tracking signals. This setup enables us to investigate the structural relationship between trajectory curvature and the preferred search configuration, without confounding effects from the dynamics of the aerial manipulator. Figure 10 reports the average beam width B and depth D obtained after training the controller on sinusoidal trajectories with frequencies 
+
+f ∈ { 0.20 , 0.50 , 0.75 , 1.00 , 1.50 , 2.00 } Hz .
+
+A consistent and interpretable trend emerges across all runs: 
+
+• Higher curvature (larger f ) yields wider but shallower searches : the controller selects large beam widths (e.g., B ≈ 4.6 at 2 .0 Hz) and prefers short planning horizons ( 
+
+D ≈ 1.2 ). 
+
+• Lower curvature yields narrower but deeper searches : at 0 .20–0 .50 Hz the con-troller favors smaller widths ( B ≈ 2.5–2 .8) and greater depths ( D ≈ 3.2). 22 Figure 10: Frequency (curvature) ablation on sinusoidal trajectories. Left: mean beam width B vs. frequency. Right: mean beam depth D vs. frequency. Higher frequencies induce broader but shallower searches. 
+
+This behavior is fully aligned with the intended function of adaptive beam search. Rapidly changing trajectories produce locally ambiguous value predictions and benefit from diversified action branching (large Bt), while excessive depth compounds critic bias and becomes counter-productive at high curvature. Conversely, slow and smooth reference motions are predictable over longer horizons, making a deeper search (large Dt) advantageous while a narrow beam suffices for branching. Importantly, curvature is not provided as an input feature. The controller derives its deci-sions solely from observable tracking statistics, meaning the frequency–dependent pattern arises implicitly from the temporal structure of the error signals. The ablation therefore confirms that adaptive beam search can respond to geometric difficulty in a structured and physically con-sistent way, even in simplified environments, and without explicit curvature annotation. 
+
+6.10. Meta–Curvature Correlation Analysis 
+
+To quantify the trend, we compute Pearson correlation coefficients between the trajectory frequency f and the mean beam parameters ( B, D ) computed over the evaluation rollout: 
+
+ρB,f ≈ +0 .93 , ρD,f ≈ − 0.93 .
+
+Both correlations are strongly monotonic, confirming that 
+
+f ↑ ⇒ B ↑, D ↓, f ↓ ⇒ B ↓, D ↑ .
+
+Together with Fig. 10, these results demonstrate that the adaptive beam controller aligns its search structure with the geometric difficulty of the task, expanding width or depth as needed rather than relying on fixed or manually tuned parameters. 
+
+7. Limitations and Future Work 
+
+While the proposed Transformer–DDQN framework with adaptive beam search demon-strates strong performance and interpretability, several limitations remain that will be addressed in future work. 23 7.1. Computational Efficiency 
+
+Although the meta-learner reduces unnecessary expansion by adjusting ( Bt, D t) during ex-ecution, the use of beam search still adds extra computation compared with a simple greedy policy. This was not a limitation in simulation, but running multiple rollouts in parallel can become demanding on an embedded UAV computer, especially when perception and state es-timation are sharing the same hardware. To address this, the next implementation will test trimmed search routines, smaller learned models for short rollouts, and a mixed strategy that falls back to one-step evaluation when timing margins are tight. 
+
+7.2. Curvature Awareness and Meta-Generalization 
+
+The current meta-learner adapts implicitly to curvature through secondary signals (tracking error, uncertainty, and temporal error trend), but curvature itself is not an explicit input. As demonstrated in the adaptation study, curvature can correlate with the chosen ( B, D ) values. Future work will explicitly integrate curvature or local geometric descriptors into the meta-inputs to improve interpretability and enable transfer across heterogeneous path topologies. Moreover, meta-generalization to out-of-distribution trajectories or stochastic disturbances will be studied using continual and meta-reinforcement learning frameworks. 
+
+7.3. Physical Validation and Real-World Transfer 
+
+The results reported so far were obtained in a physics-based simulation that reproduces the main dynamic and kinematic effects, along with external disturbances. Although this provides a controlled setting for evaluating the planner, a physical platform introduces additional elements that are difficult to model precisely, including actuator latency, small compliance at contact, vibration, and sensor noise. The next phase of the project will place the controller on our in-progress UAV-manipulator prototype to assess its behavior during line tracking. These tests will rely on onboard perception and visual odometry for estimating the target curve and will allow us to measure how the adaptive planner responds to real drift, environmental variability, and timing delays. The hardware experiments will give a direct view of the method’s tolerance to latency and its energy usage during extended operation [45]. 
+
+7.4. Multi-Modal and Vision-Based Extensions 
+
+The current design relies solely on proprioceptive state feedback. In the next stage of this research pipeline, the control system will be coupled with a vision transformer (ViT)-based perception module for real-time defect detection and target localization [46]. In later stages, large vision–language–action models (VLA) [47] and hierarchical meta-controllers will be investigated to coordinate multi-robot cooperation (e.g., UAV–UGV teams) and high-level semantic reasoning for autonomous maintenance operations [48]. 
+
+7.5. Broader Research Directions 
+
+The performance gains observed with adaptive beam planning suggest several directions for follow-up work. One immediate extension is to study how the method behaves in control settings with richer or continuous action spaces, where adjusting the lookahead structure may help stabilize value estimates without altering the underlying policy class. Another area of interest is partially observable flight conditions, in which the planner must allocate search effort 24 despite incomplete state information. A more explicit link between the beam search mechanism and predictive or model-based controllers also appears promising; such combinations may help recover some of the robustness typically associated with MPC while retaining the flexibility of learned policies. Overall, the present results provide a clear indication that adapting the search budget in re-sponse to online error signals is an effective strategy for handling drift, short-term disturbances, and curvature changes. The next stage of the work will look at reducing the computational overhead of the planner, integrating perception modules for real-time curve estimation, and preparing the system for hardware evaluation. 
+
+8. Conclusion 
+
+This work introduced a Transformer–DDQN framework equipped with an adaptive beam planner for end-effector trajectory tracking on an aerial manipulator. The method uses short temporal histories to form value estimates and adjusts its search depth and width based on on-line error and uncertainty measures. This enables the controller to maintain stable performance even when the base undergoes drift or rapid attitude corrections. Our beam search method enhances target trajectory alignment by utilizing look-ahead to factor in long-term consequences of a set of actions rather than immediate action reward, and expanding attention to future states. The performance highly depends on the trajectory’s geometrical features, calling for a wider and shallower search on sharp turns, while requiring a narrower and deeper search for smooth sections of the trajectory. Our meta-adaptation model was able to adjust these search parameters based on the agent’s feedback, resulting in robust learning across the entire curvature of the target trajectory. Experiments on sinusoidal and drift-inducing trajectories demonstrate consistent improve-ments in reward, convergence speed, and tracking error compared to both the DDQN and Transformer-only baselines, all under identical training settings. The ablation study confirmed that the adaptive parameters vary in a predictable way with the curvature of the target path, demonstrating that the planner allocates search effort where it is most effective. The findings suggest that adaptive decision-time search is a practical tool for UAV-manipulator systems that require accurate motion tracking in the presence of disturbances. 
+
+References  
+
+> [1] S. P. H. Boroujeni, A. Razi, S. Khoshdel, F. Afghah, J. L. Coen, L. O’Neill, P. Fule, A. Watts, N.-M. T. Kokolakis, K. G. Vamvoudakis, A comprehensive survey of research towards ai-enabled unmanned aerial systems in pre-, active-, and post-wildfire management, Information Fusion 108 (2024) 102369. [2] S. Zhang, Y. He, Y. Gu, Y. He, H. Wang, H. Wang, R. Yang, T. Chady, B. Zhou, Uav based defect detection and fault diagnosis for static and rotating wind turbine blade: a review, Nondestructive Testing and Evaluation 40 (4) (2025) 1691–1729. [3] Y. Alqudsi, M. Makaraci, Uav swarms: research, challenges, and future directions, Journal of Engineering and Applied Science 72 (1) (2025) 12. [4] A. Ollero, M. Tognon, A. Suarez, D. Lee, A. Franchi, Past, present, and future of aerial robotic manipulators, IEEE Transactions on Robotics 38 (1) (2021) 626–645. [5] H. Sun, L. Dai, P. Wang, An efficient moving obstacle avoidance scheme for uavs via output feedback robust mpc, IEEE Transactions on Aerospace and Electronic Systems 60 (5) (2024) 6199–6212.
+
+25 [6] B. Lindqvist, S. S. Mansouri, A.-a. Agha-mohammadi, G. Nikolakopoulos, Nonlinear mpc for collision avoidance and control of uavs with dynamic obstacles, IEEE robotics and automation letters 5 (4) (2020) 6001–6008. [7] H. Ahn, J. Park, H. Bang, Y. Kim, Model predictive control-based multirotor three-dimensional motion planning with point cloud obstacle, Journal of Aerospace Information Systems 19 (3) (2022) 179–193. [8] F. AlMahamid, K. Grolinger, Agile dqn: adaptive deep recurrent attention reinforcement learning for autonomous uav obstacle avoidance, Scientific Reports 15 (1) (2025) 18043. [9] T. Zhang, J. Lei, Y. Liu, C. Feng, A. Nallanathan, Trajectory optimization for uav emergency communication with limited user equipment energy: A safe-dqn approach, IEEE Transactions on Green Communications and Networking 5 (3) (2021) 1236–1247. [10] H. Alzorgan, A. Razi, A. J. Moshayedi, Actuator trajectory planning for uavs with overhead manipulator using reinforcement learning, in: 2023 IEEE 34th Annual International Symposium on Personal, Indoor and Mobile Radio Communications (PIMRC), IEEE, 2023, pp. 1–6. [11] Y. Wang, C. Yang, Y. Wen, Y. Liu, Y. Qiao, Critic-guided decision transformer for offline rein-forcement learning, in: Proceedings of the AAAI Conference on Artificial Intelligence, Vol. 38, 2024, pp. 15706–15714. [12] P. Agarwal, A. A. Rahman, P.-L. St-Charles, S. J. Prince, S. E. Kahou, Transformers in rein-forcement learning: a survey, arXiv preprint arXiv:2307.05979 (2023). [13] M. Elrod, N. Mehrabi, R. Amin, M. Kaur, L. Cheng, J. Martin, A. Razi, Graph based deep reinforcement learning aided by transformers for multi-agent cooperation, arXiv preprint arXiv:2504.08195 (2025). [14] N. Mehrabi, S. P. H. Boroujeni, J. Hofseth, A. Razi, L. Cheng, M. Kaur, J. Martin, R. Amin, Adaptive data transport mechanism for uav surveillance missions in lossy environments, in: 2025 IEEE 22nd Consumer Communications & Networking Conference (CCNC), IEEE, 2025, pp. 1–4. [15] S. C. Barakou, C. S. Tzafestas, K. P. Valavanis, A review of real-time implementable cooperative aerial manipulation systems, Drones 8 (5) (2024) 196. [16] L. Li, F. Wang, G. Qi, Y. Gao, H. Yan, Multi objective distributed mpc optimization for uav swarm in low-altitude traffic environments, Unmanned Systems (2025). [17] D. Lee, H. Seo, D. Kim, H. J. Kim, Aerial manipulation using model predictive control for opening a hinged door, in: 2020 IEEE International Conference on Robotics and Automation (ICRA), IEEE, 2020, pp. 1237–1242. [18] Q. Liu, Y. Liu, Z. Chen, K. Guo, X. Yu, Y. Zhang, L. Guo, A compact aerial manipulator: Design and control for dexterous operations, Journal of Intelligent & Robotic Systems 110 (2) (2024) 66. [19] T. Hui, M. Fumagalli, Static-equilibrium oriented interaction force modeling and control of aerial manipulation with uni-directional thrust multirotors, in: 2023 IEEE/ASME International Con-ference on Advanced Intelligent Mechatronics (AIM), IEEE, 2023, pp. 452–459. [20] M. A. Arshad, J. Ahmed, H. Bang, Quadrotor path planning and polynomial trajectory generation using quadratic programming for indoor environments, Drones 7 (2) (2023) 122. [21] Y. Jung, B.-S. Oh, Dc-rrt*: Dubins-guided curvature rrt* for 3d path planning of unmanned aerial vehicles, IEEE Access (2025). [22] S. Liu, P. Liu, Benchmarking and optimization of robot motion planning with motion planning pipeline, The International Journal of Advanced Manufacturing Technology 118 (3) (2022) 949– 961. [23] H. Yan, X. Fu, Dynamic path planning of uav based on kf-rrt algorithm, in: 2023 IEEE 12th Data Driven Control and Learning Systems Conference (DDCLS), IEEE, 2023, pp. 1348–1352. [24] D. Chaikalis, V. Goncalves, N. Evangeliou, A. Tzes, F. Khorrami, Safe aerial manipulator maneu-vering and force exertion via control barrier functions, arXiv preprint arXiv:2309.07709 (2023). [25] Y. Bai, H. Zhao, X. Zhang, Z. Chang, R. J¨ antti, K. Yang, Toward autonomous multi-uav wireless network: A survey of reinforcement learning-based approaches, IEEE Communications Surveys & Tutorials 25 (4) (2023) 3038–3067. [26] F. AlMahamid, K. Grolinger, Autonomous unmanned aerial vehicle navigation using reinforce-
+
+26 ment learning: A systematic review, Engineering Applications of Artificial Intelligence 115 (2022) 105321. [27] S. P. H. Boroujeni, A. Razi, Ic-gan: An improved conditional generative adversarial network for rgb-to-ir image translation with applications to forest fire monitoring, Expert Systems with Applications 238 (2024) 121962. [28] T. Zhang, Q. Zhou, Y. Zheng, H. Yu, Improved proximal policy optimization for uav tracking in complex environments, Knowledge-Based Systems (2025) 113627. [29] M. H. Lee, J. Moon, Deep reinforcement learning-based model-free path planning and collision avoidance for uavs: A soft actor–critic with hindsight experience replay approach, ICT Express 9 (3) (2023) 403–408. [30] S. Dankwa, W. Zheng, Twin-delayed ddpg: A deep reinforcement learning technique to model a continuous movement of an intelligent robot agent, in: Proceedings of the 3rd international conference on vision, image and signal processing, 2019, pp. 1–5. [31] H. Alzorgan, A. Razi, Monte carlo beam search for actor-critic reinforcement learning in contin-uous control, arXiv preprint arXiv:2505.09029 (2025). [32] S. Hu, L. Shen, Y. Zhang, Y. Chen, D. Tao, On transforming reinforcement learning with trans-formers: The development trajectory, IEEE Transactions on Pattern Analysis and Machine In-telligence 46 (12) (2024) 8580–8599. [33] A. Vahidi-Moghaddam, S. P. H. Boroujeni, I. Jebellat, E. Jebellat, N. Mehrabi, Z. Li, From shadow to light: Toward safe and efficient policy learning across mpc, deepc, rl, and llm agents, arXiv preprint arXiv:2510.04076 (2025). [34] X. Wang, Z. Chen, B. Jiang, J. Tang, B. Luo, D. Tao, Beyond greedy search: Tracking by multi-agent reinforcement learning-based beam search, IEEE Transactions on Image Processing 31 (2022) 6239–6254. [35] N. Mehrabi, S. P. H. Boroujeni, A. Razi, Turbo-irl: Enhancing multi-agent systems using turbo decoding-inspired deep maximum entropy inverse reinforcement learning, Expert Systems with Applications (2025) 128754. [36] E. H. Sumiea, S. J. Abdulkadir, H. S. Alhussian, S. M. Al-Selwi, A. Alqushaibi, M. G. Ragab, A. M. Fayyaz, Deep deterministic policy gradient-model-agnostic meta-learning framework: Effi-cient adaptation in continuous control tasks, Results in Engineering (2025) 105139. [37] J. Beck, R. Vuorio, E. Z. Liu, Z. Xiong, L. Zintgraf, C. Finn, S. Whiteson, A survey of meta-reinforcement learning, arXiv preprint arXiv:2301.08028 (2023). [38] B. He, S. Wang, Y. Liu, Underactuated robotics: a review, International Journal of Advanced Robotic Systems 16 (4) (2019) 1729881419862164. [39] A. Borisov, I. S. Mamaev, Rigid body dynamics, Vol. 52, Walter de Gruyter GmbH & Co KG, 2018. [40] S. Edelkamp, S. Schr¨ odl, Heuristic search: theory and applications, Elsevier, 2011. [41] Y. Yu, Y. Liu, J. Wang, N. Noguchi, Y. He, Obstacle avoidance method based on double dqn for agricultural robots, Computers and electronics in agriculture 204 (2023) 107546. [42] P. Kumar, R. Misra, et al., Arddqn: Attention recurrent double deep q-network for uav coverage path planning and data harvesting, arXiv preprint arXiv:2405.11013 (2024). [43] M. Towers, A. Kwiatkowski, J. Terry, J. U. Balis, G. De Cola, T. Deleu, M. Goul˜ ao, A. Kallinteris, M. Krimmel, A. KG, et al., Gymnasium: A standard interface for reinforcement learning envi-ronments, arXiv preprint arXiv:2407.17032 (2024). [44] R. S. Sutton, A. G. Barto, et al., Reinforcement learning: An introduction, Vol. 1, MIT press Cambridge, 1998. [45] Y. Liu, B. Zhou, T. Pang, G. Fan, X. Zhang, Hybrid fusion for battery degradation diagnostics using minimal real-world data: Bridging laboratory and practical applications, eTransportation (2025) 100446. [46] S. P. H. Boroujeni, N. Mehrabi, F. Afghah, C. P. McGrath, D. Bhatkar, M. A. Biradar, A. Razi, Toward ai-driven fire imagery: Attributes, challenges, comparisons, and the promise of vlms and llms, Machine Learning with Applications (2025) 100763. 
+
+27 [47] Q. Zhao, Y. Lu, M. J. Kim, Z. Fu, Z. Zhang, Y. Wu, Z. Li, Q. Ma, S. Han, C. Finn, et al., Cot-vla: Visual chain-of-thought reasoning for vision-language-action models, in: Proceedings of the Computer Vision and Pattern Recognition Conference, 2025, pp. 1702–1713. [48] S. P. H. Boroujeni, N. Mehrabi, H. Alzorgan, M. Fazeli, A. Razi, All you need for object detection: From pixels, points, and prompts to next-gen fusion and multimodal llms/vlms in autonomous vehicles, Image and Vision Computing (2026) 105944. 
+
+28
