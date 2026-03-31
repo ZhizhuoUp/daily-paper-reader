@@ -1,0 +1,342 @@
+Title: Serialized Red-Green-Gray: Quicker Heuristic Validation of Edges in Dynamic Roadmap Graphs
+
+URL Source: https://arxiv.org/pdf/2603.28674v1
+
+Published Time: Tue, 31 Mar 2026 02:25:21 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+# Serialized Red-Green-Gray: Quicker Heuristic Validation of Edges in Dynamic Roadmap Graphs 
+
+Yulie Arad 1[0009 −0005 −8033 −2631] , Stav Ashur 1[0000 −0003 −0533 −8978] , Marta Markowicz 1[0009 −0007 −9486 −4801] , James D. Motes 1[0000 −0002 −9553 −7331] , Marco Morales 1,2[0000 −0003 −1824 −2350] , and Nancy M. Amato 1[0000 −0001 −5817 −5290]  
+
+> 1
+
+Siebel School of Computing and Data Science, University of Illinois, 201 N. Goodwin Avenue, Urbana, IL 61801, USA 
+
+{arad2,stava2,martasm2,jmotes2,namato}@illinois.edu  
+
+> 2
+
+Department of Computer Science, Instituto Tecnológico Autónomo de México (ITAM), Mexico City, 01080, México 
+
+Abstract. Motion planning in dynamic environments, such as robotic warehouses, requires fast adaptation to frequent changes in obstacle poses. Traditional roadmap-based methods struggle in such settings, re-lying on inefficient reconstruction of a roadmap or expensive collision de-tection to update the existing roadmap. To address these challenges we introduce the Red–Green–Gray (RGG) framework, a method that builds on SPITE to quickly classify roadmap edges as invalid (red), valid (green), or uncertain (gray) using conservative geometric approx-imations. Serial RGG provides a high-performance variant leveraging batch serialization and vectorization to enable efficient GPU accelera-tion. Empirical results demonstrate that while RGG effectively reduces the number of unknown edges requiring full validation, SerRGG achieves a 2–9x speedup compared to the sequential implementation. This com-bination of geometric precision and computational speed makes SerRGG highly effective for time-critical robotic applications. 
+
+Keywords: Motion and Path Planning · Computational Geometry · GPU Acceleration 
+
+## 1 Introduction 
+
+Real-world robotic solutions must often account for changes in the environ-ment such as shifting warehouse configurations or unforeseen human movement which require the system to rapidly update its motion plan. Motion planning roadmaps offer an efficient method for replanning by encoding feasible motions in a queryable graph for a robot within a known environment. However, in dy-namic environments, where obstacles may be moved, added, or removed, these precomputed roadmaps can quickly become outdated. Even minor local changes can invalidate critical portions of the graph, making it unsafe for navigation. A naïve solution is to rebuild the roadmap from scratch after every change, but this is highly inefficient, since most edges typically do not change their valid-ity status. A more practical strategy is to update the roadmap incrementally, 
+
+> arXiv:2603.28674v1 [cs.RO] 30 Mar 2026
+
+revalidating only those components whose status is uncertain. To be effective in real-world applications, such revalidation must occur in real-time, making ex-haustive collision checking impractical and motivating the need for methods that update roadmaps both selectively and efficiently. Several approaches have been proposed to address the challenge of efficiently maintaining roadmaps in dynamic environments. The Dynamic Roadmap (DRM) method [22] partitions the workspace into a grid and maps roadmap compo-nents (nodes and edges) to the workspace cells they intersect. When an obstacle moves, only the affected cells need to be checked, allowing for faster updates. However, DRM’s effectiveness is highly sensitive to grid resolution: fine grids improve precision but require long preprocessing times and scale poorly in mem-ory, while coarse grids lead to excessive conservatism and large numbers of colli-sion checks for uncertain edges. More recently, SPITE [4] introduced the use of swept-volume approximations, over-approximating robot motions with geomet-ric primitives known as cigars. Instead of relying on a fixed spatial discretization, SPITE organizes these approximations within a hierarchical axis-aligned bound-ing box (AABB) tree, enabling efficient broadphase filtering that scales to large, densely connected roadmaps. This approach can quickly validate many edges but, like DRM, it is conservative and often leaves a substantial number of edges unresolved. As the number of uncertain edges grows, the cost of revalidation can quickly dominate planning time, especially in large, densely connected roadmaps. To address this we introduce the Red-Green-Gray (RGG) framework (pre-liminary version presented as a workshop paper [3]), an effective structure for maintaining and updating roadmaps in dynamic environments while still pro-viding accurate geometric reasoning about edge validities. We augment the SPITE framework by using OBBs for more efficient over-approximations and introducing splines as under-approximations for the swept volumes. This dual-approximation approach enables edges to be classified in one of three categories: 
+
+green (guaranteed valid), red (guaranteed invalid), and gray (uncertain). By definitively resolving edges where obstacles either miss the over-approximation or intersect the under-approximation significantly, we significantly reduce re-dundant checks across updates and focus computational resources on ambiguous gray edges. However, while still a significant improvement over predecessors, on very large roadmaps with large numbers of revalidations, collision checking of the geomet-ric primitives can still become slow. Thus we also present Serialized Red-Green-Gray (SerRGG), a serialized and vectorized realization of the RGG framework focused on improving computational speed rather than geometric accuracy. Seri-alization enables the roadmap data to be stored and reloaded efficiently between planning iterations, while vectorization leverages parallel operations to acceler-ate edge validation and state updates. SerRGG also introduces a GPU-friendly spatial subdivision strategy that aligns spatial filtering with batched, fixed ca-pacity parallel computation, yielding a substantially faster implementation than all-pairs checks. Overall, SerRGG preserves the correctness and structure of the RGG framework while providing a faster implementation for real-time applica-tions. In particular, we make the following contributions: 1. Red-Green-Gray Framework: Allows for quick detection of valid (green) and invalid (red) edges to minimize unknown validities (gray). Employs geometric primitives that are more precise representations than the original SPITE and also well suited for serialization 2. Performance: SerRGG achieves substantial runtime improvements over SPITE implementations by using RGG framework and exploiting vectorized com-putation and optimized data handling. 3. Spatially Filtered GPU Validation: SerRGG replaces the tree-based edge checking approach of sequential SPITE with a grid-based, spatially filtered validation strategy designed for GPU execution. By partitioning the workspace into fixed-capacity cells, SerRGG avoids global all-pairs enumeration while retaining high parallel throughput. 4. Empirical Validation: We present a comprehensive experimental evaluation demonstrating RGG’s and SerRGG’s speedups and accuracy across a range of dynamic environments and benchmark scenarios. 
+
+## 2 Related Work 
+
+2.1 Sampling-Based Motion Planning 
+
+Roadmap graphs were popularized for robot motion planning with the intro-duction of the Probabilistic Roadmap algorithm (PRM) [14], which gave rise to a host of sampling-based motion planning (SBMP) algorithms. See [24] and references therein for a comprehensive review of SBMP methods. Some SBMP algorithms, like PRM, construct a roadmap to efficiently answer multiple motion planning queries for a single robot in a fixed environment. Others, like LazyPRM [7] and RRT [20,16], are designed to answer a single query, making them useful building blocks for many algorithms used in dynamic settings. 
+
+2.2 Dynamic Roadmaps 
+
+Dynamic roadmap graphs that can be updated as obstacles change position were introduced by Leven and Hutchinson [22]. Their algorithm partitions the workspace using a grid, and maps each grid cell to the nodes and edges that intersect it, that is, those associated with robot configurations occupying some of the cell’s volume. When an obstacle moves, only the roadmap components in the cells intersected by the obstacle’s axis-aligned bounding box (AABB) are re-validated. This dynamic roadmap, commonly known as DRM, was later im-plemented and tested by Kallmann and Matari` c [13], who showed it is more efficient in answering motion planning queries in a modified environment than RRT. Yang et al. [28] create a hierarchical DRM for articulated robots, which o1o2(a) Fixed-base manipulator o2o1 (b) Mobile robot 
+
+Fig. 1: Examples of outer- and inner-approximations of swept volumes corre-sponding to roadmap edges. A manipulator link and a mobile robot are over-approximated by oriented bounding boxes (pink) and under-approximated by splines (dark blue). Obstacles are over-approximated by OBBs (gray) and under-approximated by oval shapes (light blue). In (a), o1 yields a gray edge (invalid) and o2 yields a green edge. In (b), o1 yields a gray edge (valid) and o2 yields a red edge. uses the hierarchy induced by the ordering of the bodies composing the robot to efficiently update sets of nodes and edges in a grid roadmap. The SPITE method [4], which forms the basis for this work, sought to overcome the limitations of grid-based dynamic roadmaps by using different geometries. By approximating the swept volumes of the robot’s motions using primitives known as cigars (or line-swept spheres) and storing them in an AABB tree for fast retrieval. This approach was shown to result in improved motion planning runtimes when com-pared to DRM, RRT, and LazyPRM. 
+
+2.3 Geometric Approximations and Collision Detection 
+
+Proximity queries and collision detection methods are fundamental to motion planning [12] and many other algorithmic fields, and have been widely studied [23]. Various approaches have been proposed to compute or approximate geomet-ric volumes, and swept volumes in particular [1], which can be used accelerate collision detection [18,19]. [9] introduces a weighted Euclidian distance metric that can be calibrated to approximate swept volume by using mean swept vol-ume per joint motion. More recent approaches [8] use deep learning to speed up swept volume computations, though they introduce up to a 10% error rate. 2.4 Serialization-based Acceleration in Motion Planning 
+
+Hardware architectures that support data-parallel computation, such as GPUs and SIMD-enabled CPUs, have been utilized to accelerate motion planning al-gorithms. Most works focus on the collision detection aspect of motion planning which is both the bottleneck in many motion planning settings [15] and of a geometric nature, making serialization highly applicable. Pan and Manocha [25] gave a standalone GPU-based collision detection algorithm. Bialkowski et al. [6] designed massively parallelized versions of RRT and RRT*, and Thomason et al. [27] approximated the robot and workspace objects with spheres and used SIMD operations, both focused on collision checking acceleration and achieved signifi-cant speed ups over non-parallelized motion planning algorithms. Le et al. [21] recently presented a fully vectorized motion planning algorithm. In preliminary comparisons with VAMP, we encountered practical limitations in environments requiring large numbers of spheres for accurate geometric representations. 
+
+## 3 Preliminaries 
+
+3.1 Motion Planning Concepts and Notation 
+
+A motion planning problem consists of an environment (workspace) W contain-ing a set of obstacles O, a robot r and start and goal configurations, s and t,where the aim is to find a valid path for r from configuration s to configuration 
+
+t. Let R = ( V, E ) be a roadmap graph in the implicit configuration space Cspace 
+
+induced by r operating in W . We refer to the set V ∪ E, consisting of all nodes and edges of R, as the roadmap components . This unified view is justified by the fact that nodes may be treated as degenerate edges in our framework. 
+
+3.2 Swept Volumes and Approximations 
+
+While roadmap edges are continuous curves in Cspace , most algorithms approxi-mate them into discrete sequences of configurations. We assume that every edge 
+
+e ∈ E is composed of || e||  
+
+> ε
+
+configurations, where || e|| is the length of the edge, and ε > 0 is the resolution parameter, and denote the set cfg (e).The forward kinematics function 
+
+FK : Cspace −→ P (R3)
+
+maps sequences of DOF s ( Cspace coordinates) to configurations of r in W . With some abuse of notation, we also use FK to mean its natural extension for sets 
+
+e ⊆ Cspace ,
+
+FK : ( e) = [
+
+> c∈cfg (e)
+
+FK (c),and also the mapping of coordinates of objects from O to their 3D vol-umes. We refer to the workspace volume produced by the forward kinematics mapping as a swept volume , even when the input is a single configuration in 
+
+Cspace . Throughout the paper we discuss two types of approximations of geome-tries, called outer- and inner- approximations. An outer-approximation (inner-approximation) of a compact set C ⊆ R3 is a superset (subset) of C, that is, a set C′ such that C ⊆ C′ (C′ ⊆ C). 
+
+## 4 Method 
+
+This section details the RGG framework and its vectorized implementation, Se-rialized RGG (SerRGG). We begin by introducing the RGG framework, de-signed to identify and label graph components as either invalid or valid (or of unknown validity) using heuristic geometric subroutines, thereby avoiding re-dundant, fine-grained collision checks. To support this, we describe our methods for approximating the robot’s swept volumes and workspace obstacles using ge-ometric primitives that are both computationally efficient and compatible with vectorized computations. Finally, we explain how these approximations are se-rialized to perform optimized, massively parallelized intersection checks on the GPU, enabling fast roadmap updates. 
+
+4.1 The Red-Green-Gray Framework 
+
+RGG uses two types of geometric heuristics to quickly determine the validity of a subset of a roadmap graph’s nodes and edges. Both subroutines use an ap-proximation of the swept volumes of roadmap components and obstacles, which are created during preprocessing and stored in AABB Trees. One subroutine checks for intersections (or lack thereof) between outer-approximations of both the obstacles and swept volumes of the robot, and the other performs similar checks for inner-approximations. When an obstacle moves, its approximations are collision checked against the approximations of roadmap components. An intersection of the inner-approximations of the obstacle and component means the component is invalid (i.e., red), while no intersection between their outer-approximations means it is valid (i.e., green). If the outer-approximations intersect but the inner-approximations do not, the edge is labeled as having unknown validity (gray). See Figure 1 for examples. This laziness avoids unnecessary fine-grained (and computationally expensive) collision checking if the obstacle continues its motion or another obstacle moves in to invalidate the component before its validity needs to be assessed, say, for a lazy query. 
+
+4.2 Swept Volume Approximations 
+
+Our choices of approximation methods were driven by three different optimiza-tion objectives. The first one is choosing approximations that can be easily se-rialized. The other objectives are as follows: Let x ∈ V ∪ E be a component of R with outer-approximation x+ and inner-approximation x−, and let o be an obstacle in W with outer-approximation o+ and inner-approximation o−.For every such x and o, we want to minimize the time spent on the collision detection/proximity queries (x+, o +) and (x−, o −), while minimizing 
+
+|1[x+ ∩ o+̸ = ∅] − 1[FK (x) ∩ FK (o)̸ = ∅]|
+
+and 
+
+|1[x− ∩ o−̸ = ∅] − 1[FK (x) ∩ FK (o)̸ = ∅]|,
+
+where 1[X] is the indicator function of event X. These latter terms are for-mal representations of the objective of capturing intersections of the underlying volumes using their approximations. While SPITE uses line-swept spheres, also known as cigars or capped cylin-ders, to over-approximate the swept volume of nodes and edges, here we use an Oriented Bounding Box (OBB) to give a tighter approximation. For each body Di of the robot, we construct a point cloud P from its intermediates as in SPITE and approximate the optimal volume OBB [5]. These bounding boxes are stored in an AABB tree, further described in [4]. All obstacles are also over-approximated with an OBB. For each edge e, k splines are constructed to under-approximate the swept volume. Splines are a simple geometry that can capture the "skeleton" of a robot’s motion, and intersection tests with splines are significantly faster than volumetric mesh intersections. Each body Db of the robot is under-approximated using a set of spheres S = {si = ( ci, r i)|1 ≤ i ≤ k} such that Ski=1 si ⊆ Db which can be placed manually or algorithmically [26]. The spheres are transformed with 
+
+Db to the intermediate configurations along e and the centers of copies of every sphere si are sequentially connected, forming a spline Le,i .The complexity of Le,i depends on the length of e and the resolution of the roadmap. Dense discretization or long edges result in high-complexity splines that significantly increase the computational cost of intersection tests. We there-fore use a curve simplification algorithm by Agarwal et al. [2] to find “shortcuts” that maintain the under-approximation property. For two indices j < p in the spline, consider the line segment l = ci,j ci,p between two copies of si in the se-quence associated with e. Intermediate indices m, such that j < m < p , can be removed from the spline if l satisfies the following criterion: 
+
+max  
+
+> j<m<p
+
+(dist (l, c i,m )) < r i
+
+The shortcutted splines Le = {Le,i |1 ≤ i ≤ k} for all the robot bodies form the under approximation for the swept volume along an edge. As with the over-approximations, all of the splines are stored in an AABB tree. All obstacles are under-approximated with spheres. The over- and under- approximations are used together to form the RGG paradigm or roadmap updates, summarized in Algorithm 1. Figure 2 depicts the different approximations for the given roadmap. Given an obstacle o whose pose changes by transformation t, the over-approximation AABB tree is queried (a) (b) (c) 
+
+Fig. 2: Gray objects denote static obstacles while light blue objects denote dy-namic obstacles. (a) Initial roadmap validation with the obstacle in its starting position. (b) Over-approximations of the edges represented as OBBs in dark blue. (c) Under-approximations of the edges represented as splines in light blue.   
+
+> (a) (b) (c)
+
+Fig. 3: Light blue objects denote dynamic obstacles. (a) The edges corresponding to gray OBBs will be processed by SerRGG. (b) Red splines correspond to edges that are invalid, whereas gray splines are unknown (c) Final edge classification produced by SerRGG, where red edges are invalid, gray edges remain unknown, and green edges are valid. with the obstacle’s new OBB denoted b. For all nodes and edges with OBBs that intersect b, we mark them as unknown (gray). Next we query the under-approximation AABB tree with the obstacle’s spheres, and set any intersecting nodes or edges to invalid (red). See Figure 3. If not running the lazy version of the algorithm, any edges remaining gray from the first step have their validity determined with a full collision check. If running the lazy version, the edge remains gray and the determination of its validity is left for query time. 
+
+4.3 Serial RGG 
+
+To improve the computational speed of RGG updates, we present Serialized RGG (SerRGG). SerRGG leverages vectorized operations on the GPU to accelerate the heuristic collision checking of RGG. Each point in the workspace is represented as a three-dimensional vector in 
+
+R3. Each OBB is represented by its 8 corner points and thus stored in a 8 × 3Algorithm 1: Roadmap Update with SPITE RGG 
+
+input: Obstacle o, Transformation t, Boolean lazy  
+
+> 1
+
+RevalidateOldIntersections()  
+
+> 2
+
+o.UpdateLocation( t) 
+
+> 3
+
+b ← AABB _Over (o) 
+
+> 4
+
+invOverC ← T ree _Over .GetIntersectingObjects( b) 
+
+> 5
+
+for c ∈ invOverC do  
+
+> 6
+
+if c.IsValid() then  
+
+> 7
+
+c.MarkUnknown() # Edge over intersections marked unknown  
+
+> 8
+
+c.intersectionList.add( o) 
+
+> 9
+
+s ← AABB _U nder (o) 
+
+> 10
+
+invU nderC ← T ree _U nder .GetIntersectingObjects( s) 
+
+> 11
+
+for c ∈ invU nderC do  
+
+> 12
+
+c.MarkInvalid() # Edge under intersections marked invalid  
+
+> 13
+
+if not lazy then  
+
+> 14
+
+for c ∈ invOverC do  
+
+> 15
+
+if c.IsUnknown() then  
+
+> 16
+
+if CD( c,o) == free and not IsIntersectedByObstacles( c) then  
+
+> 17
+
+c.M arkV alid ()  
+
+> 18
+
+else  
+
+> 19
+
+c.M arkInvalid () 
+
+matrix. Splines are stored as a sequence of line segments, where each segment is defined by two endpoints in R3, hence a 2 × 3 array. For a spline with up to 
+
+K segments, we allocate a K × 2 × 3 block to hold all endpoints. This uniform allocation ensures that all splines share the same memory layout, even when individual splines contain fewer than K segments. Formally, we maintain the following fixed-dimension matrix stored as a Py-Torch Tensor: 
+
+– E+ ∈ RN ×B×8×3, storing the oriented bounding boxes (OBBs) of each edge for each robot body (outer approximations). 
+
+– O+ ∈ RM ×8×3, storing OBBs of obstacles (outer approximations). 
+
+– E− ∈ RN ×B×S×K×2×3, storing spline segments derived from medial-sphere approximations of edges (inner approximations). 
+
+– O− 
+
+> c
+
+∈ RM ×C×3 and O− 
+
+> r
+
+∈ RM ×1×1, storing the centers and radii of obstacle spheres (inner approximations). Here N is the number of edges in the roadmap, M the number of obstacles, B
+
+the number of robot bodies, S the number of splines per body, K the maximum number of segments used to represent each spline, and C the number of spheres per obstacle. 
+
+Offline storage. All of these matrices are constructed once in a canonical reference pose and stored persistently on the GPU. This avoids repeated data transfers and ensures coalesced memory access during queries. 
+
+Online updates. When obstacles move, we do not rebuild the geometries. Instead, only the new transformations are uploaded to the GPU. The correspond-ing rows of the obstacle matrices ( O+, O− 
+
+> c
+
+) are updated in place by multiplying with the transformation matrices, while radii O− 
+
+> r
+
+remain unchanged. Again, this is done in order to avoid repeated data transfers. 
+
+Intersection queries. Once obstacle poses are updated, intersection kernels are launched over the serialized matrices, performing batched geometric inter-section tests between roadmap elements and obstacles in parallel on the GPU. 
+
+– OBB–OBB queries between E+ and O+ to certify edges as green (valid). 
+
+– Spline–Sphere queries between E− and (O− 
+
+> c
+
+, O− 
+
+> r
+
+) to certify edges as red 
+
+(invalid). 
+
+– Remaining edges are labeled gray .All operations are vectorized across the N edges and M obstacles, exploiting the serialized format for maximum GPU parallelism. 
+
+Serialized OBB collision detection. 
+
+The Separating Axis Theorem (SAT) is the standard approach for detecting intersections between oriented bounding boxes (OBBs) and other convex poly-topes [11]. SAT leverages the fundamental principle that two convex objects are disjoint if and only if there exists a separating plane between them. For OBBs, this reduces to testing projections onto 15 specific axes: the face nor-mals of both boxes (6 axes) and cross-products of their edge directions (9 axes) [10]. SAT-based testing operates directly on the stored geometric representation, avoiding per-query transformations and yielding substantially faster validation when geometric data are reused across iterations. Therefore, our serialized im-plementation adopts the SAT-based approach, as it provides superior runtime performance while maintaining accuracy. 
+
+Spatially filtered many-to-many checking. In principle, validating a roadmap in a dynamic environment requires testing roadmap edges against nearby obstacles. A naive approach would perform an all-pairs check between 
+
+N edges and M obstacles, resulting in up to N × M intersection tests per up-date. While highly parallel, this strategy quickly becomes wasteful when most edge-obstacle pairs are spatially irrelevant. To reduce unnecessary work, we introduce a lightweight one-layer grid data structure that spatially partitions the workspace. Each grid cell is sized to con-tain approximately the maximum number of primitives that can be efficiently processed by a GPU kernel without oversubscription. Roadmap edges are as-signed to grid cells based on their spatial extent, and when obstacles move they are tested for intersection against grid cells. If an obstacle intersects a cell, only the edges contained in that cell are scheduled for detailed intersection testing. In our GPU implementation, this results in a filtered many-to-many struc-ture. Kernels are launched only for (e, o ) pairs where edge e resides in a grid cell intersected by obstacle o. Within each kernel, we perform the relevant OBB-OBB and spline-sphere checks in parallel. This preserves the brute-force parallelism within each cell, while avoiding global all-pairs enumeration. This design has two advantages. First, the regular matrix representation of geometric approximations (OBBs as 8 × 3, splines as K × 2 × 3) remains un-changed, allowing efficient vectorized GPU execution. Second, by spatially filter-(a) (b) (c) 
+
+Fig. 4: Gray objects denote static obstacles while light blue objects denote dy-namic obstacles. (a) The region of the spatial grid affected by the obstacle’s motion is highlighted in orange. (b) Roadmap edges associated with these grid cells are highlighted in orange and processed by SerRGG. (c) Final edge clas-sification produced by SerRGG, where ref edges are invalid, gray edges remain unknown, and green edges are valid. ing interactions and restricting updates to cells affected by moving obstacles, we significantly reduce the number of intersection tests performed per update. As a result, our method balances aggressive parallelism with spatial locality, limit-ing computation to regions of the roadmap that are truly affected by dynamic changes. Our spatial filtering strategy is inspired by grid-based methods used in DRM, and by the AABB-tree-based filtering employed in SPITE, and is used here primarily for efficient GPU workload partitioning rather than to replace or approximate swept volumes. Figure 4 illustrates how obstacle motion activates a subset of grid cells and corresponding roadmap edges. 
+
+Key advantage. By storing both edge and obstacle approximations in dense matrix form, and updating only the transforms of moved obstacles, SerRGG achieves millisecond-scale updates. Our method reduces the number of “un-known” edges while retaining the conservative guarantees required for safety. 
+
+## 5 Experiments 
+
+We evaluate the roadmap update performance of RGG and SerGG against the original SPITE approach (outer-approximations only) for a simple rigid body robot and a 6-body articulated manipulator. In each scenario, a probabilistic roadmap (PRM) is constructed offline and the outer and inner-approximations are generated to support RGG, SerRGG, and SPITE. A sequence of random obstacle translation are performed, each triggering an update operation on the environment. We report the time taken to perform the heuristic validation, the remaining unknown validities, and the time taken to compute those remaining validities. For both robot types, we vary the size of the roadmaps to show how the update times scale with roadmap size. For the mobile robot scenario, we also Table 1: Preprocessing Time as a Function of Roadmap Size               
+
+> Nodes 10 100 1000 5000 10000 10000 20000 40000 60000 Edges 79 1204 11624 57148 115216 115069 230436 461054 691736 Preprocessing Time (s) 1.05 6.36 24.33 150.08 129.31 259.54 589.13 1087.74 1672.04
+
+consider roadmap density along with the size and the number of objects being translated between updates. 
+
+Experimental setup. All experiments were run on a desktop computer with an Intel Core i7-14700F processor and an NVIDIA GeForce RTX 4060 GPU with 8 GB of memory. The Parasol Planning Library (PPL [17]) implementations were used for all motion planning functions and algorithms. 
+
+5.1 Mobile Robot Experiments 
+
+We consider a simple unit cube robot navigating a large, open three-dimensional workspace of size 20x20x20. The initial PRM is always built without obstacles in the environment. The preprocessing time to generate the RGG geometries for each roadmap size is shown in Table 1. The roadmap sizes for the experiment are scaled to observe the impact of the roadmap size on RGG and SerRGG, varying node numbers from 10 to 10k. As the roadmap size increases while the environment size remains constant, the roadmap density (number of nodes and edges in a confined area) increases, resulting in more collisions with roadmap components when using the same size obstacles. Because we also scale the obstacle, we can see the independent impact of roadmap density and obstacle size (Table 2). We see that SerRGG generally stays around 800 μ s until the roadmap becomes sufficiently large at 10k nodes and it increases to around 2ms. RGG and SPITE scale linearly with roadmap size anywhere from 13 μ s to to 17 ms for RGG and 10 μ s to to 114 ms for SPITE. The number of unknown edges also scale linearly with the roadmap size, with RGG showing from 12% to 30% reduction in unknown edges as compared to SPITE (Table 2). To isolate the effect of roadmap size independently of obstacle geometry, we perform a roadmap size experiment with a fixed obstacle size of 10 × 1 × 1 (Ta-ble 3). In this setting, the number of roadmap nodes ranges from 5000 to 60000. As the roadmap size increases, the environment dimensions are scaled propor-tionally to maintain comparable roadmap density, this is reported as "factor" in Table 3. We see that SerRGG grows about 200 μs with every increase of roadmap size, whereas RGG grows by about 2000 μs for the first three columns and then plateus around 20000 with an environment of size 20 × 20 × 20 .The study of the impact of the number of obstacles and the size of the obstacles is reported in Table 4. This was tested with both 3 obstacles and 5
+
+obstacles. Each obstacle is the same size and is translated to a new location at each iteration. Roadmaps with 1000 and 10000 nodes were evaluated, along Table 2: Comparing SPITE, RGG and SerRGG for Environment Size 20 ×20 ×20                                                                                                                                                                        
+
+> Nodes Edges Obstacle Size SerRGG Time ( μs) RGG Time ( μs) SerRGG OA Time ( μs) SPITE Time ( μs) Unknown Edges (RGG) Validate RGG Time ( μs) Unknown Edges (OA) Validate OA Time ( μs) 10 79 2×2×2818.0 13.8 558.2 10.2 3.17 605.2 3.62 625.5 100 1204 2×2×2756.9 45.3 610.8 24.9 10.36 1366.9 11.65 1370.2 1000 11624 2×2×2731.0 178.3 571.3 108.0 78.22 5378.2 86.77 5339.2 10000 115216 2×2×2825.4 1252.5 659.7 605.9 563.19 25056.7 634.22 24810.0 10 79 10 ×2×2768.2 22.5 583.0 17.6 9.49 1591.9 13.88 1545.4 100 1204 10 ×2×2829.1 124.5 664.7 122.3 46.88 5756.5 59.21 5704.8 1000 11624 10 ×2×2791.1 704.1 601.3 533.6 284.69 18896.7 359.65 18965.6 10000 115216 10 ×2×21290.6 7174.4 1113.4 4222.5 2015.56 65134.7 2603.98 65660.6 10 79 20 ×2×2742.5 27.2 572.0 22.2 12.58 1810.9 19.79 1854.6 100 1204 20 ×2×2795.5 210.3 630.0 205.0 82.98 8279.3 111.79 8282.1 1000 11624 20 ×2×2863.5 1489.1 688.3 1461.8 528.70 33436.2 675.01 35356.2 10000 115216 20 ×2×21979.1 17318.3 2034.3 13915.7 3881.39 111579.0 4954.85 113253.8
+
+Table 3: Roadmap Size Test Results (Obstacle Size 10 × 1 × 1)
+
+Nodes Edges Obstacle Size SerRGG Time ( μs) RGG Time ( μs) Speedup Brute Force Time ( μs) Unknown Fraction Validate Remaining Time ( μs) Environment Factor 5000 57148 10 × 1 × 1 954.5 2396.1 2.5103 13502471.7 0.0198 80383.6 5 × 20 × 20 110000 115069 10 × 1 × 1 1277.4 5423.8 4.2460 23635076.6 0.0179 125486.8 10 × 20 × 20 220000 230436 10 × 1 × 1 1491.8 7220.9 4.8404 42407585.8 0.0105 142604.1 20 × 20 × 20 240000 461054 10 × 1 × 1 1788.9 7207.1 4.0288 83371215.6 0.0030 87439.3 40 × 20 × 20 260000 691736 10 × 1 × 1 2042.5 7315.1 3.5814 121769499 0.0034 166644.5 60 × 20 × 20 1.5 
+
+with obstacles of size 2 × 2 × 2, 10 × 1 × 1 and 10 × 2 × 2. SerRGG takes around 
+
+1000 μs for every 1000 node experiment, but grows as the size and density of the roadmap grows. This is due the roadmap outgrowing the capacity of a single GPU instruction within the spatial grid regions. Even with this, we still see up to 8x speed up. 
+
+5.2 Manipulator Experiments 
+
+We evaluate RGG and SerRGG on a 6-body articulated manipulator, construct-ing the PRM and the outer and inner-approximations in a fixed 3D environment containing a single obstacle. Results are reported in Table 5. We again see SerRGG begin to offer speedup in the update time once the roadmap increases in size with roadmaps of 1000 and 5000 nodes seeing a roughly 2x speedup (this trend is repeated with SerRGG OA and SPITE). Comparing RGG to SPITE (and SerRGG to SerRGG OA), it is clear to see that the ma-jority of the RGG update time is spent on the inner-approximation intersection checks. When including the additional time spent validating the remaining un-known edges, the total time for RGG and SPITE is near even. With the GPU acceleration of both variants, the total validation time when first applying Ser-RGG is less than SerRGG OA while producing a more informed roadmap after the heuristic validation (as seen in the roughly 15% reduction in the number of unknown edges). Table 4: Number of Obstacles Test Results (Environment 20 × 20 × 20 )                                                                                                                                                        
+
+> Nodes Edges # Obstacles Obstacle Size SerRGG Time ( μs) RGG Time ( μs) Speedup Brute Force Time ( μs) Unknown Fraction Validate Remaining Time ( μs) 1000 11624 32×2×2942 547 0.5807 8618093.6 0.0249 71081 10000 115216 32×2×21617.9 4284.7 2.6483 40917146 0.0177 203030 1000 11624 310 ×1×11020.7 1317 1.2903 8738171 0.0450 131055.6 10000 115216 310 ×1×12874.3 11920.3 4.1472 41164237.6 0.0311 364856.6 1000 11624 310 ×2×21069.3 2218 2.0743 8781372.3 0.0670 211223.7 10000 115216 310 ×2×23646.2 30734.4 8.4292 42120244.7 0.0497 599736.5 1000 11624 52×2×21019 929.1 0.9118 11961060 0.0379 136936.7 10000 115216 52×2×22679.9 8092.8 3.0198 55886801.6 0.0273 418541.5 1000 11624 510 ×1×11213.2 2234.7 1.8420 12002679.7 0.0680 253691.8 10000 115216 510 ×1×15501.9 22687.3 4.1235 56272723.3 0.0486 688820.5 1000 11624 510 ×2×21302.1 3946.9 3.0312 12040866.4 0.0987 389801.9 10000 115216 510 ×2×27015.1 62155.9 8.8603 58070418.9 0.0732 1068508.8
+
+Table 5: Manipulator Test Results                                           
+
+> Nodes Edges Obstacle Size SerRGG Time ( μs) RGG Time ( μs) SerRGG OA Time ( μs) SPITE Time ( μs) Unknown Edges (RGG) Validate RGG Time ( μs) Unknown Edges (OA) Validate OA Time ( μs) 100 255.4 3×3×3645.7 274.9 528.0 125.5 32.81 5478.2 38.35 5860.5 1000 3269 3×3×32062.7 3937.7 795.9 1341.8 300.20 42829.1 358.28 45816.0 5000 227680 3×3×312675.6 26256.6 4110.0 7121.0 1927.03 214432.6 2316.57 235806.1
+
+## 6 Discussion 
+
+Although under-approximations are not strictly required for correctness, our results demonstrate that they provide consistent benefits with minimal overhead. The additional computational cost of using the under-approximations is minimal compared to the reduction in time from preemptively identifying invalid edges. As seen in Table 2, RGG reduces the burden of full collision checks, especially as the total number of potentially unknown edges increases. RGG provides a substantial benefit in reducing the number of unknown edges needing full validation. In sparse roadmaps, the sequential RGG outperforms SerRGG as the GPU provides limited benefit because the parallelism is under-utilized. However, as roadmap density increases, SerRGG demonstrates superior scalability. In particular, SerRGG is most effective with large obstacles or ex-tensive changes in the environment. RGG update times grow with the number of invalidated edges due to its sequential validation process, whereas SerRGG exhibits a much slower growth rate by leveraging vectorized GPU execution. This is demonstrated in Table 2, where SerRGG consistently outperforms the sequential implementation on larger roadmaps, achieving a speedup factor up to 8.75x in scenarios with large obstacles. On very small graphs, SerRGG is limited by GPU transfer overhead; however, once roadmaps reach sufficient scale, it outperforms RGG by an average factor of 4x (Table 3). A similar performance gap is seen when introducing multiple obstacles (Table 4). Since RGG performs edge validation sequentially, its runtime degrades rapidly as obstacle interactions increase, whereas SerRGG’s growth rate is significantly slower. Manipulator experiments further validate this trend, demonstrating that SerRGG’s speedup relative to RGG increases as the roadmap size grows (Table 5). 
+
+## 7 Conclusion 
+
+In this paper, we introduced the Red-Green-Gray (RGG) framework and its serialized, GPU-oriented realization, SerRGG. Collectively, these results demon-strate the strengths of both RGG and SerRGG. The RGG framework introduces a structured edge classification scheme based on geometric over- and under-approximations, enabling selective updates and limiting expensive exact collision checks to ambiguous cases. Building on that geometric foundation, SerRGG fun-damentally changes how revalidation scales as problem complexity increases. By shifting edge validation from a sequential CPU process to a vectorized, batched GPU operation, SerRGG transforms revalidation from a bottleneck into a work-load that scales favorably with roadmap density and obstacle interaction. The consistently low fraction of unknown edges further suggests that shallow updates using only the approximations are sufficient to resolve most edge sta-tuses in practice, limiting the need for expensive followup validation. As roadmap sizes, obstacle counts, and geometric complexity continue to grow in real-world applications these properties position SerRGG as a practical and scalable foun-dation for real-time roadmap revalidation, particularly in settings where frequent environmental changes make repeated full validation infeasible. Future work will include integrating SerRGG into full motion planning pipelines and evaluating its impact on end-to-end planning performance. 
+
+## References                                   
+
+> 1. Abdel-Malek, K., Yang, J., Blackmore, D., Joy, K.I.: Swept volumes: Fun-dation, perspectives, and applications. Int. J. Shape Model. 12 (1), 87– 127 (2006). https://doi.org/10.1142/S0218654306000858 ,https://doi.org/ 10.1142/S0218654306000858
+> 2. Agarwal, P.K., Har-Peled, S., Mustafa, N.H., Wang, Y.: Near-linear time approxi-mation algorithms for curve simplification. Algorithmica 42 (3-4), 203–219 (2005).
+> https://doi.org/10.1007/s00453-005-1165-y
+> 3. Arad, Y., Ashur, S., Amato, N.M.: Quick heuristic validation of edges in dynamic roadmap graphs (2026), https://arxiv.org/abs/2601.20968 , arXiv preprint 4. Ashur, S., Lusardi, M., Markowicz, M., Motes, J., Morales, M., Har-Peled, S., Amato, N.M.: Spite: Simple polyhedral intersection techniques for modified envi-ronments. In: Algorithmic Foundations of Robotics XVI (WAFR) (2024) 5. Barequet, G., Har-Peled, S.: Efficiently approximating the minimum-volume bounding box of a point set in three dimensions. J. Algorithms 38 (1), 91–109 (2001). https://doi.org/10.1006/JAGM.2000.1127 ,https://doi.org/10.1006/ jagm.2000.1127
+> 6. Bialkowski, J., Karaman, S., Frazzoli, E.: Massively parallelizing the RRT and the RRT. In: 2011 IEEE/RSJ International Conference on Intelligent Robots and Systems, IROS 2011, San Francisco, CA, USA, September 25-30, 2011. pp.
+
+3513–3518. IEEE (2011). https://doi.org/10.1109/IROS.2011.6095053 , https: //doi.org/10.1109/IROS.2011.6095053 
+
+7. Bohlin, R., Kavraki, L.E.: Path planning using lazy prm (Apr 2000) 8. Chiang, H.T.L., Faust, A., Sugaya, S., Tapia, L.: Fast swept volume estimation with deep learning. In: International Workshop on the Algorithmic Foundations of Robotics. pp. 52–68. Springer (2018) 9. Dellin, C., Srinivasa, S.: A unifying formalism for shortest path problems with expensive edge evaluations via lazy best-first search over paths with edge selec-tors. In: Proceedings of the international conference on automated planning and scheduling. vol. 26, pp. 459–467 (2016) 10. Ericson, C.: Real-Time Collision Detection. CRC Press, Inc., USA (2004) 11. Gottschalk, S., Lin, M.C., Manocha, D.: Obbtree: a hierarchical structure for rapid interference detection. In: Proceedings of the 23rd Annual Conference on Computer Graphics and Interactive Techniques. p. 171–180. SIGGRAPH ’96, Association for Computing Machinery, New York, NY, USA (1996). https://doi.org/10.1145/ 237170.237244 , https://doi.org/10.1145/237170.237244 
+
+12. Jiménez, P., Thomas, F., Torras, C.: Collision detection algorithms for motion planning. In: Robot motion planning and control, pp. 305–343. Springer (2005) 13. Kallman, M., Mataric, M.: Motion planning using dynamic roadmaps. vol. 5, pp. 4399–4404 (Apr 2004) 14. Kavraki, L.E., Švestka, P., Latombe, J.C., Overmars, M.H.: Probabilistic roadmaps for path planning in high-dimensional configuration spaces. IEEE Transactions on Robotics and Automation (TRA) 12 (4), 566–580 (Aug 1996) 15. Kleinbort, M., Salzman, O., Halperin, D.: Collision detection or nearest-neighbor search? on the computational bottleneck in sampling-based motion planning. In: Goldberg, K., Abbeel, P., Bekris, K.E., Miller, L. (eds.) Algorithmic Founda-tions of Robotics XII, Proceedings of the Twelfth Workshop on the Algorithmic Foundations of Robotics, WAFR 2016, San Francisco, California, USA, Decem-ber 18-20, 2016. Springer Proceedings in Advanced Robotics, vol. 13, pp. 624– 639. Springer (2016). https://doi.org/10.1007/978-3-030-43089-4_40 , https: //doi.org/10.1007/978-3-030-43089-4_40 
+
+16. Kuffner, J.J., LaValle, S.M.: RRT-connect: An efficient approach to single-query path planning. pp. 995–1001 (2000) 17. Lab, P.: Parasol planning library (PPL). https://github.com/parasollab/ open-ppl (2025) 18. Larsen, E., Gottschalk, S., Lin, M., Manocha, D.: Fast proximity queries with swept sphere volumes. Technical Report TR99-018, University of N. Carolina, Chapel Hill, CA (1999) 19. Larsen, E., Gottschalk, S., Lin, M.C., Manocha, D.: Fast distance queries with rectangular swept sphere volumes. In: Proceedings of the 2000 IEEE International Conference on Robotics and Automation, ICRA 2000, April 24-28, 2000, San Fran-cisco, CA, USA. pp. 3719–3726. IEEE (2000). https://doi.org/10.1109/ROBOT. 2000.845311 , https://doi.org/10.1109/ROBOT.2000.845311 
+
+20. Lavalle, S.M.: Rapidly-exploring random trees: A new tool for path planning. Tech. rep., Iowa State University (1998) 21. Le, A.T., Pompetzki, K., Carvalho, J., Watson, J., Urain, J., Biess, A., Chalvatzaki, G., Peters, J.: Global tensor motion planning. IEEE Robotics Autom. Lett. 10 (7), 7302–7309 (2025). https://doi.org/10.1109/LRA.2025.3575307 , https://doi. org/10.1109/LRA.2025.3575307 22. Leven, P., Hutchinson, S.: A framework for real-time path planning in changing en-vironments. Int. J. Robotics Res. 21 (12), 999–1030 (2002). https://doi.org/10. 1177/0278364902021012001 , https://doi.org/10.1177/0278364902021012001 
+
+23. Lin, M.C., Manocha, D., Kim, Y.J.: Collision and proximity queries. In: Handbook of discrete and computational geometry, pp. 1029–1056. Chapman and Hall/CRC (2017) 24. Orthey, A., Chamzas, C., Kavraki, L.E.: Sampling-based motion planning: A com-parative review. CoRR abs/2309.13119 (2023). https://doi.org/10.48550/ ARXIV.2309.13119 , https://doi.org/10.48550/arXiv.2309.13119 
+
+25. Pan, J., Manocha, D.: Gpu-based parallel collision detection for fast motion plan-ning. Int. J. Robotics Res. 31 (2), 187–200 (2012). https://doi.org/10.1177/ 0278364911429335 , https://doi.org/10.1177/0278364911429335 
+
+26. Stolpner, S., Kry, P., Siddiqi, K.: Medial spheres for shape approximation. IEEE transactions on pattern analysis and machine intelligence 34 (6), 1234–1240 (2011) 27. Thomason, W., Kingston, Z., Kavraki, L.E.: Motions in microseconds via vec-torized sampling-based planning. In: 2024 IEEE International Conference on Robotics and Automation (ICRA). pp. 8749–8756 (2024). https://doi.org/10. 1109/ICRA57147.2024.10611190 
+
+28. Yang, Y., Merkt, W., Ivan, V., Li, Z., Vijayakumar, S.: HDRM: A resolution com-plete dynamic roadmap for real-time motion planning in complex scenes. IEEE Robotics and Automation Letters 3(1), 551–558 (2017)

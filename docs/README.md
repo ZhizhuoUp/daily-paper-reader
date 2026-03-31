@@ -6,70 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-03-30
-- 运行时间：2026-03-30 20:14:25 UTC
+- 最新运行日期：2026-03-31
+- 运行时间：2026-03-31 20:16:54 UTC
 - 运行状态：成功
-- 本次总论文数：16
-- 精读区：5
+- 本次总论文数：17
+- 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日聚焦 16 篇机器人前沿进展，重点突破非线性控制的安全学习与大规模仓储的多智能体路径规划。
-核心结论指出，通过 RNN 建模可显著提升 NMPC 的安全性，而学习引导的优先规划则是解决终身多智能体调度的高效方案。
-建议关注深度学习与经典控制框架的融合趋势，以应对复杂环境下机器人操作的精度与鲁棒性挑战。
-- 详情：[/202603/30/README](/202603/30/README)
+今日精选 17 篇前沿论文，重点攻克空间机器人动态抓取与复杂环境下的安全导航规划。
+满分论文通过帧间相关性实现了极具鲁棒性的空间机械臂操作，而 Hamilton-Jacobi 理论则为移动机器人应急避障提供了高效方案。
+建议关注多智能体协同与自适应控制技术，探索机器人在动态不确定场景下的安全交互潜力。
+- 详情：[/202603/31/README](/202603/31/README)
 
 ### 精读区论文标签
-1. [Towards Safe Learning-Based Non-Linear Model Predictive Control through Recurrent Neural Network Modeling](/202603/30/2603.24503v1-towards-safe-learning-based-non-linear-model-predictive-control-through-recurrent-neural-network-modeling)  
-   标签：评分：9.0/10、query:q2
-   evidence：高控制率下的安全学习型非线性模型预测控制
-2. [Learning-guided Prioritized Planning for Lifelong Multi-Agent Path Finding in Warehouse Automation](/202603/30/2603.23838v1-learning-guided-prioritized-planning-for-lifelong-multi-agent-path-finding-in-warehouse-automation)  
+1. [Learning Smooth and Robust Space Robotic Manipulation of Dynamic Target via Inter-frame Correlation](/202603/31/2603.27537v1-learning-smooth-and-robust-space-robotic-manipulation-of-dynamic-target-via-inter-frame-correlation)  
+   标签：评分：10.0/10、query:profile-1
+   evidence：具有实时响应能力的动态目标空间机器人操作
+2. [SCRAMPPI: Efficient Contingency Planning for Mobile Robot Navigation via Hamilton-Jacobi Reachability](/202603/31/2603.26995v1-scramppi-efficient-contingency-planning-for-mobile-robot-navigation-via-hamilton-jacobi-reachability)  
+   标签：评分：8.0/10、query:q3
+   evidence：带安全约束的轨迹优化
+3. [A Duality-Based Optimization Formulation of Safe Control Design with State Uncertainties](/202603/31/2603.26999v1-a-duality-based-optimization-formulation-of-safe-control-design-with-state-uncertainties)  
+   标签：评分：8.0/10、query:q2
+   evidence：安全控制设计的优化公式
+4. [Safety-Constrained Optimal Control for Unknown System Dynamics](/202603/31/2603.27677v1-safety-constrained-optimal-control-for-unknown-system-dynamics)  
+   标签：评分：8.0/10、query:q2
+   evidence：机器人实验平台的安全约束最优控制
+5. [Nonlinear Trajectory Optimization Models for Energy-Sharing UAV-UGV Systems with Multiple Task Locations](/202603/31/2603.28447v1-nonlinear-trajectory-optimization-models-for-energy-sharing-uav-ugv-systems-with-multiple-task-locations)  
+   标签：评分：8.0/10、query:q3
+   evidence：UAV-UGV系统的非线性轨迹优化
+6. [Serialized Red-Green-Gray: Quicker Heuristic Validation of Edges in Dynamic Roadmap Graphs](/202603/31/2603.28674v1-serialized-red-green-gray-quicker-heuristic-validation-of-edges-in-dynamic-roadmap-graphs)  
    标签：评分：8.0/10、query:q1
-   evidence：仓库自动化中多机器人的无冲突路径规划
-3. [FODMP: Fast One-Step Diffusion of Movement Primitives Generation for Time-Dependent Robot Actions](/202603/30/2603.24806v1-fodmp-fast-one-step-diffusion-of-movement-primitives-generation-for-time-dependent-robot-actions)  
-   标签：评分：8.0/10、query:q8
-   evidence：快速生成具有时间结构的运动基元
-4. [DiffusionAnything: End-to-End In-context Diffusion Learning for Unified Navigation and Pre-Grasp Motion](/202603/30/2603.26322v1-diffusionanything-end-to-end-in-context-diffusion-learning-for-unified-navigation-and-pre-grasp-motion)  
-   标签：评分：8.0/10、query:q6
-   evidence：机器人操作的统一导航和抓取前运动
-5. [Meta-Adaptive Beam Search Planning for Transformer-Based Reinforcement Learning Control of UAVs with Overhead Manipulators under Flight Disturbances](/202603/30/2603.26612v1-meta-adaptive-beam-search-planning-for-transformer-based-reinforcement-learning-control-of-uavs-with-overhead-manipulators-under-flight-disturbances)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：扰动下带悬挂机械臂的无人机规划
+   evidence：动态路图运动规划中对障碍物姿态的快速适应
 
 ### 速读区论文标签
-1. [Learning Actuator-Aware Spectral Submanifolds for Precise Control of Continuum Robots](/202603/30/2603.23044v1-learning-actuator-aware-spectral-submanifolds-for-precise-control-of-continuum-robots)  
-   标签：评分：7.0/10、query:q2
-   evidence：利用谱子流形对连续体机器人进行精确控制
-2. [Optimal Control of Switched Systems Governed by Logical Switching Dynamics](/202603/30/2603.23131v1-optimal-control-of-switched-systems-governed-by-logical-switching-dynamics)  
-   标签：评分：7.0/10、query:q2
-   evidence：逻辑与连续控制的最优协同设计
-3. [Gaze-Regularized Vision-Language-Action Models for Robotic Manipulation](/202603/30/2603.23202v1-gaze-regularized-vision-language-action-models-for-robotic-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：机器人操作的视觉-语言-动作模型
-4. [Planning over MAPF Agent Dependencies via Multi-Dependency PIBT](/202603/30/2603.23405v1-planning-over-mapf-agent-dependencies-via-multi-dependency-pibt)  
+1. [Spectral Decomposition of Inverse Dynamics for Fast Exploration in Model-Based Manipulation](/202603/31/2603.27796v1-spectral-decomposition-of-inverse-dynamics-for-fast-exploration-in-model-based-manipulation)  
+   标签：评分：8.0/10、query:q6
+   evidence：机器人操作序列和可行轨迹规划
+2. [$\mathcal{L}_1$-Certified Distributionally Robust Planning for Safety-Constrained Adaptive Control](/202603/31/2603.28758v1-mathcall1-certified-distributionally-robust-planning-for-safety-constrained-adaptive-control)  
+   标签：评分：8.0/10、query:q2
+   evidence：集成分布鲁棒模型预测控制 (DR-MPC)
+3. [Can a Robot Walk the Robotic Dog: Triple-Zero Collaborative Navigation for Heterogeneous Multi-Agent Systems](/202603/31/2603.21723v1-can-a-robot-walk-the-robotic-dog-triple-zero-collaborative-navigation-for-heterogeneous-multi-agent-systems)  
+   标签：评分：7.0/10、query:q4
+   evidence：多机器人系统的协同导航与路径规划
+4. [Line-of-Sight-Constrained Multi-Robot Mapless Navigation via Polygonal Visible Regions](/202603/31/2603.26314v1-line-of-sight-constrained-multi-robot-mapless-navigation-via-polygonal-visible-regions)  
    标签：评分：7.0/10、query:q1
-   evidence：拥挤环境中的高效路径规划
-5. [Knowledge-Guided Manipulation Using Multi-Task Reinforcement Learning](/202603/30/2603.24083v1-knowledge-guided-manipulation-using-multi-task-reinforcement-learning)  
+   evidence：具有实时避障约束的多机器人导航
+5. [MetaTune: Adjoint-based Meta-tuning via Robotic Differentiable Dynamics](/202603/31/2603.27313v1-metatune-adjoint-based-meta-tuning-via-robotic-differentiable-dynamics)  
+   标签：评分：7.0/10、query:q2
+   evidence：反馈控制器与扰动观测器的联合自动调优
+6. [D-SPEAR: Dual-Stream Prioritized Experience Adaptive Replay for Stable Reinforcement Learninging Robotic Manipulation](/202603/31/2603.27346v1-d-spear-dual-stream-prioritized-experience-adaptive-replay-for-stable-reinforcement-learninging-robotic-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：多任务机器人操作策略优化
-6. [UMBRELLA: Uncertainty-aware Multi-robot Reactive Coordination under Dynamic Temporal Logic Tasks](/202603/30/2603.25395v1-umbrella-uncertainty-aware-multi-robot-reactive-coordination-under-dynamic-temporal-logic-tasks)  
-   标签：评分：7.0/10、query:q1
-   evidence：多机器人反应式协调与避障
-7. [LSAI: A Large Small AI Model Codesign Framework for Agentic Robot Scenarios](/202603/30/2603.21726v1-lsai-a-large-small-ai-model-codesign-framework-for-agentic-robot-scenarios)  
-   标签：评分：6.0/10、query:q5
-   evidence：实时机器人协作与资源利用决策
-8. [RAFL: Generalizable Sim-to-Real of Soft Robots with Residual Acceleration Field Learning](/202603/30/2603.22039v1-rafl-generalizable-sim-to-real-of-soft-robots-with-residual-acceleration-field-learning)  
-   标签：评分：6.0/10、query:q2
-   evidence：软体机器人的梯度优化控制
-9. [StreamingClaw Technical Report](/202603/30/2603.22120v1-streamingclaw-technical-report)  
-   标签：评分：6.0/10、query:q5
-   evidence：实时感知-决策-执行闭环
-10. [ABot-PhysWorld: Interactive World Foundation Model for Robotic Manipulation with Physics Alignment](/202603/30/2603.23376v2-abot-physworld-interactive-world-foundation-model-for-robotic-manipulation-with-physics-alignment)  
-   标签：评分：6.0/10、query:q6
-   evidence：符合物理规律的机器人操作世界模型
-11. [Bridging the Evaluation Gap: Standardized Benchmarks for Multi-Objective Search](/202603/30/2603.24084v1-bridging-the-evaluation-gap-standardized-benchmarks-for-multi-objective-search)  
+   evidence：机器人操作的强化学习
+7. [LLM-Enabled Low-Altitude UAV Natural Language Navigation via Signal Temporal Logic Specification Translation and Repair](/202603/31/2603.27583v1-llm-enabled-low-altitude-uav-natural-language-navigation-via-signal-temporal-logic-specification-translation-and-repair)  
+   标签：评分：7.0/10、query:q3
+   evidence：通过混合整数线性规划 (MILP) 合成轨迹
+8. [MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees](/202603/31/2603.27893v1-mpc-as-a-copilot-a-predictive-filter-framework-with-safety-and-stability-guarantees)  
+   标签：评分：7.0/10、query:q2
+   evidence：用于安全和稳定性的名义模型预测控制 (MPC) 层
+9. [Can a Robot Walk the Robotic Dog: Triple-Zero Collaborative Navigation for Heterogeneous Multi-Agent Systems](/202603/31/2603.21723v2-can-a-robot-walk-the-robotic-dog-triple-zero-collaborative-navigation-for-heterogeneous-multi-agent-systems)  
    标签：评分：6.0/10、query:q4
-   evidence：高维机器人运动规划基准
+   evidence：机器人的协作导航与路径规划
+10. [Optimal Solutions for the Moving Target Vehicle Routing Problem with Obstacles via Lazy Branch and Price](/202603/31/2603.21880v2-optimal-solutions-for-the-moving-target-vehicle-routing-problem-with-obstacles-via-lazy-branch-and-price)  
+   标签：评分：6.0/10、query:q3
+   evidence：智能体避开静态障碍物的轨迹规划
+11. [Event-Driven Proactive Assistive Manipulation with Grounded Vision-Language Planning](/202603/31/2603.23950v1-event-driven-proactive-assistive-manipulation-with-grounded-vision-language-planning)  
+   标签：评分：6.0/10、query:q6
+   evidence：辅助操作规划
 
 
 <div class="dpr-home-promo-card">

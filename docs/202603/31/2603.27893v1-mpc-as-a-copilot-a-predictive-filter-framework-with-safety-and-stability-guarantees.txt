@@ -1,0 +1,1359 @@
+Title: MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees
+
+URL Source: https://arxiv.org/pdf/2603.27893v1
+
+Published Time: Tue, 31 Mar 2026 01:45:20 GMT
+
+Number of Pages: 21
+
+Markdown Content:
+## MPC AS A COPILOT : A P REDICTIVE FILTER FRAMEWORK WITH SAFETY AND STABILITY GUARANTEES 
+
+Yunda Yan 
+
+Department of Computer Science University College London, London WC1E 6BT, UK 
+
+yunda.yan@ucl.ac.uk 
+
+Chenxi Tao 
+
+School of Automation Southeast University, Nanjing 210096, China 
+
+chenxi.tao@seu.edu.cn 
+
+Jinya Su 
+
+School of Automation Southeast University, Nanjing 210096, China 
+
+sucas@seu.edu.cn 
+
+Cunjia Liu 
+
+Department of Aeronautical and Automotive Engineering Loughborough University, Leicestershire LE11 3TU, UK 
+
+c.liu5@lboro.ac.uk 
+
+Shihua Li 
+
+School of Automation Southeast University, Nanjing 210096, China 
+
+lsh@seu.edu.cn 
+
+March 31, 2026 
+
+ABSTRACT 
+
+Ensuring both safety and stability remains a fundamental challenge in learning-based control, where goal-oriented policies often neglect system constraints and closed-loop state convergence. To ad-dress this limitation, this paper introduces the Predictive Safety–Stability Filter (PS 2F), a unified predictive filter framework that guarantees constraint satisfaction and asymptotic stability within a single architecture. The PS 2F framework comprises two cascaded optimal control problems: a nom-inal model predictive control (MPC) layer that serves solely as a copilot , implicitly defining a Lya-punov function and generating safety- and stability-certified predicted trajectories, and a secondary filtering layer that adjusts external command to remain within a provably safe and stable region. This cascaded structure enables PS 2F to inherit the theoretical guarantees of nominal MPC while accom-modating goal-oriented external commands. Rigorous analysis establishes recursive feasibility and asymptotic stability of the closed-loop system without introducing additional conservatism beyond that associated with the nominal MPC. Furthermore, a time-varying parameterisation allows PS 2F to transition smoothly between safety-prioritised and stability-oriented operation modes, providing a principled mechanism for balancing exploration and exploitation. The effectiveness of the proposed framework is demonstrated through comparative numerical experiments. 
+
+Keywords Predictive safety–stability filter; Model predictive control; Safety and stability; Learning-based control 
+
+1 Introduction 
+
+Recent advances in machine learning and high-fidelity simulators, coupled with increases in computational power and hardware efficiency, have sparked growing interest in learning-based and data-driven control methods [1]. Although these methods have demonstrated impressive performance in various real-world applications, such as aerial and ground vehicles [2, 3], their theoretical foundations remain relatively underdeveloped, with only a limited number of results providing rigorous guarantees [4,5]. This lack of formal guarantees presents significant risks in safety-critical domains such as robotics and automated driving, where violations of safety constraints can lead to catastrophic consequences [6, 7]. To mitigate this research gap, filter-like frameworks have emerged as a promising paradigm, serving as a safety layer that monitors and, whenever necessary, adjusts control inputs to ensure constraint satisfaction [8]. Most existing 
+
+> arXiv:2603.27893v1 [eess.SY] 29 Mar 2026
+
+MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees approaches rely on the construction of a control invariant set, either explicitly or implicitly, that guarantees safe system operation when subject to learning-based control inputs. For instance, the control barrier function (CBF) framework [9] employs a barrier function to characterise a safe set and enforces its invariance through a differential inequality. By contrast, the predictive safety filter (PSF) [10] leverages a constrained optimisation problem inspired by model predictive control (MPC), typically incorporating a terminal constraint to guarantee recursive feasibility and, thereby, safety. Both approaches have demonstrated remarkable success in ensuring safety for robotic systems [11,12]. However, safety alone may not be sufficient. Persistent oscillations within the constraints can still degrade performance and undermine reliability. Embedding asymptotic stability into the safety framework is therefore crucial to ensure both constraint satisfaction and convergence, yet only a few attempts have been made in this direction. Within the CBF framework, a control Lyapunov function (CLF) can be incorporated into the optimisation problem to enforce stability; however, this often leads to infeasibility due to the absence of a unified CLF design [9]. Introducing a slack variable in the CLF constraint can alleviate this issue, but stability still cannot be guaranteed because the slack variable cannot, in general, be forced to remain zero at all times [13]. In the absence of an embedded CLF, the external control law is generally required to stabilise to ensure both asymptotic stability and constraint satisfaction [14]. In [15], a universal barrier function is proposed to guarantee safety and stability simultaneously. However, this approach requires the nominal controller to be expressed in an integral form and is therefore not directly applicable to general learning-based or data-driven control settings. Within the PSF framework, stability results are even fewer. In [16, 17], an additional stability constraint can be embedded into the original optimisation problem to ensure asymptotic stability; however, this modification may compromise the recursive feasibility property of the original formulation. Guaranteeing both safety and asymptotic stability without excessive conservatism is therefore already challenging, and an even more theoretically significant and practically meaningful question is whether the user can manually determine when the system should begin to stabilise. This capability is particularly valuable in exploration–exploitation scenarios in robotics [18], where safety must be maintained during the exploration or learning phase while asymptotic stability is enforced once reliable system knowledge becomes available. Shared autonomy [19] and human–robot interaction [20] exemplify such settings: user-generated commands may be suboptimal or even unsafe, requiring the controller to grant operators sufficient freedom to express intent (safe exploration) while ensuring that all executed actions remain safe and ultimately drive the system back to a stable operating regime (stable exploitation). Motivated by the aforementioned research challenges and gaps, we propose the Predictive Safety–Stability Filter 
+
+(PS 2F), a unified predictive control framework consisting of two optimal control problems (OCPs) arranged in a cascaded structure. The first OCP is a nominal MPC problem whose value function implicitly serves as a Lyapunov function for the nonlinear constrained system. Its optimal input and state trajectories represent the ideal, theoretically certified solutions that guarantee both safety and stability; however, these inputs are not applied directly to the system, but instead function as a copilot . The external controller acts as a pilot , generating goal-oriented commands that pursue high-level tasks or learning objectives. The second OCP then reconciles these two objectives by computing a control input that remains as close as possible to the external command while ensuring it lies within a provably safe and stable domain, as illustrated in Fig. 1. This layered structure enables PS 2F to inherit the recursive feasibility and stability guarantees of nominal MPC while preserving the flexibility needed to accommodate arbitrary external commands. Importantly, the second OCP is constructed so as not to introduce additional conservatism: feasibility is preserved as long as the initial state lies within the nominal MPC’s region of attraction. Furthermore, by appropriately designing time-varying parameters, PS 2F can prioritise safety during an initial phase and then deliberately transition into a stability-enforcing mode at a user-specified time. The ability of PS 2F to mediate between arbitrary external commands and safety–stability–certified feedback makes it particularly well suited for human-in-the-loop applications such as shared autonomy and human–robot interaction, where operators must retain freedom of intent while the system remains safe and ultimately convergent. The remainder of this paper is organised as follows. Section 2 revisits the nominal MPC formulation and the conditions required to ensure recursive feasibility and asymptotic stability. Section 3 presents the proposed PS 2F framework and provides a detailed theoretical analysis. Section 4 demonstrates the effectiveness of the proposed method through comparative numerical studies. Finally, Section 5 concludes the paper. For clarity of presentation, the main proofs are provided in Appendix A and Appendix B. 
+
+Notation: I and R denote the sets of integers and real numbers, respectively, where superscripts or subscripts may be added to specify particular ranges (e.g., I≥0). The matrices 0n×m ∈ Rn×m and In ∈ Rn×n denote the zero matrix and the identity matrix, respectively. For any sequence u = {u0, u 1, . . . , u N }, we denote by ua:b := {ua, . . . , u b} the subsequence from index a to b, where a and b are integers satisfying a ≤ b and a, b ∈ I0: N . For any vector x ∈ Rn,
+
+|x| denotes the Euclidean norm, and |x|2 
+
+> P
+
+is defined as |x|2 
+
+> P
+
+:= x⊤P x , where P ∈ Rn×n is a symmetric matrix. A C-set is defined as a convex, compact set containing the origin. Given a set A ⊂ Rn and a matrix K ∈ Rm×n, we define KA := {Ka | a ∈ A}. A function belongs to class K if it is continuous, zero at zero, and strictly increasing; a function belongs to class K∞ if it is in class K and unbounded. 2MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees Time 
+
+Input  
+
+> <latexit sha1_base64="zumDnTb7lIhLG8bC2wZuTWA5hwA=">AAAB63icdVDLSsNAFJ34rPVVdelmsAh1E5Ja03ZXcOOygn1AG8pkOmmHzkzCzEQoob/gxoUibv0hd/6NkzaCih64cDjnXu69J4gZVdpxPqy19Y3Nre3CTnF3b//gsHR03FVRIjHp4IhFsh8gRRgVpKOpZqQfS4J4wEgvmF1nfu+eSEUjcafnMfE5mggaUox0JiWV2cWoVHZsZwno2Jde06tVDam79UbzCrq5VQY52qPS+3Ac4YQToTFDSg1cJ9Z+iqSmmJFFcZgoEiM8QxMyMFQgTpSfLm9dwHOjjGEYSVNCw6X6fSJFXKk5D0wnR3qqfnuZ+Jc3SHTY8FMq4kQTgVeLwoRBHcHscTimkmDN5oYgLKm5FeIpkghrE0/RhPD1KfyfdKu269neba3cauZxFMApOAMV4II6aIEb0AYdgMEUPIAn8Gxx69F6sV5XrWtWPnMCfsB6+wTQDo4Y</latexit>
+
+u(k) <latexit sha1_base64="evPo+Bitkd7kaXIF1gCr9Odvq78=">AAAB/HicbVDLSsNAFJ3UV62vaJduBotQNyFRW9NdwY3LCvYBbQiT6aQdOnkwMxFLiL/ixoUibv0Qd/6NkzYLrR4YOJxzL/fM8WJGhTTNL620tr6xuVXeruzs7u0f6IdHPRElHJMujljEBx4ShNGQdCWVjAxiTlDgMdL3Zte5378nXNAovJPzmDgBmoTUpxhJJbl6NXHTUYDklAcpeZBZVp+duXrNNGy7cdEwoWlYttlqWoqYC0CrIDVQoOPqn6NxhJOAhBIzJMTQMmPppIhLihnJKqNEkBjhGZqQoaIhCohw0kX4DJ4qZQz9iKsXSrhQf26kKBBiHnhqMs8pVr1c/M8bJtK3nZSGcSJJiJeH/IRBGcG8CTimnGDJ5oogzKnKCvEUcYSl6quiSrBWv/yX9M4Nq2k0by9r7VZRRxkcgxNQBxa4Am1wAzqgCzCYgyfwAl61R+1Ze9Pel6Mlrdipgl/QPr4BiySVVw==</latexit> 
+
+uext (k) 
+
+> Safety
+> —
+> Stability
+> Set
+> <latexit  sha1_base64="AgvEkbkOwQ/Bz8qbhgp4TBiHDFk=">AAAB+XicdVDLSgMxFL1TX7W+Rl26CRah3Qwztda6K7hxWdE+oB1KJk3b0MyDJFMsQ//EjQtF3Pon7vwbM20FnwcCh3Pu5Z4cL+JMKtt+NzIrq2vrG9nN3Nb2zu6euX/QlGEsCG2QkIei7WFJOQtoQzHFaTsSFPsepy1vfJn6rQkVkoXBrZpG1PXxMGADRrDSUs80uz5WI89LbmaFu8K4WOyZeds6c06rFyX0mziWPUcelqj3zLduPySxTwNFOJay49iRchMsFCOcznLdWNIIkzEe0o6mAfapdJN58hk60UofDUKhX6DQXP26kWBfyqnv6ck0p/zppeJfXidWg6qbsCCKFQ3I4tAg5kiFKK0B9ZmgRPGpJpgIprMiMsICE6XLyukSPn+K/ifNkuVUrMp1OV8rL+vIwhEcQwEcOIcaXEEdGkBgAvfwCE9GYjwYz8bLYjRjLHcO4RuM1w/34JM2</latexit>
+> S(x(k))
+> <latexit sha1_base64="H/q1yZvNW5Q2f+FMIs7MqW5aauo=">AAACN3icbVDLSgMxFM34tr6qLt0Ei1BBy4yIj4UguHElilaFTi2Z9LaGZjJDckes4/yVG3/DnW5cKOLWPzBTu/B14MLh3HNI7gliKQy67qMzMDg0PDI6Nl6YmJyaninOzp2aKNEcqjySkT4PmAEpFFRRoITzWAMLAwlnQWcv359dgTYiUifYjaEesrYSLcEZWqlRPEjKnWVKd6jPdNsPhWqk/g0go75Q1A8ZXgZBepyVr61tOaP+Cr1NrAXhGlM7WZbHV2kvc3ux1iiW3IrbA/1LvD4pkT4OG8UHvxnxJASFXDJjap4bYz1lGgWXkBX8xEDMeIe1oWapYiGYetq7O6NLVmnSVqTtKKQ99XsiZaEx3TCwzvwS83uXi//tagm2tuqpUHGCoPjXQ61EUoxoXiJtCg0cZdcSxrWwf6X8kmnG0VZdsCV4v0/+S07XKt5GZeNovbS73a9jjCyQRVImHtkku2SfHJIq4eSOPJEX8urcO8/Om/P+ZR1w+pl58gPOxycoRqrw</latexit>
+
+u(k) = arg min 
+
+⇣2S(x(k)) |uext (k)   ⇣|2
+
+Figure 1: Conceptual illustration of the proposed PS 2F framework. The external controller generates a goal-oriented command uext , which may prioritise efficiency or high-level task performance but can potentially violate constraints or compromise stability. The PS 2F framework acts as a predictive filter that projects uext onto the safety–stability set 
+
+S(x) (defined in (16) and implicitly constructed via the two OCPs), ensuring that the applied control input remains both safe and stable. 
+
+2 Preliminaries 
+
+2.1 System Description 
+
+Consider a non-affine, nonlinear, time-invariant, discrete-time system given by 
+
+x+ = f (x, u ), (1) where x ∈ Rn denotes the system state, u ∈ Rm the control input, and x+ the successor state. The system is subject to state and input constraints 
+
+x ∈ X, u ∈ U, (2) where X ⊂ Rn and U ⊂ Rm are known C-sets, i.e., convex, compact sets containing the origin. Assume that at each time step k, a goal-oriented command uext (k) ∈ Rm is available, which may be designed using either learning-based or data-driven methods but does not inherently guarantee safety or stability. The objective of this work is to construct a safety–stability (S 2)-set S(x) ⊆ U such that the filtered control input 
+
+u = arg min 
+
+ζ∈S(x) |uext − ζ|2 (3) guarantees both constraint satisfaction and asymptotic stability of the resulting closed-loop system, for all admissible initial states within the feasible operating region. The S 2-set S(x) is constructed implicitly through two cascaded OCPs, which are introduced sequentially in the following subsections. To distinguish between them, we denote the control sequence by v and the predicted state by z(i; x) := ϕ(i; x, v) in the first OCP (the nominal MPC), and by u
+
+and x(i; x) := ϕ(i; x, u) in the second OCP (the filter). Here, ϕ(i; x, ·) denotes the i-step state transition from the initial state x under the corresponding control sequence. By definition, x(0; x) = z(0; x) = x.
+
+2.2 Nominal MPC as a Copilot 
+
+The first OCP is a nominal MPC problem, denoted by PN (x), with prediction horizon N
+
+PN (x) : V ∗
+
+N (x) := min 
+
+v
+
+VN (x, v) v ∈ V N (x) , (4) where the cost function VN (x, v) and the corresponding constraint set are defined as 
+
+VN (x, v) := 
+
+N −1X
+
+i=0 
+
+ℓ(z(i; x), v (i; x)) + Vf (z(N ; x)) ,
+
+VN (x) := 
+
+n
+
+v | z(i; x) ∈ X, v (i; x) ∈ U, ∀i ∈ I0: N −1, z (N ; x) ∈ Xf
+
+o
+
+.
+
+(5) 3MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees Here, Xf denotes the terminal constraint set, while ℓ(·, ·) and Vf (·) represent the stage and terminal cost functions, respectively. Let XN denote the set of initial states in X for which PN (x) is feasible, i.e., 
+
+XN := x ∈ X VN (x)̸ = ∅ . (6) For any x ∈ X N , the optimiser of PN (x) is given by 
+
+v∗(x) = arg min 
+
+> v
+
+VN (x, v) v ∈ V N (x) = {v∗(0; x), v ∗(1; x), . . . , v ∗(N − 1; x)}, (7) and the corresponding optimal state sequence is 
+
+z∗(x) = {z∗(0; x), z ∗(1; x), . . . , z ∗(N ; x)}. (8) To ensure recursive feasibility and asymptotic stability of the closed-loop system under the nominal MPC, the follow-ing standard assumptions are imposed. For further details, the reader is referred to [21, Chap. 2.4]. 
+
+Assumption 1 The functions f (·, ·) : X × U → X, ℓ(·, ·) : X × U → R≥0 and Vf (·) : Xf → R≥0 are continuous, with f (0 n×1, 0m×1) = 0 , ℓ(0 n×1, 0m×1) = 0 and Vf (0 n×1) = 0 .
+
+Assumption 2 The sets X, U, and Xf ⊆ X are C-sets. 
+
+Assumption 3 The stage cost ℓ(·, ·), the terminal cost Vf (·), and the terminal set Xf satisfy the following properties: (a) For all x ∈ Xf , there exists a u ∈ U satisfying 
+
+f (x, u ) ∈ Xf
+
+Vf (f (x, u )) − Vf (x) ≤ − ℓ(x, u ).
+
+(b) There exists K∞ functions α1(·) and α2(·) satisfying 
+
+ℓ(x, u ) ≥ α1(|x|) ∀x ∈ X N , u ∈ U
+
+Vf (x) ≤ α2(|x|) ∀x ∈ Xf .
+
+Proposition 1 ( [21, Proposition 2.16]) Suppose that Assumptions 1, 2, and 3 hold, and that the terminal set Xf
+
+contains the origin in its interior. Then, there exists a K∞ function β such that 
+
+V ∗ 
+
+> N
+
+(x) ≤ β(|x|), ∀ x ∈ X N .
+
+Remark 1 To guarantee safety and stability, the stage cost function in MPC is typically required to be non-negative and continuous (see Assumption 1). While these properties enable rigorous analysis (such as recursive feasibility and asymptotic stability), they also imply that the nominal MPC cost may not directly encode the practical task that the system is meant to accomplish. In many applications, task-oriented objectives are inherently discontinuous or non-smooth. For instance, reinforcement-learning controllers commonly employ sparse or event-triggered reward struc-tures, which introduce discontinuities; logic-based or mode-switching tasks lead to piecewise or hybrid cost functions; and human-generated teleoperation inputs may not correspond to any continuous cost at all. These characteristics make such task-driven objectives fundamentally incompatible with standard MPC cost requirements. This is precisely why the external command uext (k) plays a crucial role in the proposed framework: it can originate from any source, e.g., human intent, learning-based policies, heuristic planners, or discontinuous signals, and thus more faithfully cap-tures the true task objective. The nominal MPC therefore acts merely as a safety-stability copilot, ensuring constraint satisfaction and stability while allowing uext (k) to dictate the high-level objective. 
+
+3 Main Results 
+
+3.1 Predictive Safety–Stability Filter 
+
+With the optimal sequences v∗(x) and z∗(x) obtained from (7) and (8), we can now introduce the proposed framework, the Predictive Safety–Stability Filter (PS 2F). Given any external command uext , the second OCP is formulated as 
+
+Pf,M (x) : V ∗ 
+
+> f,M
+
+(x) := min 
+
+> u
+
+Vf,M (x, u) u ∈ U aM (x) , (9) 4MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees External 
+
+Controller 
+
+Predictive Safety—Stability Filter <latexit sha1_base64="dmerJWVH6rouTzG1bFUW7r1CYhw=">AAACNHicbZBLSwMxFIUz9dFaX63iyk2wChVKmdHaqTvBjRuhgrVCW0qSybTBzIMkI5YwP8at7v0vgjtx628wU7vQ6oHA4dx7yeHDMWdS2farlVtYXFrOF1aKq2vrG5ul8taNjBJBaIdEPBK3GEnKWUg7iilOb2NBUYA57eK782zevadCsii8VpOYDgI0CpnPCFImGpZ29vsBUmOMdTsdar92mVYfDveHpYpdt6eCf40zMxUwU3tYtvJ9LyJJQENFOJKy59ixGmgkFCOcpsV+ImmMyB0a0Z6xIQqoHOhp/xQemMSDfiTMCxWcpj8vNAqknAS4hgOznPWV8+Ms/G/WS5TfGmgWxomiIfn+y084VBHMeECPCUoUnxiDiGCmLiRjJBBRhloR9j3qG7TTStobpVqMcKozFK7dbNTsunPSsFuuMcct12m6qUHnzIP6a26O6k6z3rw6qpydziAWwC7YA1XgABecgQvQBh1AgAaP4Ak8Wy/Wm/VufXyv5qzZzTb4JevzC/2SpSY=</latexit> 
+
+Pf,M (x)
+
+Plant <latexit sha1_base64="LShIvu7e8JEX5o3RXGO2t9GiaqI=">AAAB+XicbVDLSgNBEOyNrxhfqx69DAYhooRdkagHIeDFYwTzgGQNs5PZZMjs7DIzGxKW/IkXD4p49U+8+TdOHgdNLGgoqrrp7vJjzpR2nG8rs7K6tr6R3cxtbe/s7tn7BzUVJZLQKol4JBs+VpQzQauaaU4bsaQ49Dmt+/27iV8fUKlYJB71KKZeiLuCBYxgbaS2baPhU3o2RrcoKAzPUXLatvNO0ZkCLRN3TvIwR6Vtf7U6EUlCKjThWKmm68TaS7HUjHA6zrUSRWNM+rhLm4YKHFLlpdPLx+jEKB0URNKU0Giq/p5IcajUKPRNZ4h1Ty16E/E/r5no4NpLmYgTTQWZLQoSjnSEJjGgDpOUaD4yBBPJzK2I9LDERJuwciYEd/HlZVK7KLqlYunhMl++mceRhSM4hgK4cAVluIcKVIHAAJ7hFd6s1Hqx3q2PWWvGms8cwh9Ynz/SuZHT</latexit> 
+
+x+ = f (x, u )
+
+<latexit sha1_base64="FHFKYFims+0F5SocF0ug5UJz+ew=">AAACBnicbVDLSgNBEJyNrxhfqx5FGAxCBAm7IlEPQsCLxwjmAdkQZiezyZDZBzO9krDsyYu/4sWDIl79Bm/+jZNkD5pY0FBUddPd5UaCK7CsbyO3tLyyupZfL2xsbm3vmLt7DRXGkrI6DUUoWy5RTPCA1YGDYK1IMuK7gjXd4c3Ebz4wqXgY3MM4Yh2f9APucUpAS13zMMbX2BmSKCKl0SmOu4kDbASJrjQ96ZpFq2xNgReJnZEiylDrml9OL6SxzwKggijVtq0IOgmRwKlgacGJFYsIHZI+a2saEJ+pTjJ9I8XHWulhL5S6AsBT9fdEQnylxr6rO30CAzXvTcT/vHYM3mUn4UEUAwvobJEXCwwhnmSCe1wyCmKsCaGS61sxHRBJKOjkCjoEe/7lRdI4K9uVcuXuvFi9yuLIowN0hErIRheoim5RDdURRY/oGb2iN+PJeDHejY9Za87IZvbRHxifP2VwmHU=</latexit> 
+
+u = (x, u ext )
+
+<latexit sha1_base64="WOkw56vw9g4iik1qOf+/bKhN+fs=">AAAB+HicbVDLSgNBEJyNrxgfWfXoZTAInsKuSNRbwIvHCOYBybLMTmaTIbMPZnrEuOyXePGgiFc/xZt/4yTZgyYWNBRV3XR3BangChzn2yqtrW9sbpW3Kzu7e/tV++CwoxItKWvTRCSyFxDFBI9ZGzgI1kslI1EgWDeY3Mz87gOTiifxPUxT5kVkFPOQUwJG8u0q1n42APYImak89+2aU3fmwKvELUgNFWj59tdgmFAdsRioIEr1XScFLyMSOBUsrwy0YimhEzJifUNjEjHlZfPDc3xqlCEOE2kqBjxXf09kJFJqGgWmMyIwVsveTPzP62sIr7yMx6kGFtPFolALDAmepYCHXDIKYmoIoZKbWzEdE0komKwqJgR3+eVV0jmvu4164+6i1rwu4iijY3SCzpCLLlET3aIWaiOKNHpGr+jNerJerHfrY9FasoqZI/QH1ucPci+TmQ==</latexit> 
+
+uext 
+
+<latexit sha1_base64="snjP+OrrVePjvvll0aiHkGppJB0=">AAAB+XicbVDLSsNAFL3xWesr6tLNYBGqi5KIVN0V3LisYB/QxjKZTtqhk0mYmRRL6J+4caGIW//EnX/jpM1CWw8MHM65l3vm+DFnSjvOt7Wyura+sVnYKm7v7O7t2weHTRUlktAGiXgk2z5WlDNBG5ppTtuxpDj0OW35o9vMb42pVCwSD3oSUy/EA8ECRrA2Us+2uyHWQz9Ix9PH8/LTGerZJafizICWiZuTEuSo9+yvbj8iSUiFJhwr1XGdWHsplpoRTqfFbqJojMkID2jHUIFDqrx0lnyKTo3SR0EkzRMazdTfGykOlZqEvpnMcqpFLxP/8zqJDq69lIk40VSQ+aEg4UhHKKsB9ZmkRPOJIZhIZrIiMsQSE23KKpoS3MUvL5PmRcWtVqr3l6XaTV5HAY7hBMrgwhXU4A7q0AACY3iGV3izUuvFerc+5qMrVr5zBH9gff4AnbmS+g==</latexit> 
+
+v⇤(x) <latexit sha1_base64="XbpUdEEvBmHDBxsS60Iz+p7CdU8=">AAAB+XicbVDLSgMxFL1TX7W+Rl26CRahuigzIlV3BTcuK9gHtLVk0kwbmskMSaZYh/6JGxeKuPVP3Pk3ZtpZaOuBwOGce7knx4s4U9pxvq3cyura+kZ+s7C1vbO7Z+8fNFQYS0LrJOShbHlYUc4ErWumOW1FkuLA47TpjW5SvzmmUrFQ3OtJRLsBHgjmM4K1kXq23QmwHnp+8jR9OCs9nqKeXXTKzgxombgZKUKGWs/+6vRDEgdUaMKxUm3XiXQ3wVIzwum00IkVjTAZ4QFtGypwQFU3mSWfohOj9JEfSvOERjP190aCA6UmgWcm05xq0UvF/7x2rP2rbsJEFGsqyPyQH3OkQ5TWgPpMUqL5xBBMJDNZERliiYk2ZRVMCe7il5dJ47zsVsqVu4ti9TqrIw9HcAwlcOESqnALNagDgTE8wyu8WYn1Yr1bH/PRnJXtHMIfWJ8/o+WS/g==</latexit> 
+
+z⇤(x)
+
+<latexit sha1_base64="d80Zs3k6UWKwMhKBXAEDb2wUaO4=">AAAB6HicbVDLSgNBEOyNrxhfUY9eBoPgKeyKRL0FvHhMwDwgWcLspDcZMzu7zMyKIeQLvHhQxKuf5M2/cZLsQRMLGoqqbrq7gkRwbVz328mtrW9sbuW3Czu7e/sHxcOjpo5TxbDBYhGrdkA1Ci6xYbgR2E4U0igQ2ApGtzO/9YhK81jem3GCfkQHkoecUWOl+lOvWHLL7hxklXgZKUGGWq/41e3HLI1QGiao1h3PTYw/ocpwJnBa6KYaE8pGdIAdSyWNUPuT+aFTcmaVPgljZUsaMld/T0xopPU4CmxnRM1QL3sz8T+vk5rw2p9wmaQGJVssClNBTExmX5M+V8iMGFtCmeL2VsKGVFFmbDYFG4K3/PIqaV6UvUq5Ur8sVW+yOPJwAqdwDh5cQRXuoAYNYIDwDK/w5jw4L86787FozTnZzDH8gfP5A+cWjP4=</latexit> 
+
+x
+
+MPC as a Copilot <latexit sha1_base64="cWk42SDIyT5Kgl3bZilyHAxZ8wY=">AAACMnicbZBLSwMxFIUz9VXrq9qlm2ArVChlxken7gQ3rqSCtYW2lCSTaUMzD5KMWML8Fre698/oTtz6I8zULtR6IHA4915y+HDMmVS2/WrllpZXVtfy64WNza3tneLu3p2MEkFom0Q8El2MJOUspG3FFKfdWFAUYE47eHKZzTv3VEgWhbdqGtNBgEYh8xlBykTDYqnSD5AaY6xb6VBfp9WHo8qwWLbr9kxw0ThzUwZztYa71lrfi0gS0FARjqTsOXasBhoJxQinaaGfSBojMkEj2jM2RAGVAz1rn8JDk3jQj4R5oYKz9OeFRoGU0wDXcGCWs7by7zgL/5v1EuU3B5qFcaJoSL7/8hMOVQQzGtBjghLFp8YgIpipC8kYCUSUYVaAfY/6BuyskvZGqRYjnOoMhWs3Tmt23Tk7tZuuMSdN12m4qUHn/AW1aO6O606j3rg5Ll+czyHmwT44AFXgABdcgCvQAm1AwBQ8gifwbL1Yb9a79fG9mrPmNyXwS9bnF6qApIE=</latexit> 
+
+PN (x)
+
+Figure 2: Schematic of the proposed PS 2F framework. The nominal MPC serves as a copilot , generating safety- and stability-certified trajectories. The filtering OCP Pf,M (·) then refines the external command within a safe and stable region before applying the final control action to the system plant. The dashed arrow above the external controller indicates that the external command may be independent of the system state, i.e., operating in open-loop mode. where the cost function Vf,M (x, u) and the corresponding constraint set UaM (x) are defined as 
+
+Vf,M (x, u) := |uext − u(0; x)|2
+
+UaM (x) := 
+
+n
+
+u x(i; x) ∈ X, u (i; x) ∈ U, ∀i ∈ I0: M −1, (11a) and (11b) 
+
+o
+
+. (10) Note that the external command uext is embedded directly into the cost function of Pf,M (x). The performance constraint and terminal constraint are given respectively by 
+
+L(x0: M −1(x), u(x)) − L(z∗
+
+0: M −1(x), v∗
+
+0: M −1(x)) − aℓ (x(0; x), u (0; x)) ≤ 0, (11a) 
+
+x(M ; x) = z∗(M ; x), (11b) where a ≥ 0 is a tunable parameter and M ∈ I1: N is the prediction horizon of the second OCP. The function L(·, ·)
+
+represents the cumulative stage cost over the first M steps, defined as 
+
+L(x0: M −1(x), u(x)) := 
+
+M −1X
+
+i=0 
+
+ℓ x(i; x), u (i; x). (12) Similarly, we have 
+
+L(z∗
+
+0: M −1(x), v∗
+
+0: M −1(x)) = 
+
+M −1X
+
+i=0 
+
+ℓ z∗(i; x), v ∗(i; x).
+
+The optimiser of Pf,M (x) is denoted by 
+
+u∗(x) = arg min 
+
+u
+
+Vf,M (x, u) u ∈ U aM (x) = {u∗(0; x), u ∗(1; x), . . . , u ∗(M − 1; x)}, (13) and the corresponding optimal state sequence is 
+
+x∗(x) = {x∗(0; x), x ∗(1; x), . . . , x ∗(M ; x)}. (14) Finally, the filtered control law is defined as 
+
+u = κ(x, u ext ) := u∗(0; x). (15) Since only the first control component influences the cost function, (15) is equivalent to (3) through the definition of the S 2-set S(x), given by 
+
+S(x) := { u(0; x) | u ∈ U aM (x) }. (16) The complete control procedure is presented in Algorithm 1, while Fig. 2 illustrates the overall structure of the pro-posed PS 2F framework. Before analysing the closed-loop behaviour, we first establish several fundamental properties of the second OCP, 
+
+Pf,M (x), including its feasibility and the role of the tunable parameters a and M . Unless otherwise specified, As-sumptions 1, 2, and 3 are assumed to hold throughout this subsection. For readability, the proofs of the following results are provided in Appendix A. 5MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees 
+
+Algorithm 1 PS 2F 
+
+> 1:
+
+Offline: Specify prediction horizons N and M ≤ N ; cost functions ℓ(·, ·) and Vf (·); constraint sets X, U, Xf ; and parameter a ∈ [0 , 1) . 
+
+> 2:
+
+Initialisation: Set time k ← 0 and measure x(0) . 
+
+> 3:
+
+Step One-Nominal MPC: Solve PN
+
+ x(k) to obtain v∗(x(k)) and z∗(x(k)) . 
+
+> 4:
+
+Step Two-Receive external command: Obtain uext (k) from any goal-oriented controller.  
+
+> 5:
+
+Step Three-PS 2F: Solve Pf,M 
+
+ x(k) to obtain u∗(x(k)) and x∗(x(k)) . Set the filtered control input 
+
+u(k) ← u∗(0; x(k)) (cf. (15)).  
+
+> 6:
+
+Step Four-Apply and propagate: Apply u(k) to the system (1) to obtain x(k+1) = f  x(k), u (k). 
+
+> 7:
+
+k ← k + 1 and go to Step One .
+
+Proposition 2 Pf,M (x) is feasible for all x ∈ X N ; that is, UaM (x)̸ = ∅ for every x ∈ X N .
+
+Proposition 3 Suppose that x ∈ X N and a = 0 .(a) The below equality holds: 
+
+L(x∗ 
+
+> 0: M−1
+
+(x), u∗(x)) = L(z∗ 
+
+> 0: M−1
+
+(x), v∗ 
+
+> 0: M−1
+
+(x)) .
+
+(b) Moreover, if the OCP PN (x) is strictly convex, then the filtered control law reduces to the nominal MPC action. In particular, 
+
+u = u∗(0; x) = v∗(0; x),
+
+and the S 2-set degenerates to a singleton: 
+
+S(x) = {v∗(0; x)}.
+
+Proposition 4 Suppose that x ∈ X N and a1 ≥ a2 ≥ 0. Then, the corresponding S 2-sets satisfy the nested inclusion 
+
+Sa2 (x) ⊆ Sa1 (x),
+
+where Sai (x) denotes the S 2-set associated with the parameter a = ai.
+
+Proposition 5 Suppose that x ∈ X N and M = 1 . Assume that the mapping u 7 → f (x, u ) is injective on U. Then, the filtered control law reduces to the nominal MPC action. In particular, 
+
+u(0; x) = u∗(0; x) = v∗(0; x),
+
+and the S 2-set degenerates to a singleton: 
+
+S(x) = {v∗(0; x)}.
+
+Proposition 6 Suppose that x ∈ X N and i ≥ j, where i, j ∈ I1: N . Then, the corresponding S 2-sets satisfy the nested inclusion 
+
+Sj (x) ⊆ Si(x),
+
+where Si(x) denotes the S 2-set associated with prediction horizon M = i.
+
+Remark 2 Proposition 2 shows that the filter problem Pf,M (x) does not require any additional assumptions beyond those of the nominal MPC problem PN (x). As long as x ∈ X N , the filter remains feasible. Therefore, classical techniques for enlarging the region of attraction XN (e.g., [22]) can be directly employed to extend the safe and stable operating region. 
+
+Remark 3 Propositions 3, 4, 5, and 6 jointly characterise how the design parameters a and M determine the geometry of the S 2-set. Proposition 3 shows that when a = 0 , the S 2-set collapses to the nominal MPC action. Proposition 4 establishes that the S 2-set is monotone in a, with larger values producing larger sets. Similarly, Propositions 5 and 6 show that the prediction horizon M also induces a monotone expansion of the S 2-set, and that for M = 1 the filtered input coincides with the nominal MPC control. Taken together, these results demonstrate that increasing either a or 
+
+M reduces conservatism by enlarging the S 2-set, whereas smaller values make the filter behave more like the nominal MPC law. This trend is further illustrated in the numerical examples presented later. 
+
+6MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees To more clearly illustrate the geometry of the S 2-set S(x), we consider a representative example based on a general linear system. Although it was previously defined only implicitly through the two OCPs, in this example, we explicitly derive the analytical description of S(x), making its structure transparent. 
+
+Proposition 7 Suppose that f (x, u ) = Ax + Bu , where A ∈ Rn×n and B ∈ Rn×m are system matrices, and (A, B )
+
+is controllable. The nominal MPC is designed with the quadratic stage and terminal costs, given by 
+
+ℓ(x, u ) = x⊤Qx + u⊤Ru, Vf (x) = x⊤P x, 
+
+where Q > 0, R > 0, and P > 0 is the positive definite solution of the discrete-time algebraic Riccati equation associated with (A, B, Q, R ). We further assume that the safety constraints in both OCPs, as well as the terminal constraint of the first OCP, are inactive. Then, the admissible input set UaM (x) is the intersection of an affine subspace and a quadratic set, i.e., an ellipsoid sliced by a linear constraint: 
+
+UaM (x) = 
+
+n
+
+u ∈ RM m Aeq u = beq x, u⊤H u + 2 x⊤F u + x⊤Gx ≤ 0
+
+o
+
+,
+
+and hence, 
+
+S(x) = e1UaM (x),
+
+where Aeq , beq , H, F , G, and e1 are constant matrices whose explicit expressions are provided in Appendix A. 
+
+3.2 Theoretical Analysis 
+
+In this subsection, we analyse the closed-loop properties of the proposed PS 2F framework. We begin with the nominal case, where all parameters are held constant, and then extend the analysis to the mode-scheduling case, in which the parameters vary over time. For completeness, the proofs of all theoretical results presented in this subsection are provided in Appendix B. 
+
+Theorem 1 Suppose that Assumptions 1, 2, and 3 hold, and that the terminal set Xf contains the origin in its interior. Let the initial state satisfy x(0) ∈ X N . Then, for any external command uext (k), if a ∈ [0 , 1) , the system (1) under the control law (15) satisfies the following properties: (a) The safety constraints are satisfied for all k ∈ I≥0.(b) The closed-loop system is asymptotically stable. 
+
+Based on Theorem 1, we now extend the proposed framework to the time-varying case, in which the design parameters 
+
+a(k) and M (k) evolve over time (see Algorithm 2). This extension enables the controller to adapt its behaviour dynamically, i.e., prioritising safety during exploration and progressively enforcing stability during exploitation. The following theorem formalises these properties. 
+
+Theorem 2 Suppose that Assumptions 1, 2, and 3 hold, and that the terminal set Xf contains the origin in its interior. Let the initial state satisfy x(0) ∈ X N . Then, for any given external command uext (k), if M (k) ∈ I1: N and a(k) ∈
+
+[0 , ∞), the system (1) under the control law (15) satisfies the following properties: (a) The safety constraints are satisfied for all k ∈ I≥0.(b) Furthermore, if there exists a time instant Ks ∈ I≥0 such that sup k≥Ks a(k) < 1, then the closed-loop system is asymptotically stable for all k ∈ I≥Ks .
+
+Remark 4 Theorem 2 provides the theoretical foundation for resolving the classical exploration–exploitation dilemma within a unified predictive control framework. Property (a) guarantees that the system remains safe even when stability is intentionally relaxed (e.g., by choosing a(k) ≥ 1), thereby enabling the controller to explore a broader range of control actions or state trajectories without violating safety constraints—this corresponds to the safe exploration mode. In contrast, Property (b) ensures that, after any finite exploration phase, the system trajectories asymptotically converge once the controller switches to the exploitation mode (by persistently enforcing a(k) ≤ 1−¯a, with ¯a ∈ (0 , 1] ), where stability dominates. Different from the parameter a(k), which directly determines the stability behaviour of the closed-loop system, the horizon parameter M (k) does not explicitly influence stability. Nevertheless, M (k) plays a complementary and practically important role: increasing M (k) enlarges the S 2-set, thereby reducing conservatism and allowing the controller to preserve more of the external command. This, however, comes at the price of higher computational com-plexity. Conversely, smaller values of M (k) shrink the S 2-set, making the filter more restrictive but computationally 
+
+7MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees 
+
+Algorithm 2 PS 2F with Mode Scheduling  
+
+> 1:
+
+Offline: Specify prediction horizons N and M (k) ∈ I1: N ; cost functions ℓ(·, ·) and Vf (·); constraint sets 
+
+X, U, Xf ; and mode-scheduling parameter a(k) ≥ 0. 
+
+> 2:
+
+Initialisation: Set time k ← 0 and measure x(0) . 
+
+> 3:
+
+Step One-Nominal MPC: Solve PN
+
+ x(k) to obtain v∗(x(k)) and z∗(x(k)) . 
+
+> 4:
+
+Step Two-Receive external command: Obtain uext (k) from any goal-oriented controller.  
+
+> 5:
+
+Step Three-Mode scheduling: Adjust a(k) according to the desired operation mode:  
+
+> 6:
+
+if safe exploration phase then  
+
+> 7:
+
+Choose a large a(k) ≥ 1 to prioritise constraint satisfaction (safety-first mode).  
+
+> 8:
+
+else if stable exploitation phase then  
+
+> 9:
+
+Choose a small a(k) ≤ 1 − ¯a (with ¯a ∈ (0 , 1] ) to enhance asymptotic stability.  
+
+> 10:
+
+end if  
+
+> 11:
+
+Step Four-PS 2F: Receive the scheduled parameters a(k) and M (k). Solve Pf,M 
+
+ x(k) to obtain u∗(x(k)) and 
+
+x∗(x(k)) . Set the filtered control input 
+
+u(k) ← u∗(0; x(k)) (cf. (15)).  
+
+> 12:
+
+Step Five-Apply and propagate: Apply u(k) to the system (1) to obtain x(k+1) = f  x(k), u (k). 
+
+> 13:
+
+k ← k + 1 and go to Step One .
+
+cheaper. Adjusting both a(k) and M (k) thus provides a principled mechanism for shaping how the system transi-tions from exploration to exploitation. This capability to safely transition between exploration and exploitation phases within a single, theoretically grounded framework represents a central contribution of the proposed PS 2F approach. This feature will be further illustrated in the robotic navigation task in the following section. 
+
+Remark 5 In situations where the terminal set Xf does not have an interior, for example when Xf = {0n×1}, the upper bound in Proposition 1 cannot be established, and thus the asymptotic stability in the Lyapunov sense cannot be concluded directly [21, Chap. 2.4]. Nevertheless, convergence of the state to the origin can still be guaranteed. Since 
+
+V ∗ 
+
+> N
+
+(x(k)) is nonincreasing along closed-loop trajectories (see (33) or (35) ) and satisfies V ∗ 
+
+> N
+
+(x(k)) ≥ 0 for all k, the Monotone Convergence Theorem implies that V ∗ 
+
+> N
+
+(x(k)) converges to a finite limit as k → ∞ . Moreover, the decrease condition forces this limit to be zero, which in turn implies that x(k) converges to the origin. 
+
+4 Simulation 
+
+In this section, we validate the proposed PS 2F framework through three simulation studies. Each case study high-lights a different aspect of the method: the evolution of the S 2-set over time, the influence of design parameters on conservatism, and the integration of PS 2F with a goal-oriented external controller in robotic navigation. These simula-tions demonstrate how the proposed filter consistently enforces safety and stability while allowing flexible, high-level control behaviours. 
+
+4.1 Case Study 1: Evolution Over Time 
+
+Consider the linear system x+ = Ax + Bu , with 
+
+A =
+
+1 10 1
+
+
+
+, B =
+
+1 00 1
+
+
+
+,
+
+subject to the state and input constraints 
+
+X = [ −2, 2] 2, U = [ −1, 1] 2.
+
+The initial state is chosen as x(0) = [2 , −2] ⊤.The MPC stage cost is defined as ℓ(x, u ) = x⊤Qx + u⊤Ru with Q = 10 I2, R = I2, and prediction horizon N = 5 .The terminal cost and terminal set are chosen as 
+
+Vf (x) = x⊤P x, Xf = { x ∈ R2 | x⊤P x ≤ γ },
+
+where 
+
+P =
+
+10 .92 0.92 0.92 11 .85 
+
+
+
+8MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees 0.5 
+
+5
+
+10 
+
+15 
+
+-1 
+
+20 
+
+25 
+
+30 
+
+-0.5 00 -0.5 0.5 1 
+
+> <latexit sha1_base64="pyzDDBi+JPLSQE+3SSxgAynzVPc=">AAAB+XicbVBNT8JAFHzFL8SvqkcvG4kJXEhrDOqNxItHjIIk0JDtsoUN222zuyWShn/ixYPGePWfePPfuIUeFJxkk8nMe3mz48ecKe0431ZhbX1jc6u4XdrZ3ds/sA+P2ipKJKEtEvFIdnysKGeCtjTTnHZiSXHoc/roj28y/3FCpWKReNDTmHohHgoWMIK1kfq23QuxHvl+ej+rPFXG1WrfLjs1Zw60StyclCFHs29/9QYRSUIqNOFYqa7rxNpLsdSMcDor9RJFY0zGeEi7hgocUuWl8+QzdGaUAQoiaZ7QaK7+3khxqNQ09M1kllMte5n4n9dNdHDlpUzEiaaCLA4FCUc6QlkNaMAkJZpPDcFEMpMVkRGWmGhTVsmU4C5/eZW0z2tuvVa/uyg3rvM6inACp1ABFy6hAbfQhBYQmMAzvMKblVov1rv1sRgtWPnOMfyB9fkDf+SS5w==</latexit>
+
+S(x(k))  
+
+> <latexit sha1_base64="tdqI131XdfjqGMBoGes98UwFG+s=">AAAB63icbVBNSwMxEJ2tX7V+VT16CRahXsqulKq3ghePFewHtEvJptk2NMkuSVYoS/+CFw+KePUPefPfmG33oK0PBh7vzTAzL4g508Z1v53CxubW9k5xt7S3f3B4VD4+6egoUYS2ScQj1QuwppxJ2jbMcNqLFcUi4LQbTO8yv/tElWaRfDSzmPoCjyULGcEmk5Lq9HJYrrg1dwG0TrycVCBHa1j+GowikggqDeFY677nxsZPsTKMcDovDRJNY0ymeEz7lkosqPbTxa1zdGGVEQojZUsatFB/T6RYaD0Tge0U2Ez0qpeJ/3n9xIQ3fspknBgqyXJRmHBkIpQ9jkZMUWL4zBJMFLO3IjLBChNj4ynZELzVl9dJ56rmNWqNh3qleZvHUYQzOIcqeHANTbiHFrSBwASe4RXeHOG8OO/Ox7K14OQzp/AHzucPcGSN1Q==</latexit>
+
+u(k) 
+
+> <latexit sha1_base64="9xLWsHOF/6J7l+a6gfO3BQQVCq8=">AAAB/HicbVDLSgMxFM3UV62v0S7dBItQN2VGpOqu4MZlBfuAdhgyaaYNTTJDkhGHof6KGxeKuPVD3Pk3ZtpZaOuBwOGce7knJ4gZVdpxvq3S2vrG5lZ5u7Kzu7d/YB8edVWUSEw6OGKR7AdIEUYF6WiqGenHkiAeMNILpje533sgUtFI3Os0Jh5HY0FDipE2km9XEz8bcqQnkmfkUc9m9emZb9echjMHXCVuQWqgQNu3v4ajCCecCI0ZUmrgOrH2MiQ1xYzMKsNEkRjhKRqTgaECcaK8bB5+Bk+NMoJhJM0TGs7V3xsZ4kqlPDCTeU617OXif94g0eGVl1ERJ5oIvDgUJgzqCOZNwBGVBGuWGoKwpCYrxBMkEdamr4opwV3+8irpnjfcZqN5d1FrXRd1lMExOAF14IJL0AK3oA06AIMUPINX8GY9WS/Wu/WxGC1ZxU4V/IH1+QM74JUh</latexit>
+
+uext (k)
+
+Figure 3: Three-dimensional illustration of the PS 2F operation over time. The S 2-set S(x(k)) (grey surface) evolves with the system state, while the external command uext (k) (red circle) and the filtered control u(k) (blue square) are visualised along the time axis. is the positive definite solution of the discrete-time algebraic Riccati equation associated with (A, B, Q, R ), and γ =7.28 is selected so that Xf is the largest ellipsoid contained within the state and input constraints and invariant under the terminal controller u = −KLQR x. It is straightforward to verify that this MPC setup satisfies Assumptions 1, 2, and 3. The PS 2F parameters are chosen as M = 2 and α = 0 .95 .To make the scenario more challenging, we choose the external command as 
+
+uext (k) = 
+
+u1,ext (k)
+
+u2,ext (k)
+
+
+
+=
+
+−1.2 cos(0 .2k + 0 .2) 0.1 x2(k)
+
+
+
+.
+
+The first component u1,ext (k) is an open-loop signal that may violate the input constraints, while the second com-ponent u2,ext (k) corresponds to an unstable feedback law. Indeed, applying u2,ext (k) directly to the system leads to 
+
+x2(k + 1) = 1 .1 x2(k), which diverges over time and is therefore intrinsically unstable. The results are shown in Figs. 3 and 4. Fig. 3 provides a macroscopic, time-evolving visualisation of the PS 2Fmechanism. It illustrates how the S 2-set S(x(k)) evolves as the system state changes, forming a grey surface in the 3D space spanned by (u1, u 2, k ). Superimposed on this surface are the trajectories of the external command uext (k) and the filtered control u(k), which clearly show how unsafe or unstable external actions are projected onto the safe–stable region. Fig. 4 complements this with a microscopic, step-by-step perspective. Each panel shows a 2D cross-section of the S 2-set at a given time k, together with the external command, the filtered control, and the direction of correction applied by the filter. These snapshots also align with Proposition 7: as x(k) approaches the origin, the corresponding S2-set S(x(k)) progressively shrinks, eventually collapsing to the singleton {0m×1}. Overall, these visualisations demonstrate how PS 2F systematically modifies the external command at each time step and how the geometry of 
+
+S(x(k)) governs the filter’s corrective behaviour. 9MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees -1 -0.5 0 0.5 1-1 -0.5 00.5 1-1 -0.5 0 0.5 1-1 -0.5 00.5 1-1 -0.5 0 0.5 1-1 -0.5 00.5 1-1 -0.5 0 0.5 1-1 -0.5 00.5 1-1 -0.5 0 0.5 1-1 -0.5 00.5 1
+
+(a) k = 0 (b) k = 1 (c) k = 2 (d) k = 3 (e) k = 4 -1 -0.5 0 0.5 1-1 -0.5 00.5 1-1 -0.5 0 0.5 1-1 -0.5 00.5 1-1 -0.5 0 0.5 1-1 -0.5 00.5 1-1 -0.5 0 0.5 1-1 -0.5 00.5 1-1 -0.5 0 0.5 1-1 -0.5 00.5 1
+
+(f) k = 5 (g) k = 6 (h) k = 7 (i) k = 8 (j) k = 9 -1 -0.5 0 0.5 1-1 -0.5 00.5 1-1 -0.5 0 0.5 1-1 -0.5 00.5 1-1 -0.5 0 0.5 1-1 -0.5 00.5 1-1 -0.5 0 0.5 1-1 -0.5 00.5 1-1 -0.5 0 0.5 1-1 -0.5 00.5 1
+
+(k) k = 10 (l) k = 15 (m) k = 30 (n) k = 70 (o) k = 99 
+
+Figure 4: Evolution of the PS 2F filtering process along the u1–u2 axes. Each panel shows the S 2-set S(x(k)) (grey surface), the external command uext (k) (red circle), and the filtered control u(k) (blue square). The orange arrow depicts the corrective action generated by PS 2F, which corresponds to the perpendicular projection of uext (k) onto the admissible set. This projection direction is orthogonal to the local tangent of the boundary ∂S(x(k)) (purple dash-dotted line), ensuring that the filtered input remains within the safety–stability domain while staying as close as possible to the external command. 
+
+4.2 Case Study 2: Evolution Over Parameters 
+
+To investigate how the design parameters influence the geometry of the S 2-set and thus the level of conservatism of the PS 2F, we systematically vary the key parameters and plot the resulting S 2-sets at the same state. For consistency, this parametric study is conducted on the same linear system used in Case Study 1, and we only focus on the case where the state is in its initial condition x = x(0) = [2 , −2] ⊤.We begin with the parameters of the PS 2F. Fig. 5 illustrates the influence of the parameter a with M = 5 fixed. In line with Propositions 3 and 4, increasing a yields a larger S 2-set. Fig. 6 shows the effect of the prediction horizon 
+
+M with a = 0 .95 fixed. As predicted by Propositions 5 and 6, the S 2-set expands monotonically as M increases. A longer predictive horizon provides more degrees of freedom for constructing safe–stable trajectories, thereby reducing conservatism and enlarging the set of admissible filtered inputs. A concise summary of these parameter effects is provided in Table 1. We next investigate how the design parameters of the nominal MPC, which forms the foundation of PS 2F, affect the geometry of the resulting S 2-set. Figure 7 illustrates the influence of the MPC state-weighting matrix, where we vary 
+
+Q = ρI 2 while fixing R = I2 and M = N = 5 . These results show how shaping the nominal cost landscape directly alters the boundary of the safe–stable domain. Figure 8 then examines the effect of the MPC prediction horizon N ,with M = N fixed. As N increases, the S 2-set expands because the region of attraction of the nominal MPC becomes larger, enabling the filter to preserve a wider range of external commands while still guaranteeing safety and stability. 10 MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees Table 1: Effect of increasing each PS 2F design parameter. 
+
+Param. Effect on S(x) Side Effect 
+
+a Enlarges S(x) Typically slower convergence 
+
+M Enlarges S(x) Higher computational cost -1 -0.5 0 0.5 1
+
+-1 
+
+-0.5 
+
+0
+
+0.5 
+
+1
+
+<latexit sha1_base64="ZJUJLZwvV6u2sQRZTzNzr4+7jnk=">AAAB7HicbVBNS8NAEJ3Ur1q/qh69LBbBU0lEqh6EghePFUxbaEPZbDft0s0m7E6EUvobvHhQxKs/yJv/xm2bg7Y+GHi8N8PMvDCVwqDrfjuFtfWNza3idmlnd2//oHx41DRJphn3WSIT3Q6p4VIo7qNAydup5jQOJW+Fo7uZ33ri2ohEPeI45UFMB0pEglG0kk9vPdftlStu1Z2DrBIvJxXI0eiVv7r9hGUxV8gkNabjuSkGE6pRMMmnpW5meErZiA54x1JFY26CyfzYKTmzSp9EibalkMzV3xMTGhszjkPbGVMcmmVvJv7ndTKMroOJUGmGXLHFoiiTBBMy+5z0heYM5dgSyrSwtxI2pJoytPmUbAje8surpHlR9WrV2sNlpX6Tx1GEEziFc/DgCupwDw3wgYGAZ3iFN0c5L86787FoLTj5zDH8gfP5A5L5jd0=</latexit> 
+
+a = 100 <latexit sha1_base64="22tU8HpSO2c+dz0BPkXUiXCfcv8=">AAAB7HicbVBNS8NAEJ3Ur1q/qh69LBbBU0hEqh6EghePFUxbaEPZbDft0s1u2N0IJfQ3ePGgiFd/kDf/jds2B219MPB4b4aZeVHKmTae9+2U1tY3NrfK25Wd3b39g+rhUUvLTBEaEMml6kRYU84EDQwznHZSRXEScdqOxnczv/1ElWZSPJpJSsMEDwWLGcHGSgG+9dx6v1rzXG8OtEr8gtSgQLNf/eoNJMkSKgzhWOuu76UmzLEyjHA6rfQyTVNMxnhIu5YKnFAd5vNjp+jMKgMUS2VLGDRXf0/kONF6kkS2M8FmpJe9mfif181MfB3mTKSZoYIsFsUZR0ai2edowBQlhk8swUQxeysiI6wwMTafig3BX355lbQuXL/u1h8ua42bIo4ynMApnIMPV9CAe2hCAAQYPMMrvDnCeXHenY9Fa8kpZo7hD5zPH5eBjeA=</latexit> 
+
+a = 0 .6
+
+<latexit sha1_base64="dQQNPi20j/3nOGwdmNl9bX6o3Jg=">AAAB7HicbVBNS8NAEJ3Ur1q/qh69LBbBU0hUqh6EghePFUxbaEPZbDft0t1N2N0IJfQ3ePGgiFd/kDf/jds2B60+GHi8N8PMvCjlTBvP+3JKK6tr6xvlzcrW9s7uXnX/oKWTTBEakIQnqhNhTTmTNDDMcNpJFcUi4rQdjW9nfvuRKs0S+WAmKQ0FHkoWM4KNlQJ847nn/WrNc7050F/iF6QGBZr96mdvkJBMUGkIx1p3fS81YY6VYYTTaaWXaZpiMsZD2rVUYkF1mM+PnaITqwxQnChb0qC5+nMix0LriYhsp8BmpJe9mfif181MfBXmTKaZoZIsFsUZRyZBs8/RgClKDJ9Ygoli9lZERlhhYmw+FRuCv/zyX9I6c/26W7+/qDWuizjKcATHcAo+XEID7qAJARBg8AQv8OpI59l5c94XrSWnmDmEX3A+vgGS9Y3d</latexit> 
+
+a = 0 .3
+
+<latexit sha1_base64="4NWDPk6tYcppV2Ymrlo1oANoaI4=">AAAB6nicbVBNS8NAEJ3Ur1q/qh69LBbBU0lEqh6EghePFe0HtKFMtpt26WYTdjdCCf0JXjwo4tVf5M1/47bNQasPBh7vzTAzL0gE18Z1v5zCyura+kZxs7S1vbO7V94/aOk4VZQ1aSxi1QlQM8ElaxpuBOskimEUCNYOxjczv/3IlOaxfDCThPkRDiUPOUVjpXu8dvvlilt15yB/iZeTCuRo9MufvUFM04hJQwVq3fXcxPgZKsOpYNNSL9UsQTrGIetaKjFi2s/mp07JiVUGJIyVLWnIXP05kWGk9SQKbGeEZqSXvZn4n9dNTXjpZ1wmqWGSLhaFqSAmJrO/yYArRo2YWIJUcXsroSNUSI1Np2RD8JZf/ktaZ1WvVq3dnVfqV3kcRTiCYzgFDy6gDrfQgCZQGMITvMCrI5xn5815X7QWnHzmEH7B+fgGtEaNaA==</latexit> 
+
+a = 0 
+
+<latexit sha1_base64="wig3Zk4AEkq9l/TPwo8mCowKTgU=">AAAB7XicbVBNSwMxEJ31s9avqkcvwSJ4WnZFqz0IBS8eK9gPaJeSTbNtbDZZkqxQlv4HLx4U8er/8ea/MW33oK0PBh7vzTAzL0w408bzvp2V1bX1jc3CVnF7Z3dvv3Rw2NQyVYQ2iORStUOsKWeCNgwznLYTRXEcctoKR7dTv/VElWZSPJhxQoMYDwSLGMHGSk1847nVy16p7LneDGiZ+DkpQ456r/TV7UuSxlQYwrHWHd9LTJBhZRjhdFLsppommIzwgHYsFTimOshm107QqVX6KJLKljBopv6eyHCs9TgObWeMzVAvelPxP6+Tmug6yJhIUkMFmS+KUo6MRNPXUZ8pSgwfW4KJYvZWRIZYYWJsQEUbgr/48jJpnrt+xa3cX5Rr1TyOAhzDCZyBD1dQgzuoQwMIPMIzvMKbI50X5935mLeuOPnMEfyB8/kDEpGOIg==</latexit> 
+
+a = 0 .95 
+
+Figure 5: Effect of parameter a on S(x), with N = M = 5 , Q = 10 I2, and R = I2.Notably, when N = 1 , the nominal MPC problem becomes infeasible, highlighting the critical role of the prediction horizon in ensuring feasibility of the overall PS 2F framework. 
+
+4.3 Case Study 3: Go–Stay–Return Navigation 
+
+In this final case study, we demonstrate the applicability of the PS 2F framework in a dynamic navigation task that requires both transient manoeuvring and temporary station-keeping. We consider a nonholonomic mobile robot with unicycle-type kinematics [23, 24], whose dynamics are given by 
+
+"px(k + 1) 
+
+py (k + 1) 
+
+θ(k + 1) 
+
+#
+
+=
+
+"px(k)
+
+py (k)
+
+θ(k)
+
+#
+
++ Ts
+
+"cos( θ(k)) 0sin( θ(k)) 00 1
+
+# v(k)
+
+ω(k)
+
+
+
+(17) where (px(k), p y (k)) denotes the robot’s planar position, θ(k) its heading angle, v(k) the forward linear veloc-ity, ω(k) the angular velocity, and Ts = 0.2 s is the sampling time. Let x(k) = [px(k), p y (k), θ (k)] ⊤ and 
+
+u(k) = [ v(k), ω (k)] ⊤ denote the state and input vectors, respectively, with the initial condition x(0) = 0 3×1. This model captures the fundamental nonholonomic constraint of wheeled robots: the robot moves only in the direction of its heading and must reorient via ω(k) to change direction. The unicycle model is widely used for ground robots, differential-drive vehicles, and autonomous mobile platforms operating in planar environments. The task in this case study is to guide the mobile robot (17) from its initial position to a designated target region, remain within that region for a prescribed dwell time, and subsequently return safely to its original location. This three-phase “go–stay–return” behaviour is representative of many practical robotic missions, including inspection–pause–return tasks, waypoint surveillance, and object pickup followed by retreat [25]. Such tasks require not only accurate motion execution during the outbound and return phases, but also the ability to maintain a stable stationary posture within the target region. This combination of manoeuvring, dwelling, and safe return makes the scenario particularly well-suited for evaluating the mode scheduling capability of the PS 2F framework. It is worth noting that this “go–stay–return” 11 MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees -1 -0.5 0 0.5 1
+
+-1 
+
+-0.5 
+
+0
+
+0.5 
+
+1
+
+<latexit sha1_base64="ZR+UW0V6WSnhGs3/1hf+9eL7LXY=">AAAB6nicbVDLSgNBEOyNrxhfUY9eBoPgKeyKRj0IAS9ehIjmAckSZieTZMjs7DLTK4Qln+DFgyJe/SJv/o2TZA8aLWgoqrrp7gpiKQy67peTW1peWV3Lrxc2Nre2d4q7ew0TJZrxOotkpFsBNVwKxesoUPJWrDkNA8mbweh66jcfuTYiUg84jrkf0oESfcEoWun+9uqsWyy5ZXcG8pd4GSlBhlq3+NnpRSwJuUImqTFtz43RT6lGwSSfFDqJ4TFlIzrgbUsVDbnx09mpE3JklR7pR9qWQjJTf06kNDRmHAa2M6Q4NIveVPzPayfYv/BToeIEuWLzRf1EEozI9G/SE5ozlGNLKNPC3krYkGrK0KZTsCF4iy//JY2TslcpV+5OS9XLLI48HMAhHIMH51CFG6hBHRgM4Ale4NWRzrPz5rzPW3NONrMPv+B8fAOdYo1Z</latexit> 
+
+M = 5 <latexit sha1_base64="+DMgU8N1fZlWUfvEgTJZbEDrzhY=">AAAB6nicbVDLSgNBEOyNrxhfUY9eBoPgKeyKRD0IAS9ehIjmAckSZie9yZDZ2WVmVgghn+DFgyJe/SJv/o2TZA+aWNBQVHXT3RUkgmvjut9ObmV1bX0jv1nY2t7Z3SvuHzR0nCqGdRaLWLUCqlFwiXXDjcBWopBGgcBmMLyZ+s0nVJrH8tGMEvQj2pc85IwaKz3cXZ93iyW37M5AlomXkRJkqHWLX51ezNIIpWGCat323MT4Y6oMZwInhU6qMaFsSPvYtlTSCLU/np06ISdW6ZEwVrakITP198SYRlqPosB2RtQM9KI3Ff/z2qkJL/0xl0lqULL5ojAVxMRk+jfpcYXMiJEllClubyVsQBVlxqZTsCF4iy8vk8ZZ2auUK/fnpepVFkcejuAYTsGDC6jCLdSgDgz68Ayv8OYI58V5dz7mrTknmzmEP3A+fwCb3o1Y</latexit> 
+
+M = 4 <latexit sha1_base64="25OkBeJBieU+YJPR+t4lofqnTx8=">AAAB6nicbVDLSgNBEOyNrxhfUY9eBoPgKeyqRD0IAS9ehIjmAckSZieTZMjs7DLTK4Qln+DFgyJe/SJv/o2TZA8aLWgoqrrp7gpiKQy67peTW1peWV3Lrxc2Nre2d4q7ew0TJZrxOotkpFsBNVwKxesoUPJWrDkNA8mbweh66jcfuTYiUg84jrkf0oESfcEoWun+9uq0Wyy5ZXcG8pd4GSlBhlq3+NnpRSwJuUImqTFtz43RT6lGwSSfFDqJ4TFlIzrgbUsVDbnx09mpE3JklR7pR9qWQjJTf06kNDRmHAa2M6Q4NIveVPzPayfYv/BToeIEuWLzRf1EEozI9G/SE5ozlGNLKNPC3krYkGrK0KZTsCF4iy//JY2TslcpV+7OStXLLI48HMAhHIMH51CFG6hBHRgM4Ale4NWRzrPz5rzPW3NONrMPv+B8fAOaWo1X</latexit> 
+
+M = 3 
+
+<latexit sha1_base64="CzZfADU5mSZmiZN3xUE67H/OqLg=">AAAB6nicbVDLSgNBEOz1GeMr6tHLYBA8hd0gUQ9CwIsXIaJ5QLKE2UlvMmR2dpmZFULIJ3jxoIhXv8ibf+Mk2YMmFjQUVd10dwWJ4Nq47rezsrq2vrGZ28pv7+zu7RcODhs6ThXDOotFrFoB1Si4xLrhRmArUUijQGAzGN5M/eYTKs1j+WhGCfoR7UseckaNlR7ursvdQtEtuTOQZeJlpAgZat3CV6cXszRCaZigWrc9NzH+mCrDmcBJvpNqTCgb0j62LZU0Qu2PZ6dOyKlVeiSMlS1pyEz9PTGmkdajKLCdETUDvehNxf+8dmrCS3/MZZIalGy+KEwFMTGZ/k16XCEzYmQJZYrbWwkbUEWZsenkbQje4svLpFEueZVS5f68WL3K4sjBMZzAGXhwAVW4hRrUgUEfnuEV3hzhvDjvzse8dcXJZo7gD5zPH5jWjVY=</latexit> 
+
+M = 2 
+
+<latexit sha1_base64="3ll9b87mpwWzZ88bYyGdeut7v6c=">AAAB6nicbVDLSgNBEOyNrxhfUY9eBoPgKeyKRD0IAS9ehIjmAckSZieTZMjs7DLTK4Qln+DFgyJe/SJv/o2TZA+aWNBQVHXT3RXEUhh03W8nt7K6tr6R3yxsbe/s7hX3DxomSjTjdRbJSLcCargUitdRoOStWHMaBpI3g9HN1G8+cW1EpB5xHHM/pAMl+oJRtNLD3bXXLZbcsjsDWSZeRkqQodYtfnV6EUtCrpBJakzbc2P0U6pRMMknhU5ieEzZiA5421JFQ278dHbqhJxYpUf6kbalkMzU3xMpDY0Zh4HtDCkOzaI3Ff/z2gn2L/1UqDhBrth8UT+RBCMy/Zv0hOYM5dgSyrSwtxI2pJoytOkUbAje4svLpHFW9irlyv15qXqVxZGHIziGU/DgAqpwCzWoA4MBPMMrvDnSeXHenY95a87JZg7hD5zPH5dSjVU=</latexit> 
+
+M = 1 
+
+Figure 6: Effect of prediction horizon M on S(x), with N = 5 , a = 0 .95 , Q = 10 I2, and R = I2.-1 -0.5 0 0.5 1
+
+-1 
+
+-0.5 
+
+0
+
+0.5 
+
+1
+
+<latexit sha1_base64="NGCprylrntM2myiJBs0O9Z+3y2U=">AAAB7nicbVBNSwMxEJ2tX7V+VT16CRbBU9kVqXoQCl48VrAf0C4lm2bb0GwSkqxQlv4ILx4U8erv8ea/MW33oK0PBh7vzTAzL1KcGev7315hbX1jc6u4XdrZ3ds/KB8etYxMNaFNIrnUnQgbypmgTcsspx2lKU4iTtvR+G7mt5+oNkyKRztRNEzwULCYEWyd1O7pkbwN/H654lf9OdAqCXJSgRyNfvmrN5AkTaiwhGNjuoGvbJhhbRnhdFrqpYYqTMZ4SLuOCpxQE2bzc6fozCkDFEvtSlg0V39PZDgxZpJErjPBdmSWvZn4n9dNbXwdZkyo1FJBFovilCMr0ex3NGCaEssnjmCimbsVkRHWmFiXUMmFECy/vEpaF9WgVq09XFbqN3kcRTiBUziHAK6gDvfQgCYQGMMzvMKbp7wX7937WLQWvHzmGP7A+/wBhG6PBQ==</latexit> 
+
+⇢ = 10 <latexit sha1_base64="HCU2piFB/H2NbriLDa7FIBUCZjA=">AAAB7XicbVBNSwMxEJ34WetX1aOXYBE8lV2Rqgeh4MVjBfsB7VKyabaNzSZLkhXK0v/gxYMiXv0/3vw3pu0etPXBwOO9GWbmhYngxnreN1pZXVvf2CxsFbd3dvf2SweHTaNSTVmDKqF0OySGCS5Zw3IrWDvRjMShYK1wdDv1W09MG67kgx0nLIjJQPKIU2Kd1Ozqobrxe6WyV/FmwMvEz0kZctR7pa9uX9E0ZtJSQYzp+F5ig4xoy6lgk2I3NSwhdEQGrOOoJDEzQTa7doJPndLHkdKupMUz9fdERmJjxnHoOmNih2bRm4r/eZ3URldBxmWSWibpfFGUCmwVnr6O+1wzasXYEUI1d7diOiSaUOsCKroQ/MWXl0nzvOJXK9X7i3LtOo+jAMdwAmfgwyXU4A7q0AAKj/AMr/CGFHpB7+hj3rqC8pkj+AP0+QMUrY7L</latexit> 
+
+⇢ = 1 <latexit sha1_base64="cJMdUKqo1MFnF7oDon/MU6tEhUE=">AAAB73icbVBNSwMxEJ2tX7V+VT16CRbB07IrWvUgFLx4rGA/oF1KNs22odlkTbJCWfonvHhQxKt/x5v/xrTdg7Y+GHi8N8PMvDDhTBvP+3YKK6tr6xvFzdLW9s7uXnn/oKllqghtEMmlaodYU84EbRhmOG0niuI45LQVjm6nfuuJKs2keDDjhAYxHggWMYKNldpdNZQ3nnvRK1c815sBLRM/JxXIUe+Vv7p9SdKYCkM41rrje4kJMqwMI5xOSt1U0wSTER7QjqUCx1QH2ezeCTqxSh9FUtkSBs3U3xMZjrUex6HtjLEZ6kVvKv7ndVITXQUZE0lqqCDzRVHKkZFo+jzqM0WJ4WNLMFHM3orIECtMjI2oZEPwF19eJs0z16+61fvzSu06j6MIR3AMp+DDJdTgDurQAAIcnuEV3pxH58V5dz7mrQUnnzmEP3A+fwD3ZY9B</latexit> 
+
+⇢ = 0 .5
+
+<latexit sha1_base64="NdDDqBGjEhWdPZojKZaWDYHpsy4=">AAAB73icbVBNSwMxEJ2tX7V+VT16CRbB07JbpOpBKHjxWMF+QLuUbJptQ7PJmmSFsvRPePGgiFf/jjf/jWm7B219MPB4b4aZeWHCmTae9+0U1tY3NreK26Wd3b39g/LhUUvLVBHaJJJL1QmxppwJ2jTMcNpJFMVxyGk7HN/O/PYTVZpJ8WAmCQ1iPBQsYgQbK3V6aiRvPLfaL1c815sDrRI/JxXI0eiXv3oDSdKYCkM41rrre4kJMqwMI5xOS71U0wSTMR7SrqUCx1QH2fzeKTqzygBFUtkSBs3V3xMZjrWexKHtjLEZ6WVvJv7ndVMTXQUZE0lqqCCLRVHKkZFo9jwaMEWJ4RNLMFHM3orICCtMjI2oZEPwl19eJa2q69fc2v1FpX6dx1GEEziFc/DhEupwBw1oAgEOz/AKb86j8+K8Ox+L1oKTzxzDHzifP/LZjz4=</latexit> 
+
+⇢ = 0 .2 <latexit sha1_base64="5zh/osJ2FxduTjRAYuTXVe8705A=">AAAB8XicbVDLSgMxFL1TX7W+qi7dBIvgqsyItLoQCm5cVrAPbIeSSTNtaCYZkoxQhv6FGxeKuPVv3Pk3ZtpZaOuBkMM593LvPUHMmTau++0U1tY3NreK26Wd3b39g/LhUVvLRBHaIpJL1Q2wppwJ2jLMcNqNFcVRwGknmNxmfueJKs2keDDTmPoRHgkWMoKNlR77aixv3KrreoNyJfszoFXi5aQCOZqD8ld/KEkSUWEIx1r3PDc2foqVYYTTWamfaBpjMsEj2rNU4IhqP51vPENnVhmiUCr7hEFz9XdHiiOtp1FgKyNsxnrZy8T/vF5iwis/ZSJODBVkMShMODISZeejIVOUGD61BBPF7K6IjLHCxNiQSjYEb/nkVdK+qHq1au3+stK4zuMowgmcwjl4UIcG3EETWkBAwDO8wpujnRfn3flYlBacvOcY/sD5/AHR2o+x</latexit> 
+
+⇢ = 0 .001 
+
+Figure 7: Effect of MPC weighting Q = ρI 2 on S(x), with N = M = 5 , a = 0 .95 , and R = I2.12 MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees -1 -0.5 0 0.5 1
+
+-1 
+
+-0.5 
+
+0
+
+0.5 
+
+1
+
+<latexit sha1_base64="EqbLZCWB1y79cdr1smIuOUH+GNs=">AAAB6nicbVDLSgNBEOyNrxhfUY9eBoPgKeyKRj0IAS+eJKJ5QLKE2ckkGTI7u8z0CmHJJ3jxoIhXv8ibf+Mk2YNGCxqKqm66u4JYCoOu++XklpZXVtfy64WNza3tneLuXsNEiWa8ziIZ6VZADZdC8ToKlLwVa07DQPJmMLqe+s1Hro2I1AOOY+6HdKBEXzCKVrq/vTrrFktu2Z2B/CVeRkqQodYtfnZ6EUtCrpBJakzbc2P0U6pRMMknhU5ieEzZiA5421JFQ278dHbqhBxZpUf6kbalkMzUnxMpDY0Zh4HtDCkOzaI3Ff/z2gn2L/xUqDhBrth8UT+RBCMy/Zv0hOYM5dgSyrSwtxI2pJoytOkUbAje4st/SeOk7FXKlbvTUvUyiyMPB3AIx+DBOVThBmpQBwYDeIIXeHWk8+y8Oe/z1pyTzezDLzgf357ojVo=</latexit> 
+
+N = 5 <latexit sha1_base64="YtQ5OVAfUImfl0V/G/gGBZIqQzE=">AAAB6nicbVDLSgNBEOyNrxhfUY9eBoPgKeyKRD0IAS+eJKJ5QLKE2UlvMmR2dpmZFULIJ3jxoIhXv8ibf+Mk2YMmFjQUVd10dwWJ4Nq47reTW1ldW9/Ibxa2tnd294r7Bw0dp4phncUiVq2AahRcYt1wI7CVKKRRILAZDG+mfvMJleaxfDSjBP2I9iUPOaPGSg931+fdYsktuzOQZeJlpAQZat3iV6cXszRCaZigWrc9NzH+mCrDmcBJoZNqTCgb0j62LZU0Qu2PZ6dOyIlVeiSMlS1pyEz9PTGmkdajKLCdETUDvehNxf+8dmrCS3/MZZIalGy+KEwFMTGZ/k16XCEzYmQJZYrbWwkbUEWZsekUbAje4svLpHFW9irlyv15qXqVxZGHIziGU/DgAqpwCzWoA4M+PMMrvDnCeXHenY95a87JZg7hD5zPH51kjVk=</latexit> 
+
+N = 4 <latexit sha1_base64="w86LXLA2zdfWOC1Rdf+ZMCnz49E=">AAAB6nicbVDLSgNBEOyNrxhfUY9eBoPgKeyqRD0IAS+eJKJ5QLKE2ckkGTI7u8z0CmHJJ3jxoIhXv8ibf+Mk2YNGCxqKqm66u4JYCoOu++XklpZXVtfy64WNza3tneLuXsNEiWa8ziIZ6VZADZdC8ToKlLwVa07DQPJmMLqe+s1Hro2I1AOOY+6HdKBEXzCKVrq/vTrtFktu2Z2B/CVeRkqQodYtfnZ6EUtCrpBJakzbc2P0U6pRMMknhU5ieEzZiA5421JFQ278dHbqhBxZpUf6kbalkMzUnxMpDY0Zh4HtDCkOzaI3Ff/z2gn2L/xUqDhBrth8UT+RBCMy/Zv0hOYM5dgSyrSwtxI2pJoytOkUbAje4st/SeOk7FXKlbuzUvUyiyMPB3AIx+DBOVThBmpQBwYDeIIXeHWk8+y8Oe/z1pyTzezDLzgf35vgjVg=</latexit> 
+
+N = 3 
+
+<latexit sha1_base64="NYR5ppBR9Oi2nFRv6BhF06Bmg6E=">AAAB6nicbVDLSgNBEOz1GeMr6tHLYBA8hd0gUQ9CwIsniWgekCxhdtKbDJmdXWZmhRDyCV48KOLVL/Lm3zhJ9qCJBQ1FVTfdXUEiuDau++2srK6tb2zmtvLbO7t7+4WDw4aOU8WwzmIRq1ZANQousW64EdhKFNIoENgMhjdTv/mESvNYPppRgn5E+5KHnFFjpYe763K3UHRL7gxkmXgZKUKGWrfw1enFLI1QGiao1m3PTYw/pspwJnCS76QaE8qGtI9tSyWNUPvj2akTcmqVHgljZUsaMlN/T4xppPUoCmxnRM1AL3pT8T+vnZrw0h9zmaQGJZsvClNBTEymf5MeV8iMGFlCmeL2VsIGVFFmbDp5G4K3+PIyaZRLXqVUuT8vVq+yOHJwDCdwBh5cQBVuoQZ1YNCHZ3iFN0c4L8678zFvXXGymSP4A+fzB5pcjVc=</latexit> 
+
+N = 2 <latexit sha1_base64="HFMh/fO1hP3XKTxWC9SwiU2vizA=">AAAB6nicbVDLSgNBEOyNrxhfUY9eBoPgKeyKRD0IAS+eJKJ5QLKE2ckkGTI7u8z0CmHJJ3jxoIhXv8ibf+Mk2YMmFjQUVd10dwWxFAZd99vJrayurW/kNwtb2zu7e8X9g4aJEs14nUUy0q2AGi6F4nUUKHkr1pyGgeTNYHQz9ZtPXBsRqUccx9wP6UCJvmAUrfRwd+11iyW37M5AlomXkRJkqHWLX51exJKQK2SSGtP23Bj9lGoUTPJJoZMYHlM2ogPetlTRkBs/nZ06ISdW6ZF+pG0pJDP190RKQ2PGYWA7Q4pDs+hNxf+8doL9Sz8VKk6QKzZf1E8kwYhM/yY9oTlDObaEMi3srYQNqaYMbToFG4K3+PIyaZyVvUq5cn9eql5lceThCI7hFDy4gCrcQg3qwGAAz/AKb450Xpx352PemnOymUP4A+fzB5jYjVY=</latexit> 
+
+N = 1 (Infeasible) 
+
+Figure 8: Effect of prediction horizon N on S(x), with Q = 10 I2, R = I2, a = 0 .95 , and M = N .task cannot be reliably accomplished by any single conventional controller, including a standard MPC design, because the mission inherently involves distinct and sometimes conflicting control objectives across phases, ranging from aggressive motion to long-duration stabilisation. To make the task even more challenging, we impose state and input constraints: 
+
+X = [ −0.5, 0.5] 2 × [−π/ 3, π/ 3] , U = [ −10 , 10] 2.
+
+Without loss of generality, the collision volume of the robot is ignored here. The designated target that the robot must reach and remain is the point pgo = [0 .5, 0.5] ⊤, the upper-right corner of the allowable position set, making the dwelling phase particularly demanding due to the tight state constraints. 
+
+4.3.1 The Baseline Approach 
+
+A common baseline solution for this type of task is to design two separate controllers, each dedicated to one phase of the operation: a controller that drives the robot toward the goal (the “go–stay” phase) and another that brings it back to the origin (the “return” phase). These controllers operate independently and are switched sequentially to complete the overall mission. To generate these task-oriented commands, we adopt a reinforcement-learning-like optimal control strategy that pri-oritises goal achievement. Let 
+
+Dgo (i; x) := [px(i; x), p y (i; x)] ⊤ − pgo 
+
+2 (18) denote the squared distance between the predicted robot position at step i and the target point pgo . The controller for the “go-stay” phase is given by 
+
+u∗(x(k)) = {u∗(0; x(k)) , . . . , u ∗(H − 1; x(k)) } = arg min 
+
+u
+
+H−1X
+
+i=0 
+
+γ i Dgo (i; x(k)) ,ugo (k) = u∗(0; x(k)) ,
+
+(19) where H = 5 is the prediction horizon and γ = 0 .9 ∈ (0 , 1) is a discount factor. Similarly, the “return” phase controller is obtained by replacing the goal position pgo with the home position preturn = [0 , 0] ⊤ in (18) and (19). The resulting control law drives the robot back toward the origin using the same discounted predictive criterion, and its first control action is taken as the command for the return phase, denoted by ureturn (k).Thus, under the conventional two-controller framework, the robot first applies ugo (k) during the “go–stay” phase and subsequently switches to ureturn (k) for the “return” phase. 13 MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees 
+
+4.3.2 PS 2F with Mode Scheduling 
+
+This dynamic task requirement can also be naturally integrated into the PS 2F framework through Algorithm 2. In this demonstration, we only employ the external command uext (k) = ugo (k) and omit the return controller 
+
+ureturn (k). The nominal MPC employs the quadratic stage cost ℓ(x, u ) = x⊤Qx + u⊤Ru with tuning matrices 
+
+Q = 10 I3 and R = I2, prediction horizon N = 5 , terminal cost Vf (x) = 0 , and terminal set Xf = {03×1}. For the PS 2F layer, the scheduling parameters are chosen as M (k) = N = 5 for all k ∈ I≥0, together with a time-varying coefficient, given by 
+
+a(k) = 
+
+(100 , k ∈ I0: Ks−1,
+
+0.5, k ∈ I≥Ks ,
+
+so that the closed-loop system prioritises safety during the initial phase ( k ∈ I0: Ks−1) and transitions to a stability-oriented behaviour once the system is sufficiently close to the desired operating region. This scheduled adjustment enables the PS 2F mechanism to balance short-term safety requirements with long-term stability guarantees. 
+
+4.3.3 Results 
+
+The state and input responses are shown in Fig. 9. For the baseline approach, the controller is scheduled to switch to the return mode at k = 30 (i.e., at t = 6 s ), which corresponds to the blue curve in the filtered case in Fig. 9. It is worth noting that the filtered case is slower than the baseline because it must keep the heading angle within the admissible safety region. This constraint requires additional time for the mobile robot to reorient before proceeding, as illustrated in Fig. 9(a). From Fig. 9, it can also be observed that the proposed method guarantees that the mobile robot safely completes the entire “go–stay–return” task, regardless of the choice of Ks. Fig. 9(c) shows the value function of the nominal MPC. As expected, it is nondecreasing before Ks because, during the “go–stay” phase, the robot is actively moving away from the origin, causing the value function to increase (or at least not decrease). After Ks, according to Theorem 2, the value function becomes decreasing, reflecting the transition to the stability-oriented phase of the controller. To provide a more intuitive illustration, Fig. 10 displays the robot’s position trajectories, where the triangular mark-ers indicate the instantaneous heading angle. In Fig. 10(a), the baseline controller violates the heading-angle safety constraint when attempting to initiate motion near k = 0 or to return near k = 30 , resulting in unsafe behaviour. In contrast, Fig. 10(b) shows that the proposed PS 2F method successfully maintains the robot within the admissible region while following the same switching schedule, demonstrating the effectiveness of the safety filter in enforcing constraint satisfaction throughout the manoeuvre. 
+
+5 Conclusions 
+
+In this paper, we have developed a unified predictive control framework for achieving safe and stable control under potentially unsafe or unstable external commands. Unlike most existing filter or safety-layer designs, the proposed 
+
+Predictive Safety–Stability Filter (PS 2F) provides a principled yet flexible mechanism that guarantees both safety and stability through a cascaded optimisation structure. By employing a nominal MPC layer as a copilot , PS 2F inherits the theoretical guarantees of recursive feasibility and asymptotic stability while still allowing the incorporation of arbi-trary goal-oriented external commands. Moreover, a time-varying parameterisation enables smooth mode scheduling, allowing the controller to prioritise safety during exploration and progressively enforce stability during exploitation. Numerical studies have demonstrated the effectiveness and versatility of the proposed framework across diverse operat-ing scenarios. Future work will focus on extending the framework to uncertain, disturbed, or stochastic environments, and on implementing PS 2F on real robotic platforms to further validate its practical applicability. 
+
+Appendix 
+
+The appendix collects the detailed proofs: Appendix A contains the proofs of the propositions related to the second OCP, Pf,M (x), while Appendix B presents the proofs concerning the closed-loop behaviour of the overall system. 
+
+A Proof of Propositions 
+
+Proof of Proposition 2. Since x ∈ X N , the nominal MPC problem PN (x) is feasible, and hence there exist optimal sequences v∗(x) and z∗(x). Consider the truncated sequences formed by taking the first M +1 elements of z∗(x) and 14 MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees 0 2 4 6 8 10 12 14 
+
+Time (s) 
+
+0
+
+0.5 
+
+<latexit sha1_base64="9HDOxyQgQLGQYWbWcPsETN/Q8H4=">AAAB7XicbVBNSwMxEJ2tX7V+VT16CRbBU9ktpfUiFLwIXirYD2iXkk2zbWw2WZKsUJb+By8eFPHq//HmvzFt96CtDwYe780wMy+IOdPGdb+d3Mbm1vZOfrewt39weFQ8PmlrmShCW0RyqboB1pQzQVuGGU67saI4CjjtBJObud95okozKR7MNKZ+hEeChYxgY6X23UBfV9xBseSW3QXQOvEyUoIMzUHxqz+UJImoMIRjrXueGxs/xcowwums0E80jTGZ4BHtWSpwRLWfLq6doQurDFEolS1h0EL9PZHiSOtpFNjOCJuxXvXm4n9eLzHhlZ8yESeGCrJcFCYcGYnmr6MhU5QYPrUEE8XsrYiMscLE2IAKNgRv9eV10q6UvVq5dl8tNapZHHk4g3O4BA/q0IBbaEILCDzCM7zCmyOdF+fd+Vi25pxs5hT+wPn8AY5Sjm8=</latexit> 
+
+Ks = 20 
+
+<latexit sha1_base64="BaxaCRDYmt5G+1Yt3KtvAlWNiVE=">AAAB7XicbVBNSwMxEJ2tX7V+tOrRS7AInsqulupFKHgRvFSwH9AuJZtm29hssiRZoSz9D148KOLV/+PNf2Pa7kFbHww83pthZl4Qc6aN6347ubX1jc2t/HZhZ3dvv1g6OGxpmShCm0RyqToB1pQzQZuGGU47saI4CjhtB+Obmd9+okozKR7MJKZ+hIeChYxgY6XWXV9fX7j9UtmtuHOgVeJlpAwZGv3SV28gSRJRYQjHWnc9NzZ+ipVhhNNpoZdoGmMyxkPatVTgiGo/nV87RadWGaBQKlvCoLn6eyLFkdaTKLCdETYjvezNxP+8bmLCKz9lIk4MFWSxKEw4MhLNXkcDpigxfGIJJorZWxEZYYWJsQEVbAje8surpHVe8WqV2n21XK9mceThGE7gDDy4hDrcQgOaQOARnuEV3hzpvDjvzseiNedkM0fwB87nD4/XjnA=</latexit> 
+
+Ks = 30 
+
+Constraints 
+
+Proposed ,
+
+Proposed ,
+
+Baseline 
+
+Proposed , <latexit sha1_base64="M1WCaYIRb5NU7kSeSjqLedEKLz8=">AAAB7XicbVBNSwMxEJ2tX7V+VT16CRbBU9mVUr0IBS+Clwr2A9qlZNNsG5tNliQrlKX/wYsHRbz6f7z5b0y3e9DWBwOP92aYmRfEnGnjut9OYW19Y3OruF3a2d3bPygfHrW1TBShLSK5VN0Aa8qZoC3DDKfdWFEcBZx2gsnN3O88UaWZFA9mGlM/wiPBQkawsVL7bqCva+6gXHGrbga0SrycVCBHc1D+6g8lSSIqDOFY657nxsZPsTKMcDor9RNNY0wmeER7lgocUe2n2bUzdGaVIQqlsiUMytTfEymOtJ5Gge2MsBnrZW8u/uf1EhNe+SkTcWKoIItFYcKRkWj+OhoyRYnhU0swUczeisgYK0yMDahkQ/CWX14l7YuqV6/W72uVRi2PowgncArn4MElNOAWmtACAo/wDK/w5kjnxXl3PhatBSefOYY/cD5/AJFcjnE=</latexit> 
+
+Ks = 40 <latexit sha1_base64="nC0WQEHPRJbZBtbIGvQbAJ12qMw=">AAAB7nicbVBNS8NAEJ34WetX1aOXxSJ4KomU6rHgxWMF+wFtKJvtpF2y2YTdjVBCf4QXD4p49fd489+4bXPQ1gcDj/dmmJkXpIJr47rfzsbm1vbObmmvvH9weHRcOTnt6CRTDNssEYnqBVSj4BLbhhuBvVQhjQOB3SC6m/vdJ1SaJ/LRTFP0YzqWPOSMGit1o8EYSd0dVqpuzV2ArBOvIFUo0BpWvgajhGUxSsME1brvuanxc6oMZwJn5UGmMaUsomPsWyppjNrPF+fOyKVVRiRMlC1pyEL9PZHTWOtpHNjOmJqJXvXm4n9ePzPhrZ9zmWYGJVsuCjNBTELmv5MRV8iMmFpCmeL2VsImVFFmbEJlG4K3+vI66VzXvEat8VCvNutFHCU4hwu4Ag9uoAn30II2MIjgGV7hzUmdF+fd+Vi2bjjFzBn8gfP5Az/QjtQ=</latexit> 
+
+k   40 
+
+<latexit sha1_base64="2+9xUETlV7Hljx9VgT6/UDtFJMM=">AAAB83icbVDLSgNBEOyNrxhfUY9eBoPgKezGED14CHjxGME8ILuE2UlvMmT2wcysEJb8hhcPinj1Z7z5N06SPWhiQUNR1U13l58IrrRtf1uFjc2t7Z3ibmlv/+DwqHx80lFxKhm2WSxi2fOpQsEjbGuuBfYSiTT0BXb9yd3c7z6hVDyOHvU0QS+ko4gHnFFtJLdmE1cgmdySK3tQrthVewGyTpycVCBHa1D+cocxS0OMNBNUqb5jJ9rLqNScCZyV3FRhQtmEjrBvaERDVF62uHlGLowyJEEsTUWaLNTfExkNlZqGvukMqR6rVW8u/uf1Ux3ceBmPklRjxJaLglQQHZN5AGTIJTItpoZQJrm5lbAxlZRpE1PJhOCsvrxOOrWq06g2HuqVZj2PowhncA6X4MA1NOEeWtAGBgk8wyu8Wan1Yr1bH8vWgpXPnMIfWJ8/WHiP6A==</latexit> 
+
+20  k < 30 
+
+<latexit sha1_base64="OOAHz/ffxHUPLqta8/b/LUsPUTI=">AAAB83icbVA9SwNBEJ2LXzF+RS1tFoNgFe40RAuLgI1lBGMCuSPsbeaSJXt7x+6eEEL+ho2FIrb+GTv/jZvkCk18MPB4b4aZeWEquDau++0U1tY3NreK26Wd3b39g/Lh0aNOMsWwxRKRqE5INQousWW4EdhJFdI4FNgOR7czv/2ESvNEPphxikFMB5JHnFFjJf/SJb5AMrohNbdXrrhVdw6ySrycVCBHs1f+8vsJy2KUhgmqdddzUxNMqDKcCZyW/ExjStmIDrBrqaQx6mAyv3lKzqzSJ1GibElD5urviQmNtR7Hoe2MqRnqZW8m/ud1MxNdBxMu08ygZItFUSaIScgsANLnCpkRY0soU9zeStiQKsqMjalkQ/CWX14ljxdVr16t39cqjVoeRxFO4BTOwYMraMAdNKEFDFJ4hld4czLnxXl3PhatBSefOYY/cD5/AFuMj+o=</latexit> 
+
+30  k < 40 0 2 4 6 8 10 12 14 
+
+Time (s) 
+
+00.5 0 2 4 6 8 10 12 14 
+
+Time (s) 
+
+-30 060 
+
+(a) 0 2 4 6 8 10 12 14 
+
+Time (s) 
+
+-4 -2 0240 2 4 6 8 10 12 14 
+
+Time (s) 
+
+-10 010 
+
+(b) 0 2 4 6 8 10 12 14 
+
+Time (s) 
+
+020 40 
+
+(c) Figure 9: Closed-loop evolution of the robot system under the baseline controller and the proposed PS 2F method. (a) States; (b) Control inputs; (c) Value function. the first M elements of v∗(x), i.e., 
+
+˜x(x) := {z∗(0; x), . . . , z ∗(M ; x)},
+
+˜u(x) := {v∗(0; x), . . . , v ∗(M − 1; x)}. (20) It is straightforward to verify that ˜x(x) and ˜u(x) satisfy (11a) and (11b); therefore, Pf,M (x) is feasible. This completes the proof. ■
+
+Proof of Proposition 3. The first property is proved by contradiction. Assume that 
+
+L(x∗
+
+0: M −1(x), u∗(x)) < L (z∗
+
+0: M −1(x), v∗
+
+0: M −1(x)) .
+
+15 MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees -0.25 0 0.25 0.5 
+
+> 0
+> 0.25
+> 0.5
+> 1
+> 2
+> 3
+> 4
+
+(a) -0.25 0 0.25 0.5 
+
+> 0
+> 0.25
+> 0.5
+> 1
+> 2
+> 3
+> 4
+> 5
+
+(b) Figure 10: Comparison of robot trajectories under the baseline controller and the proposed PS 2F method when both are scheduled to return at k = 30 . A yellow robot marker denotes that the state violates the safety constraints. (a) Baseline. (b) Proposed. Consider the extended sequences constructed by appending the tail of z∗(x) and v∗(x) to x∗(x) and u∗(x), respec-tively: 
+
+˜z(x) := {x∗(0; x), . . . , x ∗(M ; x), z ∗(M + 1; x), . . . , z ∗(N ; x)}
+
+˜v(x) := {u∗(0; x), . . . , u ∗(M − 1; x), v ∗(M ; x), . . . , v ∗(N − 1; x)}
+
+Since z∗(M ; x) = x∗(M ; x) from (11b), the sequence ˜z(x) is the state trajectory induced by the input sequence ˜v(x).Both are feasible for PN (x), and moreover, 
+
+VN (x, ˜v(x)) =  
+
+> M−1
+
+X
+
+> i=0
+
+ℓ(x∗(i; x), u ∗(i; x)) +  
+
+> N−1
+
+X
+
+> i=M
+
+ℓ(z∗(i; x), v ∗(i; x)) + Vf (z∗(N ; x)) = L(x∗ 
+
+> 0: M−1
+
+(x), u∗(x)) + VN (x, v∗(x)) − L(z∗ 
+
+> 0: M−1
+
+(x), v∗ 
+
+> 0: M−1
+
+(x)) 
+
+< V N (x, v∗(x)) = V ∗ 
+
+> N
+
+(x)
+
+which contradicts the optimality of v∗(x) for PN (x). Hence, L(x∗ 
+
+> 0: M−1
+
+(x), u∗(x)) ≥ L(z∗ 
+
+> 0: M−1
+
+(x), v∗ 
+
+> 0: M−1
+
+(x)) .By noting (11a), equality follows: 
+
+L(x∗ 
+
+> 0: M−1
+
+(x), u∗(x)) = L(z∗ 
+
+> 0: M−1
+
+(x), v∗ 
+
+> 0: M−1
+
+(x)) .
+
+With property (a) established, we have VN (x, ˜v(x)) = VN (x, v∗(x)) . If PN (x) is strictly convex, this implies ˜v(x) = 
+
+v∗(x), and thus u = u∗(0; x) = v∗(0; x). This completes the proof. ■
+
+Proof of Proposition 4. Consider a = a2. For any element u(0; x) ∈ Sa2 (x), there exists a control sequence 
+
+u(x) = {u(0; x), u (1; x), . . . , u (M −1; x)} ∈ U a2 
+
+> M
+
+(x)
+
+such that the corresponding state trajectory satisfies the inequality 
+
+L(x0: M −1(x), u(x)) − L(z∗ 
+
+> 0: M−1
+
+(x), v∗ 
+
+> 0: M−1
+
+(x)) ≤ a2 ℓ(x(0; x), u (0; x)) ≤ a1 ℓ(x(0; x), u (0; x)) 
+
+Hence, u(x) ∈ U a1 
+
+> M
+
+(x), which implies that u(0; x) ∈ Sa1 (x). Therefore, Sa2 (x) ⊆ Sa1 (x). This completes the proof. 
+
+■
+
+16 MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees 
+
+Proof of Proposition 5. For M = 1 , the terminal equality constraint (11b) reduces to x(1; x) = z∗(1; x). By the system dynamics, this is equivalent to f  x, u ∗(0; x) = f  x, v ∗(0; x). Since the map u 7 → f (x, u ) is injective for the given state x, the above equality implies u∗(0; x) = v∗(0; x). This completes the proof. ■
+
+Proof of Proposition 6. Consider M = i. For any element u(0; x) ∈ Si(x), there exists a control sequence 
+
+ui(x) = {u(0; x), u (1; x), . . . , u (i − 1; x)} ∈ U ai (x)
+
+such that the following hold: 
+
+L(x0: i−1(x), ui(x)) − L(z∗
+
+> 0: i−1
+
+(x), v∗
+
+> 0: i−1
+
+(x)) − aℓ (x(0; x), u (0; x)) ≤ 0, (21a) 
+
+x(i; x) = z∗(i; x). (21b) Using (21b), we can extend the control sequence ui(x) by appending the optimal input v∗(i; x) to obtain 
+
+˜ui+1 (x) := {u(0; x), u (1; x), . . . , u (i − 1; x), v ∗(i; x)}.
+
+The corresponding state sequence is 
+
+˜x(x) := {x(0; x), . . . , x (i − 1; x), z ∗(i; x), z ∗(i + 1; x)}.
+
+The constructed pair (˜ x(x), ˜ui+1 (x)) satisfies both (21a) and (21b) with i replaced by i + 1 . Hence, ˜ui+1 (x) ∈Uai+1 (x), which implies that u(0; x) ∈ Si+1 (x). Therefore, Si(x) ⊆ Si+1 (x) for all i ∈ I1: N −1. This completes the proof. ■
+
+Proof of Proposition 7. Since the safety constraints in both OCPs, as well as the terminal constraint of the first OCP, are inactive, the nominal MPC problem coincides with the infinite-horizon LQR problem. Hence, the value function of the nominal MPC is V ∗ 
+
+> N
+
+(x) = x⊤P x , and the optimal state and input trajectories are given by 
+
+z∗(i; x) = A i
+
+> LQR
+
+x, i = 0 , 1, . . . , N, v∗(i; x) = −KLQR z∗(i; x), (22) where KLQR := ( R + B⊤P B )−1B⊤P A qnd ALQR := A − BK LQR . With (22), the cumulative stage cost of the nominal optimal trajectory over the first M steps is 
+
+L z∗ 
+
+> 0: M−1
+
+(x), v∗ 
+
+> 0: M−1
+
+(x)
+
+= 
+
+> M−1
+
+X
+
+> i=0
+
+ℓ (z∗(i; x), v ∗(i; x)) + Vf (z∗(M ; x)) − Vf (z∗(M ; x)) = z∗(0; x)⊤P z ∗(0; x) − z∗(M ; x)⊤P z ∗(M ; x)= x⊤  P − AM ⊤
+
+> LQR
+
+P A M
+
+> LQR
+
+ x. 
+
+(23) Next, we derive the lifted form of the dynamics and rewrite the conditions (11a) and (11b) accordingly. Over a prediction horizon of length M , define the stacked state and input vectors 
+
+x := 
+
+
+
+x(0; x)
+
+...
+
+x(M ; x)
+
+ ∈ R(M +1) n, u := 
+
+
+
+u(0; x)
+
+...
+
+u(M − 1; x)
+
+ ∈ RM m .
+
+For notational simplicity, we use the same symbols x and u as in the sequence representation of the second OCP, 
+
+Pf,M (x); in this context, however, they denote the stacked state and input vectors. The system dynamics x(i + 1; x) = 
+
+Ax (i; x) + Bu (i; x) imply the lifted (affine) dynamics 
+
+x = Φ M x + Γ M u, (24) with ΦM ∈ R(M +1) n×n and ΓM ∈ R(M +1) n×M m , given by 
+
+ΦM := 
+
+
+
+In
+
+AA2
+
+...
+
+AM
+
+ , ΓM := 
+
+
+
+0n×m 0n×m · · · 0n×m
+
+B 0n×m · · · 0n×m
+
+AB B · · · 0n×m
+
+... ... . . . ...
+
+AM −1B AM −2B · · · B
+
+ .
+
+17 MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees In particular, the terminal state satisfies 
+
+x(M ; x) = eM x = eM ΦM x + eM ΓM u,
+
+where eM := [0 n×n, · · · , 0n×n, I n] ∈ Rn×(M +1) n selects the last state component. The terminal constraint (11b) can be equivalently expressed as 
+
+Aeq u = beq x (25) where Aeq := eM ΓM and beq := AM 
+
+> LQR
+
+− eM ΦM .
+
+To express the inequality (11a) in compact lifted form, we introduce the block-diagonal matrices 
+
+˜Q := diag( Q, . . . , Q, 0n×n) ∈ R(M +1) n×(M +1) n,
+
+˜R := diag( R, . . . , R ) ∈ RM m ×M m ,
+
+so that the cumulative stage cost over the first M steps can be written as 
+
+L(x0: M −1(x), u(x)) = x⊤ ˜Q x + u⊤ ˜R u.
+
+Using the lifted dynamics (24), we obtain 
+
+L(x0: M −1(x), u(x)) = (Φ M x + Γ M u)⊤ ˜Q (Φ M x + Γ M u) + u⊤ ˜R u
+
+= x⊤Φ⊤ 
+
+> M
+
+˜Q ΦM x + 2 x⊤Φ⊤ 
+
+> M
+
+˜Q ΓM u + u⊤ Γ⊤ 
+
+> M
+
+˜Q ΓM + ˜Ru.
+
+(26) Similarly, the first-stage cost can be written as 
+
+ℓ(x(0; x), u (0; x)) = x(0; x)⊤Q x (0; x) + u(0; x)⊤R u (0; x)= x⊤Q x + u⊤e⊤ 
+
+> 1
+
+Re 1u,
+
+(27) where e1 := [ Im, 0m×m, · · · , 0m×m] ∈ Rm×(M m ) selects the first input block from u. Substituting (23), (26), and (27) into (11a) yields 
+
+u⊤H u + 2 x⊤F u + x⊤Gx ≤ 0, (28) where 
+
+H := Γ ⊤ 
+
+> M
+
+˜Q ΓM + ˜R − a e ⊤ 
+
+> 1
+
+Re 1,F := Φ ⊤ 
+
+> M
+
+˜Q ΓM ,G := Φ ⊤ 
+
+> M
+
+˜Q ΦM −  P − AM ⊤
+
+> LQR
+
+P A M
+
+> LQR
+
+ − aQ. 
+
+Together with (25) and (28), this establishes the lifted quadratic representation of the PS 2F constraints and completes the proof. ■
+
+B Proof of Theorems 
+
+Proof of Theorem 1. To prove property (a), we first establish recursive feasibility. At time step k, suppose that x(k) ∈XN . Then, the nominal MPC problem PN (x(k)) is feasible, and the corresponding optimal sequences v∗(x(k)) and 
+
+z∗(x(k)) exist, as defined in (7) and (8). Since z∗(N ; x(k)) ∈ Xf , Assumption 3 ensures the existence of a control input ˜v(N ; x(k)) ∈ U such that the successor state 
+
+˜z(N +1; x(k)) := f  z∗(N ; x(k)) , ˜v(N ; x(k))  (29) satisfies ˜z(N +1; x(k)) ∈ Xf and 
+
+Vf
+
+ ˜z(N +1; x(k))  − Vf
+
+ z∗(N ; x(k))  ≤ − ℓ z∗(N ; x(k)) , ˜v(N ; x(k)) . (30) By Proposition 2, the filter problem Pf,M (x(k)) is also feasible under the same condition, and its optimal sequences 
+
+u∗(x(k)) and x∗(x(k)) exist as given in (13) and (14). At time step k + 1 , noting that u(k) = u∗(0; x(k)) , the successor state satisfies x(k + 1) = f (x(k), u (k)) = 
+
+x∗(1; x(k)) . To establish recursive feasibility, consider the extended sequences constructed by shifting the optimal 18 MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees Assume <latexit sha1_base64="vo9TETpjXewgQTpVxfReZNSzTbo=">AAACNXicbZDLSgMxFIYz3qr11iq4cRNshQpSZmrt1J3gxpVUsFpoS0kymTY0cyHJiCXOy7jVvc/iwp249RXM1C68HQj8/Occzp8Px5xJZdsv1tz8wuJSbnklv7q2vrFZKG5dyygRhLZJxCPRwUhSzkLaVkxx2okFRQHm9AaPz7L+zS0VkkXhlZrEtB+gYch8RpAy1qCwU+4FSI0w1q10oC/Syl1lfHBQHhRKdtWeFvwrnJkogVm1BkUr1/MikgQ0VIQjKbuOHau+RkIxwmma7yWSxoiM0ZB2jQxRQGVfTz+Qwn3jeNCPhHmhglP3+4ZGgZSTAB/iwAxngeXvdmb+1+smym/2NQvjRNGQfN3yEw5VBDMg0GOCEsUnRiAimIkLyQgJRJTBloc9j/qG7TSS9oapFkOc6gyFazfqh3bVOa7bTdeIo6brNNzUoHN+g/orrmtVp1FtXNZKpycziMtgF+yBCnCAC07BOWiBNiDgHjyAR/BkPVuv1pv1/jU6Z812tsGPsj4+AXT3pVs=</latexit> 
+
+PN (x(k)) is feasible 
+
+Successor state 
+
+is feasible  
+
+> <latexit sha1_base64="6VKuwX83qKHm4YcI22Zun2zcz2U=">AAAB/3icbVDLSsNAFJ3UV62vqODGzWARWpCSiFTdFdy4ESrYB7QhTKaTduhkEmYmYolZ+CtuXCji1t9w5984abPQ1gMDh3Pu5Z45XsSoVJb1bRSWlldW14rrpY3Nre0dc3evLcNYYNLCIQtF10OSMMpJS1HFSDcSBAUeIx1vfJX5nXsiJA35nZpExAnQkFOfYqS05JoH/QCpkeclzdRN/JObtPJQGVerrlm2atYUcJHYOSmDHE3X/OoPQhwHhCvMkJQ924qUkyChKGYkLfVjSSKEx2hIeppyFBDpJNP8KTzWygD6odCPKzhVf28kKJByEnh6Mksr571M/M/rxcq/cBLKo1gRjmeH/JhBFcKsDDiggmDFJpogLKjOCvEICYSVrqykS7Dnv7xI2qc1u16r356VG5d5HUVwCI5ABdjgHDTANWiCFsDgETyDV/BmPBkvxrvxMRstGPnOPvgD4/MH34mVVg==</latexit>
+
+Pf,M (x(k))  
+
+> <latexit sha1_base64="i54wmptkXGeC/VNNqr0FKCqDVnY=">AAAB+3icbVBNSwMxEJ31s9avtR69BIsgCGVXpOqt4MVjBfsB7VKyabYNzSZLklXL0r/ixYMiXv0j3vw3pu0etPXBwOO9GWbmhQln2njet7Oyura+sVnYKm7v7O7tuwelppapIrRBJJeqHWJNORO0YZjhtJ0oiuOQ01Y4upn6rQeqNJPi3owTGsR4IFjECDZW6rmlEepyGhmslHxEI3SG/J5b9ireDGiZ+DkpQ456z/3q9iVJYyoM4Vjrju8lJsiwMoxwOil2U00TTEZ4QDuWChxTHWSz2yfoxCp9FEllSxg0U39PZDjWehyHtjPGZqgXvan4n9dJTXQVZEwkqaGCzBdFKUdGomkQqM8UJYaPLcFEMXsrIkOsMDE2rqINwV98eZk0zyt+tVK9uyjXrvM4CnAEx3AKPlxCDW6hDg0g8ATP8ApvzsR5cd6dj3nripPPHMIfOJ8/Q12TRQ==</latexit>
+
+k k + 1 Sequence (A.1) 
+
+Sequence (B.3) 
+
+is feasible  
+
+> <latexit sha1_base64="tEUh9l5RUf1mkqEAsjEYRaQY1Ow=">AAAB/XicbVDLSgMxFL1TX7W+xsfOTbAILUKZEam6K7hxJRXsA9phyKSZNjTzIMmIdSj+ihsXirj1P9z5N2baLrT1QOBwzr3ck+PFnEllWd9Gbml5ZXUtv17Y2Nza3jF395oySgShDRLxSLQ9LClnIW0opjhtx4LiwOO05Q2vMr91T4VkUXinRjF1AtwPmc8IVlpyzYNugNXA89L62L0pPZSGJ3a57JpFq2JNgBaJPSNFmKHuml/dXkSSgIaKcCxlx7Zi5aRYKEY4HRe6iaQxJkPcpx1NQxxQ6aST9GN0rJUe8iOhX6jQRP29keJAylHg6cksq5z3MvE/r5Mo/8JJWRgnioZkeshPOFIRyqpAPSYoUXykCSaC6ayIDLDAROnCCroEe/7Li6R5WrGrlertWbF2OasjD4dwBCWw4RxqcA11aACBR3iGV3gznowX4934mI7mjNnOPvyB8fkDuu2UFQ==</latexit>
+
+PN (x(k + 1))  
+
+> <latexit sha1_base64="sk1uaV6xNn22+JdoK9Yw4tfa4cU=">AAAB/HicbZDLSgMxFIbP1Futt9Eu3QSL0KKUGZGqC6HgxmUFe4F2KJk004ZmLiQZcRjqq7hxoYhbH8Sdb2PazkJbDyR8/P855OR3I86ksqxvI7eyura+kd8sbG3v7O6Z+wctGcaC0CYJeSg6LpaUs4A2FVOcdiJBse9y2nbHN1O//UCFZGFwr5KIOj4eBsxjBCst9c3iY3l8YleuvbKGymmsr0rfLFlVa1ZoGewMSpBVo29+9QYhiX0aKMKxlF3bipSTYqEY4XRS6MWSRpiM8ZB2NQbYp9JJZ8tP0LFWBsgLhT6BQjP190SKfSkT39WdPlYjuehNxf+8bqy8SydlQRQrGpD5Q17MkQrRNAk0YIISxRMNmAimd0VkhAUmSudV0CHYi19ehtZZ1a5Va3fnpfpVFkceDuEIymDDBdThFhrQBAIJPMMrvBlPxovxbnzMW3NGNlOEP2V8/gAmepKA</latexit>
+
+x(k + 1) = f (x(k), u (k)) 
+
+Figure 11: Schematic illustration of the recursive feasibility analysis. solution of Pf,M (x(k)) one step forward and appending the terminal element of the nominal MPC trajectory. Specifi-cally, define 
+
+˜v(x(k+1)) := u∗(1; x(k)) , . . . , u ∗(M −1; x(k)) , v ∗(M ; x(k)) , . . . , v ∗(N −1; x(k)) , ˜v(N ; x(k)) ,
+
+˜z(x(k+1)) := x∗(1; x(k)) , . . . , x ∗(M ; x(k)) , z ∗(M +1; x(k)) , . . . , z ∗(N ; x(k)) , ˜z(N +1; x(k)) . (31) Since z∗(M ; x(k)) = x∗(M ; x(k)) by (11b), the sequence ˜z(x(k + 1)) is precisely the state trajectory induced by the control sequence ˜v(x(k + 1)) . Therefore, the constructed pair (˜ z(x(k + 1)) , ˜v(x(k+1))) is feasible for the nominal MPC problem PN (x(k + 1)) .By induction, if x(0) ∈ X N , then PN (x(0)) is feasible at the initial step. From the construction above, feasibility of PN (x(k)) at time k implies that both Pf,M (x(k+1)) and PN (x(k+1)) remain feasible. Hence, PN (x(k)) and 
+
+Pf,M (x(k)) are feasible for all k ∈ I≥0. The overall recursive feasibility process is illustrated in Fig. 11. The feasibility of these optimisation problems directly ensures that the state and input constraints are satisfied at every time step. This completes the proof of property (a). To prove property (b), we employ the optimal value function V ∗
+
+N (x(k)) of the nominal MPC problem as a Lyapunov function candidate. At time step k+1 , the value of the Lyapunov candidate must be no greater than the cost evaluated along the feasible sequences defined in (31). Hence, 
+
+V ∗
+
+N (x(k + 1)) ≤ VN (x(k + 1) , ˜v(x(k+1))) =
+
+M −1X
+
+i=0 
+
+ℓ(x∗(i; x(k))) , u ∗(i; x(k))) − ℓ(x∗(0; x(k)) , u ∗(0; x(k))) +
+
+N −1X
+
+i=M
+
+ℓ(z∗(i; x(k)) , v ∗(i; x(k))) + ℓ(z∗(N ; x(k)) , ˜v(N ; x(k))) + Vf (˜ z(N + 1; x(k))) 
+
+(32) Noting (11a) and (30), it follows that 
+
+V ∗
+
+N (x(k + 1)) ≤ L(z∗
+
+0: M −1(x(k)) , v∗
+
+0: M −1(x(k))) − (1 − a)ℓ(x∗(0; x(k)) , u ∗(0; x(k))) +
+
+N −1X
+
+i=M
+
+ℓ(z∗(i; x(k)) , v ∗(i; x(k))) + Vf (z∗(N ; x(k))) = V ∗
+
+N (x(k)) − (1 − a)ℓ(x∗(0; x(k)) , u ∗(0; x(k))) 
+
+≤ V ∗
+
+N (x(k)) − (1 − a) α1(|x(k)|)
+
+(33) where α1(·) is a K∞ function from Assumption 3. By Assumption 3 and Proposition 1, the optimal value function satisfies 
+
+α1(|x(k)|) ≤ V ∗
+
+N (x(k)) ≤ β(|x(k)|). (34) Together with the decrease condition in (33), the value function of the nominal MPC, V ∗
+
+N (x(k)) , serves as a valid Lyapunov function for the closed-loop system, ensuring asymptotic stability of the origin. This completes the proof of property (b). ■
+
+Proof of Theorem 2. Property (a) can be established by constructing feasible sequences in the same manner as in the proof of Theorem 1, with the fixed horizon M replaced by the time-varying horizon M (k).Since sup k≥Ks a(k) < 1, there exists a constant ¯a ∈ (0 , 1] such that a(k) ≤ 1 − ¯a for all k ∈ I≥Ks . It then follows that 
+
+V ∗
+
+N (x(k+1)) ≤ V ∗
+
+N (x(k)) −  1 − a(k) α1
+
+ |x(k)| ≤ V ∗
+
+N (x(k)) − ¯a α 1
+
+ |x(k)|, ∀ k ∈ I≥Ks , (35) which ensures monotonic decrease of V ∗
+
+N (x(k)) and hence proves property (b). ■
+
+19 MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees 
+
+References 
+
+[1] L. Hewing, K. P. Wabersich, M. Menner, and M. N. Zeilinger, “Learning-based model predictive control: Toward safe learning in control,” Annual Review of Control, Robotics, and Autonomous Systems , vol. 3, no. 1, pp. 269– 296, 2020. [2] E. Kaufmann, L. Bauersfeld, A. Loquercio, M. M¨ uller, V. Koltun, and D. Scaramuzza, “Champion-level drone racing using deep reinforcement learning,” Nature , vol. 620, no. 7976, pp. 982–987, 2023. [3] Y. Song, A. Romero, M. M¨ uller, V. Koltun, and D. Scaramuzza, “Reaching the limit in autonomous racing: Optimal control versus reinforcement learning,” Science Robotics , vol. 8, no. 82, p. eadg1462, 2023. [4] J. Berberich, J. K¨ ohler, M. A. M¨ uller, and F. Allg¨ ower, “Data-driven model predictive control with stability and robustness guarantees,” IEEE Transactions on Automatic Control , vol. 66, no. 4, pp. 1702–1717, 2020. [5] M. Fazlyab, M. Morari, and G. J. Pappas, “Safety verification and robustness analysis of neural networks via quadratic constraints and semidefinite programming,” IEEE Transactions on Automatic Control , vol. 67, no. 1, pp. 1–15, 2020. [6] Y. Yan, X.-F. Wang, B. J. Marshall, C. Liu, J. Yang, and W.-H. Chen, “Surviving disturbances: A predictive control framework with guaranteed safety,” Automatica , vol. 158, p. 111238, 2023. [7] K.-C. Hsu, H. Hu, and J. F. Fisac, “The safety filter: A unified view of safety-critical control in autonomous systems,” Annual Review of Control, Robotics, and Autonomous Systems , vol. 7, 2023. [8] K. P. Wabersich, A. J. Taylor, J. J. Choi, K. Sreenath, C. J. Tomlin, A. D. Ames, and M. N. Zeilinger, “Data-driven safety filters: Hamilton-jacobi reachability, control barrier functions, and predictive methods for uncertain systems,” IEEE Control Systems Magazine , vol. 43, no. 5, pp. 137–177, 2023. [9] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier function based quadratic programs for safety critical systems,” IEEE Transactions on Automatic Control , vol. 62, no. 8, pp. 3861–3876, 2016. [10] K. P. Wabersich and M. N. Zeilinger, “Predictive control barrier functions: Enhanced safety mechanisms for learning-based control,” IEEE Transactions on Automatic Control , vol. 68, no. 5, pp. 2638–2651, 2022. [11] S. Ha, J. Lee, M. van de Panne, Z. Xie, W. Yu, and M. Khadiv, “Learning-based legged locomotion: State of the art and future perspectives,” The International Journal of Robotics Research , vol. 44, no. 8, pp. 1396–1427, 2025. [12] B. Tearle, K. P. Wabersich, A. Carron, and M. N. Zeilinger, “A predictive safety filter for learning-based racing control,” IEEE Robotics and Automation Letters , vol. 6, no. 4, pp. 7635–7642, 2021. [13] M. Jankovic, “Robust control barrier functions for constrained stabilization of nonlinear systems,” Automatica ,vol. 96, pp. 359–367, 2018. [14] W. S. Cortez and D. V. Dimarogonas, “On compatibility and region of attraction for safe, stabilizing control laws,” IEEE Transactions on Automatic Control , vol. 67, no. 9, pp. 4924–4931, 2022. [15] V. Zinage and E. Bakolas, “Universal barrier functions for safety and stability of constrained nonlinear systems,” 
+
+arXiv preprint arXiv:2511.01067 , 2025. [16] E. Milios, K. P. Wabersich, F. Berkel, and L. Schwenkel, “Stability mechanisms for predictive safety filters,” in 
+
+IEEE Conference on Decision and Control , 2024, pp. 2409–2416. [17] A. Didier, A. Zanelli, K. P. Wabersich, and M. N. Zeilinger, “Predictive stability filters for nonlinear dynamical systems affected by disturbances,” IFAC-PapersOnLine , vol. 58, no. 18, pp. 200–207, 2024. [18] M. Rickert, A. Sieverling, and O. Brock, “Balancing exploration and exploitation in sampling-based motion planning,” IEEE Transactions on Robotics , vol. 30, no. 6, pp. 1305–1317, 2014. [19] M. Marcano, S. D´ ıaz, J. P´ erez, and E. Irigoyen, “A review of shared control for automated vehicles: Theory and applications,” IEEE Transactions on Human-Machine Systems , vol. 50, no. 6, pp. 475–491, 2020. [20] M. Selvaggio, M. Cognetti, S. Nikolaidis, S. Ivaldi, and B. Siciliano, “Autonomy in physical human-robot inter-action: A brief survey,” IEEE Robotics and Automation Letters , vol. 6, no. 4, pp. 7989–7996, 2021. [21] J. B. Rawlings, D. Q. Mayne, and M. Diehl, Model predictive control: Theory, computation, and design (2nd Edition) . Nob Hill Publishing Madison, WI, 2017. [22] D. Limon, T. Alamo, and E. F. Camacho, “Enlarging the domain of attraction of MPC controllers,” Automatica ,vol. 41, no. 4, pp. 629–635, 2005. [23] H. Xie, L. Dai, Y. Lu, and Y. Xia, “Disturbance rejection MPC framework for input-affine nonlinear systems,” 
+
+IEEE Transactions on Automatic Control , vol. 67, no. 12, pp. 6595–6610, 2021. 20 MPC as a Copilot: A Predictive Filter Framework with Safety and Stability Guarantees [24] K. H. Kim, V. Todorovski, and M. Krsti´ c, “Nonholonomic robot parking by feedback–Part II: Nonmodular, inverse optimal, adaptive, prescribed/fixed-time and safe designs,” arXiv preprint arXiv:2511.15219 , 2025. [25] T. P. Nascimento, C. E. D´ orea, and L. M. G. Gonc ¸alves, “Nonholonomic mobile robots’ trajectory tracking model predictive control: A survey,” Robotica , vol. 36, no. 5, pp. 676–696, 2018. 21

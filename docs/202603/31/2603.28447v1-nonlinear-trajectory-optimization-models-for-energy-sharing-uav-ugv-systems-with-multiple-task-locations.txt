@@ -1,0 +1,648 @@
+Title: Nonlinear Trajectory Optimization Models for Energy-Sharing UAV-UGV Systems with Multiple Task Locations
+
+URL Source: https://arxiv.org/pdf/2603.28447v1
+
+Published Time: Tue, 31 Mar 2026 02:33:27 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Nonlinear Trajectory Optimization Models for Energy-Sharing UAV-UGV Systems with Multiple Task Locations 
+
+Minsen Yuan, Amanuel Adane, James Humann, and Yue Yu 
+
+Abstract — Energy-sharing UAV-UGV systems extend the en-durance of Uncrewed Aerial Vehicles (UAVs) by leveraging Uncrewed Ground Vehicles (UGVs) as mobile charging sta-tions, enabling persistent autonomy in infrastructure-sparse environments. Trajectory optimization for these systems is often challenging due to UGVs’ terrain access constraints and the dis-crete nature of task scheduling. We propose a smooth nonlinear program model for the joint trajectory optimization for these systems. Unlike existing models, the proposed model allows smooth parameterization of UGVs’ terrain access constraints and supports partial UAV recharging. Further, it introduces a smooth approximation of disjunctive constraints that eliminates the need for computationally expensive integer programming and enables efficient solutions via nonlinear programming algorithms. We demonstrate the proposed model on a one-UAV-one-UGV system with multiple task locations. Compared with mixed-integer nonlinear programs, this model reduces the computation time by orders of magnitude. 
+
+I. I NTRODUCTION 
+
+Collaborative UAV-UGV systems provide a powerful plat-form to integrate the heterogeneous strengths of aerial and ground robots via energy-sharing . In these systems, Un-crewed Ground Vehicles (UGVs) serve as mobile docking and charging stations that effectively extended the endurance of Uncrewed Aerial Vehicles (UAVs) via sharing energy stored on UGVs. By combining UGVs’ superior payload ca-pacity together with UAVs’ agility and elevated perspective, these systems enable a wide range of robotic applications in remote and challenging environments where access to traditional energy infrastructure is sparse. Examples of these applications include mapping, disaster response, surveillance, and precision agriculture [1]–[3]. Coordinating the trajectories for energy-sharing UAV-UGV systems presents a unique challenge, especially in missions with multiple tasks locations. This difficulty is twofold. First, The UGV’s terrain access constraints restrict the UGVs to a known road network. Second, scheduling the the order in which the UAVs and UGVs completes their individual tasks often require optimizing discrete decisions. When these discrete decisions are coupled with the terrain access constraints, the resulting optimization is often non-convex and computationally expensive to solve. One approach to optimize UAV-UGV trajectories is via the two-echelon routing problem , where the trajectories of 
+
+> M. Yuan and Y. Yu are with the Department of Aerospace Engineering and Mechanics, University of Minnesota, Minneapolis, MN 55455, USA (
+
+{yuan0450, yuey }@umn.edu ). A. Adane is with the Duffield College of Engineering, Cornell University, Ithaca, NY 14853, USA (aa2888@cornell.edu ). J. Humann is with DEVCOM Army Re-search Laboratory (james.d.humann.civ@army.mil ). Y. Yu would like to thank Samet Uzun for helpful early discussions. 
+
+the UAV and UGV are computed in two distinct phases. One approach is to first determining the UAV trajectory, then optimize the UGV trajectory to support the UAV [4]. Another approach is to first determine the UGV trajectory that provide a set of feasible rendezvous locations to support UAV recharging, then plan the UAV trajectory based these locations [5], [6]. Early results uses a greedy algorithm to generate the rendezvous locations, then compute the UAV trajectory accordingly [5], [7]. More recent results augment this approach with an asynchronous team framework [8] and task allocation heuristics based on minimum set covering [6]. Another approach is to decouple the planning of UAV and UGV trajectory using reachable sets constraints [9]. In all such cases, the resulting trajectory quality depends on how to partition the the planning between the UAV and UGV. To directly address the coupling between UAVs and UGVs, an alternative approach is to jointly optimize their trajectories. On approach for such optimization is mixed integer linear programs (MILP), which computes an optimal UAV-UGV trajectory via optimization over integer variables [10], [11]. Since MILP is often computationally expensive, there have been several strategies to simplify the problem under stronger assumptions. For example, if the potential rendezvous locations are known, genetic algorithm provides an efficient alternative to MILP [12]. If the order of UAV and UGV actions are known, then optimizing UAV-UGV trajectories reduces to a convex second-order cone program [13]. A more recent direction is deep reinforcement learning methods to train encoder-decoder based transformer net-works that generates the UAV-UGV trajectories [14]–[16]. These trajectories can not only minimize mission time but also account for stochastic battery usage by constraining on the risk of mid-mission battery depletion [17]. There are several limitations in the existing models for UAV–UGV trajectory optimization. First, the UGV road network is often modeled as a graph with discretized nodes, causing the planning complexity to grow rapidly with the number of nodes [4]–[8], [10]–[12]. Second, most existing models assume that the UAV battery is fully recharged before takeoff [6]–[8], [12], [13], [15]. While this assumption is compatible with battery replacement, it is not suitable for wireless charging that allow partial recharge. Finally, MILP methods rely on integer variables to model discrete decisions, leading to solution times that grow exponentially with the number of integer variables [4]–[8], [10], [11]. To address these limitations, we propose a novel nonlinear 
+
+trajectory optimization model for energy-sharing UAV–UGV systems with multiple task locations. We base this model on 
+
+> arXiv:2603.28447v1 [math.OC] 30 Mar 2026
+
+three key features. First, we model the UGV road network as the union of multiple continuous paths joined at one junction point. This approach avoids the need for node discretization along each path and allows smooth parameterization of UGV’s terrain access constraints. Second, we model the dy-namics of UAV battery via distinct charging and discharging curves. Compared with traditional models that always only allow full recharges, this approach allows partial recharging and increase the flexibility of UAV trajectories. Third, we de-velop a smoothing approach to model disjunctive constraints that are necessary for scheduling optimal task completion and battery recharging. We first transform the disjunctive constraints into nonsmooth constraints defined by pointwise minimum function, then propose a smooth approximation of these constraints based on ℓp-norms. This approximation enables efficient solution with smooth nonlinear optimization methods, bypassing the need for computationally expen-sive integer programming. We demonstrate this model on a one-UAV–one-UGV system with multiple task locations. Compared with mixed-integer nonlinear programming, this model reduces solution time from hours to minutes while maintaining robust success rates in numerical experiments. II. T RAJECTORY OPTIMIZATION MODELS FOR 
+
+ENERGY -S HARING UAV-UGV S YSTEMS 
+
+We model the trajectory optimization for energy-sharing UAV-UGV system—where the UGV serve as mobile charg-ing stations for the UAV—as a constrained optimization problem. This model includes the optimization variables used to parameterize the UAV-UGV trajectory, the objective function, and the physical and operational constraints of the UAV-UGV system. 
+
+A. Trajectory Variables 
+
+We consider three classes of variables when optimizing the UAV-UGV trajectory: variables shared by both trajectories, variables specific to the UAV trajectory, and variables specific to the UGV trajectory. To simplify the notation, we let JkK := 
+
+{1, 2, . . . , k } for any k ∈ N.
+
+a) Shared Variables: Let N ∈ N denote the total number of time stamps along the UAV trajectory, which is the same as the total number of time steps along the UGV trajectory. We let sk ∈ R≥0 denote the time duration between the k-th and the (k + 1) -th time stamp for all k ∈ JN K.
+
+b) UAV Variables: We parameterize the UAV trajectory using its planar position and its remaining time of flight supported by the current battery level. We let rA 
+
+> k
+
+∈ R2 denote the projection of UAV’s 3D position onto the xy-plane at the 
+
+k-th time stamp for all k ∈ JN K, and ek ∈ R≥0 denote the remaining time of flight of the UAV at time step k.
+
+c) UGV Variables: We assume that the UGV only moves on a road network in the shape of a star graph, consisting of mG arms that intersect only at a single junction point. We parameterize the UGV position trajectory using two variables. We let rG 
+
+> k
+
+∈ R2 denote the planar position of the UGV at the k-th time stamp. In addition, we let pk ∈ RmG
+
+> ≥0
+
+denote the UGV’s position on the star graph with mG arms. Each entry of pk corresponds to one arm of the star graph, and the value of a positive entry is the distance the UGV traveled from the graph center along that arm to its current position. At any time stamp, pk has at most one positive entry, indicating that the UGV occupies at most one arm of the graph at a time. 
+
+B. Objective Function 
+
+We choose the total mission time as the objective func-tion. Minimizing total time directly captures the operational efficiency of the UAV–UGV system, encouraging timely completion of all required tasks while implicitly balancing travel, waiting, and charging time. Since the time durations between consecutive time stamps are optimization variables, the total mission time is given by 
+
+∑N −1 
+
+> k=1
+
+sk. (1) 
+
+C. Trajectory Constraints 
+
+We consider three classes of constraints for the joint UAV–UGV trajectory: constraints that depend only on UAV variables, constraints that depend only on UGV variables, and constraints that couple both UAV and UGV variables. 
+
+a) UAV Constraints: We let r0 ∈ R2 and rf ∈ R2
+
+denote the initial and final position of the UAV trajectory, respectively. We consider the following initial and final constraints 
+
+rA 
+
+> 1
+
+= r0, rA 
+
+> N
+
+= rf . (2) In addition, we consider the following constraint on the speed of the UAV ∥∥rA 
+
+> k+1
+
+− rA
+
+> k
+
+∥∥2 ≤ vAmax sk, (3) for all k ∈ JN − 1K, where vAmax ∈ R>0 is the max-imum UAV speed. Note that the UAV position is three-dimensional, whereas the above constraint accounts only for planar motion. This is because we assume that the UAV operates at a constant altitude, and that the time required for vertical motion ( e.g. , during takeoff and landing) is negligible compared with the time spent in horizontal motion. We consider the case where the UAV must visit a set of task locations along its trajectory (e.g., to monitor areas of interest). Let mA ∈ N denote the total number of task locations, and let a1, . . . , a mA ∈ R2 denote the locations of these task locations on the xy -plane. We consider the following logical constraints: 
+
+∃ k ∈ JN K s.t. rA 
+
+> k
+
+= ai, (4) for all i ∈ JmAK. These constraints ensure that the UAV visits each task point at least once along its trajectory. 
+
+b) UGV Constraints: We consider the case where the initial and final position of the UGV coincide with those of the UAV, namely, 
+
+rG 
+
+> 1
+
+= r0, rG 
+
+> N
+
+= rf . (5) The UGV can only move along a star-shaped road network. At the k-th time stamp, rG 
+
+> k
+
+∈ R2 denotes the planar position of the UGV, and pk ∈ RmG 
+
+> ≥0
+
+denotes its position along the arms of the star graph. In particular, pk = 0mG indicates that the UGV is located at the junction point (i.e., the center of the star graph). Moreover, the UGV lies on the j-th arm if and only if [pk]j > 0. We introduce a nonlinear mapping 
+
+g : RmG 
+
+> ≥0
+
+→ R2 such that 
+
+rG 
+
+> k
+
+= g(pk). (6) Let pmax ∈ RmG 
+
+> ≥0
+
+denote a parameter vector whose j-th entry represents the maximum allowable distance of the UGV from the junction point along the j-th arm, corresponding to the furthest task point on that arm. We consider the following constraints on pk:
+
+0mG ≤ pk ≤ pmax , rG 
+
+> k
+
+= g(pk),p⊤
+
+> k
+
+(1mG 1⊤ 
+
+> mG
+
+− ImG
+
+)pk = 0 , (7) for all k ∈ JN K. These constraints ensure that the UGV occupies at most one arm of the star graph at any time stamp, and that its planar position rG 
+
+> k
+
+is coupled with the vector pk
+
+through the nonlinear mapping g.Furthermore, we consider the following constraints on the speed of the UGV 
+
+‖pk+1 − pk‖1 ≤ vGmax sk (8) for all k ∈ JN − 1K, where vGmax ∈ R>0 is the maximum UGV speed. These constraint in (8), when combined with the constraint in (7), ensure that the distance traveled by the UGV is upper bound by the product of its maximum speed and the time used. Similar to the UAV, the UGV also must visit a set of task locations. Since the UGV can only move on a road network modeled as a star graph, it is sufficient to specify the furthest point along each arm that the UGV must reach. Without loss of generality, we take the endpoint of each arm to be the corresponding furthest point. To this end, we consider the following constraints: 
+
+∃ k ∈ JN K s.t. b⊤ 
+
+> j
+
+(pk − pmax ) = 0 , (9) for all j ∈ JmGK, where bj ∈ RmG
+
+denotes the j-th column of the identity matrix ImG . These constraints ensure that the UGV trajectory reaches the end of each arm of the road network at least once along its trajectory. 
+
+c) Coupling Constraints: We consider the following bounds on the time duration between two consecutive time stamps, which constrain both UAV and UGV trajectories: 
+
+smin ≤ sk ≤ smax , (10) for all k ∈ JN − 1K, where smin ∈ R>0 and smax ∈ R>0
+
+denote the lower and upper bounds on the time duration between consecutive time stamps. Furthermore, the UAV trajectory and UGV trajectory are coupled through the UAV battery dynamics. We first consider the following bounds on the UAV battery level (measured in remaining flight time) 
+
+emin ≤ ek ≤ emax , (11)  
+
+> X(km)
+> Y (km)
+> r0
+> rf
+
+Fig. 1: Example problem with mA = 10 UAV task locations (red stars) and mG = 3 arms, whose associated UGV task locations are shown as magenta circles. for all k ∈ JN K, where emin ∈ R≥0 and emax ∈ R>0 denote the minimum and maximum allowed values for the battery level. In addition, the UAV battery dynamics include two modes: charging and discharging. The UAV can discharge its battery at any location, but it can recharge only when it lands on the UGV, in which case their positions coincide. We model these requirements using the following constraints: 
+
+
+
+ek+1 = min( ek + κs k, e max ),rA 
+
+> k
+
+= rG 
+
+> k
+
+,rA 
+
+> k+1
+
+= rG
+
+> k+1
+
+ ∨ { ek+1 = ek − sk} ,
+
+(12) for all k ∈ JN −1K, where κ ∈ R>0 denotes the UAV battery charging rate when the UAV is landed on the UGV. These constraints ensure that, between two consecutive points along the UAV trajectory, the UAV battery level either decreases, increases, or reaches capacity. In the latter case, the UAV and UGV positions coincide at both trajectory points. Moreover, matching positions at two consecutive trajectory points imply that the UAV and UGV positions coincide for all times between the corresponding time stamps. In practice, we find that the constraint ek+1 =min( ek + κs k, e max ) is often overly restrictive for numer-ical solvers, particularly when combined with the bounding constraints in (11). As a remedy, we relax this constraint as 
+
+ek+1 ≤ min ( ek + κs k, e max ) . (13) Intuitively, this relaxation allows the battery level to be lower than the ideal charging outcome, hence providing additional flexibility for the solver without compromising the practical feasibility of the resulting solution. III. N ONLINEAR SMOOTHING FOR DISJUNCTIVE 
+
+CONSTRAINTS 
+
+The challenge in solving the trajectory optimization prob-lem proposed in Section II comes from the constraints. We can divided the constraints discussed in Section II into two groups. The first group consists of constraints defined by smooth functions: 
+
+rA 
+
+> 1
+
+= rG 
+
+> 1
+
+= r0, rA 
+
+> N
+
+= rG 
+
+> N
+
+= rf , e1 = emax ,
+
+∥∥rA 
+
+> k+1
+
+− rA
+
+> k
+
+∥∥2 ≤ vAmax sk, k ∈ JN − 1K,
+
+‖pk+1 − pk‖1 ≤ vGmax sk, k ∈ JN − 1K,emin ≤ ek+1 ≤ emax , smin ≤ sk ≤ smax , k ∈ JN − 1K,rG 
+
+> k
+
+= g(pk), 0mG ≤ pk ≤ pmax , k ∈ JN K,p⊤
+
+> k
+
+(1mG 1⊤ 
+
+> mG
+
+− ImG
+
+)pk = 0 , k ∈ JN K.
+
+(14) The constraints in (14) are compatible with many algorithms for smooth nonlinear programs, such as interior point meth-ods and augmented Lagrangian methods. The second group consists of disjunctive constraints, given as follows: 
+
+∃ k ∈ JN K s.t. rA 
+
+> k
+
+= ai, i ∈ JmAK,
+
+∃ k ∈ JN K s.t. b⊤ 
+
+> j
+
+(pk − pmax ) = 0 , j ∈ JmGK,
+
+
+
+ek+1 ≤ ek + κs k
+
+rA 
+
+> k
+
+= rG
+
+> k
+
+rA 
+
+> k+1
+
+= rG
+
+> k+1
+
+ ∨ { ek+1 = ek − sk} , k ∈ JN − 1K.
+
+(15) Notice that here we changed the constraint in (13) to ek+1 ≤
+
+ek + κs k. This change is lossless when we impose the constraints in (14) and (15) together since the constraints in (14) already ensures that ek+1 ≤ emax for all k ∈ JN K.The disjunctive constraints in (15) pose unique challenges for optimization, as they rely on logical OR operations and induce a disconnected feasible solution set. We first discuss how to model these constraints using discrete variables, leading to a mixed-integer nonlinear programming approach. We then propose an alternative approach that first refor-mulates the constraints in (15) as nonsmooth constraints and subsequently approximates them with smooth nonlinear functions that are compatible with nonlinear programming. 
+
+A. Disjunctive Constraints via Discrete Variables 
+
+A classical approach to model the disjunctive constraints in (15) using discrete binary variables. In particular, we can reformulate these constraints as follows: 
+
+∥∥rA 
+
+> k
+
+− ai
+
+∥∥∞ ≤ μ(1 − Uki ), k ∈ JN K, i ∈ JmAK,
+
+|b⊤ 
+
+> j
+
+(pk − pmax )| ≤ μ(1 − Vkj ), k ∈ JN K, j ∈ JmGK,
+
+|eA 
+
+> k+1
+
+− eA 
+
+> k
+
++ sk| ≤ μ(1 − Wk ), k ∈ JN − 1K,eA 
+
+> k+1
+
+− eA 
+
+> k
+
+− κs k ≤ μW k, k ∈ JN − 1K,
+
+∥∥∥∥ rA 
+
+> k
+
+− rG
+
+> k
+
+rA 
+
+> k+1
+
+− rG
+
+> k+1
+
+∥∥∥∥∞
+
+≤ μW k, k ∈ JN − 1K,
+
+∑Nk=1 Uki = 1 , U ki ∈ { 0, 1}, k ∈ JN K, i ∈ JmAK,
+
+∑Nk=1 Vkj = 1 , V kj ∈ { 0, 1}, k ∈ JN K, j ∈ JmGK,Wk ∈ { 0, 1}, k ∈ JN − 1K,
+
+(16) where μ ≫ 1 is a large positive scalar. The idea is to first express each disjunctive constraint as a finite set of candidate conditions, one of which must be satisfied. Next, we introduce binary variables to encode the selection of these candidate conditions, and ensure feasibility by forcing the sum of the associated binary variables to equal one. We formulate the UAV-UGV trajectory optimization prob-lem a mixed integer nonlinear program (MINLP) . This program contains the following variables 
+
+{
+
+rA 
+
+> k
+
+, r G 
+
+> k
+
+, e k, p k, {Uki }mA
+
+> i=1
+
+, {Vkj }mG
+
+> j=1
+
+}Nk=1 ∪ { sk, W k }N −1 
+
+> k=1
+
+.
+
+(17) We formulate this MINLP as follows minimize 
+
+> Variables in (17)
+
+∑N −1 
+
+> k=1
+
+sk
+
+subject to constraints in (14) and (16) . (18) We can solve MINLP above using branch-and-bound–based methods combined with nonlinear programming algorithms. For details on models, algorithms, and practical solution methods for MINLP, we refer interested readers to [18]. 
+
+B. Disjunctive Constraints via Nonlinear Smoothing 
+
+One limitation of the discrete-variable approach is that it leads to an exponential growth in the number of possible values for binary variables, which often makes scalable real-time solutions impractical. As an alternative, we introduce a continuous modeling approach for the disjunctive constraints in (15) that avoids the use of discrete variables. To this end, we first reformulate the constraints in (15) as follows: 
+
+min  
+
+> k∈JNK
+
+∥∥rA 
+
+> k
+
+− ai
+
+∥∥2 = 0 , i ∈ JmAK,
+
+min  
+
+> k∈JNK
+
+|b⊤ 
+
+> j
+
+(pk − pmax )| = 0 , j ∈ JmGK,
+
+min 
+
+|eA 
+
+> k+1
+
+− eA 
+
+> k
+
++ sk|,
+
+∥∥∥∥∥∥
+
+σδ (eA 
+
+> k+1
+
+− eA 
+
+> k
+
+− κs k)
+
+rA 
+
+> k
+
+− rG
+
+> k
+
+rA 
+
+> k+1
+
+− rG
+
+> k+1
+
+∥∥∥∥∥∥2
+
+ = 0 ,k ∈ JN − 1K,
+
+(19) where 
+
+σδ (α) = 
+
+
+
+0, α ≤ 0, 
+
+> 1
+> 2
+
+α2, 0 ≤ α ≤ δ, δα − 1 
+
+> 2
+
+δ2, α > δ 
+
+(20) and δ ∈ R>0 is a parameter with small positive value. The key idea is to reformulate each disjunctive constraint using pointwise minimum of the violation of candidate conditions. Here, the function ψδ provides a smooth measure of the violation of inequality constraint. Note that the constraints in (19) are not compatible with algorithms for smooth nonlinear programs, due to the nonsmooth pointwise minimum function. A common approach to approximate the pointwise minimum function is via the log-sum-exp function. Given c1, c 2, . . . , c n ∈ R,the approximation is as follows 
+
+min  
+
+> k∈JnK
+
+ck ≈ − 1 
+
+> τ
+
+ln ( ∑ni=1 exp( −τ c k)) , (21) where τ ∈ R>0 is a positive scaling parameter. The idea of this approximation is that, as τ increases, the exponential term corresponds to the smallest entry will dominate the sum and cancel with the logarithm function. However, the log-sum-exp function often causes numerical instabilities due to the rapid growth of the exponential func-tion. To over come this limitation, we propose to replace the log-sum-exp function a smooth function constructed based on the ℓp-norm. In particular, let c denote the vector whose 
+
+k-th entry is ck, we let c−1 denote the elementwise reciprocal of c, assuming ck > 0 for all k. We can show that 
+
+lim 
+
+> p→∞ ,p ∈N
+> 2p
+
+√n/ ∥∥c−1∥∥2p = 1 / ∥∥c−1∥∥∞ = min  
+
+> k∈JnK
+
+ck. (22) Here the coefficient 2p
+
+√n normalize the magnitude of the norm ∥∥c−1∥∥2p. This limit implies that, for a sufficiently large integer p, the ℓp-norm provides a smooth formula to approximate the pointwise minimum function. To avoid the singularity case where c contains a zero entry, we propose the following approximation formula 
+
+min  
+
+> k∈JnK
+
+ck ≈ ( 1
+
+> n
+
+∑ni=1 (c2 
+
+> k
+
++ ǫ2)−p)− 1 
+
+> 2p
+
+− ǫ, (23) where ǫ ∈ R>0 is a small positive parameter to ensure the function is well defined, and p ∈ N is a reasonably large integer (in practice, p = 3 provides a satisfying approximation in simulation). Notice that (23) reduces to (22) if ǫ = 0 . Similar approximation has been used for logical specifications in optimization [19], [20]. With either one of the formulas above, we can approximate the nonsmooth constraints in (19) as smooth constraints and optimize the UAV-UGV trajectory optimization by solving a smooth nonlinear optimization problem. This nonlinear program (NLP) contains the following variables: 
+
+{rA 
+
+> k
+
+, r G 
+
+> k
+
+, e k, p k
+
+}Nk=1 ∪ { sk}N −1 
+
+> k=1
+
+. (24) We formulate this NLP as follows minimize 
+
+> Variables in (24)
+
+∑N −1 
+
+> k=1
+
+sk
+
+subject to constraints in (14) and smooth approx. of the constraints in (19) via (21) or (23). (25) Note that all of the variables in optimization (25) are continuous ( i.e. , no discrete-valued variables) and all of the functions that appear in optimization (25) are differentiable. As a result, in principle one can solve this optimization using standard algorithms for nonlinear programs (NLP). However, the smooth nonlinear functions in (23) are often ill-conditioned. In practice, we observe that the augmented Lagrangian method provide consistent robust performance for solving ill-conditioned NLP [21]. IV. N UMERICAL SIMULATION 
+
+We demonstrate the proposed NLP model on a one-UAV-one-UGV system with multiple UAV and UGV task locations. Fig. 1 shows the route map. Within the NLP frame-work, we compare the performance of different smoothing functions and nonlinear programming algorithms. We also compare the NLP model with the MINLP model to illustrate its scalability. 
+
+A. Problem Setup 
+
+We consider a problem with mG = 3 , and the UAV and UGV share the same initial ( r0) and final ( rf ) positions, as illustrated in Fig. 1. We consider emax = 0 .4 h , vA 
+
+> max
+
+=36 km /h, vG 
+
+> max
+
+= 16 .2 km /h, and κ = 1 .5. Additionally, we set emin = 0 , smin = 0 , and choose a sufficiently large upper bound smax = 10 h for the inequality constraints in (14). We perform all simulations on the Minnesota Supercomputing Institute cluster ( https://www.msi.umn.edu/ ), which uses AMD EPYC 7702 processors. Each simulation uses a single CPU core with 8 GB of allocated memory. 
+
+B. Comparison of Different Algorithms for Nonlinear Pro-grams 
+
+We compare the performance of the proposed NLP model in (25) using two commonly used algorithms for NLP: the Augmented Lagrangian Method (ALM) [21], [22] and the Interior-Point Method (IPM) [23]. For the ALM, we use the 
+
+L-BFGS method (implemented by fminunc in MATLAB ) to minimize the augmented Lagrangian (see [22]). For the IPM, we use the fmincon function in MATLAB with limited-memory Hessian approximation. Note that the convergence of NLP algorithms is sensitive to initialization [24], [25]. This issue is particularly relevant in optimization (25), since approximating nonsmooth functions with smooth ones leads to almost discontinuous gradients. To mitigate this issue, we warm-start the NLP (ALM and IPM) by initializing the UAV’s and UGV’s position trajectories by setting their rendezvous locations as the projections of the UAV task locations onto the UGV’s road network. Fig. 2 shows the convergence of the ALM and IPM under the ℓp-norm approximation in (23) and the log-sum-exp approximation in (21). We compare these methods using 100 problem instances with randomly generated UAV task locations ( mA = 10 ). The constraint violation refers to the sum of the violations of all constraints in (14) and (15). We set δ = 1 in (19), ǫ = 10 −3 and p = 3 in (23), and τ = 10 2
+
+in (21). Among all the methods compared, the combination of ALM with the ℓp-norm approximation achieves the best overall performance. With the same smoothing functions, ALM consistently converges to better local optima than IPM in terms of both objective value and constraint violation. When combined with the ALM, the ℓp-norm approxima-tion achieves lower constraint violation while maintaining a comparable objective value compared with the log-sum-exp 
+
+approximation. Fig. 3 shows the history of the UAV’s remaining time of flight as well as the distance between the UAV and the UGV along an optimal trajectory (computed using the ALM with the ℓp-norm approximation) for the problem instance illustrated in Fig. 1. The shaded regions indicate periods during which the UAV is charging on the UGV. Fig. 3a shows that the proposed model in (25) allows both partial recharging of the UAV and covering multiple task locations during one discharging cycle of the UAV. ALM w/ ℓp-norm ALM w/ log-sum-exp         
+
+> IPM w/ ℓp-norm IPM w/ log-sum-exp
+> 020 40 60 80 100 36912
+> Time (s) Objective Function Value
+
+(a) Convergence of objective function value.      
+
+> 020 40 60 80 100 10 −6
+> 10 −4
+> 10 −2
+> 10 0
+> 10 2
+> Time (s) Constraint Violation
+
+(b) Convergence of constraint violation. 
+
+Fig. 2: Convergence of different NLP algorithms and smooth-ing functions over 100 problem instances with randomly generated UAV task locations with mA = 10 . The solid lines represent the median values of the simulations, while the lower and upper bars indicate the interquartile range, spanning from the 0.25 quantile to the 0.75 quantile.    
+
+> 0123
+> 00.2 0.4
+> Time (h) UAV Remaining ToF (h)
+
+(a) History of UAV’s remaining time-of-flight (ToF).    
+
+> 0123
+> 03.0 6.0
+> Time (h) UAV-UGV Distance (km)
+
+(b) History of UAV-UGV distance (km). 
+
+Fig. 3: UAV-UGV trajectory computed via NLP (ALM with 
+
+ℓp-norm) for the problem shown in Fig. 1. Each red asterisk marks the point along the trajectory where the UAV reaches a task location. TABLE I: Performance comparison between the NLP model (25), solved using ALM with the ℓp-norm approx-imation, and the MINLP model (18), with a maximum computation time of 6 hours.                                           
+
+> mAMethod Succ. Rate Obj. Con. Vio. Time (min)
+> 2NLP 100% 2.4351 5.0e−70.5
+> MINLP 98% 2.4352 5.7e−71.9
+> 3NLP 100% 2.4354 2.0e−60.5
+> MINLP 99% 2.4356 2.0e−618.8
+> 4NLP 100% 2.5188 1.9e−60.7
+> MINLP 87% 2.4352 1.9e−671.0
+> NLP (ALM w/ ℓp-norm) MINLP
+> 2345678910 10 0
+> 10 1
+> 10 2
+> mA
+> Time (min)
+
+Fig. 4: Median computation time versus mA over 100 Monte Carlo runs with randomly generated aerial task positions for each value of mA, with a maximum computation time of 6 hours. Error bars indicate the 0.25–0.75 quantiles, and the median constraint violation is on the order of 10 −6.
+
+C. Comparison against MINLP 
+
+We compare the performance of the proposed NLP model, solved using the ALM with the ℓp-norm approximation, against the MINLP model. For the ALM, we use the same implementation as the one in Section IV-B. For MINLP algorithms, we use the open-source solver Juniper [26] in the JuMP [27] framework. This solver implements the Branch-and-Bound algorithm with IPOPT [28] as the inner NLP solver (with limited-memory Hessian approximation). Table I and Fig. 4 compare the performance of NLP and MINLP over a varying number of UAV task locations 
+
+mA, with a maximum computation time of 6 hours. For each value of mA, we compare NLP and MINLP using 100 problem instances with randomly generated UAV task locations. In Table I, we report the success rate and the median objective value, median constraint violation, and median computational time. We define the success rate based on whether the solver returns a valid solution within 6 hours of computational time. In addition, we define the constraint violation for both the NLP and MINLP models as the sum of violations of all constraints in (14) and (15). Fig. 4 further illustrates the scalability of the NLP model compared with the MINLP model. Overall, the proposed NLP model outperforms the MINLP model as mA increases, especially in computation time. Table I shows that under similar level of constraint violation, the NLP model consistently outperforms the MINLP model in terms of success rate and computational time, with rela-tively minor increase in the objective function value when 
+
+mA = 4 . Fig. 4 further shows that how the computation time scales as mA increases (under similar level of constraint violation). The proposed NLP model not only improves the computation time by up to two orders of magnitudes when 
+
+mA ≤ 4, but also ensure the computation time is within minutes when MINLP cannot produce solutions within hours as mA increases. These results showcase the computational benefits of the proposed model against MINLP. V. C ONCLUSION 
+
+We presented a nonlinear trajectory optimization model for energy-sharing UAV-UGV systems with multiple UAV and UGV task locations. We based this model on a smoothing approximation of disjunctive constraints, which eliminates the need for integer programming. We demonstrated the proposed model on a one-UAV-one-UGV system. Com-pared with mixed-integer nonlinear programming, this model reduces the computation time from hours to minutes in numerical simulation. In future work, we plan to extend the current model to multi-UAV-multi-UGV systems and persistent monitoring applications. REFERENCES [1] Y. Ding, B. Xin, and J. Chen, “A review of recent advances in coor-dination between unmanned aerial and ground vehicles,” Unmanned Syst. , vol. 9, no. 02, pp. 97–117, 2021. [2] R. Chai, Y. Guo, Z. Zuo, K. Chen, H.-S. Shin, and A. Tsourdos, “Co-operative motion planning and control for aerial-ground autonomous systems: Methods and applications,” Prog. Aerosp. Sci. , vol. 146, p. 101005, 2024. [3] I. Munasinghe, A. Perera, and R. C. Deo, “A comprehensive review of UAV-UGV collaboration: Advancements and challenges,” J. Sens. Actuator Netw. , vol. 13, no. 6, p. 81, 2024. [4] N. Mathew, S. L. Smith, and S. L. Waslander, “Multirobot rendezvous planning for recharging in persistent tasks,” IEEE Trans. Robot. ,vol. 31, no. 1, pp. 128–142, 2015. [5] P. Maini and P. B. Sujit, “On cooperation between a fuel constrained UAV and a refueling UGV for large scale mapping applications,” in 
+
+Proc. IEEE Int. Conf. Unmanned Aircr. Syst. (ICUAS) , 2015, pp. 1370– 1377. [6] M. S. Mondal, S. Ramasamy, J. D. Humann, J. M. Dotterweich, J.-P. F. Reddinger, M. A. Childers, and P. A. Bhounsule, “Cooperative multi-agent planning framework for fuel constrained UAV-UGV routing problem,” J. Intell. Robot. Syst. , vol. 111, no. 1, p. 12, 2025. [7] P. Maini, K. Sundar, M. Singh, S. Rathinam, and P. B. Sujit, “Coop-erative aerial–ground vehicle route planning with fuel constraints for coverage applications,” IEEE Trans. Aerosp. Electron. Syst. , vol. 55, no. 6, pp. 3016–3028, 2019. [8] S. Ramasamy, M. S. Mondal, J. D. Humann, J. M. Dotterweich, J.-P. F. Reddinger, M. A. Childers, and P. A. Bhounsule, “Computationally efficient multi-agent optimization framework for online routing of UAV-UGV system,” in Proc. IEEE Int. Conf. Autom. Sci. Eng. (CASE) ,2024, pp. 204–211. [9] T. Kim, A. P. Vinod, and S. Di Cairano, “Decoupled trajectory planning for monitoring UAVs and UGV carrier by reachable sets,” in 
+
+Proc. Amer. Control Conf. (ACC) , 2024, pp. 587–593. [10] Z. Wang and J.-B. Sheu, “Vehicle routing problem with drones,” 
+
+Transp. Res. B: Methodol. , vol. 122, pp. 350–364, 2019. [11] S. G. Manyam, K. Sundar, and D. W. Casbeer, “Cooperative routing for an air–ground vehicle team–exact algorithm, transformation method, and heuristics,” IEEE Trans. Autom. Sci. Eng. , vol. 17, no. 1, pp. 537– 547, 2019. [12] A. H. Eker, M. Oznigolyan, K. F. Karaagacli, D. Gokalp, Y. Bickici, and F. Stroppa, “Cooperative mission planning for multiple aerial and ground vehicles based on evolutionary computation,” IEEE Access ,2025. [13] J. Diller, J. Sigler, and Q. Han, “Collaborative path planning of energy-sharing drone-ugv teams for persistent patrolling,” J. Auton. Transp. Syst. , 2026. [14] G. Wu, M. Fan, J. Shi, and Y. Feng, “Reinforcement learning based truck-and-drone coordinated delivery,” IEEE Trans. Artif. Intell. , vol. 4, no. 4, pp. 754–763, 2023. [15] M. S. Mondal, S. Ramasamy, J. D. Humann, J. M. Dotterweich, J.-P. F. Reddinger, M. A. Childers, and P. Bhounsule, “An attention-aware deep reinforcement learning framework for UAV-UGV collaborative route planning,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) , 2024, pp. 13 687–13 694. [16] X. Li, L. Yao, M. Li, and B. Zhang, “Reinforcement learning based collaborative path planning research for UAVs and unmanned vehi-cles,” in Proc. Int. Conf. Mach. Learn. Intell. Comput. , 2025, pp. 595–603. [17] M. S. Mondal, S. Ramasamy, R. Rownak, L. Russo, J. D. Humann, J. M. Dotterweich, J.-P. F. Reddinger, M. A. Childers, and P. A. Bhounsule, “Risk-aware energy-constrained UAV-UGV cooperative routing using attention-guided reinforcement learning,” in Proc. IEEE Int. Conf. Robot. Autom. (ICRA) , 2025, pp. 13 000–13 007. [18] I. E. Grossmann and Z. Kravanja, “Mixed-integer nonlinear program-ming: A survey of algorithms and applications,” in Large-Scale Optim. Appl., Part II: Optimal Design and Control , 1997, pp. 73–100. [19] S. Uzun, P. Elango, P.-L. Garoche, and B. Acikmese, “Optimiza-tion with temporal and logical specifications via generalized mean-based smooth robustness measures,” arXiv preprint arXiv:2405.10996 [math.OC] , 2024. [20] S. Uzun, B. Ac ¸ıkmes ¸e, and S. Di Cairano, “Motion planning for in-formation acquisition via continuous-time successive convexification,” 
+
+IEEE Control Syst. Lett. , 2025. [21] L. Chen and A. Liao, “On the convergence properties of a second-order augmented lagrangian method for nonlinear programming problems with inequality constraints,” Journal of Optimization Theory and Applications , vol. 187, no. 1, pp. 248–265, 2020. [22] R. T. Rockafellar, “Augmented lagrange multiplier functions and du-ality in nonconvex programming,” SIAM Journal on Control , vol. 12, no. 2, pp. 268–285, 1974. [23] S. J. Wright, Primal-dual interior-point methods . SIAM, 1997. [24] J. T. Betts, “Survey of numerical methods for trajectory optimization,” 
+
+Journal of guidance, control, and dynamics , vol. 21, no. 2, pp. 193– 207, 1998. [25] M. Yuan, R. J. Caverly, and Y. Yu, “Filtering-linearization: A first-order method for nonconvex trajectory optimization with filter-based warm-starting,” in 2025 American Control Conference (ACC) . IEEE, 2025, pp. 547–552. [26] O. Kr¨ oger, C. Coffrin, H. Hijazi, and H. Nagarajan, “Juniper: An open-source nonlinear branch-and-bound solver in julia,” in Integration of Constraint Programming, Artificial Intelligence, and Operations Research , W.-J. van Hoeve, Ed. Cham: Springer International Publishing, 2018, pp. 377–386. [27] M. Lubin, O. Dowson, J. D. Garcia, J. Huchette, B. Legat, and J. P. Vielma, “Jump 1.0: recent improvements to a modeling language for mathematical optimization,” Mathematical Programming Compu-tation , vol. 15, no. 3, pp. 581–589, 2023. [28] A. W¨ achter and L. T. Biegler, “On the implementation of an interior-point filter line-search algorithm for large-scale nonlinear program-ming,” Mathematical Programming , vol. 106, no. 1, pp. 25–57, 2006.
