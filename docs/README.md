@@ -6,74 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-04-01
-- 运行时间：2026-04-01 21:17:06 UTC
+- 最新运行日期：2026-04-02
+- 运行时间：2026-04-02 20:22:48 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-- 今日共生成 17 篇推荐（精读 6 篇，速读 11 篇）
-- 精读：《Collisionless Multi-Agent Path Planning in the Hamilton-Jacobi Formulation》（9.0/10）, 《Kilohertz-Safe: A Scalable Framework for Constrained Dexterous Retargeting》（9.0/10）
-- 速读：《GUIDE: Guided Updates for In-context Decision Evolution in LLM-Driven Spacecraft Operations》（8.0/10）, 《Passive iFIR filters for data-driven velocity control in robotics》（8.0/10）, 《Hybrid Framework for Robotic Manipulation: Integrating Reinforcement Learning and Large Language Models》（8.0/10）
-- 这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。
-- 详情：[/202604/01/README](/202604/01/README)
+今日深度解析 17 篇前沿论文，聚焦跨模态动力学规划与网络化控制系统的安全屏障部署。
+重点关注 CLaD 提出的跨模态潜在规划框架，以及如何通过优化 CBF 位置提升复杂网络环境下的系统安全性。
+建议从 ProgressV
+- 详情：[/202604/02/README](/202604/02/README)
 
 ### 精读区论文标签
-1. [Collisionless Multi-Agent Path Planning in the Hamilton-Jacobi Formulation](/202604/01/2603.28993v1-collisionless-multi-agent-path-planning-in-the-hamilton-jacobi-formulation)  
-   标签：评分：9.0/10、query:q1
-   evidence：利用优化和最优控制进行无碰撞路径规划
-2. [Kilohertz-Safe: A Scalable Framework for Constrained Dexterous Retargeting](/202604/01/2603.29213v1-kilohertz-safe-a-scalable-framework-for-constrained-dexterous-retargeting)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：基于优化的实时运动重定向，包含避障约束
-3. [Collision Avoidance Control for a Two-wheeled Vehicle under Stochastic Vibration using an Almost Sure Control Barrier Function](/202604/01/2603.27934v1-collision-avoidance-control-for-a-two-wheeled-vehicle-under-stochastic-vibration-using-an-almost-sure-control-barrier-function)  
-   标签：评分：8.0/10、query:q1
-   evidence：使用控制屏障函数的避障控制
-4. [Kernel-SDF: An Open-Source Library for Real-Time Signed Distance Function Estimation using Kernel Regression](/202604/01/2603.29227v1-kernel-sdf-an-open-source-library-for-real-time-signed-distance-function-estimation-using-kernel-regression)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：用于机械臂碰撞检查和轨迹优化的实时有向距离函数(SDF)估计
-5. [Distributed Predictive Control Barrier Functions: Towards Scalable Safety Certification in Modular Multi-Agent Systems](/202604/01/2603.29560v1-distributed-predictive-control-barrier-functions-towards-scalable-safety-certification-in-modular-multi-agent-systems)  
+1. [CLaD: Planning with Grounded Foresight via Cross-Modal Latent Dynamics](/202604/02/2603.29409v1-clad-planning-with-grounded-foresight-via-cross-modal-latent-dynamics)  
+   标签：评分：8.0/10、query:q6
+   evidence：机器人操作规划
+2. [Where to Put Safety? Control Barrier Function Placement in Networked Control Systems](/202604/02/2603.29792v1-where-to-put-safety-control-barrier-function-placement-in-networked-control-systems)  
    标签：评分：8.0/10、query:q2
-   evidence：基于预测控制屏障函数的优化安全层
-6. [SafeDMPs: Integrating Formal Safety with DMPs for Adaptive HRI](/202604/01/2603.29708v1-safedmps-integrating-formal-safety-with-dmps-for-adaptive-hri)  
+   evidence：用于安全性的MPC和控制屏障函数
+3. [Long-Horizon Geometry-Aware Navigation among Polytopes via MILP-MPC and Minkowski-Based CBFs](/202604/02/2604.00162v1-long-horizon-geometry-aware-navigation-among-polytopes-via-milp-mpc-and-minkowski-based-cbfs)  
+   标签：评分：8.0/10、query:q1
+   evidence：多面体障碍物避障的分层规划与控制
+4. [Hierarchical Motion Planning and Control under Unknown Nonlinear Dynamics via Predicted Reachability](/202604/02/2604.00320v1-hierarchical-motion-planning-and-control-under-unknown-nonlinear-dynamics-via-predicted-reachability)  
    标签：评分：8.0/10、query:profile-1
-   evidence：可证明的碰撞安全性和高效实时控制
+   evidence：分层运动规划与在线运动合成
+5. [Behavioral Score Diffusion: Model-Free Trajectory Planning via Kernel-Based Score Estimation from Data](/202604/02/2604.00391v1-behavioral-score-diffusion-model-free-trajectory-planning-via-kernel-based-score-estimation-from-data)  
+   标签：评分：8.0/10、query:q3
+   evidence：基于扩散的无模型轨迹规划
+6. [Distributed Safety-Critical Control of Multi-Agent Systems with Time-Varying Communication Topologies](/202604/02/2604.00429v1-distributed-safety-critical-control-of-multi-agent-systems-with-time-varying-communication-topologies)  
+   标签：评分：8.0/10、query:q2
+   evidence：基于分布式优化的避障控制
 
 ### 速读区论文标签
-1. [GUIDE: Guided Updates for In-context Decision Evolution in LLM-Driven Spacecraft Operations](/202604/01/2603.27306v1-guide-guided-updates-for-in-context-decision-evolution-in-llm-driven-spacecraft-operations)  
-   标签：评分：8.0/10、query:q7
-   evidence：航天器操作和轨道任务的实时控制
-2. [Passive iFIR filters for data-driven velocity control in robotics](/202604/01/2603.29882v1-passive-ifir-filters-for-data-driven-velocity-control-in-robotics)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：非线性机器人操作臂的速度控制
-3. [Hybrid Framework for Robotic Manipulation: Integrating Reinforcement Learning and Large Language Models](/202604/01/2603.30022v1-hybrid-framework-for-robotic-manipulation-integrating-reinforcement-learning-and-large-language-models)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：具有实时适应和任务规划能力的机器人操作
-4. [From Global to Local: Hierarchical Probabilistic Verification for Reachability Learning](/202604/01/2603.24990v1-from-global-to-local-hierarchical-probabilistic-verification-for-reachability-learning)  
-   标签：评分：7.0/10、query:q2
-   evidence：求解凸规划的在线局部优化
-5. [Robot Arm Control via Cognitive Map Learners](/202604/01/2603.26773v1-robot-arm-control-via-cognitive-map-learners)  
+1. [Reachability-Aware Time Scaling for Path Tracking](/202604/02/2604.00439v1-reachability-aware-time-scaling-for-path-tracking)  
+   标签：评分：8.0/10、query:q8
+   evidence：可达性引导的二次规划跟踪器
+2. [ProgressVLA: Progress-Guided Diffusion Policy for Vision-Language Robotic Manipulation](/202604/02/2603.27670v1-progressvla-progress-guided-diffusion-policy-for-vision-language-robotic-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：控制多关节机械臂的运动
-6. [Probe-to-Grasp Manipulation Using Self-Sensing Pneumatic Variable-Stiffness Joints](/202604/01/2603.27808v1-probe-to-grasp-manipulation-using-self-sensing-pneumatic-variable-stiffness-joints)  
+   evidence：视觉语言机器人操作
+3. [ManipArena: Comprehensive Real-world Evaluation of Reasoning-Oriented Generalist Robot Manipulation](/202604/02/2603.28545v1-maniparena-comprehensive-real-world-evaluation-of-reasoning-oriented-generalist-robot-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：抓取柔性物体的操作框架
-7. [CREST: Constraint-Release Execution for Multi-Robot Warehouse Shelf Rearrangement](/202604/01/2603.28803v1-crest-constraint-release-execution-for-multi-robot-warehouse-shelf-rearrangement)  
+   evidence：机器人操作的真实世界评估
+4. [Large Neighborhood Search for Multi-Agent Task Assignment and Path Finding with Precedence Constraints](/202604/02/2603.28968v1-large-neighborhood-search-for-multi-agent-task-assignment-and-path-finding-with-precedence-constraints)  
    标签：评分：7.0/10、query:q1
-   evidence：计算无碰撞的货架轨迹
-8. [SuperGrasp: Single-View Object Grasping via Superquadric Similarity Matching, Evaluation, and Refinement](/202604/01/2603.29254v1-supergrasp-single-view-object-grasping-via-superquadric-similarity-matching-evaluation-and-refinement)  
-   标签：评分：7.0/10、query:q6
-   evidence：机器人抓取与操作框架
-9. [Temporally Decoupled Diffusion Planning for Autonomous Driving](/202604/01/2603.25462v1-temporally-decoupled-diffusion-planning-for-autonomous-driving)  
-   标签：评分：6.0/10、query:q3
-   evidence：通过时间解耦扩散规划进行轨迹生成
-10. [SoftMimicGen: A Data Generation System for Scalable Robot Learning in Deformable Object Manipulation](/202604/01/2603.25725v1-softmimicgen-a-data-generation-system-for-scalable-robot-learning-in-deformable-object-manipulation)  
+   evidence：多智能体路径规划与无碰撞方案
+5. [DreamControl-v2: Simpler and Scalable Autonomous Humanoid Skills via Trainable Guided Diffusion Priors](/202604/02/2604.00202v1-dreamcontrol-v2-simpler-and-scalable-autonomous-humanoid-skills-via-trainable-guided-diffusion-priors)  
+   标签：评分：7.0/10、query:profile-1
+   evidence：类人机器人的移动操作技能
+6. [Event-Triggered Adaptive Taylor-Lagrange Control for Safety-Critical Systems](/202604/02/2604.00334v1-event-triggered-adaptive-taylor-lagrange-control-for-safety-critical-systems)  
+   标签：评分：7.0/10、query:q5
+   evidence：安全关键系统的事件触发控制
+7. [Sampling-based Task and Kinodynamic Motion Planning under Semantic Uncertainty](/202604/02/2604.00401v1-sampling-based-task-and-kinodynamic-motion-planning-under-semantic-uncertainty)  
+   标签：评分：7.0/10、query:q4
+   evidence：具有非线性动力学的机器人采样运动规划
+8. [Flow-based Policy With Distributional Reinforcement Learning in Trajectory Optimization](/202604/02/2604.00977v1-flow-based-policy-with-distributional-reinforcement-learning-in-trajectory-optimization)  
+   标签：评分：7.0/10、query:q3
+   evidence：基于流策略的轨迹优化
+9. [Partial Motion Imitation for Learning Cart Pushing with Legged Manipulators](/202604/02/2603.26659v1-partial-motion-imitation-for-learning-cart-pushing-with-legged-manipulators)  
    标签：评分：6.0/10、query:q6
-   evidence：机器人操作技能与数据生成
-11. [Autonomous overtaking trajectory optimization using reinforcement learning and opponent pose estimation](/202604/01/2603.27207v1-autonomous-overtaking-trajectory-optimization-using-reinforcement-learning-and-opponent-pose-estimation)  
-   标签：评分：6.0/10、query:q3
-   evidence：使用强化学习进行自动驾驶车辆超车轨迹优化
+   evidence：足式机器人的移动操作
+10. [Where-to-Learn: Analytical Policy Gradient Directed Exploration for On-Policy Robotic Reinforcement Learning](/202604/02/2603.27317v2-where-to-learn-analytical-policy-gradient-directed-exploration-for-on-policy-robotic-reinforcement-learning)  
+   标签：评分：6.0/10、query:q2
+   evidence：机器人控制的解析策略梯度
+11. [Dynamic Constrained Stabilization on the $n$-sphere](/202604/02/2603.27382v1-dynamic-constrained-stabilization-on-the-n-sphere)  
+   标签：评分：6.0/10、query:q2
+   evidence：刚体姿态控制的约束稳定化
 
 
 <div class="dpr-home-promo-card">

@@ -1,0 +1,721 @@
+Title: Behavioral Score Diffusion: Model-Free Trajectory Planning via Kernel-Based Score Estimation from Data
+
+URL Source: https://arxiv.org/pdf/2604.00391v1
+
+Published Time: Thu, 02 Apr 2026 00:26:04 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Behavioral Score Diffusion: Model-Free Trajectory Planning via Kernel-Based Score Estimation from Data 
+
+Shihao Li, Jiachen Li, Jiamin Xu, Dongmei Chen 
+
+Abstract — Diffusion-based trajectory optimization has emerged as a powerful planning paradigm, but existing methods require either learned score networks trained on large datasets or analytical dynamics models for score computation. We introduce Behavioral Score Diffusion (BSD), a training-free and model-free trajectory planner that computes the diffusion score function directly from a library of trajectory data via kernel-weighted estimation. At each denoising step, BSD retrieves relevant trajectories using atriple-kernel weighting scheme—diffusion proximity, state context, and goal relevance—and computes a Nadaraya-Watson estimate of the denoised trajectory. The diffusion noise schedule naturally controls kernel bandwidths, creating a multi-scale nonparametric regression: broad averaging of global behavioral patterns at high noise, fine-grained local interpolation at low noise. This coarse-to-fine structure handles nonlinear dynamics without linearization or parametric assumptions. Safety is preserved by applying shielded rollout on kernel-estimated state trajectories, identical to existing model-based approaches. We evaluate BSD on four robotic systems of increasing complexity (3D–6D state spaces) in a parking scenario. BSD with fixed bandwidth achieves 98.5% of the model-based baseline’s average reward across systems while requiring no dynamics model, using only 1,000 pre-collected trajectories. BSD substantially outperforms nearest-neighbor retrieval (18–63% improvement), confirming that the diffusion denoising mechanism is essential for effective data-driven planning. [Project Page] [Code] 
+
+I. I NTRODUCTION 
+
+Trajectory optimization is fundamental for autonomous robots in constrained environments, but classical approaches require explicit dynamics models [1]. Obtaining accurate models is expensive or infeasible for many real-world systems—articulated vehicles with complex tire-ground in-teractions, soft robots, or systems with proprietary dynamics. Diffusion-based trajectory optimization [2], [3] reformu-lates planning as iterative denoising. Model-Based Diffusion (MBD) [3] computes the score function via reward-weighted importance sampling over dynamics rollouts, achieving strong performance without neural network training. Safe-MPD [4] extends MBD with a safety shield enforcing collision-free trajectories during denoising. However, both require an analytical dynamics model—limiting applicability and coupling planning quality to model fidelity. We propose Behavioral Score Diffusion (BSD), which eliminates this model dependency entirely (Fig. 1). BSD computes the denoised trajectory estimate at each step di-rectly from a library of pre-collected trajectory data via          
+
+> All authors are with The University of Texas at Austin.
+
+{shihaoli01301, jiachenli }@utexas.edu, jiaminxu@my.utexas.edu, dmchen@me.utexas.edu 
+
+Nadaraya-Watson kernel regression, where kernel weights encode diffusion proximity, initial state context, and goal relevance. The diffusion noise schedule creates a natural multi-scale structure: broad kernels at high noise capture global behavioral patterns, narrow kernels at low noise resolve fine-grained nonlinear dynamics. This coarse-to-fine estimation is inherently nonparametric—no linearization or LTI assump-tions required. Safety is preserved because the shielded rollout operates on kernel-estimated states identically to model-predicted ones. 
+
+Contributions. Our contributions are fourfold: 1) We introduce Behavioral Score Diffusion, a training-free and model-free diffusion planner that replaces dynamics-based score computation with kernel-based trajectory data estimation, requiring no analytical model or neural network. 2) We prove pointwise consistency of the kernel score estimate for arbitrary continuous dynamics, charac-terize its MSE rate, and show that BSD reduces to regularized DeePC for LTI systems—formalizing the connection between diffusion planning and behavioral systems theory. 3) We demonstrate that BSD with fixed bandwidth and multi-sample selection achieves 98.5% of the model-based baseline’s reward across four robotic systems (3D–6D states), while a no-diffusion nearest-neighbor baseline achieves only 75.0%, confirming the essential role of diffusion denoising. 4) We provide ablation evidence that the multi-sample exploration mechanism (K=20,000 candidates with re-ward selection) renders adaptive bandwidth scheduling unnecessary, simplifying the method. II. R ELATED WORK 
+
+Diffusion-based planning. Janner et al. [2] introduced trajectory-level diffusion for planning, spawning a family of methods including return-conditioned generation [5], visuo-motor policies [6], and real-time autonomous driving [7]. These approaches train neural score networks on demonstra-tion data. In contrast, MBD [3] computes scores analytically using dynamics models, eliminating the need for training data but requiring model access. DiffuserLite [8] achieves real-time rates through coarse-to-fine planning. 
+
+Safe diffusion planning. Safe-MPD [4] integrates geo-metric safety shields into the MBD denoising loop, enforcing collision avoidance and kinodynamic constraints at every       
+
+> arXiv:2604.00391v1 [cs.RO] 1 Apr 2026 Fig. 1. Overview of Behavioral Score Diffusion. Left: A planner initializes from noise; model-free score estimation replaces dynamics rollouts. Center:
+> The BSD denoiser step computes triple-kernel weights (diffusion, context, goal) over the trajectory library, with the noise schedule controlling bandwidth from broad (high noise) to narrow (low noise). Right: Multi-sample shielding reverts violated states, followed by reward-weighted softmax selection. Bottom-right: BSD performance scales gracefully with state dimensionality while nearest-neighbor degrades.
+
+diffusion step. DualShield [9] adds Hamilton-Jacobi reach-ability guidance. SafeDiffuser [10] embeds control barrier functions into denoising. Constrained Diffusers [11] use pro-jected and primal-dual Langevin sampling. All these methods assume access to either a dynamics model or a pre-trained diffusion model. BSD preserves the shielding mechanism while eliminating the dynamics model requirement. 
+
+Data-driven predictive control. Willems’ Fundamental Lemma [12] establishes that trajectories of controllable LTI systems are fully characterized by a single persistently excit-ing input-output trajectory. DeePC [13] operationalizes this via Hankel matrix-based prediction and receding-horizon op-timization, with distributionally robust extensions for noisy settings [14]. However, the LTI assumption limits DeePC to mildly nonlinear systems without patches such as local data selection [15] or lifting [16]. BSD generalizes beyond the LTI setting: the Nadaraya-Watson estimator converges to the true conditional expectation for any continuous dynamics (Proposition 1), and for LTI systems the two methods are equivalent up to regularizer choice (Proposition 3). 
+
+Kernel score estimation. Recent work shows that diffu-sion score functions can be estimated directly from data sam-ples without training neural networks. Yang and He [17] use kernel-weighted estimators for score-based SDE sampling. Gabriel et al. [18] provide theoretical analysis (LED-KDE) of kernel-smoothed scores for denoising diffusion, establishing bias-variance trade-offs. Epstein et al. [19] address score de-biasing in kernel density estimation. We apply this principle to trajectory planning: stored control sequences serve as data points, and kernel weights at each denoising step produce the score function estimate. III. P RELIMINARIES 
+
+A. Model-Based Diffusion (MBD) 
+
+We consider discrete-time trajectory optimization. Given a system with dynamics xt+1 = f (xt, u t), initial state x0,and goal xgoal , the objective is to find a control sequence 
+
+Y = ( u0, . . . , u H−1) ∈ RH×Nu that maximizes a reward 
+
+R(X, x goal ) where X = ( x0, . . . , x H ) is the state trajectory obtained by rolling out Y through f .MBD [3] solves this by reverse diffusion. Starting from noise YN ∼ N (0 , I ), the trajectory is iteratively denoised for i = N −1, . . . , 0. At each step, MBD: 1) Draws K candidate denoised trajectories {Y (k)0 }Kk=1 
+
+from a Gaussian centered at the current estimate. 2) Rolls out each candidate through dynamics: X(k) =
+
+rollout (Y (k)0 , x 0, f ).3) Computes rewards: r(k) = R(X(k), x goal ).4) Updates via reward-weighted average: 
+
+¯Yi−1 =
+
+> K
+
+X
+
+> k=1
+
+softmax (r(k)/τ )k · Y (k)0 (1) where τ is a temperature parameter. The noise schedule {σi}
+
+controls the variance of the Gaussian perturbation at each step. 
+
+B. Safe-MPD Shielded Rollout 
+
+Safe-MPD [4] augments MBD with a safety shield applied during rollout. For each state xt in a candidate trajectory: 
+
+xt =
+
+(
+
+f (xt−1, u t−1) if xt ∈ C safe 
+
+xt−1 otherwise (2) where Csafe is the set of collision-free, constraint-satisfying states. This geometric shield operates on predicted states regardless of their source—a property BSD exploits. C. Nadaraya-Watson Kernel Regression 
+
+Given observations {(zj , v j )}Nj=1 with inputs zj and out-puts vj , the Nadaraya-Watson estimator [20], [21] of the conditional expectation is: 
+
+ˆm(z) = 
+
+PNj=1 Kh(z − zj ) · vj
+
+PNj=1 Kh(z − zj ) (3) where Kh is a kernel function with bandwidth h. For continuous target functions, ˆm(z) → E[v | z] as N → ∞ 
+
+and h → 0 with N h d → ∞ [22]. Crucially, this convergence holds for arbitrary nonlinear functions—no parametric or linearity assumptions are required. IV. B EHAVIORAL SCORE DIFFUSION 
+
+A. Problem Setting 
+
+Given a dataset D = {(uj , x j , r j )}Nj=1 of N input-output trajectories collected from a system (e.g., via an existing model-based planner), where uj ∈ RH×Nu are control sequences, xj ∈ RH×Nx are state trajectories, and rj ∈ R
+
+are associated rewards, along with a current state x0 and goal 
+
+xgoal , BSD produces a safe, goal-reaching control sequence without access to the dynamics model f .
+
+B. Kernel-Based Score Estimation 
+
+The core idea is to replace MBD’s dynamics rollout with a kernel regression over the trajectory dataset. At denoising step i with current noisy trajectory Yi, we compute three kernel weights for each data trajectory j:
+
+Diffusion kernel. Measures similarity between the noisy trajectory and stored controls: 
+
+log wdiff  
+
+> j
+
+= − ∥Yi − uj ∥2
+
+2β2
+
+> i
+
+(4) where βi = c · σi · d1/2 scales with the diffusion noise level 
+
+σi and control dimensionality d = H × Nu.
+
+Context kernel. Matches initial states: 
+
+log wctx  
+
+> j
+
+= − ∥x0 − xj [0] ∥2
+
+2ν2
+
+> x
+
+(5) 
+
+Goal kernel. Scores goal proximity: 
+
+log wgoal  
+
+> j
+
+= − ∥xj [H] − xgoal ∥2
+
+2ν2
+
+> g
+
+(6) 
+
+Reward temperature. Incorporates trajectory quality: 
+
+log wrew  
+
+> j
+
+= η · ˜rj (7) where ˜rj = ( rj − ¯r)/(rmax − rmin ) is the normalized reward and η is a temperature parameter. The combined weight is wj = exp(log wdiff  
+
+> j
+
++ log wctx  
+
+> j
+
++log wgoal  
+
+> j
+
++ log wrew  
+
+> j
+
+), normalized as ˆwj = wj / P 
+
+> k
+
+wk.The denoised trajectory estimate and state prediction are then: 
+
+ˆY0 =
+
+> N
+
+X
+
+> j=1
+
+ˆwj · uj , ˆX =
+
+> N
+
+X
+
+> j=1
+
+ˆwj · xj (8) This is a Nadaraya-Watson estimator (Eq. 3) where the “input” is the tuple (Yi, x 0, x goal , r ) and the “output” is the trajectory pair (u, x ). The state prediction ˆX comes “for free”—the same kernel weights that estimate the denoised controls also estimate the resulting states. 
+
+C. Multi-Sample Selection 
+
+Rather than using a single kernel-weighted average, BSD draws K candidate denoised trajectories from the kernel-weighted distribution and applies reward-based selection (mirroring MBD’s mechanism): 1) Draw K candidates: Y (k)0 ∼ P 
+
+> j
+
+ˆwj · δuj (multino-mial sampling from dataset trajectories with kernel weights). 2) Retrieve corresponding states: X(k) = xj(k) where 
+
+j(k) is the sampled index. 3) Apply safety shield: X(k) 
+
+> safe
+
+= shield (X(k)).4) Compute shielded reward: r(k) = R(X(k)
+
+> safe
+
+, x goal ).5) Select via reward softmax: ¯Yi−1 =
+
+P 
+
+> k
+
+softmax (r(k)/τ )k · Y (k)0 .With K = 20 ,000 samples (matching MBD), this ex-ploration mechanism renders adaptive bandwidth scheduling unnecessary: fixed broad bandwidths allow all dataset trajec-tories to remain reachable throughout denoising, while the reward-weighted selection handles exploitation. 
+
+D. Algorithm Summary 
+
+Algorithm 1 Behavioral Score Diffusion (BSD) 
+
+Require: Dataset D = {(uj , x j , r j )}Nj=1 , state x0, goal 
+
+xgoal  
+
+> 1:
+
+YN ∼ N (0 , I ) 
+
+> 2:
+
+for i = N −1, . . . , 1 do  
+
+> 3:
+
+Compute kernel weights ˆwj via Eqs. (4)–(7)  
+
+> 4:
+
+Draw K candidates {Y (k)0 , X (k)} from D with weights ˆwj 
+
+> 5:
+
+Apply safety shield: X(k) 
+
+> safe
+
+← shield (X(k)) 
+
+> 6:
+
+Compute rewards: r(k) ← R(X(k)
+
+> safe
+
+, x goal ) 
+
+> 7:
+
+¯Yi−1 ← P 
+
+> k
+
+softmax (r(k)/τ )k · Y (k)0 
+
+> 8:
+
+if i > 1 then  
+
+> 9:
+
+Yi−1 ← ¯Yi−1 + σi−1 · ϵ, ϵ ∼ N (0 , I ) 
+
+> 10:
+
+else  
+
+> 11:
+
+Y0 ← ¯Y0 
+
+> 12:
+
+end if  
+
+> 13:
+
+end for  
+
+> 14:
+
+return Y0
+
+E. Safety Preservation 
+
+BSD preserves the shielded rollout from Safe-MPD. The shield operates on predicted states ˆX by checking geometric constraints (collision, hitch angle limits) at each timestep. If a state violates constraints, it is reverted to the previous safe state. Because the shield’s correctness depends only on the states it receives—not on how they were computed—it provides the same safety enforcement for kernel-estimated states as for dynamics-predicted states. The collision margin parameter accounts for inter-step discretization in both cases. V. T HEORETICAL ANALYSIS 
+
+We establish formal guarantees for BSD’s kernel-based score estimation. All proofs follow from classical results in nonparametric regression [20]–[22] adapted to the diffusion planning setting. 
+
+A. Assumptions 
+
+We require the following regularity conditions on the data-generating process and kernel function. 
+
+(A1) Smooth dynamics. The true dynamics f is Lipschitz continuous: ∥f (x, u ) − f (x′, u ′)∥ ≤ Lf (∥x − x′∥ +
+
+∥u − u′∥) for some constant Lf > 0.
+
+(A2) Bounded trajectories. All trajectories in D lie in a compact set: ∥uj ∥ ≤ Bu, ∥xj ∥ ≤ Bx for all j.
+
+(A3) Data density. The joint density p(Y, x 0, x goal ) of control-state-goal tuples in D is bounded away from zero in the operating region Ω: inf z∈Ω p(z) ≥ pmin >
+
+0.
+
+(A4) Kernel regularity. The product kernel Kh(z) = Kdiff  
+
+> h
+
+·
+
+Kctx  
+
+> h
+
+· Kgoal  
+
+> h
+
+is a symmetric, non-negative function with R K(u) du = 1 , finite second moment μ2(K) = R u2K(u) du < ∞, and R K2(u) du < ∞.
+
+B. Pointwise Consistency Proposition 1 (Consistency of BSD Estimate): Under as-sumptions (A1)–(A4), let ˆmN (z) denote BSD’s Nadaraya-Watson trajectory estimate (Eq. 8) at query point z =(Yi, x 0, x goal ) with bandwidth h = h(N ). If h → 0 and 
+
+N h dz → ∞ as N → ∞ , where dz is the dimension of the joint query space, then 
+
+ˆmN (z) p
+
+−→ Eu | Yi, x 0, x goal 
+
+ (9) for every z in the interior of Ω.
+
+Proof sketch. Direct application of the NW consistency theo-rem [22]. BSD’s product kernel satisfies (A4); the bandwidth 
+
+βi = c · σi · d1/2 ensures h → 0 via the diffusion schedule. The condition N h dz → ∞ requires dataset size to grow faster than h−dz .
+
+C. Per-Step Mean Squared Error Proposition 2 (MSE Bound): Under (A1)–(A4), assume additionally that the conditional expectation m(z) = E[u | z]
+
+is twice continuously differentiable with bounded Hessian 
+
+∥Hm∥ ≤ Cm. Then for each denoising step i, the mean squared error of BSD’s estimate satisfies 
+
+E∥ ˆmN (z) − m(z)∥2 = μ2(K)2 
+
+> 4
+
+∥Hm(z)∥2 
+
+> F
+
+h4
+
+| {z }
+
+> bias 2
+
++ ∥K∥22 σ2  
+
+> v(z)
+> N h dz p(z)
+
+| {z }
+
+> variance
+
++o h4 + ( N h dz )−1 (10) where σ2 
+
+> v
+
+(z) = Var [u | z] is the conditional variance and 
+
+∥K∥22 = R K2(u) du .
+
+Proof sketch. Standard bias-variance decomposition for the NW estimator [22]. The optimal bandwidth h∗ =
+
+O(N −1/(dz +4) ) yields MSE rate O(N −4/(dz +4) ).
+
+Implications. The curse of dimensionality appears through 
+
+dz in the variance term. With dz ≈ 130+ for the parking task, the optimal rate converges slowly, yet BSD performs well because trajectories lie on a low-dimensional manifold and the multi-sample selection bypasses kernel averaging for exploitation. The bias term ( ∝ h4) explains why adaptive bandwidth—which shrinks h at late steps—increases vari-ance and degrades performance relative to fixed bandwidth. 
+
+D. DeePC Equivalence for LTI Systems Proposition 3 (LTI Reduction to Regularized DeePC): 
+
+Consider an LTI system xt+1 = Ax t + Bu t and let the dataset D be formed from a single persistently exciting trajectory of length L, partitioned into N = L − Tini − H + 1 
+
+overlapping Hankel windows of length Tini + H. Using a Gaussian diffusion kernel (Eq. 4) with bandwidth β and no context/goal kernels ( νx, ν g → ∞ ), BSD’s estimate satisfies 
+
+ˆY0 = Uf α, αj = exp  −∥ Yi − uj ∥2/2β2P 
+
+> k
+
+exp  −∥ Yi − uk∥2/2β2 (11) and Uf is the future-input block of the Hankel matrix. The softmax weights α solve 
+
+α = arg min  
+
+> α
+
+∥Uf α − Yi∥2 + β2 · KL (α∥1/N ) (12) which is regularized DeePC [14] with an entropic regu-larizer controlled by the kernel bandwidth β. As β → 0,
+
+α concentrates on the nearest Hankel column, recovering nearest-neighbor; as β → ∞ , α → 1/N , recovering uniform averaging. 
+
+Proof sketch. By Willems’ Lemma [12], the Hankel columns span all LTI trajectories. The softmax weights solve amaximum-entropy problem whose Lagrangian dual is Eq. 12. The KL term is analogous to the ℓ2 regularizer in standard DeePC. 
+
+E. Safety Preservation Proposition 4 (Safety Inheritance): If the safety shield S
+
+enforces S(X)t ∈ C safe for any input state sequence X with 
+
+x0 ∈ C safe , then S( ˆX)t ∈ C safe for any BSD estimate ˆX.
+
+Proof. Immediate: the shield is agnostic to the source of its input states. Safety is a property of the shield, not the planner. BSD there-fore inherits any shield designed for model-based diffusion— including DualShield [9] and SafeDiffuser [10]—without modification. VI. E XPERIMENTS 
+
+We evaluate BSD on four robotic systems in a park-ing scenario, comparing against the model-based baseline (MBD/Safe-MPD) and ablation variants. 
+
+A. Experimental Setup 
+
+Systems. We use four tractor-trailer variants from the Safe-MPD benchmark [4], with increasing state dimensionality and nonlinearity:  
+
+> •
+
+Bicycle (3D state: x, y, θ ): Kinematic bicycle model with steering and velocity inputs. • TT2D (4D state: x, y, θ 1, θ 2): Tractor-trailer with cou-pled sin / cos hitch dynamics.  
+
+> •
+
+NTrailer (5D state): N -trailer generalization with ad-ditional trailer joint.  
+
+> •
+
+AccTT2D (6D state): Accelerating tractor-trailer with velocity and acceleration states. 
+
+Scenario. Each system must park in a designated space within a 32 m × 32 m lot containing 16 spaces (8 columns ×
+
+2 rows). Initial positions are randomized. 
+
+Data collection. We collect N = 1 ,000 trajectories per system by running Safe-MPD with analytical dynamics from randomized initial conditions, filtering for minimum reward 
+
+≥ 0.
+
+Conditions. We compare four planning conditions:  
+
+> •
+
+MBD : Model-based diffusion with analytical dynamics (upper bound).  
+
+> •
+
+BSD-fix : Behavioral score diffusion with fixed band-width (our primary method).  
+
+> •
+
+BSD : BSD with adaptive bandwidth schedule ( γ = 0 .5).  
+
+> •
+
+NN : Nearest-neighbor retrieval without diffusion (lower bound). All diffusion-based methods use Ndiffuse = 100 denoising steps and K = 20 ,000 candidate samples per step. BSD parameters: νx = 2 .0, νg = 3 .0, η = 10 .0, dimensionality scaling d0.5.
+
+Protocol. 50 trials per condition with shared random seeds across conditions. All experiments run on a single NVIDIA RTX 4080 (12 GB). We report bootstrapped 95% confidence intervals from 10,000 resamples. 
+
+B. Main Results 
+
+Fig. 2 presents the primary comparison across all four systems. BSD-fix (red) achieves reward within 0.3% of MBD (blue) on three of four systems (Bicycle, TT2D, NTrailer), with overlapping confidence intervals indicating statistically indistinguishable performance. On AccTT2D, the most chal-lenging 6D system, BSD-fix falls within 6.8% of MBD. Across all four systems, BSD-fix reaches 98.5% of MBD’s average reward while requiring no dynamics model. The gap between BSD-fix and NN (grey) is substantial and widens with system complexity, confirming that diffu-sion denoising contributes far more than simple trajectory retrieval. BSD with adaptive bandwidth (salmon) consistently falls between BSD-fix and NN, indicating that bandwidth adaptation is counterproductive in this setting. Table I provides full numerical results with bootstrapped 95% confidence intervals and planning times. 
+
+C. Reward Distributions 
+
+Fig. 3 shows full per-trial reward distributions. On Bicy-cle and TT2D, BSD-fix produces tight distributions nearly identical to MBD. On NTrailer and AccTT2D, all methods broaden, with heavier left tails for BSD variants from initial conditions far from training coverage. BSD-fix has lower variance than BSD (adaptive) on all four systems, supporting the theoretical prediction (Proposition 2) that fixed band-width stabilizes kernel weight distributions. 3.0 3.5 4.0 4.5 5.0 5.5 6.0 
+
+Reward (mean with 95% CI) 
+
+AccTT2D (6D) 
+
+NTrailer (5D) 
+
+TT2D (4D) 
+
+Bicycle (3D)                                                                                                                
+
+> MBD BSD-fix BSD NN
+> Fig. 2. Main results across four systems of increasing state dimensionality (3D–6D). Each dot shows the mean reward; whiskers indicate bootstrapped 95% confidence intervals (10,000 resamples). Vertical dashed lines mark the MBD (model-based) reference. BSD-fix nearly matches MBD on all systems while substantially outperforming the no-diffusion baseline (NN). TABLE I DETAILED RESULTS : 50 TRIALS PER CONDITION . R EWARD :MEAN ±
+> STD [BOOTSTRAPPED 95% CI]. S AFETY :COLLISION -AND CONSTRAINT -FREE RATE .
+> System Method Reward [95% CI] Safety Time (ms)
+> Bicycle MBD 5.95 ±0.04 [5.94, 5.96] 100% 687 BSD-fix 5.95 ±0.05 [5.93, 5.96] 100% 2585 BSD 5.63 ±0.71 [5.42, 5.81] 100% 2876 NN 5.02 ±0.90 [4.78, 5.27] 100% <1TT2D MBD 5.73 ±0.43 [5.60, 5.83] 96% 1181 BSD-fix 5.74 ±0.41 [5.61, 5.84] 96% 2928 BSD 5.51 ±0.72 [5.31, 5.70] 96% 2962 NN 4.52 ±0.91 [4.27, 4.76] 96% <1NTrailer MBD 5.48 ±1.05 [5.16, 5.73] 90% 2458 BSD-fix 5.48 ±1.06 [5.17, 5.75] 90% 4768 BSD 5.06 ±1.14 [4.73, 5.36] 90% 4731 NN 4.27 ±1.26 [3.91, 4.61] 90% <1AccTT2D MBD 5.38 ±0.79 [5.15, 5.59] 90% 4691 BSD-fix 5.01 ±1.18 [4.67, 5.32] 86% 6903 BSD 4.64 ±1.39 [4.24, 5.02] 86% 6780 NN 3.08 ±1.52 [2.66, 3.50] 92% <1
+
+D. Dimensionality Scaling 
+
+Fig. 4 plots reward as a percentage of MBD vs. state dimensionality. BSD-fix maintains >99% through 5D but drops to 93.2% at 6D. NN degrades much more steeply— from 84.5% at 3D to 57.3% at 6D—because single-shot retrieval cannot compensate for sparse coverage. The BSD-fix/NN gap widens from 15 to 36 percentage points, indi-cating that diffusion denoising becomes more valuable as complexity increases. 2 3 4 5 6 7
+
+Reward 
+
+> MBD
+> BSD-fix
+> BSD
+> NN
+
+Bicycle (3D)       
+
+> 1234567
+
+Reward 
+
+> MBD
+> BSD-fix
+> BSD
+> NN
+
+TT2D (4D)    
+
+> 0246
+
+Reward 
+
+> MBD
+> BSD-fix
+> BSD
+> NN
+
+NTrailer (5D)    
+
+> 0246
+
+Reward 
+
+> MBD
+> BSD-fix
+> BSD
+> NN
+
+AccTT2D (6D) Fig. 3. Per-trial reward distributions across all four systems (50 trials each). Half-violins show kernel density estimates; individual dots represent single trials; diamonds mark the mean. BSD-fix (red) closely matches MBD (blue) in both location and spread, while NN (grey) exhibits substantially lower and more dispersed rewards. Variance increases with system dimensionality for all methods. 3D 
+
+> Bicycle
+> 4D
+> TT2D
+> 5D
+> NTrailer
+> 6D
+> AccTT2D
+> State dimensionality
+> 50
+> 60
+> 70
+> 80
+> 90
+> 100
+> Reward ratio vs MBD (%)
+> MBD (reference)
+> BSD-fix
+> BSD
+> NN
+
+Fig. 4. Performance relative to MBD (%) vs. state dimensionality. BSD-fix (red) maintains near-parity through 5D, while NN (grey) degrades steeply. The widening gap between BSD-fix and NN demonstrates that diffusion denoising becomes more valuable as system complexity increases. 
+
+E. Trial-Level Correlation 
+
+Shared random seeds allow pairing MBD and BSD-fix trials on identical initial conditions (Fig. 5). Bicycle ( r =0.99 ) and NTrailer ( r = 0 .98 ) show near-perfect agreement. AccTT2D (r = 0.70 ) shows moderate correlation; the outliers correspond to boundary conditions where kernel coverage is sparse. These correlations confirm that BSD-fix tracks MBD faithfully per-trial, not just in aggregate. 
+
+F. Ablation Analysis 
+
+Diffusion vs. retrieval. BSD-fix outperforms NN by 18– 63%, with the largest gains on AccTT2D (+62.7%) where nonlinearity is highest. Adaptive vs. fixed bandwidth. 
+
+BSD (adaptive) consistently underperforms BSD-fix by 4– 8%. Proposition 2 explains this: shrinking h at late steps inflates variance faster than it reduces bias in high dz . The multi-sample mechanism ( K = 20 ,000 ) handles exploitation, making bandwidth adaptation redundant. 
+
+G. Safety and Computation 
+
+Safety rates match MBD on three of four systems (Bicycle: 100%, TT2D: 96%, NTrailer: 90%). On AccTT2D, BSD 5.76 5.84 5.92 6.00           
+
+> MBD Reward
+> 5.76
+> 5.84
+> 5.92
+> 6.00
+> BSD-fix Reward
+> r = 0.99
+> Bicycle (3D)
+> 4.0 4.5 5.0 5.5 6.0
+> MBD Reward
+> 4.0
+> 4.5
+> 5.0
+> 5.5
+> 6.0
+> BSD-fix Reward
+> r = 0.85
+> TT2D
+> 1.5 3.0 4.5 6.0
+> MBD Reward
+> 1.5
+> 3.0
+> 4.5
+> 6.0
+> BSD-fix Reward
+> r = 0.98
+> NTrailer
+> 1.5 3.0 4.5 6.0
+> MBD Reward
+> 1.5
+> 3.0
+> 4.5
+> 6.0
+> BSD-fix Reward
+> r = 0.70
+> AccTT2D
+
+Fig. 5. Paired per-trial reward comparison between MBD and BSD-fix (same random seeds). The diagonal line represents equal performance. High Pearson correlations ( r ≥ 0.70 , up to 0.99 ) indicate BSD-fix tracks MBD faithfully on individual trials, not just in aggregate. 
+
+achieves 86% vs. MBD’s 90% (overlapping Wilson CIs), consistent with Proposition 4’s guarantee that safety is a shield property—the small gap reflects kernel estimation precision, not shield failure. BSD adds 1.5–3.8 × overhead (Table I); the ratio decreases on more complex systems because dynamics rollout dominates computation on larger state spaces. Fig. 6 visualizes this trade-off: BSD methods cluster near MBD in safety while incurring moderate addi-tional planning time. 80 85 90 95 100     
+
+> Safety rate (%)
+> Bicycle (3D)
+> TT (4D)
+> AccTT (6D)
+> NTrailer (5D)
+> Safety
+> 10 010 110 210 310 4
+> Planning time (ms)
+> Planning Time
+> MBD
+> BSD
+> BSD-fix
+> NN
+
+Fig. 6. Safety rate vs. planning time across all systems and conditions. BSD methods achieve comparable safety to MBD at moderate computational overhead. NN has negligible planning time but lowest reward. 
+
+H. Qualitative Results 
+
+Fig. 7 compares planned trajectories: MBD and BSD-fix produce smooth goal-reaching paths, while NN stops short. Fig. 8 visualizes BSD’s denoising—early steps establish global direction; late steps refine near the goal. −15 −10 −5 0 5 10 15             
+
+> x (m)
+> −15
+> −10
+> −5
+> 0
+> 5
+> 10
+> 15
+> y (m)
+> mean: 5.96
+> best: 5.99
+> MBD
+> −15 −10 −5 0510 15
+> x (m)
+> −15
+> −10
+> −5
+> 0
+> 5
+> 10
+> 15
+> mean: 5.83
+> best: 5.96
+> BSD-fix
+> −15 −10 −5 0510 15
+> x (m)
+> −15
+> −10
+> −5
+> 0
+> 5
+> 10
+> 15
+> mean: 4.33
+> best: 5.72
+> NN
+> Trajectory Overlay — Bicycle Parking
+
+Fig. 7. Bicycle parking trajectories (5 trials). BSD-fix matches MBD; NN stops short. −15 −10 −5 0 5 10 15       
+
+> x (m)
+> −15
+> −10
+> −5
+> 0
+> 5
+> 10
+> 15
+> y (m)
+> (a) Reverse diffusion denoising
+> −15 −10 −5 0510 15
+> x (m)
+> −15
+> −10
+> −5
+> 0
+> 5
+> 10
+> 15
+> y (m)
+> Reward: 5.98
+> (b) Final trajectory execution
+> start
+> end
+> 0
+> 20
+> 40
+> 60
+> 80
+> Diffusion step  i
+> Diffusion Process and Trajectory Execution — Bicycle Parking
+
+Fig. 8. BSD denoising: (a) trajectory snapshots from noise (red) to refined (blue); (b) vehicle footprints along the final trajectory. 
+
+VII. D ISCUSSION 
+
+When is BSD preferable? BSD is suited for systems where dynamics models are unavailable, inaccurate, or ex-pensive to evaluate. If an accurate model exists, MBD remains simpler and faster. 
+
+Data requirements. 1,000 trajectories suffice for 3D–5D systems ( >99% reward ratio), but the 6D AccTT2D system shows a 6.8% gap. Proposition 2 predicts this: variance scales as (N h dz )−1, so higher-dimensional systems require exponentially more data. 
+
+Adaptive bandwidth is counterproductive. Fixed band-width with multi-sample selection ( K = 20 ,000 ) outper-forms adaptive scheduling by 4–8%. Proposition 2 explains this: shrinking h at late steps inflates variance ( ∝ (N h dz )−1)faster than it reduces bias ( ∝ h4) when dz is large. The multi-sample mechanism handles exploitation, making bandwidth adaptation redundant. 
+
+Connection to DeePC. Proposition 3 shows BSD reduces to regularized DeePC [13], [14] for LTI systems. For non-linear systems, DeePC requires patches [15], while BSD’s kernel estimator remains consistent (Proposition 1). 
+
+Limitations. (1) BSD’s 1.5–3.8 × overhead limits real-time use. (2) Evaluation is simulation-only; real-world data may introduce distributional shift. (3) No DeePC baselines or black-box system experiments. (4) Safety rates on AccTT2D are 4% lower than MBD. (5) Training data was collected from the model-based planner—truly model-free settings would use teleoperation data. VIII. C ONCLUSION 
+
+We presented Behavioral Score Diffusion, a model-free diffusion planner that computes score functions from trajec-tory data via kernel-weighted estimation. We proved point-wise consistency for arbitrary continuous dynamics (Propo-sition 1), characterized the MSE rate (Proposition 2), and es-tablished equivalence to regularized DeePC for LTI systems (Proposition 3). BSD achieves 98.5% of model-based reward across four systems without dynamics models, outperforming nearest-neighbor retrieval by 18–63%. Safety shielding trans-fers directly (Proposition 4). Future work includes scaling via learned metrics, reducing overhead through approximate nearest-neighbor structures, and hardware validation. REFERENCES [1] J. T. Betts, “Survey of numerical methods for trajectory optimization,” 
+
+Journal of Guidance, Control, and Dynamics , vol. 21, no. 2, pp. 193– 207, 1998. [2] M. Janner, Y. Du, J. Tenenbaum, and S. Levine, “Planning with diffusion for flexible behavior synthesis,” in International Conference on Machine Learning (ICML) , 2022. [3] C. Pan, Z. Yi, G. Shi, and G. Qu, “Model-based diffusion for trajectory optimization,” in Advances in Neural Information Processing Systems (NeurIPS) , 2024. [4] T. Kim, K. Majd, H. Okamoto, B. Hoxha, D. Panagou, and G. Fainekos, “Safe model predictive diffusion with shielding,” in IEEE International Conference on Robotics and Automation (ICRA) , 2026. [5] A. Ajay, Y. Du, A. Gupta, J. Tenenbaum, T. Jaakkola, and P. Agrawal, “Is conditional generative modeling all you need for decision-making?” in International Conference on Learning Representations (ICLR) , 2023. [6] C. Chi, S. Feng, Y. Du, Z. Xu, E. Cousineau, B. Burchfiel, and S. Song, “Diffusion policy: Visuomotor policy learning via action diffusion,” in 
+
+Robotics: Science and Systems (RSS) , 2023. [7] B. Liao, S. Chen, H. Yin, B. Jiang, C. Wang, S. Yan, X. Zhang, X. Li, Y. Zhang, Q. Zhang, and X. Wang, “Diffusiondrive: Truncated diffusion model for end-to-end autonomous driving,” in IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) ,2025, pp. 12 037–12 047. [8] Z. Dong, J. Hao, Y. Yuan, F. Ni, Y. Wang, P. Li, and Y. Zheng, “Diffuserlite: Towards real-time diffusion planning,” in Advances in Neural Information Processing Systems (NeurIPS) , 2024. [9] R. Yang, L. Zheng, R. Yao, and J. Ma, “Dualshield: Safe model pre-dictive diffusion via reachability analysis for interactive autonomous driving,” arXiv preprint arXiv:2601.15729 , 2026. [10] W. Xiao, T.-H. Wang, C. Gan, R. Hasani, M. Lechner, and D. Rus, “Safediffuser: Safe planning with diffusion probabilistic models,” in 
+
+International Conference on Learning Representations (ICLR) , 2025. [11] J. Zhang, L. Zhao, A. Papachristodoulou, and J. Umenberger, “Con-strained diffusers for safe planning and control,” arXiv preprint arXiv:2506.12544 , 2025. [12] J. C. Willems, P. Rapisarda, I. Markovsky, and B. L. M. De Moor, “A note on persistency of excitation,” Systems & Control Letters , vol. 54, no. 4, pp. 325–329, 2005. [13] J. Coulson, J. Lygeros, and F. D¨ orfler, “Data-enabled predictive con-trol: In the shallows of the DeePC,” in European Control Conference (ECC) , 2019, pp. 2696–2701. [14] ——, “Distributionally robust chance constrained data-enabled predic-tive control,” IEEE Transactions on Automatic Control , vol. 67, no. 7, pp. 3289–3304, 2022. [15] C. Verhoek, P. J. W. Koelewijn, S. Haesaert, and R. T´ oth, “Direct data-driven state-feedback control of general nonlinear systems,” in 
+
+IEEE Conference on Decision and Control (CDC) , 2023. [16] M. Alsalti, M. Barkey, V. G. Lopez, and M. A. M¨ uller, “Sample-and computationally efficient data-driven predictive control,” arXiv preprint arXiv:2309.11238 , 2024. [17] M. Yang and S. He, “Training-free score-based diffusion for parameter-dependent stochastic dynamical systems,” arXiv preprint arXiv:2602.02113 , 2026. [18] F. Gabriel, F. Ged, M. Han Veiga, and E. Schertzer, “Kernel-smoothed scores for denoising diffusion: A bias-variance study,” arXiv preprint arXiv:2505.22841 , 2025. [19] E. L. Epstein, R. Dwaraknath, T. Sornwanee, J. Winnicki, and J. W. Liu, “SD-KDE: Score-debiased kernel density estimation,” in Ad-vances in Neural Information Processing Systems (NeurIPS) , 2025. [20] E. A. Nadaraya, “On estimating regression,” Theory of Probability and Its Applications , vol. 9, no. 1, pp. 141–142, 1964. [21] G. S. Watson, “Smooth regression analysis,” Sankhy¯ a: The Indian Journal of Statistics, Series A , vol. 26, no. 4, pp. 359–372, 1964. [22] H. J. Bierens, “Kernel estimators of regression functions,” Advances in Econometrics , vol. 6, pp. 99–144, 1987.

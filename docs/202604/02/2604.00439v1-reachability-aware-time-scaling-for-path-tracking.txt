@@ -1,0 +1,535 @@
+Title: Reachability-Aware Time Scaling for Path Tracking
+
+URL Source: https://arxiv.org/pdf/2604.00439v1
+
+Published Time: Thu, 02 Apr 2026 00:29:45 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Reachability-Aware Time Scaling for Path Tracking 
+
+Hossein Gholampour, Graduate Student Member, IEEE , Logan E. Beaver Member, IEEE 
+
+Abstract — This paper studies tracking of collision-free way-point paths produced by an offline planner for a planar double-integrator system with bounded speed and acceleration. Because sampling-based planners must route around obstacles, the resulting waypoint paths can contain sharp turns and high-curvature regions, so one-step reachability under acceleration limits becomes critical even when the path geometry is collision-free. We build on a pure-pursuit-style, reachability-guided quadratic-program (QP) tracker with a one-step acceleration margin. Offline, we evaluate this margin along a spline fitted to the waypoint path and update a scalar speed-scaling profile so that the required one-step acceleration remains below the available bound. Online, the same look-ahead tracking structure is used to track the scaled reference. 
+
+I. I NTRODUCTION 
+
+Sampling-based motion planning is a common approach for generating collision-free paths in cluttered workspaces. Rapidly-exploring Random Trees (RRT) and their extensions build trees in the configuration space and can be adapted to high-dimensional systems [1], [2]. RRT* adds an optimality mechanism that rewires nearby nodes and can converge to short paths [3], and several variants improve its efficiency or bias the sampling, such as Informed RRT* [4], RRT*-Connect [5], and RRTX [6]. In many implementations, these planners are used geometrically: they return a collision-free waypoint path, and a separate tracking controller is then responsible for tracking that path under speed and acceleration limits [7], [8]. This separation is convenient, but the planner output may not be dynamically trackable under the true actuator bounds, especially near sharp turns [9], [10]. Given a collision-free geometric path, a common approach is to compute a dynamically feasible timing along the fixed path. In time-optimal path parameterization, reachability analysis can be used to construct feasible timing profiles under actuator limits [11]. These methods focus on timing feasibility (often near time-optimal), but they typically do not address how a lightweight look-ahead tracker behaves on planner-generated paths under large execution disturbances, or how to rejoin the same path after freeze–resume events without replanning. On the tracking side, a separate controller usually follows the planned path while enforcing dynamic limits such as speed and acceleration. Many systems use relatively simple position or velocity feedback laws, pure-pursuit-style track-ing, or model predictive control and QP-based schemes to 
+
+> This work is supported by ARO STIR Grant W911NF-25-1-0258 H. Gholampour and L. E. Beaver are with the Department of Mechanical and Aerospace Engineering and the Institute of Autonomous and Connected Systems, Old Dominion University, Norfolk, VA 23529, USA (e-mails:
+> {mghol004,lbeaver }@odu.edu).
+
+handle constraints explicitly [12]–[14]. Pure pursuit remains popular in practice due to its simple geometry and imple-mentation cost [15]. For constraint-enforced path following and recovery under disturbances, related work uses control barrier function (CBF) or reachability-based certificates to maintain safety/constraint satisfaction during tracking or return, e.g., robust CBF path following [16] and safe-return FaSTrack with robust control Lyapunov-value functions [17]. In our previous work [18], we proposed a reachability-guided QP controller based on a one-step acceleration margin, and we showed that this margin can be used to verify whether a given trajectory is feasible within prescribed error bounds. However, that approach assumed a smooth, preplanned path with fixed timing and did not study paths produced by geo-metric planners (e.g., RRT, PRM) with many sharp corners and local curvature changes. In this paper, we focus on the gap between planning and tracking. We start from a geometric waypoint path produced by a planner, such as RRT*, and we do not modify the planner itself. We fit a C2 spline to the waypoints using a nominal speed and evaluate a one-step acceleration margin along the resulting path at sampled look-ahead targets. When the margin indicates one-step infeasibility relative to the available acceleration bound, we apply time scaling to locally reduce the reference speed. The timing update is local: speed is reduced only where the bound is violated, while the rest of the path remains close to nominal speed. During execution, we use the same look-ahead tracking structure to follow the time-scaled reference. We reuse the margin as a feasibility check for the look-ahead target, and rejoin the same path after interruptions or disturbances without replanning. Overall, this provides a reachability-aware offline time-scaling method that converts a geometric waypoint path into a timed reference that is consistent with one-step acceleration limits, with the same reachability-guided tracker to track the verified reference. The remainder of the paper is organized as follows: Section II states the model and timing problem. Section III presents the controller and offline time-scaling design. Section IV presents simulation results. Section V concludes and discusses limitations and future work. II. P ROBLEM FORMULATION 
+
+We consider a robotic system that tracks a planar trajectory in the presence of static obstacles. The position and velocity are p(t), v(t) ∈ R2, and the commanded acceleration is 
+
+u(t) ∈ R2. We model the tracked output as a double integrator with bounded disturbances: 
+
+˙p(t) = v(t) + np(t), ˙v(t) = u(t) + nv (t), (1) 
+
+> arXiv:2604.00439v1 [cs.RO] 1 Apr 2026
+
+where np(t) and nv (t) are perturbations that satisfy 
+
+∥np(t)∥ ≤ εp, ∥nv (t)∥ ≤ εv . (2) This model applies to manipulators in task space, mobile robots, and other systems whose tracked output can be feedback-linearized to a double integrator [18]. Hardware and safety limits impose magnitude bounds on speed and acceleration, 
+
+∥vk∥ ≤ vmax , ∥uk∥ ≤ amax , (3) We implement the tracking controller on a digital controller with sampling period ts, with sample times tk = kt s, for 
+
+k = 1 , 2, . . . time steps. A forward-Euler discretization gives 
+
+vk+1 = vk + ( uk + nv,k )ts, (4) 
+
+pk+1 = pk + ( vk + np,k )ts + 12 (uk + nv,k )t2
+
+> s
+
+. (5) These sampled equations define the one-step model used in the reachability margin in Section III-A. Let the position workspace be a compact set X ⊂ R2. It contains a finite set of static obstacles 
+
+X (i) 
+
+> obs
+
+⊂ X , i = 1 , . . . , N obs . (6) The total obstacle region is 
+
+Xobs =
+
+> Nobs
+
+[
+
+> i=1
+
+X (i) 
+
+> obs
+
+, (7) and the free space is 
+
+Xfree = X \ X obs . (8) We do not assume any specific shape for X (i) 
+
+> obs
+
+; we only require that collision checking can decide membership in 
+
+Xobs .Given start and goal positions pstart , pgoal ∈ Xfree , we assume that an initial feasible path is available in the form of a collision-free waypoint sequence 
+
+W = {w0, w1, . . . , wNwp }, wi ∈ X free , (9) with w0 = pstart and wNwp = pgoal . These waypoints define a collision-free polyline but may contain sharp corners, and they do not include timing information. To obtain a smooth reference, we fit a C2 spline through the waypoints. We assign spline knot parameters τi from the cumulative Euclidean distance along the waypoint polyline and then scale them by a constant so that τ is a nominal time-like parameter over [0 , τ end ]. With this choice, p′
+
+> ref
+
+(τ )
+
+represents a nominal velocity field along the spline. This yields a reference position trajectory, 
+
+pref (τ ) : [0 , τ end ] → X free , (10) with derivative p′
+
+> ref
+
+(τ ). We treat τ as a scalar path param-eter that measures progress along the reference spline, and physical time enters through a timing law τ (t) that maps 
+
+t ≥ 0 into [0 , τ end ]. We consider a baseline timing ˙τ (t) = 1 
+
+(so τ (t) = t during motion), and apply timing modifications through a time-scaling function α(t) = ˙ τ (t) relative to this baseline. The state of the system at sample k is (pk, vk), and the reference is the spline pref (τ ) in (10). The tracking goal is to move from pstart to pgoal along the reference spline, while respecting the limits in (3) for all k.We also consider freeze–resume events, motivated by col-laborative robotics. A freeze event is triggered when a safety condition is met (for example, a force threshold, proximity sensor, or emergency stop). During the freeze interval [tf , t r ]
+
+the end-effector is required to remain at the frozen position with zero velocity, 
+
+p(t) = p(tf ), v(t) = 0, u(t) = 0, t ∈ [tf , t r ]. (11) After t = tr the controller must rejoin the same reference path pref (τ ) without replanning, while satisfying the sampled bounds in (3). We make the following assumptions: 1) Real-time feasibility: Computation and communica-tion delays are small relative to ts, so the selected control uk is applied within the sample. 2) Planner output (polyline): A geometric planner pro-vides a waypoint sequence from (9) such that the straight-line segments between consecutive waypoints lie in Xfree .3) Spline fit (final path): The fitted C2 spline pref (τ )
+
+constructed from W is regular and satisfies pref (τ ) ∈Xfree for all τ ∈ [0 , τ end ].The real-time feasibility assumption is typically satisfied for an onboard digital controller when computation and communication delays are small relative to ts. The spline collision-free assumption is more restrictive, since smoothing a collision-free polyline can introduce collisions near obsta-cles. In practice, this can be addressed by inflating obstacles during planning, by checking the fitted spline for collisions and refining waypoints locally, or by using a smoothing method with collision constraints. Generating and certifying smooth collision-free paths is beyond the scope of this paper. Under these assumptions, we address the following problem. 
+
+Problem 1. Given the disturbance bounds (2) , the sam-pled dynamics (4) –(5) , the sampled speed and acceleration bounds (3) , and a collision-free spline reference pref (τ ) in 
+
+(10) , design (i) an offline time-scaling law along the path, and (ii) an online tracking controller such that:  
+
+> •
+
+the motion satisfies the sampled speed and acceleration bounds at each control update,  
+
+> •
+
+the system can rejoin the same path after a freeze interval without replanning,  
+
+> •
+
+and the tracking objective is maintained on planner-generated paths with sharp turns. 
+
+III. C ONTROLLER AND TIME -S CALING DESIGN 
+
+We build on our reachability-guided QP tracking con-troller from [18]. In that work, we developed a one-step reachability margin to detect when the look-ahead target was too aggressive and to support freeze–resume recovery under bounded disturbances. Here, we use the same feasibility check in two places: offline, we evaluate the margin along the spline and construct a local time-scaling profile. Online, we use the controller to track the reference spline while enforcing the sampled speed and acceleration bounds. Under Assumption 3, obstacle avoidance is handled at the planning stage through the collision-free reference. While we do not include an explicit obstacle-avoidance layer here, such constraints could be incorporated with CBF-based collision-avoidance methods [16]. 
+
+A. Look-Ahead and One-Step Reachability Margin 
+
+Offline, we compute a scalar time-scaling profile α(τ ) ∈
+
+(0 , 1] on the τ grid, where α(τk) < 1 effectively reduces the speed of the reference profile at time step k. We achieve this by setting, 
+
+˙τk = α(τk), (12) which determines the path progress, 
+
+τk+1 = min {τend , τ k + ˙ τkts}, (13) where τend clamps the reference at the arrival time. We denote the speed profile of the trajectory by 
+
+vpath (τ ) := α(τ ) ∥p′
+
+> ref
+
+(τ )∥, (14) which follows from the chain rule. This is how time-scaling profile α(τ ) affects the reference speed. At each sample k we project the current position pk onto the reference path, 
+
+τc = arg min   
+
+> τ∈[0 ,τ end ]
+
+pref (τ ) − pk . (15) We use this to determine the look-ahead speed, 
+
+vLA ,k := min {vmax , ˙τk∥p′
+
+> ref
+
+(τc)∥} , (16) which we use to select the look-ahead distance, 
+
+sLA ,k = vLA ,k ts. (17) This choice makes the look-ahead distance proportional to the local reference speed. Let S(τ ) denote the arc-length function of the spline, 
+
+S(τ ) = 
+
+Z τ
+
+> 0
+
+∥p′
+
+> ref
+
+(ξ)∥ dξ, (18) where ξ is an integration variable. By Assumption 3, S(τ ) is strictly increasing, so the inverse S−1(·) is well-defined. We define the look-ahead parameter by advancing the arc length from the closest point: 
+
+τLA ,k = min τend , S −1 S(τc) + sLA ,k 
+
+ . (19) Given sLA ,k , this construction defines the look-ahead param-eter geometrically through arc length. Figure 1 illustrates this sampled closest-point/look-ahead construction, where pc =
+
+pref (τc) denotes the closest sampled reference point and 
+
+pLA ,k = pref (τLA ,k ) denotes the look-ahead target. The black dots indicate sampled reference points, and the highlighted 
+
+Fig. 1: Look-ahead geometry on the reference path. The closest point pc = pref (τc) is obtained by projecting pk onto the path, and the look-ahead target pLA ,k = pref (τLA ,k ) is selected by advancing arc length sLA ,k from τc.arc represents the accumulated arc length used to advance from τc to τLA ,k . The resulting look-ahead target is, 
+
+pLA ,k = pref (τLA ,k ). (20) In the remainder of this sub-section, we briefly introduce our tracking controller [18]. For a given state (pk, vk) and target pLA ,k , we compute the nominal one-step acceleration that would place the system at pLA ,k after one sample: 
+
+ureq ,k = 2
+
+t2
+
+> s
+
+(pLA ,k − pk − tsvk) . (21) For notational convenience, we define the required control effort magnitude in terms of the vector rk,
+
+rk = pLA ,k − pk − tsvk, ureq ,k = 2
+
+t2
+
+> s
+
+rk . (22) To account for bounded disturbances, we convert the bounds εp, ε v into an equivalent acceleration offset. The worst-case one-step position shift due to disturbance is 
+
+∆pmax = εpts + 12 εv t2
+
+> s
+
+. (23) The corresponding disturbance offset is 
+
+σ = 2∆ pmax 
+
+t2
+
+> s
+
+= 2εp
+
+ts
+
++ εv . (24) We then define the one-step reachability margin 
+
+δk = ureq ,k − (amax − σ), (25) where amax −σ is the available acceleration after accounting for bounded disturbances. If δk ≤ 0, the look-ahead target is one-step feasible under the available acceleration bound 
+
+amax − σ. If δk > 0, the target is not guaranteed to be reachable in one step under the acceleration limit and robustness margin. We use the same margin to select the control action during online tracking. Consider the one-step position error, 
+
+ep,k = pLA ,k − (pk + tsvk) . (26) Under our proposed time scaling, the reference velocity at the look-ahead target is 
+
+vref ,k = ˙ τk p′ 
+
+> ref
+
+(τLA ,k ), (27) so that 
+
+ev,k = vref ,k − vk. (28) If δk ≤ 0, we have sufficient control authority to bring the position error to zero, i.e., 
+
+u⋆k = 2
+
+t2
+
+> s
+
+ep,k . (29) If δk > 0, we minimize a combination of position and velocity error to avoid overshooting the reference [18], 
+
+J = 12 || ep,k || 2 + Ck
+
+2 || ev,k || 2 (30) where Ck > 0 is an adaptive weight that we update online. The optimal control input is, 
+
+u⋆k =
+
+ep,k + 2Ck
+
+ts
+
+ev,k 
+
+12 t2 
+
+> s
+
++ 2 Ck
+
+. (31) We then clip u⋆k to satisfy the sampled speed and acceleration bounds. The next lemma identifies a local mechanism that can lead to transient overshoot and oscillatory corrections in the one-step position-matching law (29). 
+
+Lemma 1. Consider the disturbance-free sampled model 
+
+(4) –(5) , and suppose the unclipped control law (29) is applied. Then the next-step velocity is 
+
+vk+1 = −vk + 2
+
+ts
+
+(pLA ,k − pk) . (32) 
+
+Hence exact one-step position matching is compatible with the desired reference velocity vref ,k if and only if 
+
+mk := 2 ( pLA ,k − pk) − ts (vk + vref ,k ) = 0 (33) 
+
+Proof. Substituting (29) into the disturbance-free velocity update (4) gives 
+
+vk+1 = vk + u⋆kts = vk + 2
+
+t2
+
+> s
+
+ep,k ts.
+
+Using 
+
+ep,k = pLA ,k − (pk + tsvk) ,
+
+we obtain 
+
+vk+1 = vk + 2
+
+ts
+
+(pLA ,k − pk − tsvk)= −vk + 2
+
+ts
+
+(pLA ,k − pk) .
+
+which proves (32). Requiring vk+1 = vref ,k and rearranging yields (33). Lemma 1 shows that exact one-step position matching determines a terminal velocity through the chord from pk
+
+to pLA ,k , whereas the desired reference velocity is tangent-based through (27). On a curved path, or when the robot is off the path, these two directions generally differ. The mismatch vector mk therefore provides a local measure of chord–tangent inconsistency. Repeated one-step corrections against this mismatch can produce transient overshoot and oscillatory corrections, which provide a local explanation for the chattering observed in simulation. 
+
+B. Offline Reachability-Aware Time Scaling 
+
+We use the margin δk to adapt the time-scaling profile along the path before execution. We keep the geometric path 
+
+pref (τ ) fixed and reduce the desired speed only where the one-step look-ahead reachability check indicates excessive required acceleration. Offline, we compute the scalar time-scaling profile α(τ ) ∈ (0 , 1] at discrete sample points τi,as shown in Fig. 1. This affects the reference velocity (27) which determines the look-ahead distance via (17). We define the available acceleration by 
+
+aavail = amax − σ. (34) At each sampled path location τi, let αi := α(τi) and evaluate the one-step required acceleration using the refer-ence state 
+
+pi = pref (τi), vi = αip′
+
+> ref
+
+(τi). (35) Let 
+
+∆τi := τLA ,i − τi. (36) If α is locally constant over one control step, then the arc-length look-ahead construction yields the local approxima-tion 
+
+∆τi ≈ αits. (37) Let 
+
+pLA ,i := pref (τLA ,i ) = pref (τi + ∆ τi). (38) Using a second-order Taylor expansion of pref about τi,
+
+pLA ,i = pi + p′
+
+> ref
+
+(τi)∆ τi + 12 p′′ 
+
+> ref
+
+(τi)∆ τ 2 
+
+> i
+
++ · · · , (39) and using the one-step mismatch in (22), evaluated at the offline sample i, the first-order term cancels, so the leading term is quadratic in αi:
+
+ri ≈ 12 p′′ 
+
+> ref
+
+(τi)α2 
+
+> i
+
+t2
+
+> s
+
+. (40) Therefore, 
+
+|ureq ,i | = 2
+
+t2
+
+> s
+
+∥ri∥ ≈ α2 
+
+> i
+
+∥p′′ 
+
+> ref
+
+(τi)∥, (41) so if the local scale changes from αi to αnew  
+
+> i
+
+, we obtain the local second-order approximation 
+
+|unew req ,i | ≈ 
+
+ αnew 
+
+> i
+
+αi
+
+2
+
+|ureq ,i |. (42) This approximation motivates the update 
+
+αnew  
+
+> i
+
+= αi
+
+r aavail 
+
+|ureq ,i | , (43) which we apply whenever |ureq ,i | > a avail .To avoid isolated pointwise updates on the sampled path, we apply the same reduction over a local neighborhood of the recorded look-ahead location. Let 
+
+sLA  
+
+> i
+
+:= S(τLA ,i ), (44) and define the neighborhood 
+
+Ni := j : S(τj ) − sLA  
+
+> i
+
+≤ wn , (45) where wn is a fixed arc-length half-window. For each vio-lating sample i, we update all grid points j ∈ N i by 
+
+αj ← min( αj , α new  
+
+> i
+
+) . (46) If multiple violating samples produce overlapping neighbor-hoods, we keep the smallest assigned value. Algorithm 1 summarizes the offline time-scaling proce-dure used in the simulations. Lines 1–3 initialize the nominal profile and record the one-step feasibility data from the nominal run. Lines 4–6 apply the local update (43) over the neighborhood (45) at samples with δi > 0. Line 7 smooths the resulting discrete profile on the sampled path grid, and Lines 8–9 construct the final time-scaled reference. This construction preserves the nominal speed on path segments that already satisfy the one-step bound and reduces the speed only where the nominal run indicates infeasibility. 
+
+Algorithm 1 Offline time-scaling procedure 
+
+Require: Nominal reference path pref (τ ), limits amax , ro-bustness margin σ 
+
+> 1:
+
+Run the nominal tracker with α(τ ) = 1  
+
+> 2:
+
+Record δi, ureq ,i , and the corresponding look-ahead location for each discretization point i 
+
+> 3:
+
+Initialize αi ← 1 at each grid point  
+
+> 4:
+
+for each recorded sample i with δi > 0 do  
+
+> 5:
+
+For all j ∈ N i, update αj ← min αj ,
+
+r aavail 
+
+ureq ,i 
+
+! 
+
+> 6:
+
+end for  
+
+> 7:
+
+Smooth the discrete profile {αi} on the sampled path grid using a centered moving-average window of length 
+
+Nsmooth  
+
+> 8:
+
+Construct the scaled reference velocity field vref (τi) = 
+
+αi p′
+
+> ref
+
+(τi) 
+
+> 9:
+
+return Scaled reference field (pref (τi), vref (τi)) 
+
+The offline-scaled results reported in Section IV use Al-gorithm 1. IV. S IMULATION SETUP AND RESULTS 
+
+A. Simulation Setup 
+
+We simulate the planar double-integrator model in a square workspace X = [0 , L x]×[0 , L y ]. The start and goal positions 
+
+pstart and pgoal are placed in opposite corners so that any feasible path must pass through the obstacle region. The workspace contains Nobs circular obstacles with randomly sampled radii ri ∈ [rmin , r max ] and centers drawn uniformly in X , subject to a minimum clearance from the start and goal. Obstacles that violate the start/goal clearance are rejected. The simulation parameters are given in Table I. We first generate an initial collision-free waypoint path with a geometric sampling-based planner (RRT*) and then backtrack from the goal node to the root to obtain awaypoint sequence. We remove duplicate waypoints and fit a C2 cubic spline pref (τ ) through the remaining points. For the offline time-scaling and reachability checks, this spline and its derivatives are sampled on a fine grid in τ .We intentionally choose an aggressive nominal timing to parameterize the spline. This produces a baseline reference that violates the state and/or control constraints, so that the effect of the offline time scaling can be evaluated. Fig. 2 shows one representative trial in the workspace, including the obstacles, the RRT* waypoint polyline, the fitted spline, and the executed trajectory. The red portions of the executed trajectory indicate path segments where the offline time-scaling profile is active, i.e., where α(τ ) < 1.
+
+Fig. 2: Representative trial in the workspace with active time-scaled trajectory segments highlighted in red. To model freeze–resume behavior, each simulation in-cludes a single freeze interval. During the freeze interval, we set v(t) = 0 and u(t) = 0 and hold the position constant in simulation. The path parameter τ continues to evolve during the freeze, but our geometric look-ahead target prevents the target from moving far ahead of the robot. After the resume time, the tracker continues along the same reference path without replanning. The simulation code is available online 
+
+> 1
+
+. We compare two cases:  
+
+> •
+
+Nominal timing: The closed-form online tracker runs with α(τ ) = 1 , i.e., without offline time scaling. 
+
+> 1https://github.com/Hossein-ghd/Reachability_ Aware_Time-Scaling
+
+TABLE I: Simulation and planning parameters.                               
+
+> Parameter Value
+> ts(control period) 0.0125 s(80 Hz )
+> Nominal path horizon 2s
+> vmax 1.0m/s
+> amax 2.5m/s 2
+> Lx, L y0.5m, 0.5m
+> pstart [0 .05 ,0.05] Tm
+> pgoal [0 .45 ,0.45] Tm
+> αmin 0.1
+> Local slowdown half-window 0.02 m
+> Nsmooth (smoothing window length) 201 points Reference grid size M150000
+> •
+
+Offline time scaling: The same online tracker runs on the time-scaled reference produced by Algorithm 1. Both cases use the same geometric waypoint path, the same look-ahead rule, and the same freeze–resume pro-tocol. Therefore, any difference between the two cases is attributable to the offline timing modification rather than to a change in the online controller structure. 
+
+B. Results 
+
+We ran 50 randomized trials using the setup from Section IV-A. For each trial, we compute the offline time-scaling profile from the nominal run and then evaluate the scaled run on the same path and freeze timing. A representative profile is shown in Fig. 3. The profile remains at α = 1 
+
+over substantial portions of the path and drops below 1 only on selected intervals where the nominal run indicates one-step infeasibility. Thus, the timing modification is local rather than uniform. For the same representative trial, Fig. 2 shows that these active time-scaled intervals correspond to selected portions of the executed trajectory rather than the full path. Table II summarizes the profile statistics over all 50 trials. 
+
+Fig. 3: Representative offline time-scaling profile α(τ ).TABLE II: Offline time-scaling profile statistics over 50 trials.             
+
+> Metric Value Minimum α0.163 ±0.053
+> Mean α0.846 ±0.036
+> Modified path points (%) 26 .98 ±9.66
+
+Although the offline profile is constructed from the one-step margin, the offline construction and the online δk are not the same computation. Offline, the method uses δk and 
+
+ureq ,k recorded during a baseline run with α(τ ) = 1 and assigns slowdown near the corresponding recorded look-ahead locations. Online, δk is recomputed from the simulated state (pk, vk) during execution of the scaled reference, with 
+
+τc obtained from (15). These quantities can differ due to state mismatch, constraint saturation, closest-point index changes, and post-freeze transients. Because ureq ,k in (22) scales with 
+
+1/t 2
+
+> s
+
+, even small mismatch can produce occasional positive 
+
+δk spikes during execution. Therefore, a profile that improves the baseline margin signal does not imply δk ≤ 0 at every online sample of the scaled run. Table III reports aggregate performance over the moving interval for the 50 randomized trials. Offline time scaling reduces the occurrence of δk > 0 and lowers the mean and maximum values of δ. It also lowers the mean and maximum speed, which is expected since the method slows the reference locally. These changes are consistent with Fig. 3, where the scaling acts only over selected path segments rather than over the full trajectory. TABLE III: Summary over 50 randomized trials over the moving interval. Values are mean ± standard deviation across trials.                                                 
+
+> Metric QP QP + Offline TS Mean δ(m/s 2)9.924 ±9.916 0.382 ±3.366
+> 5th percentile of δ(m/s 2)−1.849 ±0.363 −1.890 ±0.272
+> Samples with δk>0(%) 21 .03 ±10 .18 8.96 ±4.27
+> Max δ(m/s 2)130 .24 ±89 .42 42 .59 ±46 .47
+> Mean speed (m/s) 0.288 ±0.054 0.157 ±0.052
+> Max speed (m/s) 0.367 ±0.072 0.344 ±0.050
+
+Figure 4 plots δk for a representative trial. The shaded region denotes the freezing period, which is excluded from the reported moving-time metrics. After resume, both meth-ods exhibit a transient increase in δk, but the offline-scaled reference reduces the time spent in positive-margin regions during normal motion. Small oscillations can still appear in the speed and δk traces due to sampled closest-point/look-ahead updates and the chord–tangent mismatch described in Lemma 1. 
+
+Fig. 4: Representative trial: δk versus time with the freezing period indicated (QP vs. QP+TS). Figure 5 shows the run-to-run distribution of the per-trial mean margin, where each bin count corresponds to one trial’s Fig. 5: Histogram of per-trial mean δ over moving samples (50 trials). average of δk over the moving interval. Compared to QP-only, QP+Offline TS shifts more trials toward negative mean margins and reduces the number of trials with mean δ close to zero, i.e., runs that operate nearer the one-step feasibility boundary. Offline reachability-aware time scaling consistently re-duces one-step infeasibility events while using the same online controller structure. The improvement is localized to selected path segments, as shown by the offline time-scaling profile in Fig. 3 and the highlighted trajectory segments in Fig. 2, rather than being applied uniformly along the full path. V. C ONCLUSION 
+
+This paper studied tracking of planner-generated waypoint paths under speed and acceleration limits. Using the one-step acceleration margin from a reachability-guided tracker, we computed an offline time-scaling profile along a fitted spline to reduce one-step infeasibility while keeping the path geometry fixed. In randomized simulations with RRT* paths and a freeze–resume event, offline scaling reduced the fraction of moving samples with δk > 0 and lowered the mean and maximum values of δ while reducing the executed speed through local path-dependent slowdown. The margin δk is a one-step screening signal under a constant-acceleration discrete model, so it does not provide a multi-step trackability guarantee. In addition, both the scaling profile and the feasibility statistics depend on the look-ahead policy through sLA ,k and the arc-length mapping in (19). The current margin also uses a single symmetric bound amax for both acceleration and deceleration. As a result, when the reference speed decreases along the path, 
+
+δk can exhibit transient spikes because the controller must brake to match the slower reference. In such cases, the one-step test may mark a region as difficult even though the issue comes from the speed transition rather than from the path geometry alone. Finally, the current offline profile is implemented as piecewise-constant on a finite grid; enforcing a smooth timing law would require identifying a continuous function α(t) and accounting for the additional higher-order effects that arise from the dynamics. Future work includes extending the one-step screening condition to multi-step feasibility, studying alternative look-ahead policies, designing smoother time-scaling profiles with rate constraints on α(·), and validating the method beyond the planar double-integrator setting. It would also be useful to allow different acceleration and deceleration bounds to better match systems with asymmetric actuation limits. REFERENCES [1] S. M. LaValle, Planning Algorithms . Cambridge University Press, 2006. [2] S. M. LaValle and J. J. Kuffner Jr, “Randomized kinodynamic plan-ning,” The international journal of robotics research , vol. 20, no. 5, pp. 378–400, 2001. [3] S. Karaman and E. Frazzoli, “Sampling-based algorithms for optimal motion planning,” The international journal of robotics research ,vol. 30, no. 7, pp. 846–894, 2011. [4] J. D. Gammell, S. S. Srinivasa, and T. D. Barfoot, “Informed rrt*: Optimal sampling-based path planning focused via direct sampling of an admissible ellipsoidal heuristic.” IEEE, 2014, pp. 2997–3004. [5] S. Klemm, J. Oberl¨ ander, A. Hermann, A. Roennau, T. Schamm, J. M. Zollner, and R. Dillmann, “Rrt*-connect: Faster, asymptotically optimal motion planning,” in 2015 IEEE international conference on robotics and biomimetics (ROBIO) . IEEE, 2015, pp. 1670–1677. [6] M. Otte and E. Frazzoli, “Rrtx: Asymptotically optimal single-query sampling-based motion planning with quick replanning,” IJRR , vol. 35, no. 7, pp. 797–822, 2016. [7] Q.-C. Pham, S. Caron, P. Lertkultanon, and Y. Nakamura, “Admissible velocity propagation: Beyond quasi-static path planning for high-dimensional robots,” The International Journal of Robotics Research ,vol. 36, no. 1, pp. 44–67, 2017. [8] C. K. Verginis, D. V. Dimarogonas, and L. E. Kavraki, “Kdf: Kin-odynamic motion planning via geometric sampling-based algorithms and funnel control,” IEEE Transactions on robotics , vol. 39, no. 2, pp. 978–997, 2022. [9] A. Orthey, C. Chamzas, and L. E. Kavraki, “Sampling-based motion planning: A comparative review,” Annual Review of Control, Robotics, and Autonomous Systems , vol. 7, 2023. [10] B. Z. T¨ urkkol, N. Altuntas ¸, and S. C ¸ ekirdek Yavuz, “A smooth global path planning method for unmanned surface vehicles using a novel combination of rapidly exploring random tree and b´ ezier curves,” 
+
+Sensors , vol. 24, no. 24, p. 8145, 2024. [11] H. Pham and Q.-C. Pham, “A new approach to time-optimal path parameterization based on reachability analysis,” IEEE Transactions on Robotics , vol. 34, no. 3, pp. 645–659, 2018. [12] X. Jiang, T. Kuroiwa, Y. Cao, L. Sun, H. Zhang, T. Kawaguchi, and S. Hashimoto, “Enhanced pure pursuit path tracking algorithm for mobile robots optimized by nsga-ii with high-precision gnss navigation,” Sensors (Basel, Switzerland) , vol. 25, no. 3, p. 745, 2025. [13] T. P. Nascimento, C. E. D´ orea, and L. M. G. Gonc ¸alves, “Nonholo-nomic mobile robots’ trajectory tracking model predictive control: a survey,” Robotica , vol. 36, no. 5, pp. 676–696, 2018. [14] J. Li, J. Sun, L. Liu, and J. Xu, “Model predictive control for the tracking of autonomous mobile robot combined with a local path planning,” Measurement and Control , vol. 54, no. 9-10, pp. 1319– 1325, 2021. [15] S. Sulaiman and A. Sudheer, “‘implementation of pure pursuit al-gorithm based controller for a mobile platform,” in Proceedings of the 3rd International Conference on Robotics Automation and Non-Destructive Evaluation , 2022, pp. 1–8. [16] Z. Zheng, J. Li, Z. Guan, and Z. Zuo, “Constrained moving path fol-lowing control for uav with robust control barrier function,” IEEE/CAA Journal of Automatica Sinica , vol. 10, no. 7, pp. 1557–1570, 2023. [17] Z. Gong, B. Li, and S. Herbert, “Safe returning fastrack with robust control lyapunov-value functions,” IEEE Control Systems Letters ,vol. 8, pp. 1373–1378, 2024. [18] H. Gholampour and L. E. Beaver, “Trajectory tracking with reachability-guided quadratic programming and freeze-resume,” IEEE Control Systems Letters , vol. 9, pp. 2795–2800, 2025.

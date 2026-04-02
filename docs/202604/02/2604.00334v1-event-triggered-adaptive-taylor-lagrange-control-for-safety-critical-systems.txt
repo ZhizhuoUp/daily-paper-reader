@@ -1,0 +1,588 @@
+Title: Event-Triggered Adaptive Taylor-Lagrange Control for Safety-Critical Systems
+
+URL Source: https://arxiv.org/pdf/2604.00334v1
+
+Published Time: Thu, 02 Apr 2026 00:26:41 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Event-Triggered Adaptive Taylor–Lagrange Control for Safety-Critical Systems 
+
+Shuo Liu 1, Wei Xiao 2, Christos G. Cassandras 3 and Calin A. Belta 4
+
+Abstract — This paper studies safety-critical control for non-linear systems under sampled-data implementations of the controller. The recently proposed Taylor–Lagrange Control (TLC) method provides rigorous safety guarantees but relies on a fixed discretization-related parameter, which can lead to infeasibility or unsafety in the presence of input constraints and inter-sampling effects. To address these limitations, we propose an adaptive Taylor–Lagrange Control (aTLC) framework with an event-triggered implementation, where the discretization-related parameter defines the discretization time scale and is selected online as state-dependent rather than fixed. This enables the controller to dynamically balance feasibility and safety by adjusting the effective time scale of the Taylor expansion. The resulting controller is implemented as a se-quence of Quadratic Programs (QPs) with input constraints. We further introduce a selection rule to choose the discretization-related parameter from a finite candidate set, favoring feasible inputs and improved safety. Simulation results on an adaptive cruise control (ACC) problem demonstrate that the proposed approach improves feasibility, guarantees safety, and achieves smoother control actions compared to TLC while requiring a single automatically tuned parameter. 
+
+I. I NTRODUCTION 
+
+Ensuring stability while optimizing cost under safety constraints remains a fundamental challenge in autonomous systems. A key difficulty lies in simultaneously achieving computational tractability and rigorous safety guarantees, especially for nonlinear dynamics. Existing approaches can be broadly categorized into optimization-based and verification-based methods. Optimization-based approaches, such as classical optimal control and dynamic programming techniques [1]–[4], are often tailored to linear systems or suffer from the curse of dimensionality, limiting their applicability to complex nonlinear systems. Model Predictive Control (MPC) [5], [6] offers a practical framework for safety-critical control, but nonlinear MPC formulations are computationally intensive, and their linearized approximations may compromise safety guarantees. Verification-based approaches, on the other hand, such as reachability-based methods [7], [8], provide strong  
+
+> This work was supported in part by the NSF under grant IIS-2024606 at Boston University and by a Brendan Iribe endowed professorship at the University of Maryland.
+> 1S. Liu is with the Department of Mechanical Engineering, Boston University, Brookline, MA, USA.
+
+liushuo@bu.edu  
+
+> 2W. Xiao is with Department of Robotics Engineering, Worcester Poly-technic Institute and MIT CSAIL, MA, USA.
+
+weixy@mit.edu  
+
+> 3C.G. Cassandras is with the Division of Systems Engineering, Boston University, USA.
+
+cgc@bu.edu  
+
+> 4C. Belta is with the Department of Electrical and Computer Engineering and the Department of Computer Science, University of Maryland, College Park, MD, USA.
+
+cbelta@umd.edu 
+
+theoretical guarantees for safety, yet their computational cost remains prohibitive for real-time implementation. To bridge this gap, barrier-based methods have emerged as a promising alternative, offering a computationally efficient way to enforce safety constraints in nonlinear systems. Barrier functions (BFs) have been widely used in opti-mization to handle inequality constraints, for instance by in-corporating reciprocal barrier terms into the cost function [9]. They have also been adopted in learning-based frameworks, such as safe Reinforcement Learning (RL) [10], to encourage safety during training. However, in these formulations, safety is typically encoded as part of the cost or reward, which leads to soft constraint enforcement and does not provide strict safety guarantees. Alternatively, barrier functions have been employed as Lyapunov-like certificates [11] for system verifi-cation and control [12]–[14], enabling the characterization of safe invariant sets. However, these methods typically focus on safety verification rather than control synthesis, which limits their direct applicability in real-time control design under input constraints. Control BFs (CBFs) extend barrier functions by explicitly incorporating control inputs to enforce forward invariance of safe sets for affine control systems. If a CBF satisfies certain Lyapunov-like conditions, safety can be guaranteed in the sense of set forward invariance [15]. By combining CBFs with Control Lyapunov Functions (CLFs), the CBF-CLF-QP framework formulates safety-critical control as a sequence of Quadratic Programs (QPs) [15], [16], enabling real-time implementation. Extensions of this framework have been developed to handle high-relative-degree constraints and adaptive control scenarios [17]–[21]. CBFs have also been integrated with RL to ensure safety [22]. However, existing CBF-based methods exhibit several limitations. First, the use of class K functions can introduce conservativeness, since the CBF condition constitutes only a sufficient condition for safety and may overly restrict the set of admissible control inputs. Second, these methods require the selection of class K functions, which introduces additional parameters that are often difficult to tune in practice. This challenge is exacerbated in high-order CBF formulations [17], [18], where multiple class K functions must be specified, further increasing the tuning burden. The recently proposed Taylor–Lagrange Control (TLC) method [23] ensures system safety by leveraging Taylor’s theorem with Lagrange remainder [24], [25]. Unlike CBF-based approaches, TLC provides a necessary and sufficient 
+
+condition for safety while introducing significantly fewer parameters, typically only one parameter. Moreover, similar 
+
+> arXiv:2604.00334v1 [eess.SY] 1 Apr 2026
+
+to CBF-based methods, TLC leads to a QP formulation, enabling efficient real-time implementation. To address the inter-sampling issue, i.e., the potential violation of safety constraints between discrete update instants when control inputs are held constant, a robust variant of TLC (rTLC) [26] has been proposed to guarantee safety over the entire inter-event interval. However, existing TLC-based approaches rely on manually tuned parameters that are kept constant over time. This can lead to infeasibility of the resulting QP, particularly in the presence of tight control bounds, due to conflicts between the TLC safety constraints and input constraints. To address this issue, we propose Adaptive TLC (aTLC) to safety-critical control problems. Specifically, the contributions of this paper are as follows:  
+
+> •
+
+An adaptive Taylor–Lagrange Control (aTLC) frame-work that defines the discretization time scale as a state-dependent variable selected online, enabling improved feasibility.  
+
+> •
+
+An event-triggered implementation of aTLC, where control updates are performed only when the system state exits a prescribed neighborhood, mitigating inter-sampling effects while maintaining safety guarantees.  
+
+> •
+
+A value-function-based characterization of feasibility via the margin function and the properties of the minimal feasible discretization-related parameter. Based on this insight, we develop a rollout-based adaptive selection rule that chooses the feasible parameter from a finite candidate set, improving safety while maintaining feasibility.  
+
+> •
+
+Simulation results on an adaptive cruise control (ACC) problem. We demonstrate that the proposed method achieves improved feasibility, guaranteed safety, and smoother control actions compared to non-adaptive TLC. II. D EFINITIONS AND PRELIMINARIES 
+
+Consider an affine control system of the form 
+
+˙x = f (x) + g(x)u, (1) where x ∈ Rn, f : Rn → Rn and g : Rn → Rn×q are locally Lipschitz, and u ∈ U ⊂ Rq , where U denotes the control limitation set, which is assumed to be in the form: 
+
+U := {u ∈ Rq : umin ≤ u ≤ umax }, (2) with umin , umax ∈ Rq (vector inequalities are interpreted componentwise). We assume that no component of umin 
+
+and umax can be infinite. 
+
+Definition 1 (Class K function [27]) . A continuous function 
+
+α : [0 , a ) → [0 , +∞], a > 0 is called a class K function if it is strictly increasing and α(0) = 0 .
+
+Definition 2. A set C ⊂ Rn is forward invariant for system (1) if its solutions for some u ∈ U starting from any x(0) ∈C satisfy x(t) ∈ C , ∀t ≥ 0.
+
+Definition 3. The relative degree of a differentiable function 
+
+h : Rn → R is the minimum number of times we need to differentiate it along dynamics (1) until any component of u
+
+explicitly shows in the corresponding derivative. In this paper, the safety requirement is defined by the constraint h(x) ≥ 0, and safety refers to the forward invariance of the set 
+
+C := {x ∈ Rn : h(x) ≥ 0}. (3) The relative degree of h is thus referred to as the relative degree of the safety requirement. 
+
+Definition 4 (Taylor–Lagrange Control (TLC) [23]) . A con-tinuously differentiable function h : Rn → R is called a Taylor–Lagrange Control (TLC) function of relative degree 
+
+m for system (1) if 
+
+sup 
+
+> u(ξ)∈U
+
+" m−1X
+
+> k=0
+
+Lkf h(x(t0)) 
+
+k! (t − t0)k + Lmf h(x(ξ)) 
+
+m! (t − t0)m
+
++ Lg Lm−1 
+
+> f
+
+h(x(ξ)) u(ξ)
+
+m! (t − t0)m
+
+#
+
+≥ 0,
+
+(4) for all x(t0) ∈ C , t0 ∈ [0 , ∞), and ξ ∈ (t0, t ). Here, Lf h
+
+and Lg h denote the Lie derivatives of h along f and g,respectively. 
+
+Theorem 1 ( [23]) . Let h(x) be a TLC function as defined in Def. 4, and let the corresponding safe set C be defined as in (3) . If h(x(t0)) ≥ 0, then any Lipschitz continuous control input u(ξ) that satisfies the TLC condition in Def. 4, 
+
+ξ ∈ (t0, t ), t > t 0 renders the set C forward invariant for system (1) .
+
+It follows from Taylor’s theorem with Lagrange remainder [24], [25] that the expression inside the supremum in (4) is exactly equal to h(x(t)) . Therefore, if there exists a control input u(ξ) ∈ U such that h(x(t)) ≥ 0, then condition (4) is satisfied. Conversely, if (4) holds, then h(x(t)) ≥ 0 is guaranteed. Hence, (4) provides a necessary and sufficient 
+
+condition for the safety requirement. In contrast, the m-th order condition in High-Order Con-trol Barrier Functions (HOCBFs) [Eq. (13), [18]] involves m
+
+class K functions, introducing additional design degrees of freedom and rendering the condition sufficient, but not nec-essary , for safety. Moreover, these functions require tuning multiple parameters in practice. On the other hand, the m-th order TLC condition in (4) contains only a single implicit parameter, namely the intermediate point ξ associated with the Lagrange remainder or the time scale (t − t0), thus avoiding multiple tuning parameters. 
+
+Definition 5 (CLF [16]) . A continuously differentiable func-tion V : Rn → R is an exponentially stabilizing Control Lyapunov Function (CLF) for system (1) if there exist constants c1 > 0, c 2 > 0, c 3 > 0 such that for ∀x ∈
+
+Rn, c 1 ∥x∥2 ≤ V (x) ≤ c2 ∥x∥2 and 
+
+inf 
+
+> u∈U
+
+[Lf V (x) + Lg V (x)u + c3V (x)] ≤ 0. (5) Several works (e.g., [17], [18]) address safety-critical control by integrating HOCBFs with quadratic cost objec-tives, resulting in Optimal Control Problems (OCPs) for systems with high relative degree. In practice, these OCPs are implemented in real time through a sequence of QPs. In these frameworks, HOCBF constraints ensure forward invariance of the safe set, while CLFs (5) can be incorporated as soft constraints to enforce exponential convergence to desired states [18]. Similarly, the TLC condition (4) can be employed to enforce safety within a QP framework. By combining TLC-based safety constraints with CLF-based objectives, one can simultaneously guarantee safety and achieve exponential convergence of the desired states. III. P ROBLEM FORMULATION AND APPROACH 
+
+Our goal is to generate a control strategy for system (1) that ensures convergence of the system state to a desired equilibrium, minimizes control effort, satisfies safety require-ments, and respects input constraints. 
+
+Objective: We consider the cost 
+
+J(u(t)) = 
+
+Z T
+
+> 0
+
+∥u(t)∥2dt + p ∥x(T ) − xe∥2 , (6) where ∥·∥ denotes the Euclidean norm, T > 0 is the terminal time, p > 0 is a weighting factor, and xe ∈ Rn is the desired equilibrium state of system (1). The cost term p∥x(T )−xe∥2
+
+promotes convergence of the state to xe.
+
+Safety Requirement: System (1) should always satisfy one or more safety requirements of the form: 
+
+h(x) ≥ 0, x ∈ Rn, ∀t ∈ [0 , T ], (7) where h : Rn → R is assumed to be a continuously differentiable equation. 
+
+Control Limitations: The controller u should always satisfy (2) for all t ∈ [0 , T ].
+
+A control policy is feasible if (7) and (2) are satisfied 
+
+∀t ∈ [0 , T ]. In this paper, we consider the following problem: 
+
+Problem 1. Find a feasible control policy for system (1) such that cost (6) is minimized. Existing TLC [23] and its robust variant (rTLC) [26] are both implemented by solving a QP at discrete update instants under event-triggered or sampled-data execution. While event-triggered TLC [23] provides safety guarantees and rTLC mitigates inter-sampling effects, both rely on a fixed time scale (t − t0) in (4) that is manually selected and kept constant. Such a fixed choice cannot adapt to the current state or the available control authority. If chosen too aggressively, the resulting TLC/rTLC safety condition may become overly restrictive and conflict with input bounds, leading to infeasibility of QP; if chosen too conservative, it may fail to provide sufficient robustness margin against inter-sampling deviations, especially near the boundary of the safe set. Hence, a constant time scale can degrade both optimization feasibility and implementation-level safety, motivating the need for an adaptive TLC approach. 
+
+Approach: To solve Problem 1 and address the limitations of non-adaptive TLC, we introduce an adaptive framework in which the time scale (t − t0) is treated as a state-dependent adaptive variable selected online. To enforce con-vergence to the desired state, we select a CLF and impose the corresponding CLF constraint (5). To satisfy the safety requirement, we construct an aTLC function and convert it into the corresponding aTLC constraint. The CLF and aTLC constraints are jointly imposed in a QP with input bounds. Within the aTLC formulation, the time scale is allowed to vary and is selected from a finite candidate set at each update instant, improving feasibility under input constraints. This adaptive scheme is combined with an event-triggered implementation, where control updates are executed only when the state exits a prescribed neighborhood, thereby ensuring safety over inter-sampling intervals. IV. A DAPTIVE TAYLOR –L AGRANGE CONTROL 
+
+In this section, we develop an adaptive TLC (aTLC) frame-work. The key idea is to treat the time scale appearing in the Taylor–Lagrange expansion as a state-dependent parameter that can be adjusted online to improve feasibility and mitigate inter-sampling effects. 
+
+Definition 6 (Adaptive Taylor–Lagrange Control (aTLC)) .
+
+Consider system (1) with safety requirement h(x) ≥ 0,where h has relative degree m. For any state x(t0) and any time scale τ ∈ [τmin , τ max ], define the τ -parameterized adaptive TLC condition as 
+
+sup 
+
+> u(ξ)∈U
+
+" m−1X
+
+> i=0
+
+Lif h(x(t0)) 
+
+i! τ i + Lmf h(x(ξ)) 
+
+m! τ m++ Lg Lm−1 
+
+> f
+
+h(x(ξ)) u(ξ)
+
+m! τ m
+
+#
+
+≥ 0
+
+, (8) where ξ ∈ (t0, t 0 + τ ) is the intermediate point given by Taylor’s theorem with Lagrange remainder. An Adaptive Taylor–Lagrange Control (aTLC) function is a function h
+
+for which the time scale τ is not fixed a priori, but selected online as a state-dependent variable 
+
+τ = K(x(t0)) , (9) where K(·) denotes a state-dependent policy, which may be defined explicitly or implicitly. The corresponding control input is then computed using the aTLC condition associated with τ selected from (9). 
+
+Theorem 2. Consider system (1) with safe set C = {x :
+
+h(x) ≥ 0}. If h(x(t0)) ≥ 0, then any Lipschitz continuous control input u(ξ) that satisfies the aTLC condition (8) for a time scale τ ∈ [τmin , τ max ] selected by (9) with ξ ∈ (t0, t 0 +
+
+τ ), τ > 0 renders the set C forward invariant. Proof. The proof follows directly from Taylor’s theorem with Lagrange remainder and the proof of the original TLC result [23]. For any t0 ≥ 0 with h(x(t0)) ≥ 0, and any τ ∈
+
+[τmin , τ max ], there exists an intermediate point ξ ∈ (t0, t 0+τ )such that 
+
+h(x(t0 + τ )) = 
+
+> m−1
+
+X
+
+> i=0
+
+Lif h(x(t0)) 
+
+i! τ i
+
++ Lmf h(x(ξ)) + Lg Lm−1 
+
+> f
+
+h(x(ξ)) u(ξ)
+
+m! τ m.
+
+(10) Hence, if a Lipschitz continuous control input u(ξ) satisfies the τ -parameterized aTLC condition (8), then h(x(t0 +τ )) ≥
+
+0. Therefore, the state remains in the safe set after each admissible time scale τ . Since the above argument holds for any t0 such that h(x(t0)) ≥ 0, it can be recursively applied over time, implying that h(x(t)) ≥ 0 for all t ≥ t0.Therefore, the set C is forward invariant. This argument holds for any admissible τ , and therefore applies in particular to the state-dependent selection τ = K(x(t0)) in Def. 6. Although the aTLC condition (8) is exact, its implemen-tation is complicated by the unknown intermediate point 
+
+ξ ∈ (t0, t 0 + τ ). Therefore, in implementation one can only construct an approximate aTLC condition using the information available at time t0 or over a local neighborhood of x(t0). The resulting approximation of h(x(t0 + τ )) 
+
+generally differs from its exact value, and the discrepancy depends on both the current state x(t0) and the selected time scale τ . Although this discrepancy decreases as τ
+
+approaches zero, it does not vanish completely for nonzero 
+
+τ . Consequently, to improve implementation-level safety in the presence of such inter-sampling errors, we adopt an event-triggered framework that updates the control input and reconstructs the aTLC condition whenever the state exits a prescribed neighborhood. rTLC [26] addresses inter-sampling effects, but relies on a fixed time scale, which can lead to infeasibility under tight control bounds. 
+
+A. Event-Triggered aTLC with Adaptive Time Scale 
+
+We consider the event-triggered implementation of TLC as in [23], and extend it by introducing an adaptive time scale. Let {tk}k≥0 denote the sequence of event times defined by 
+
+tk+1 = inf {t > t k : x(t) /∈ S(x(tk)) }, (11) where the neighborhood S(xk) is defined as a hyper-rectangle of the form 
+
+S(xk) := {x : xk − x ≤ x ≤ xk + x}, (12) where x, x ∈ Rn>0 are given vectors that define the size of the neighborhood in each state dimension. At each event time 
+
+tk, we set xk := x(tk).For a given τ , we define the robust aTLC-related quantities 
+
+hratlc (xk, τ ) := min  
+
+> x∈S(xk)
+> m−1
+
+X
+
+> i=0
+
+Lif h(x)
+
+i! τ i + Lmf h(x)
+
+m! τ m
+
+!
+
+,
+
+(13) 
+
+Gratlc (xk, τ ) :=  Gratlc ,1(xk, τ ), . . . , G ratlc ,q (xk, τ ),
+
+(14) where each component j ∈ { 1, . . . , q } is defined as 
+
+Gratlc ,j (xk, τ ) = τ m
+
+m!
+
+
+
+min  
+
+> x∈S(xk)
+
+ϕ(x) 
+
+> j
+
+, if uj ≥ 0,
+
+max  
+
+> x∈S(xk)
+
+ϕ(x) 
+
+> j
+
+, if uj < 0,
+
+(15) where ϕ(x) := Lg Lm−1 
+
+> f
+
+h(x), u = ( u1, . . . , u q ), denotes the control input, and ϕ(x) 
+
+> j
+
+denotes its j-th component. Since τ m/m ! > 0, the scaling factor can be factored out of the min/max operator. The min/max construction is used to capture the worst-case contribution of each input component over S(xk), ensuring that Gratlc (xk, τ )u + hartlc (xk, τ )
+
+provides a valid lower bound on the aTLC expression for all admissible control inputs. The event-triggered aTLC condition becomes 
+
+sup 
+
+> u∈U
+
+[Gratlc (xk, τ )u + hratlc (xk, τ )] ≥ 0. (16) At each event time tk, the current state xk := x(tk)
+
+is measured, and a local set S(xk) is constructed. A time scale τk ∈ [τmin , τ max ] is then selected according to an adaptive rule (see Sec. IV-D). The quantities hratlc (xk, τ k)
+
+and Gratlc (xk, τ k) are then computed. The control input at time tk is obtained by solving a QP of the form 
+
+min  
+
+> u,δ
+
+∥u∥2 + wδ 2
+
+s.t. Gratlc (xk, τ k)u + hratlc (xk, τ k) ≥ 0,Lf V (xk) + Lg V (xk)u + c3V (xk) ≤ δ, 
+
+u ∈ U , δ ≥ 0,
+
+(17) where δ is a slack variable that relaxes the CLF constraint (5). The resulting control input uk is applied as u(t) = uk
+
+for t ∈ [tk, t k+1 ). The event time is then updated to tk+1 , and the procedure is repeated until the final time T . Importantly, 
+
+τk is not equal to the inter-event interval (tk+1 − tk), but rather a design parameter selected at tk without knowledge of tk+1 , and used to construct the aTLC condition (16); either one may be larger. The connection between τk and (tk+1 −
+
+tk) is indirect: τk affects the control input via (17), which influences the state evolution and hence the triggering time. 
+
+B. Forward Invariance with Adaptive Time Scale 
+
+We first show that introducing an adaptive time scale does not affect the continuous-time safety guarantee. 
+
+Theorem 3 (Forward Invariance under Event-Triggered aTLC) . Consider system (1) with safe set (3) . Suppose that 
+
+h is an aTLC function of relative degree m defined in Def. 6, and that the control is implemented under the event-triggered aTLC framework described in Sec. IV-A. Let the event times 
+
+{tk}k≥0 be generated by (11) and let τk ∈ [τmin , τ max ] be selected by (9) at each event time tk and held constant over 
+
+[tk, t k+1 ). If at every event time tk there exists a control input uk ∈ U such that 
+
+Gratlc (xk, τ k)uk + hratlc (xk, τ k) ≥ 0, (18) 
+
+then the set C is forward invariant for the system (1) .Proof. Fix any event interval [tk, t k+1 ). By the event-triggering rule, we have x(t) ∈ S(xk), ∀t ∈ [tk, t k+1 ).Moreover, τk and uk are held constant over this inter-val. By the definitions of hratlc (xk, τ k) and Gratlc (xk, τ k),for every x(t) ∈ S(xk) we have that the corresponding aTLC condition (8) evaluated at x(t) is lower bounded by 
+
+Gratlc (xk, τ k)uk +hratlc (xk, τ k). Since the control input uk
+
+is chosen such that (18) is satisfied, it follows that the aTLC condition (8) is satisfied for all t ∈ [tk, t k+1 ). Based on Theorem 2, we have h(x(t)) ≥ 0, ∀t ∈ [tk, t k+1 ). Since this argument holds for every event interval and the initial condition is assumed to satisfy x(0) ∈ C , we conclude that 
+
+x(t) ∈ C , ∀t ≥ 0. Hence, the set C is forward invariant. 
+
+C. Feasibility Characterization via Value Function 
+
+To characterize feasibility, based on Eqs. (13)–(15), we define the set of admissible controls 
+
+U (x, τ ) := {u ∈ U : Gratlc (x, τ )u + hratlc (x, τ ) ≥ 0}.
+
+(19) We then define the minimal feasible time scale 
+
+τ ∗(x) := inf {τ ∈ [τmin , τ max ] : U (x, τ )̸ = ∅} . (20) This definition converts the time scale into a value func-tion that explicitly captures feasibility. The dependence of feasibility on the time scale τ is central to the proposed aTLC design. Intuitively, a larger τ corresponds to enforcing the aTLC condition (16) over a longer horizon, which typ-ically leads to a more restrictive safety condition. However, this relationship is not necessarily monotone, since both 
+
+hratlc (x, τ ) and Gratlc (x, τ ) depend on τ . To make this relationship precise, define the robust aTLC margin :
+
+M (x, τ ) := sup 
+
+> u∈U
+
+ Gratlc (x, τ )u + hratlc (x, τ ). (21) By definition, feasibility is equivalent to 
+
+U (x, τ )̸ = ∅ ⇐⇒ M (x, τ ) ≥ 0. (22) 
+
+Lemma 1. The functions hratlc (x, τ ) and Gratlc (x, τ ) are continuous in (x, τ ). Consequently, the margin function 
+
+M (x, τ ) is also continuous in (x, τ ).Proof. The functions hratlc (x, τ ) and Gratlc (x, τ ) are de-fined as extrema of continuous functions over compact sets, and are therefore continuous. Since M (x, τ ) is the supremum of a function that is continuous in (x, τ, u) and affine in u over a compact set U , its continuity follows from Berge’s maximum theorem [28]. 
+
+Proposition 1 (Monotonicity under Additional Conditions) .
+
+Let D be a compact domain of interest. Suppose that for each fixed x ∈ D , the margin function M (x, τ ) is nonincreasing in τ over [τmin , τ max ] (if increasing, the reverse implication holds). Then for any τ1, τ 2 satisfying τmin ≤ τ1 ≤ τ2 ≤
+
+τmax , U (x, τ 2)̸ = ∅ =⇒ U (x, τ 1)̸ = ∅, ∀x ∈ D .
+
+Proof. Fix any x ∈ D. If U (x, τ 2)̸ = ∅, then by the definition of M , we have M (x, τ 2) ≥ 0. Since 
+
+M (x, τ ) is nonincreasing in τ and τ1 ≤ τ2, we obtain 
+
+M (x, τ 1) ≥ M (x, τ 2) ≥ 0. Therefore, again by the equiv-alence U (x, τ )̸ = ∅ ⇐⇒ M (x, τ ) ≥ 0, we conclude that 
+
+U (x, τ 1)̸ = ∅.
+
+Remark 1. When the monotonicity condition in Proposi-tion 1 holds, the value τ ∗(x) admits a threshold interpreta-tion: if feasibility is achieved at some τ , then it is preserved for all smaller values, while sufficiently large τ may destroy feasibility. This behavior can be intuitively understood by normalizing the aTLC condition (16) by τ m, which yields terms of the form Pm−1  
+
+> i=0
+> Lifh(x)
+> i!
+
+τ i−m. Since i − m < 0,these terms decrease with τ when Lif h(x) ≥ 0 locally, making the constraint more restrictive as τ increases, and thus explaining the monotonicity of M (x, τ ) in such regions. 
+
+Theorem 4 (Existence and Regularity of τ ∗(x)). Suppose there exists ¯τ ∈ [τmin , τ max ] such that U (x, ¯τ )̸ = ∅ for all x in a compact domain. Then τ ∗(x) is well-defined and finite. Moreover, τ ∗(x) is lower semicontinuous, i.e., 
+
+lim inf xℓ→x τ ∗(xℓ) ≥ τ ∗(x).Proof. Based on Lemma 1, M (x, τ ) is continuous in (x, τ ).By assumption, M (x, ¯τ ) ≥ 0 for all x, so the feasible set 
+
+{τ ∈ [τmin , τ max ] : M (x, τ ) ≥ 0} is nonempty. As a closed subset of a compact interval, its infimum is finite, hence 
+
+τ ∗(x) is well-defined. Finally, consider a sequence xℓ → x
+
+and select a subsequence such that τ ∗(xℓ) converges to its smallest possible limit. Since each τ ∗(xℓ) is feasible at xℓ,by continuity of the feasibility condition, the limit is feasible at x. By minimality of τ ∗(x), we must have τ ∗(x) no larger than this limit. Therefore, τ ∗(x) is lower semicontinuous. In Theorem 4, we assume that there exists ¯τ ∈ [τmin , τ max ]
+
+such that U (x, ¯τ )̸ = ∅ for all x in a compact domain. This assumption is mild in practice, as it only requires that the system admits at least one admissible control input satisfying the aTLC condition under some time scale. Overall, Sec. IV-C characterizes the dependence of feasibility on the time scale τ through the value function τ ∗(x), which serves as a bridge between the theoretical aTLC condition (16) and its state-dependent realization τ = K(x(t0)) in (9), enabling the practical selection of τ in the adaptive scheme. 
+
+D. Adaptive Selection of Time Scale 
+
+We now propose an adaptive rule for selecting τk. Instead of fixing τ , we select it online based on predicted behavior. Given a finite set of candidate values {τi} ⊂ [τmin , τ max ],we evaluate each candidate τi in Alg. 1. This rollout-based algorithm favors time scales that maximize the predicted safety margin, rather than merely ensuring feasibility. 
+
+Remark 2 (Recursive Feasibility) . At each event time tk,suppose there exists at least one time scale τ ∈ [τmin , τ max ]
+
+such that U (xk, τ )̸ = ∅. Since the adaptive selection rule evaluates candidate values of τ and selects τk only among those that are feasible, the resulting QP remains feasible at every event time. This implies recursive feasibility of the event-triggered aTLC scheme. Algorithm 1 Adaptive Selection of Time Scale 
+
+Require: Current state xk, candidate set {τi}, horizon Tlook 
+
+Ensure: Selected time scale τk 
+
+> 1:
+
+Initialize hpred min (τi) ← −∞ for all τi 
+
+> 2:
+
+for each candidate τ ∈ { τi} do  
+
+> 3:
+
+Solve the QP (17) to obtain u∗(τ ) 
+
+> 4:
+
+if QP is feasible then  
+
+> 5:
+
+Simulate system forward over [0 , T look ] with con-stant input u∗(τ ) 
+
+> 6:
+
+Compute hpred min (τ ) = min t∈[0 ,T look ] h(x(t))  
+
+> 7:
+
+end if  
+
+> 8:
+
+end for  
+
+> 9:
+
+τk = arg max   
+
+> τ∈{ τi}
+
+hpred min (τ ) 
+
+> 10:
+
+return τk
+
+The proposed adaptive TLC framework and time scale se-lection algorithm improves feasibility and robustness against inter-sampling deviations by selecting the time scale τ online based on predicted system behavior. In contrast to non-adaptive TLC/rTLC, the adaptive scheme avoids overly re-strictive constraints while maintaining a sufficient safety mar-gin. The parameter τ naturally induces a trade-off between feasibility and robustness, which is balanced dynamically according to the current state. The rollout horizon Tlook , the bounds τmin , τ max , and the size of the local set S(xk) affect the conservativeness of the aTLC condition and consequently the feasibility of the QP. Nevertheless, τ remains the primary parameter, while the others serve as auxiliary design choices to address inter-sampling effects, as commonly required in event-triggered HOCBF [29]. 
+
+E. Complexity Analysis 
+
+At each event time tk, the adaptive aTLC scheme evaluates a finite set of candidate time scales {τi}. For each τi,a QP is solved. If feasible, a short forward simulation (trajectory construction) over a horizon Tlook is performed. Let Nτ denote the number of candidate values, TQP the time required to solve one QP, and Tsim the cost of one rollout. The overall computational complexity per event is 
+
+O Nτ (TQP + Tsim ). Since Nτ is typically small and both the QP and rollout are computed over short horizons, the proposed method remains computationally efficient for real-time implementation. Moreover, the evaluations for different candidate τi are independent and can be parallelized, signif-icantly reducing the effective computation time per event. V. C ASE STUDY AND SIMULATIONS 
+
+In this section, we present a case study for the use of aTLC in Adaptive Cruise Control (ACC) problems. All computations are conducted in MATLAB, where the QPs are solved using quadprog and the system dynamics are integrated using ode45 . The simulations are performed on an Intel ® Core™ i7-11750F CPU @ 2.50 GHz, with an average QP computation time of less than 0.01 s. We consider nonlinear dynamics for the ego vehicle as 
+
+ ˙z(t)˙v(t)
+
+| {z } 
+
+> ˙x(t)
+
+=
+
+ vp − v(t)
+
+− 1 
+
+> M
+
+Fr (v(t)) 
+
+| {z } 
+
+> f(x(t))
+
++
+
+ 0
+
+> 1
+> M
+
+| {z } 
+
+> g(x(t))
+
+u(t), (23) where M denotes the mass of the ego vehicle, and vp > 0 is the velocity of the lead vehicle. The variable z(t) represents the distance between ego and the vehicle in front of it. The resistance force is modeled as Fr (v(t)) = f0 sgn( v(t)) + 
+
+f1v(t) + f2v2(t), as in [27], where f0, f 1, f 2 are positive constants determined empirically, and v(t) > 0 denotes the velocity of the ego vehicle. Vehicle limitations include constraints on safe distance, speed, and acceleration. 
+
+Safe distance constraint: The distance between the two vehicles is considered safe if z(t) ≥ lp, ∀t ∈ [0 , T ], where 
+
+lp denotes the minimum allowable distance. 
+
+Speed objective: The ego vehicle aims to achieve adesired speed vd > 0.
+
+Acceleration constraint: The control input u(t) is con-strained as −cdM g ≤ u(t) ≤ caM g, ∀t ∈ [0 , T ], where g
+
+denotes the gravitational constant, and cd > 0 and ca > 0 are the deceleration and acceleration coefficients, respectively. The control effort is penalized by the cost functional 
+
+min u(t)
+
+R T
+
+> 0
+
+ u(t)−Fr (v(t)) 
+
+> M
+
+2
+
++ wδ 2dt . The ACC problem is to find a control policy that minimizes control effort while achieving the speed objective, subject to a safe distance constraint and an acceleration constraint. The relative degree of z − lp is two, and we use a second order HOCBF, event-triggered TLC and event-triggered aTLC to implement it by defining h(x) = z − lp ≥ 0 and corresponding controls satisfying: HOCBF: L2 
+
+> f
+
+h(x) + Lg Lf h(x)u+(p1 + p2)Lf h(x) + p1p2h(x) ≥ 0, (24) TLC: L2 
+
+> f
+
+h(x) + Lg Lf h(x)u+2
+
+τ Lf h(x) + 2
+
+τ 2 h(x) ≥ 0. (25) If τ in (25) is fixed ( τ = 0 .5), the method is referred to as event-triggered TLC . If τ is time-varying and selected according to Alg. 1, it is referred to as event-triggered aTLC . For simplicity, the term “event-triggered” is omitted in the remainder of the paper. We employ a CLF from Def. 5 with relative degree one to enforce the desired speed as V (x) = v − vd. The parameters are vp =13 .89 m/s, v (0) = 15 m/s, v d = 24 m/s, M = 1650 kg, g =9.81 m/s 2, z (0) = 90 m, l p = 10 m, f 0 = 0.1N, f 1 =5N s/m, f 2 = 0 .25 N s 2/m, c 3 = 2 , w = 10 5, x = x =0.5 · I 2×1, τ min = 0 .05 s, τ max = 2 s, T look = 1 s, N τ = 40 .In Fig. 1, we compare the performance of TLC and aTLC under narrow control bounds. Since the ego vehicle must reach the desired speed while maintaining a safe distance from the lead vehicle, the deceleration capability is critical. A smaller cd, the deceleration coefficient, corresponds to a more slippery road condition and weaker braking capability, requiring the ego vehicle to decelerate in a timely manner to avoid safety violations. As shown in Fig. 1a and Fig. 1c, TLC (a) Control Input Profiles under Different cd (TLC)              
+
+> (b) Control Input Profiles (orange, cyan and magenta curves overlap) under Different cd(aTLC).
+> (c) TLC function h(x)evolution under Different cd
+> (d) aTLC function h(x)evolution under Different cd
+> Fig. 1: Performance Comparison between TLC and aTLC in ACC. aTLC achieves improved feasibility while maintaining safety (i.e., avoiding violations of h(x)≥0) compared to TLC when cdis small.
+
+ensures QP feasibility and safety when cd = 1 .2. However, as cd decreases to 0.7 and 0.4, the QP becomes infeasible because no control input can satisfy both the TLC condition and the input bounds (marked by circles in the figure). In such cases, the control input is set to the maximum braking value u = −cdM g until the QP becomes feasible again. Fig. 1c shows that, under this fallback strategy, the ego vehicle fails to maintain a safe distance, i.e., h(x) < 0.In contrast, Fig. 1b and Fig. 1d show that aTLC enables earlier deceleration, thereby avoiding infeasibility and safety violations. Note that Alg. 1 selects the time scale from the candidate set to maximize the safety margin, leading to overlapping trajectories for cd = 1 .2, 0.7, and 0.4. Moreover, even when cd is further reduced to 0.3, aTLC still finds a feasible and safe control strategy. The input profiles also show that, after t ≈ 10 s, i.e., when h(x) approaches the safe-set boundary, the control input generated by aTLC varies more smoothly and stays closer to zero than that of TLC, indicating lower control effort. In Fig. 2, we compare the performance of HOCBF, TLC, and aTLC under limited braking capability ( cd = 0 .4). For HOCBF, two sets of parameters are considered, correspond-ing to different choices of p1 and p2. From Fig. 2b, larger values of p1 and p2 lead to a more aggressive control strategy (i.e., delayed braking), which results in QP infeasibility around t ≈ 8 s (indicated by the orange circle). Similarly, for TLC with a fixed τ = 0 .5, the lack of adaptability also leads to infeasibility at approximately the same time (magenta circle). In both cases, when the QP becomes infeasible, a fallback control strategy is applied by setting the input to the maximum braking value u = −cdM g until feasibility is recovered. As shown in Fig. 2c, this leads to safety violation with h(x) < 0. In contrast, reducing p1 and p2 in HOCBF, or adopting aTLC with adaptive τ , maintains QP feasibility and guarantees safety. As illustrated in Fig. 2a, smaller values of 
+
+p1 and p2 make the HOCBF controller more conservative, resulting in earlier deceleration after reaching the desired speed vd to maintain a safe distance. A similar behavior is observed for aTLC, where the vehicle gradually slows down until its speed matches that of the lead vehicle vp, after which the safety distance remains nearly constant. Notably, aTLC achieves performance comparable to HOCBF while tuning only a single parameter τ . Fig. 2d compares the time-varying 
+
+τ in aTLC with the fixed τ in TLC, while Fig. 2e shows the evolution of the event-triggered inter-event time ∆tk =
+
+tk+1 −tk for both methods. It can be seen that aTLC flexibly adjusts τ within a prescribed range to satisfy feasibility and safety requirements. As a result, after approximately t ≈
+
+10 s, aTLC exhibits significantly fewer triggering events than TLC. This also leads to smoother control inputs (Fig. 2b) and smoother velocity profiles (Fig. 2a). VI. C ONCLUSION AND FUTURE WORK 
+
+This paper proposes an adaptive Taylor–Lagrange Control (aTLC) framework for safety-critical control of nonlinear systems under sampled-data implementations. By treating the time scale as a state-dependent parameter selected online, the proposed method improves feasibility and safety compared to non-adaptive TLC. An event-triggered implementation is developed to mitigate inter-sampling effects, and a rollout-based selection rule is introduced to balance safety and feasibility while preserving the QP structure. Simulation results on an adaptive cruise control problem demonstrated that aTLC achieves improved feasibility, maintains safety under limited control bounds, and produces smoother control inputs compared to non-adaptive TLC. Future work will focus on extending the proposed framework to systems with model uncertainty, learning-based adaptation of the time scale, and experimental validation on real-world platforms. (a) Velocity profiles under different methods when cd = 0 .4
+
+(b) Control input profiles under different methods when cd = 0 .4
+
+(c) Safety function h(x) evolution under different methods when cd = 0 .4
+
+(d) Adaptive τ (t) in aTLC vs. fixed τ in TLC when cd = 0 .4
+
+(e) Inter-event time ∆t under event-triggered implementation for cd = 0 .4
+
+Fig. 2: aTLC improves feasibility and ensures safety compared to TLC, while achieving performance comparable to a well-tuned HOCBF despite requiring only a single parameter.. 
+
+REFERENCES [1] D. E. Kirk, Optimal control theory: an introduction . Courier Corporation, 2004. [2] A. E. Bryson and Y.-C. Ho, Applied optimal control: optimization, estimation, and control . Hemisphere, 1975. [3] R. Bellman, “Dynamic programming,” science , vol. 153, no. 3731, pp. 34–37, 1966. [4] E. V. Denardo, Dynamic programming: models and applications .Courier Corporation, 2012. [5] C. E. Garcia, D. M. Prett, and M. Morari, “Model predictive control: Theory and practice—a survey,” Automatica , vol. 25, no. 3, pp. 335– 348, 1989. [6] J. B. Rawlings, D. Q. Mayne, and M. M. Diehl, “Model predictive control: theory, computation, and design,” (No Title) , 2020. [7] J.-P. Aubin, A. M. Bayen, and P. Saint-Pierre, Viability theory: new directions . Springer Science & Business Media, 2011. [8] I. M. Mitchell, A. M. Bayen, and C. J. Tomlin, “A time-dependent Hamilton-Jacobi formulation of reachable sets for continuous dynamic games,” IEEE Transactions on automatic control , vol. 50, no. 7, pp. 947–957, 2005. [9] S. Boyd, S. P. Boyd, and L. Vandenberghe, Convex optimization .Cambridge university press, 2004. [10] R. Cheng, G. Orosz, R. M. Murray, and J. W. Burdick, “End-to-end safe reinforcement learning through barrier functions for safety-critical continuous control tasks,” in Proceedings of the AAAI conference on artificial intelligence , vol. 33, no. 01, 2019, pp. 3387–3395. [11] P. Wieland and F. Allg¨ ower, “Constructive safety using control barrier functions,” IFAC Proceedings Volumes , vol. 40, no. 12, pp. 462–467, 2007. [12] K. P. Tee, S. S. Ge, and E. H. Tay, “Barrier Lyapunov functions for the control of output-constrained nonlinear systems,” Automatica , vol. 45, no. 4, pp. 918–927, 2009. [13] S. Prajna, A. Jadbabaie, and G. J. Pappas, “A framework for worst-case and stochastic safety verification using barrier certificates,” IEEE Transactions on Automatic Control , vol. 52, no. 8, pp. 1415–1428, 2007. [14] R. Wisniewski and C. Sloth, “Converse barrier certificate theorems,” 
+
+IEEE Transactions on Automatic Control , vol. 61, no. 5, pp. 1356– 1361, 2015. [15] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier function based quadratic programs for safety critical systems,” IEEE Transactions on Automatic Control , vol. 62, no. 8, pp. 3861–3876, 2016. [16] A. D. Ames, K. Galloway, and J. W. Grizzle, “Control Lyapunov functions and hybrid zero dynamics,” in 2012 IEEE 51st IEEE Conference on Decision and Control (CDC) , 2012, pp. 6837–6842. [17] Q. Nguyen and K. Sreenath, “Exponential control barrier functions for enforcing high relative-degree safety-critical constraints,” in 2016 American Control Conference (ACC) , 2016, pp. 322–328. [18] W. Xiao and C. Belta, “High-order control barrier functions,” IEEE Transactions on Automatic Control , vol. 67, no. 7, pp. 3655–3662, 2021. [19] W. Xiao, C. Belta, and C. G. Cassandras, “Adaptive control barrier functions,” IEEE Transactions on Automatic Control , vol. 67, no. 5, pp. 2267–2281, 2021. [20] S. Liu, W. Xiao, and C. A. Belta, “Auxiliary-variable adaptive control barrier functions for safety critical systems,” in 2023 62th IEEE Conference on Decision and Control (CDC) , 2023. [21] ——, “Auxiliary-variable adaptive control lyapunov barrier functions for spatio-temporally constrained safety-critical applications,” in 2024 IEEE 63rd Conference on Decision and Control (CDC) , 2024, pp. 8098–8104. [22] H. Ahmad, E. Sabouni, A. Wasilkoff, P. Budhraja, Z. Guo, S. Zhang, C. Fan, C. G. Cassandras, and W. Li, “Hierarchical multi-agent reinforcement learning with control barrier functions for safety-critical autonomous systems,” Advances in Neural Information Processing Systems , 2025. [23] W. Xiao and A. Li, “Taylor-Lagrange control for safety-critical sys-tems,” arXiv preprint arXiv:2512.11999 , 2025. [24] B. Taylor, Methodus incrementorum directa & inversa . Inny, 1717. [25] J. L. de Lagrange, Th´ eorie des fonctions analytiques . Courcier, 1813. [26] W. Xiao, C. G. Cassandras, and A. Li, “Robust Taylor-Lagrange control for safety-critical systems,” arXiv preprint arXiv:2602.20076 ,2026. [27] H. K. Khalil, Nonlinear systems; 3rd ed. Upper Saddle River, NJ: Prentice-Hall, 2002, the book can be consulted by contacting: PH-AID: Wallet, Lionel. [Online]. Available: https://cds.cern.ch/record/1173048 [28] C. Berge, Topological Spaces . Macmillan, 1963. [29] W. Xiao, C. Belta, and C. G. Cassandras, “Event-triggered control for safety-critical systems with unknown dynamics,” IEEE Transactions on Automatic Control , vol. 68, no. 7, pp. 4143–4158, 2022.
