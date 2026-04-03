@@ -1,0 +1,784 @@
+Title: Safe Policy Optimization via Control Barrier Function-based Safety Filters
+
+URL Source: https://arxiv.org/pdf/2604.01392v1
+
+Published Time: Fri, 03 Apr 2026 00:09:21 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Safe Policy Optimization via Control Barrier Function-based Safety Filters 
+
+Yiting Chen Pol Mestres Emiliano Dall’Anese Jorge Cort´ es 
+
+Abstract — Control barrier function (CBF)-based safety filters provide a systematic way to enforce state constraints, but they can significantly alter the closed-loop dynamics induced by a nominal, stabilizing controller. In particular, the result-ing safety-filtered system may exhibit undesirable behaviors including limit cycles, unbounded trajectories, and undesired equilibria. This paper develops a policy optimization framework to maximally enhance the stability properties of safety-filtered controllers. Focusing on linear systems with linear nominal con-trollers, we jointly parameterize the nominal feedback gain and safety-filter components, and optimize them using trajectory-based objectives computed from closed-loop rollouts. To ensure that the nominal controller remains stabilizing throughout training, we encode Lyapunov-based stability conditions as smooth scalar constraints and enforce them using robust safe gradient flow. This guarantees feasibility of the stability constraints along the optimization iterates and therefore avoids instability during training. Numerical experiments on obstacle-avoidance problems show that the proposed approach can remove asymptotically stable undesired equilibria and improve convergence behavior while maintaining forward invariance of the safe set. 
+
+I. I NTRODUCTION 
+
+Ensuring safety while achieving high-performance control is a fundamental requirement in modern autonomous and cyber-physical systems, including robotics, transportation, and energy systems. In many applications, safety is for-malized as the forward invariance of a prescribed set of “safe” states [1]. Control barrier functions (CBFs) provide a systematic framework for enforcing such safety constraints in control-affine systems [2], [3], commonly through safety filters that, given a nominal controller, minimally modify to ensure safety. However, the interaction between nominal controllers and CBF-based safety filters can significantly alter the properties of the resulting closed-loop dynamics. In particular, the safety filter may degrade the stability properties of the nominal controller. For instance, even when the nominal controller ensures global asymptotic stability of the origin, the safety-filtered system may exhibit unde-sirable behaviors such as asymptotically stable undesired equilibria, limit cycles, or unbounded trajectories [4]–[6]. These observations highlight the need for systematic methods to design controllers with guarantees for both safety and stability properties. 
+
+> Y. Chen and E. Dall’Anese are with the Department of Electrical and Computer Engineering at Boston University; P. Mestres is with the Depart-ment of Mechanical Engineering at the California Institute of Technology; J. Cort´ es is with the Department of Mechanical and Aerospace Engineering at the University of California San Diego. This work was supported by the AFOSR Award FA9550-23-1-0740.
+
+Literature Review: Recent works have used Lyapunov-based ideas to stabilize learned controllers, including joint controller–Lyapunov design [7], [8], Lyapunov learning from demonstrations [9], and Lyapunov-regularized policy opti-mization [10]. However, these works do not address the in-teraction between nominal controllers and CBF-based safety filters. In parallel, recent results have shown that safety filters can significantly alter the qualitative behavior of the closed-loop system: even when the nominal controller is asymptoti-cally stabilizing, the filtered dynamics may exhibit undesired equilibria, limit cycles, or unbounded trajectories [4]–[6]. Moreover, while some of these obstructions are structural, the choice of nominal controller and safety-filter design can still strongly affect their impact on the closed-loop dynamics [4], [5]. This motivates the development of systematic methods to optimize nominal controllers and safety parameters in order to improve the behavior of safety-filtered systems. 
+
+Statement of Contributions: This paper develops a system-atic framework to improve the dynamical behavior of safety-filtered controllers through optimization of the nominal con-troller and safety-filter parameters. The main contributions are as follows: 
+
+(c1) We formulate a trajectory-based optimization problem for safety-filtered controllers in which the nominal controller, the CBF-related class-K∞ function, and the safety-filter weighting matrix are jointly parameterized. This formulation is designed to shape the closed-loop dynamics induced by safety filtering, with the goal of reducing the effect of un-desired equilibria and improving convergence to the desired equilibrium. 
+
+(c2) Focusing on linear systems with linear nominal con-trollers, we encode nominal closed-loop stability through Lyapunov-based matrix inequalities and reformulate these conditions as smooth scalar constraints using leading prin-cipal minors. This yields an optimization problem amenable to gradient-based methods while preserving an explicit char-acterization of stabilizing nominal controllers. 
+
+(c3) We develop a training procedure based on robust safe gradient flow and rollout-based gradient estimates. Proposition 1 shows that, when initialized from a stabilizing nominal controller, all iterates remain feasible and therefore keep the nominal controller stabilizing throughout training. The result also quantifies how gradient approximation errors affect convergence to a neighborhood of a KKT point. 
+
+(c4) We illustrate the proposed framework on represen-tative obstacle-avoidance examples, including environments with multiple constraints and complex safe-set geometry. The numerical results show that the optimized controllers 
+
+> arXiv:2604.01392v1 [eess.SY] 1 Apr 2026
+
+improve convergence behavior and can eliminate asymptot-ically stable undesired equilibria while preserving forward invariance of the safe set. II. P RELIMINARIES 
+
+A. Notation 
+
+We denote by R and N>0 the set of real and positive integers, respectively. Vectors are written in boldface, while scalar quantities are not. Given x = ( x1, ..., x n) ∈ Rn and 
+
+p ∈ Z>0, ∥x∥p denotes its ℓp norm. For a square matrix 
+
+G ∈ Rm×m, the i-th leading principal minor is defined as the determinant of G(1: i, 1: i), where G(1: i, 1: i) denotes the submatrix formed by the first i rows and columns of G. If 
+
+G is positive definite, we define ∥u∥G := √u⊤Gu. Given a continuously differentiable function h : Rn → R, ∇h(x)
+
+denotes its gradient at x. A function α : R → R is of extended class K∞ if it is strictly increasing, α(0) = 0 , and 
+
+lim s→±∞ α(s) = ±∞ . A function f : Rn → R is L-smooth for some constant L > 0 if ∥∇ f (x) − ∇ f (y)∥ ≤ L∥x − y∥.
+
+B. Safety filters for control-affine systems 
+
+Consider the control-affine system 
+
+˙x = f (x) + g(x)u, (1) where f : Rn → Rn and g : Rn → Rn×m are locally Lipschitz, x ∈ Rn is the state, and u ∈ Rm is the control input. Let h : Rn → R be a continuously differentiable function, and define the set 
+
+C := {x ∈ Rn : h(x) ≥ 0}.
+
+The function h is a control barrier function (CBF) for the set C if there exists an extended class K∞ function α such that, for all x ∈ C , there exists u ∈ Rm satisfying 
+
+∇h(x)⊤(f (x) + g(x)u) + α(h(x)) ≥ 0. (2) The main feature of CBFs is that they enable the design of safe controllers. Indeed, any locally Lipschitz controller satisfying (2) for all x ∈ C renders C forward invariant [2, Corollary 2]. A common method to design such controller is through safety filters . Given a nominal controller k : Rn →
+
+Rm that stabilizes a desired equilibrium point (taken to be the origin henceforth without loss of generality), safety filters typically search for a controller that minimally modifies k
+
+while satisfying the CBF condition (2). This controller can be obtained at every state x ∈ C by solving the following quadratic program (QP): 
+
+v(x) = arg min 
+
+> u∈Rm
+
+12 ∥u − k(x)∥2 
+
+> G(x)
+
+(3) s.t. ∇h(x)⊤(f (x) + g(x)u) + α(h(x)) ≥ 0,
+
+where G : Rn → Rm×m is continuously differentiable and positive definite for all x ∈ Rn (this function prescribes the cost function weights at every state). Since the objective function of (3) is strictly convex, v(x) is a singleton for each 
+
+x ∈ C . Furthermore, if Slater’s condition holds for (3) for each x ∈ C , then v is locally Lipschitz [11], and renders 
+
+C forward invariant. We also note that v can be expressed in closed-form [5]. Indeed, let η(x) = ∇h(x)⊤(f (x) + 
+
+g(x)k(x)) + α(h(x)) . Then, 
+
+v(x) = 
+
+(
+
+k(x), if η(x) ≥ 0,k(x) + ¯ u(x), if η(x) < 0, (4) where 
+
+¯u(x) := − η(x) G(x)−1g(x)⊤∇h(x)
+
+∥g(x)⊤∇h(x)∥2
+
+> G(x)−1
+
+.
+
+Although the safety filter guarantees forward invariance of C and admits an efficient implementation, it does not, in general, preserve the stabilization properties of the nominal controller. In particular, even if the nominal controller u =
+
+k(x) is designed so that the system ˙x = f (x) + g(x)k(x)
+
+renders the origin globally asymptotically stable, the closed-loop system obtained by applying the safety filter may fail to retain this property. The results in [4]–[6], [12] show that the resulting closed-loop system ˙x = f (x) + g(x)v(x)
+
+can exhibit undesirable dynamical behaviors, such as the presence of additional equilibria (whose number, location, and stability depend on the nominal controller), unbounded trajectories, or limit cycles. Furthermore, as observed in [4], [5], different nominal controllers and different choices of the CBF can lead to different behaviors when combined with a safety filter. In favorable cases, the closed-loop system obtained from the safety filter is also globally asymptotically stable, or has only one unstable undesired equilibrium (this is the best dynamical behavior one can expect in cases where the safe set is not simply connected, due to topological obstructions [13]). In less favorable cases, the safety filter may introduce multiple undesired equilibria, some of which may even be asymptotically stable. However, as shown in [4], the choice of nominal controller or CBF can be used to reduce the region of attraction of the asymptotically stable undesired equilibria. III. P ROBLEM STATEMENT 
+
+Motivated by the considerations of Section II-B regarding the impact of safety filters on dynamical behavior, we seek to determine a nominal controller that leads to a closed-loop system with favorable dynamical properties. By this, we mean ensuring the number of undesired equilibria is mini-mized, preventing the emergence of asymptotically stable un-desired equilibria, and maximizing the region of attraction of the desired equilibrium. We formalize this search by consid-ering a parametric family of nominal controllers, candidate CBFs (i.e., continuously differentiable functions whose 0-superlevel set is C), cost function weighting functions, and class K functions. Specifically, we let θ ∈ Rd be a parameter vector, and define 
+
+kθ : Rn → Rm, Gθ : Rn → Rm×m,αθ : R → R, hθ : Rn → R,
+
+where kθ is locally Lipschitz, Gθ is continuously differen-tiable and positive definite for all x ∈ C , αθ is an extended class K∞ function, and hθ is continuously differentiable and its zero-superlevel set is C.Given θ, the corresponding safety-filtered controller is 
+
+u∗ 
+
+> θ
+
+(x) = arg min 
+
+> u∈Rm
+
+12 ∥u − kθ (x)∥2  
+
+> Gθ(x)
+
+(5) s.t. ∇hθ (x)⊤(f (x) + g(x)u) + αθ (hθ (x)) ≥ 0.
+
+which induces the closed-loop system 
+
+˙x = f (x) + g(x)u∗ 
+
+> θ
+
+(x). (6) To capture the desirable dynamical objectives, we consider a trajectory-based cost function defined over a finite time horizon. Given a finite horizon T > 0 and an initial condition 
+
+x0, let xθ (t; x0) denote the solution of (6) at time t. We define the cost function 
+
+L(θ, x0) = ϕ(xθ (T ; x0)) + λ
+
+Z T
+
+> 0
+
+ψ(xθ (t; x0)) dt, (7) for some λ > 0. The terminal cost ϕ(xθ (T ; x0)) penalizes trajectories that fail to approach the desired equilibrium over the time horizon. In particular, it encourages the state to be close to the origin at time T , thereby promoting convergence to the desired equilibrium. The running cost R T 
+
+> 0
+
+ψ(xθ (t; x0)) dt penalizes deviations from the desired equilibrium along the trajectory. As a result, it discourages trajectories that remain far from the origin for extended periods of time, and promotes faster convergence. The hyper-parameter λ balances the relative importance of the terminal and running costs. Given a distribution ξ over initial conditions, we consider the expected cost 
+
+L(θ) = 
+
+Z
+
+> Rn
+
+L(θ, x0) ξ(x0) dx0, (8) and the optimization problem 
+
+min 
+
+> θ∈Rd
+
+L(θ). (9) Qualitatively, problem (9) seeks parameters θ that lead to closed-loop trajectories that approach the desired equilibrium for initial conditions from a given distribution. In particular, it promotes closed-loop systems with favorable dynamical properties, such as a large region of attraction of the desired equilibrium and the absence of asymptotically stable unde-sired equilibria. Our goal is to design a safe controller with favorable dynamical properties by solving (9). In particular, we aim to solve the following problem. 
+
+Problem 1: Given system (1), a safe set C, and the param-eterized safety filter (5), design an algorithm that solves (9). Additionally, in order to ensure that the origin of the closed-loop system remains asymptotically stable (even if the algo-rithm is terminated after a finite number of iterations), ensure that all the algorithm iterates yield a stabilizing nominal controller. □
+
+IV. E NFORCING STABILITY CONSTRAINTS 
+
+The formulation (9) in Section II-B prioritizes safety by construction, as the CBF-based filter guarantees forward in-variance of the set C. However, it does not guarantee that the nominal controller is stabilizing. As mentioned in Problem 1, to address this our goal is to select parameters θ for which the nominal controller renders the origin asymptotically stable. In this section we explain how to enforce such stability constraints on the nominal controller. We focus on linear systems of the form 
+
+˙x = Ax + Bu, (10) (f (x) = Ax and g(x) = B) and consider linear nominal controllers kθ (x) = −Kx, where K ∈ Rm×n is part of the parameter vector θ, i.e., θ = ( K, ¯θ), for some other parameters ¯θ parameterizing the rest of the functions G¯θ ,
+
+α¯θ , h¯θ .We seek to enforce that the matrix A − BK is Hurwitz. A standard approach is to introduce a Lyapunov function 
+
+V (x) = x⊤P x, with P ∈ Rn×n positive definite, and impose the condition 
+
+(A − BK )⊤P + P (A − BK ) ≺ 0. (11) The condition (11) is bilinear in (K, P ) and therefore non-convex. Using the standard change of variables Y = KP and 
+
+Q = P −1, we obtain the equivalent linear condition 
+
+AQ + QA ⊤ − BY − Y ⊤B⊤ ≺ 0, Q ≻ 0. (12) In the remainder of the paper, we set hθ ≡ h, and only optimize over the remaining parameters. For tractability, we adopt simple parametric forms for the functions αθ and Gθ .Specifically, we parameterize the extended class K∞ function as αθ (s) = αs , where α > 0 is a scalar decision variable. This linear parameterization satisfies the K∞ properties. Moreover, we note that Gθ affects L(θ) only through u∗
+
+> θ
+
+(as in (5)), and u∗ 
+
+> θ
+
+depends on Gθ only via its inverse (cf. (4)). Therefore, we parameterize Gθ as Gθ = R−1,where R ≻ 0. Accordingly, we consider a modified version of (9) that incorporates the above constraints: 
+
+min 
+
+> θ=( Y,Q,R,α )∈Rd
+
+L(θ) (13) s.t. AQ + QA ⊤ − BY − Y ⊤B⊤ ≺ 0,Q ≻ 0,R ≻ 0,α > 0,
+
+where recall that the cost function is computed using the closed-loop dynamics (6). In fact, the optimization variables 
+
+θ = ( Y, Q, R, α ) affect L(θ) through the following chain of dependencies: the matrices Y and Q determine the nominal controller kθ through the relation K = Y Q −1, while the scalar α and the matrix R determine the parameterized functions αθ (s) = αs and Gθ = R−1, respectively. These quantities jointly determine the filtered control input 
+
+u∗ 
+
+> θ
+
+(x) through (5). The control input u∗ 
+
+> θ
+
+(x) in turn defines the closed-loop dynamics (6), which determine the single-trajectory cost in (7). Finally, the expected loss L(θ) is obtained by averaging this cost over the trajectories induced by the resulting closed-loop system. The first three constraints in (13) are linear matrix in-equalities (LMI). However, directly handling this constraint within a gradient-based learning framework is challenging, as it requires projecting onto the cone of positive definite matrices or solving a semidefinite program at each iteration. To obtain a representation that is more amenable to gradient-based optimization, we seek to replace the matrix inequality constraints with equivalent scalar algebraic conditions. To this end, we exploit a classical equivalent characterization of positive definiteness based on principal minors. 
+
+Lemma 1 ( [14, Theorem 7.2.5]): Let M ∈ Rn×n be a symmetric matrix. Then M is positive definite if and only if all leading principal minors of M are positive, i.e., 
+
+det( M(1: i, 1: i)) > 0, for all i ∈ [n]. □
+
+By Lemma 1, we can equivalently replace each LMI in (13) with n inequalities based on leading principal minors. Specifically, we write 
+
+∆( Q, Y ) := −AQ − QA ⊤ + BY + Y ⊤B⊤,
+
+and then (13) can be equivalently converted to 
+
+min 
+
+> θ=( Y,Q,R,α )∈Rd
+
+L(θ) (14) s.t. det(∆ (1: i, 1: i)(Q, Y )) > 0, i ∈ [n],
+
+det( Q(1: i, 1: i)) > 0, i ∈ [n],
+
+det( R(1: i, 1: i)) > 0, i ∈ [m],α > 0,
+
+where we recall that ∆(1: i, 1: i)(Q, Y ) is the submatrix formed by the first i rows and columns of ∆( Q, Y ). Similarly, 
+
+Q(1: i, 1: i) and R(1: i, 1: i) denote the leading principal sub-matrices of Q and R, respectively. In this form, both the objective function and the constraints are non-convex, but the constraints are expressed in a standard form that can be handled by gradient-based methods. A critical challenge in solving (14) is that, violating the constraints may lead to ill-defined or unbounded values of the objective function L(θ), as the underlying cost becomes arbitrarily large or ill-conditioned when the closed-loop sys-tem loses stability. As a result, temporary infeasibility during the optimization process can severely disrupt the algorithm and make it difficult to recover. Therefore, it is critical to employ an optimization scheme that maintains the feasibility of the constraints at every iteration, specifically one that does not leave the set of nominal stabilizing controllers. This also ensures that even if the algorithm is terminated after a finite number of iterations, the resulting parameter is feasible. This requirement motivates the algorithmic approach adopted in the next section. 
+
+Remark 1: (Alternative approach to enforcing stability): 
+
+An alternative approach to enforcing stability is to require that the spectral abscissa of A − BK is negative. However, this results in a non-smooth constraint, which makes it difficult to handle within gradient-based optimization frame-works. □
+
+V. A LGORITHMIC IMPLEMENTATION 
+
+In this section, we propose an algorithm to solve (14). We start by rewriting (14) in the standard constrained optimiza-tion form 
+
+min 
+
+> θ∈Rd
+
+L(θ) (15a) s.t. Ci(θ) ≤ 0, i ∈ [q], (15b) where q = 2 n+m+1 and Ci(θ) = −det (∆ (1: i, 1: i)(Q, Y ))+ 
+
+ϵ0 for i ∈ [n], Ci(θ) = −det (Q(1: i, 1: i)) + ϵ0 for i ∈ { n +1, . . . , 2n}, Ci(θ) = −det (R(1: i, 1: i)) + ϵ0 for i ∈ { 2n +1, . . . , 2n + m} and C2n+m+1 (θ) = −αθ + ϵ0. Here, ϵ0 > 0
+
+is a small tolerance. We note that (15) is in general a non-convex problem. We propose to solve it through the robust safe gradient flow 
+
+(RSGF) method, which we adopt from [15]–[17]. Specifi-cally, given δ, γ > 0, RSGF generates iterates {θk}k∈N as follows: 
+
+θk+1 = p(θk)
+
+p(θ) := arg min 
+
+> y∈Rd
+
+∇L (θ)⊤(y − θ) + 12δ ∥y − θ∥2 (16) s.t. γδC i(θ) + ∇Ci(θ)⊤(y − θ) + 12δ ∥y − θ∥2 ≤ 0, i ∈ [q].
+
+As shown in [15, Lemma 1], under a suitable choice of the parameters δ, γ , the iterates defined by (16) converge to a KKT point of (15). An additional benefit of Algorithm 16 compared to other constrained optimization algorithms such as interior-point [18] or primal-dual methods [19] is that the iterates of (16) are guaranteed to satisfy the constraints of (15) (cf. [15, Lemma 1]). This is particularly relevant in the context of problem (14), where this implies that the algorithm iterates generate stabilizing nominal controllers and positive slopes of the class-K∞ function. 
+
+A. Gradient approximation and implementation 
+
+Unfortunately, in the setting considered here, the func-tion L(θ) and its gradient ∇L (θ) are difficult to obtain explicitly, since they involve an integral over all possible initial conditions. Instead, in practice we need to approximate 
+
+∇L (θ) by sampling a few initial conditions, which produces an estimate d∇L (θ) of the gradient. Specifically, let x(i)0 ,
+
+i ∈ { 1, . . . , N }, be sampled from the distribution ξ. For each initial condition, we simulate the closed-loop system (6) under the parameterized safety filter (5) over a finite horizon 
+
+T using a time discretization with step size ∆t. Let x(i)
+
+> t
+
+denote the state at time t∆t and θk be the current parameter, we compute the control u(i) 
+
+> t
+
+using the parameterized safety filter (5) and propagate the dynamics through a forward Euler discretization: x(i) 
+
+> t+1
+
+= x(i) 
+
+> t
+
++ ∆ t f (x(i) 
+
+> t
+
+) + g(x(i) 
+
+> t
+
+)u(i)
+
+> t
+
+. The cost L(θ) is then approximated as 
+
+bL(θ) := 1
+
+N
+
+> N
+
+X
+
+> i=1
+
+
+
+ϕ(x(i) 
+
+> K
+
+) + λ
+
+> K−1
+
+X
+
+> t=0
+
+ψ(x(i) 
+
+> t
+
+)∆ t
+
+
+
+, (17) where K = T / ∆t. Now, the mapping θ 7 → bL(θ) is defined through these closed-loop rollouts and an estimate of the gradient ∇L (θ) can be obtained by directly differentiating the mapping bL(θ).Next, replacing ∇L (θ) with d∇L (θ) in (16) yields the following iterative algorithm 
+
+θk+1 = ˆ p(θk)ˆp(θ) := arg min 
+
+> y∈Rd
+
+d∇L (θ)⊤(y − θ) + 12δ ∥y − θ∥2 (18) s.t. γδC i(θ) + ∇Ci(θ)⊤(y − θ) + 12δ ∥y − θ∥2 ≤ 0, i ∈ [q].
+
+We note that (18) is feasible for values of θ in the feasible set, since in that case y = θ is feasible for (18). The following result characterizes the convergence and constraint satisfaction properties of (18). 
+
+Proposition 1: (Constraint satisfaction and convergence): 
+
+Suppose that for each θ ∈ Rd, ∥d∇L (θ) − ∇L (θ)∥ ≤ ϵ, for some ϵ > 0. Further suppose that L is L-smooth and lower bounded by a constant Lmin , and Ci is Li-smooth for each 
+
+i ∈ [q]. Assume also that 
+
+0 < δ < min { 1
+
+γ , 1
+
+L , 1
+
+L1
+
+, . . . , 1
+
+Lq
+
+}. (19) Then, if the algorithm is initialized with θ0 ∈ F := {θ ∈
+
+Rd : Ci(θ) ≤ 0, ∀i ∈ [q]}, the sequence of iterates generated by (18) satisfies: 1) θk ∈ F for all k ∈ N;2) Let K∗ ∈ N be such that K∗ ≥ L(L(θ0)−L min )4ϵ2 . Then, there exists k ∈ [K] such that ∥ˆp(θk) − θk∥ ≤ 4ϵL .Alternatively, if c > 0 is such that (18) is feasible in the set 
+
+Fc := {θ ∈ Rd : Ci(θ) ≤ c, ∀i ∈ [q]} and θ0 ∈ F c, then the sequence of iterates converges to F.
+
+Proof: Let us first prove item 1, which follows an argument analogous to that of [15, Lemma 1 (i)]. Let i ∈ [q]
+
+and k ∈ N. Since Ci is Li-smooth, by [20, Lemma 1.2.3] we have 
+
+Ci(θk+1 ) ≤ Ci(θk)+ ∇Ci(θk)⊤(θk+1 −θk)+ Li
+
+2 ∥θk+1 − θk∥2.
+
+(20) Now, by definition, θk+1 satisfies 
+
+γδC i(θk) + ∇Ci(θk)⊤(θk+1 − θk) + 12δ ∥θk+1 − θk∥2 ≤ 0.
+
+(21) By using (21) in (20) we get 
+
+Ci(θk+1 ) ≤ (1 − γδ )Ci(θk) − 12
+
+ 1
+
+δ − Li
+
+
+
+∥θk+1 − θk∥2.
+
+(22) Since δ < 1 
+
+> γ
+
+and δ < 1 
+
+> Li
+
+, (22) implies that if Ci(θk) ≤ 0,then Ci(θk+1 ) ≤ 0. By induction, and since this argument is valid for all i ∈ [q], this implies that item 1 holds. Let us now show item 2. Since L is L-smooth, we have 
+
+L(θk+1 ) ≤ L (θk) + ∇L (θk)⊤(θk+1 − θk) + L
+
+2 ∥θk+1 − θk∥2.
+
+By the optimality conditions of (18) (cf. [18, Thm. 12.3]), we have that any feasible y ∈ Rd satisfies 
+
+(y − ˆp(θk)) ⊤(d∇L (θk) + 1
+
+δ (ˆ p(θk) − θk)) ≥ 0.
+
+In particular, y = θk is feasible (thanks to item 1, because 
+
+θk ∈ F , which means that Ci(θk) ≤ 0 for all i ∈ [q] and 
+
+k ∈ N) and yields 
+
+L(θk+1 ) − L (θk) ≤ (∇L (θk) − d∇L (θk)) ⊤(θk+1 − θk)
+
+−
+
+ 1
+
+δ − L
+
+2
+
+
+
+∥θk+1 − θk∥2.
+
+Now, after using the Cauchy-Schwartz inequality, the bound 
+
+∥d∇L (θ) − ∇L (θ)∥ ≤ ϵ, and δ < 1 
+
+> L
+
+, we get that whenever 
+
+∥ˆp(θk) − θk∥ > 4ϵL ,
+
+L(θk+1 ) − L (θk) < − 4ϵ2
+
+L < 0. (23) Now, since L ≥ L min , if K∗ ∈ N was such that K∗ ≥ 
+
+> (L(θ0)−L min )L
+> 4ϵ2
+
+and ∥ˆp(θk) − θk∥ > 4ϵL for all k ∈ [K∗],from (23), we would get that L(θK∗+1 ) < Lmin , which is a contradiction. Therefore, there exists k ∈ [K∗] such that 
+
+∥ˆp(θk) − θk∥ ≤ 4ϵL .Finally, let us show that if that (18) is feasible in Fc
+
+and θ0 ∈ F c, then the sequence of iterates converges to the feasible set of (15). This follows from (22), by noting that for any i ∈ [q], if Ci(θk) > 0, then Ci(θk+1 ) − Ci(θk) < 0,which implies that the sequence converges to the feasible set of (15) (either asymptotically or in finite time). The smoothness assumptions in Proposition 1 are standard in optimization, and hold if the parameter set is restricted to a compact set. From (22), we can see that the choice of δ
+
+and γ affects the maximum rate with which the constraint values can approach the boundary of the safe set. Indeed, smaller values of δ decrease the second term in (22), but increase the first term. Smaller values of {Li}qi=1 allow a wider range of values of δ satisfying (19), which can help adjust such rate. Finally, smaller values of L lead to faster convergence as per Proposition 1 item 2. Importantly, Proposition 1 in the context of problem (14) ensures that if the iterates are initialized with a stabilizing nominal controller, then all iterates remain stabilizing, and if it is initialized with a controller that is close to being stabilizing, the iterates will converge to a stabilizing one (provided that the problem remains feasible). In particular, since obtaining a small approximation error ϵ requires sam-pling a high number of trajectories, and the property that unstable controllers converge to stable ones is independent of ϵ, if the initial nominal controller is not stabilizing, one does not need to sample a high number of trajectories and can instead wait for the parameter iterates to become stabilizing to start sampling a high number of trajectories and eventually lead to a better approximation. We note that as the error bound ϵ between d∇L (θ) and 
+
+∇L (θ) vanishes, the values of ˆp(θ) and p(θ) coincide (under standard constraint qualification conditions on (15) cf. [21, Thm 5.3]). Since the KKT points of (15) can be characterized as the values of θ for which θ = p(θ) (cf. [15, Lemma 1]), Proposition 1 item 2 ensures that for small ϵ, there exists 
+
+k ∈ [K] such that θk lies in a neighborhood of a KKT point of (15). We summarize the overall training procedure in Algo-rithm 1. 
+
+Algorithm 1 Training via Robust Safe Gradient Flow with Trajectory Sampling  
+
+> 1:
+
+Initialize parameters θ0 
+
+> 2:
+
+for k = 0 , 1, . . . do  
+
+> 3:
+
+Sample N initial conditions {x(i)0 }Ni=1 ∼ ξ 
+
+> 4:
+
+for each i = 1 , . . . , N do  
+
+> 5:
+
+Set x(i)0 = x(i)0 
+
+> 6:
+
+for t = 0 , . . . , K − 1 do  
+
+> 7:
+
+Compute control u(i) 
+
+> t
+
+via (5) with current state 
+
+x(i) 
+
+> t
+
+and parameter θk 
+
+> 8:
+
+Propagate dynamics: 
+
+x(i) 
+
+> t+1
+
+= x(i) 
+
+> t
+
++ ∆ t f (x(i) 
+
+> t
+
+) + g(x(i) 
+
+> t
+
+)u(i)
+
+> t
+
+ 
+
+> 9:
+
+end for  
+
+> 10:
+
+end for  
+
+> 11:
+
+Compute approximated loss bL(θk) and gradient 
+
+d∇L (θk) 
+
+> 12:
+
+Update parameters: θk+1 = ˆ p(θk) (cf. (18))  
+
+> 13:
+
+end for 
+
+B. Multiple obstacles 
+
+The proposed framework naturally extends to the case of multiple obstacles. Suppose the safe set is defined as the intersection 
+
+C =
+
+> M
+
+\
+
+> j=1
+
+Cj , Cj = {x ∈ Rn | hj (x) ≥ 0}.
+
+A standard approach is to enforce the CBF condition for each barrier function hj in the safety filter (5), which leads to a quadratic program with multiple constraints. While this formulation is conceptually straightforward, it becomes computationally demanding in the trajectory-based training setting considered here. Indeed, each rollout requires solving a quadratic program at every time step, and over a time horizon T with discretization step ∆t, a single rollout involves T / ∆t solves. When N trajectories are sampled to approximate L(θ), this results in solving a large number of quadratic programs. Moreover, in the presence of multiple constraints, the control input is defined implicitly as the optimizer of a constrained quadratic program. As a result, computing the gradient of bL(θ) with respect to θ requires differentiating through the solution map of this optimization problem, which further increases computational cost and complexity. To address these issues, we adopt the same log-sum-exp relaxation as in [22] to combine all the CBFs. Specifically, we define ˜hβ (x) = − 1 
+
+> β
+
+log 
+
+ PMj=1 exp( −βh j (x)) 
+
+
+
+, where 
+
+β > 0 is a parameter. The following result characterizes this relaxation. 
+
+Lemma 2 ( [23, p. 72]): For any a1, . . . , a M ∈
+
+R and β > 0, define ϕβ (a1, . . . , a M ) := 
+
+− 1 
+
+> β
+
+log 
+
+ PMj=1 exp( −βa j )
+
+
+
+. It holds that 
+
+min   
+
+> j∈[M]
+
+aj − log Mβ ≤ ϕβ (a1, . . . , a M ) ≤ min   
+
+> j∈[M]
+
+aj . □
+
+By Lemma 2, the set 
+
+ˆC := {x ∈ Rn | ˜hβ (x) ≥ 0}
+
+satisfies ˆC ⊆ C . Furthermore, as β → ∞ , ˜hβ (x) converges to min j hj (x), and hence ˆC approaches C.Using ˜hβ in place of the individual barrier functions results in a safety filter with a single constraint. This yields several important benefits. First, the number of constraints in the safety filter no longer scales with the number of obstacles, which significantly reduces the computational burden during trajectory rollouts. In particular, the control input can be computed without solving a multi-constraint quadratic program at each time step. Second, from (4), the resulting control input admits a closed-form expression. This eliminates the need to solve an optimization problem online and substantially reduces the overall computational cost. Finally, the closed-form expression makes the dependence of the control input on θ explicit. This avoids differentiat-ing through the solution map of a quadratic program and simplifies the computation of gradients of bL(θ) with respect to θ.VI. N UMERICAL EXPERIMENTS 
+
+In this section, we illustrate the performance of the pro-posed approach on several planar examples. We consider a single integrator system 
+
+˙x = Ax + Bu = u,
+
+with A = 0 and B = I2, and use linear nominal controllers of the form u = −Kx. The safety filter is constructed using the parameterized CBF formulation as in (5). In all experiments, the trajectories are generated using a forward Euler discretization with step size ∆t = 0 .02 . The cost function is chosen as 
+
+L(θ, x0) = ∥x(T )∥22 + λ
+
+Z T
+
+> 0
+
+∥x(t)∥22dt, 
+
+with λ = 0 .1. The expectation in (8) is approximated using Monte Carlo sampling with batch size 512 , where initial conditions are sampled uniformly from the safe set. For each experiment, we first choose an initial nominal gain K0 and then construct (Q0, Y 0) as follows. If the matrix 
+
+A − BK 0 is Hurwitz, we let P0 be the positive definite solution of the Lyapunov equation 
+
+(A − BK 0)⊤P0 + P0(A − BK 0) = −I, 
+
+and define 
+
+Q0 = P −10 , Y0 = K0Q0.
+
+If the matrix A − BK 0 is unstable, we simply take Q0 =
+
+I2 and Y0 = K0. In all experiments, the parameter α is initialized as α0 = 5 .A. Invariance in a Bounded Safe Set 
+
+We first consider a bounded safe set defined as a disk, 
+
+C = {x : r2 − ∥ x − xc∥2 ≥ 0},
+
+and the initial conditions are chosen uniformly on a circle inside the disk. By [5], in this setting, the best scenario that one can expect is the absence of undesired equilibria, and that C coincides with the region of attraction of the origin [5, Proposition 4.10]. In Fig. 1 (left), we show the trajectories obtained with the safety filter applied to the initial controller. There are two undesired equilibria located on the boundary of C,one of which is asymptotically stable and has a region of attraction with positive measure. In Fig. 1 (right), we show the trajectories obtained after training. No undesired equilibrium is observed in this case. All trajectories remain in C and converge to the origin. −1 0 1 2 3 4                       
+
+> x1
+> −2
+> −1
+> 0
+> 1
+> 2
+> x2
+> −1 01234
+> x1
+> −2
+> −1
+> 0
+> 1
+> 2
+> x2
+> Unsafe set Initial Conditions Trajectories Undesired equilibria Origin
+> Fig. 1. State trajectories generated by the initial (left) and trained (right) controllers. Gray regions indicate unsafe sets. Under the initial controller, two undesired equilibria appear on the boundary of the safe set, one of which is asymptotically stable and its region of attraction has a positive measure. After training, no undesired equilibrium is observed, and all trajectories remain within the safe set and converge to the origin. −4 −2 024
+> x1
+> −2
+> −1
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> 6
+> x2
+> −4 −2 024
+> x1
+> −2
+> −1
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> 6
+> x2
+> Unsafe set Initial Conditions Trajectories Undesired equilibria Origin
+> Fig. 2. State trajectories generated by the initial (left) and trained (right) controllers. Gray regions indicate unsafe sets. The initial controller induces an asymptotically stable undesirable equilibrium on the boundary of the obstacle, causing some trajectories to converge to the unsafe set. After training, the asymptotically stable undesirable equilibrium is eliminated, and the resulting controller keeps all trajectories within the safe set while yielding improved convergence behavior.
+
+B. Avoidance of a Single Obstacle 
+
+We next consider a single circular obstacle centered at xc
+
+with radius r, and define the safe set as 
+
+C = {x : r2 − ∥ x − xc∥2 ≤ 0}.
+
+The initial conditions are chosen uniformly on a circle enclosing the obstacle. By [4] and [5, Proposition 4.9], for linear nominal controllers with safety filter, we can not prevent the emergence of undesired equilibria, and the best scenario that one can expect is the presence of a single unstable undesired equilibrium. In Fig. 2 (left), we show the trajectories obtained with the safety filter applied to the initial controller. There is one undesired equilibrium located on the boundary of the obstacle, which is asymptotically stable and has a region of attraction with positive measure. The trajectories initial-ized in this region converge to this equilibrium, while all remaining trajectories converge to the origin. After training, as shown in Fig. 2 (right), all trajectories remain in C and converge to the origin. This behavior indicates the absence of asymptotically stable undesired equilibria. Moreover, the trajectory pattern suggests the presence of a single undesired equilibrium on the boundary, which is unstable, in agreement with [4]. 
+
+C. Obstacle Avoidance with Multiple Constraints 
+
+Finally, we consider a scenario with multiple obstacles. The safe set is defined as the intersection of several con-straints, including multiple rotated elliptical obstacles and box constraints defining the workspace. Specifically, the safe set is given by 
+
+C =
+
+> 5
+
+\
+
+> j=1
+
+{x : ( x − cj )⊤R⊤ 
+
+> j
+
+Dj Rj (x − cj ) − 1 ≥ 0} \
+
+{x : xmin ≤ x1 ≤ xmax , y min ≤ x2 ≤ ymax },
+
+where cj ∈ R2 is the center of the ellipse, Rj ∈ R2×2 is a rotation matrix, and Dj = diag(1 /a 2 
+
+> j
+
+, 1/b 2 
+
+> j
+
+) defines the shape of the ellipse with semi-axes aj and bj . To reduce the computational complexity of the safety filter, we use the log-sum-exp approximation of Section V-B to construct a single barrier function, with smoothing parameter β = 5 . The initial conditions are sampled uniformly from the safe region. Fig. 3 (left) shows the trajectories obtained with the safety filter applied to the initial controller. Three asymptotically stable undesired equilibria and one unstable undesired equi-librium are observed. The asymptotically stable undesired equilibria are located near the top-right corner, as well as on the boundaries of the bottom-left and middle-right obstacles. After training, as shown in Fig. 3 (right), undesired equilibria still exist, but all of them are unstable. All trajectories corresponding to the sampled initial conditions remain within 
+
+C and converge to the origin. This result demonstrates that the proposed approach effectively eliminates stable undesired equilibria in complex multi-obstacle environments, while preserving safety and ensuring convergence to the desired equilibrium. VII. C ONCLUSIONS 
+
+This paper studied the design of safety-filtered controllers with improved dynamical properties for control-affine sys-tems. We proposed a policy optimization framework that jointly parameterizes the nominal controller and the safety −4 −2 0 2 4
+
+x1
+
+−2 
+
+−1 
+
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+> x2
+
+−4 −2 0 2 4
+
+x1
+
+−2 
+
+−1 
+
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+> x2
+
+Unsafe set Initial Conditions Trajectories Undesired equilibria Origin Fig. 3. State trajectories generated by the initial (left) and trained (right) controllers. Gray regions indicate unsafe sets. Given a same set of initial conditions, the trajectories under the trained controller converge to the origin while ensuring obstacle avoidance, whereas many trajectories under the initial controller converge to undesirable equilibria located near the top-right corner and on the boundaries of the ellipsoid obstacles. 
+
+filter, and optimizes them using trajectory-based objectives while enforcing Lyapunov-based stability conditions. To en-sure that the stability conditions are satisfied throughout the learning process, we incorporate robust safe gradient flow with estimated policy gradient. The resulting method enables systematic exploration of controller parameters while main-taining both safety and stability guarantees. The numerical results demonstrate that the proposed approach effectively reduces undesirable equilibria and improves convergence properties, while preserving forward invariance of the safe set. Future work will focus on extending the proposed framework to more general nonlinear systems and on the design of parameterized nonlinear nominal controllers. REFERENCES [1] A. D. Ames, S. Coogan, M. Egerstedt, G. Notomista, K. Sreenath, and P. Tabuada, “Control barrier functions: theory and applications,” in European Control Conference , Naples, Italy, 2019, pp. 3420–3431. [2] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier function based quadratic programs for safety critical systems,” IEEE Transactions on Automatic Control , vol. 62, no. 8, pp. 3861–3876, 2017. [3] L. Wang, A. Ames, and M. Egerstedt, “Safety barrier certificates for collisions-free multirobot systems,” IEEE Transactions on Robotics ,vol. 33, no. 3, pp. 661–674, 2017. [4] Y. Chen, P. Mestres, E. Dall’Anese, and J. Cort´ es, “Characterization of the dynamical properties of safety filters for linear planar systems,” in 
+
+2024 IEEE 63rd Conference on Decision and Control (CDC) . IEEE, 2024, pp. 2397–2402. [5] P. Mestres, Y. Chen, E. Dall’Anese, and J. Cort´ es, “Control barrier function-based safety filters: characterization of undesired equilibria, unbounded trajectories, and limit cycles,” Journal of Nonlinear Sci-ence , 2026, to appear. [6] M. F. Reis, A. P. Aguilar, and P. Tabuada, “Control barrier function-based quadratic programs introduce undesirable asymptotically stable equilibria,” IEEE Control Systems Letters , vol. 5, no. 2, pp. 731–736, 2021. [7] K. Long, J. Cortes, and N. Atanasov, “Certifying stability of rein-forcement learning policies using generalized lyapunov functions,” in 
+
+The Thirty-ninth Annual Conference on Neural Information Processing Systems , 2025. [8] J. Wu, A. Clark, Y. Kantaros, and Y. Vorobeychik, “Neural lyapunov control for discrete-time systems,” Advances in neural information processing systems , vol. 36, pp. 2939–2955, 2023. [9] M. Mittal, M. Gallieri, A. Quaglino, S. S. M. Salehian, and J. Koutn´ ık, “Neural lyapunov model predictive control: Learning safe global con-trollers from sub-optimal examples,” arXiv preprint arXiv:2002.10451 ,2020. [10] B. Hejase and U. Ozguner, “Lyapunov stability regulation of deep reinforcement learning control with application to automated driving,” in 2023 American Control Conference (ACC) . IEEE, 2023, pp. 4437– 4442. [11] M. Alyaseen, N. Atanasov, and J. Cort´ es, “Continuity and bounded-ness of minimum-norm CBF-safe controllers,” IEEE Transactions on Automatic Control , vol. 70, no. 6, pp. 4148–4154, 2025. [12] X. Tan and D. V. Dimarogonas, “On the undesired equilibria induced by control barrier function based quadratic programs,” Automatica ,vol. 159, p. 111359, 2024. [13] D. E. Koditschek, “Exact robot navigation by means of potential functions: some topological considerations,” in IEEE Int. Conf. on Robotics and Automation , Raleigh, NC, USA, 1987, pp. 1–6. [14] R. A. Horn and C. R. Johnson, Matrix analysis . Cambridge university press, 2012. [15] P. Mestres, A. Marzabal, and J. Cort´ es, “Anytime safe reinforcement learning,” in Learning for Dynamics and Control Conference , N. Ozay, L. Balzano, D. Panagou, and A. Abate, Eds. Proceedings of Machine Learning Research, 2025, vol. 283, pp. 221–232. [16] A. Auslender, R. Shefi, and M. Teboulle, “A moving balls approxima-tion method for a class of smooth constrained minimization problems,” 
+
+SIAM Journal on Optimization , vol. 20, no. 6, pp. 3232–3259, 2010. [17] A. Allibhoy and J. Cort´ es, “Control barrier function-based design of gradient flows for constrained nonlinear programming,” IEEE Transactions on Automatic Control , vol. 69, no. 6, pp. 3499–3514, 2024. [18] J. Nocedal and S. Wright, Numerical optimization . Berlin, Heidel-berg: Springer, 2006. [19] D. Feijer and F. Paganini, “Stability of primal-dual gradient dynamics and applications to network optimization,” Automatica , vol. 46, pp. 1974–1981, 2010. [20] Y. Nesterov, Lectures on Convex Optimization , 2nd ed., ser. Springer Optimization and Its Applications. Springer International Publishing, 2018, vol. 137. [21] A. V. Fiacco and J. Kyparisis, “Sensitivity analysis in nonlinear programming under second order assumptions,” Systems and Opti-mization , vol. 66, pp. 74–97, 1985. [22] T. G. Molnar and A. D. Ames, “Composing control barrier functions for complex safety specifications,” IEEE Control Systems Letters ,vol. 7, pp. 3615–3620, 2023. [23] S. Boyd and L. Vandenberghe, Convex Optimization . Cambridge, UK: Cambridge University Press, 2009.

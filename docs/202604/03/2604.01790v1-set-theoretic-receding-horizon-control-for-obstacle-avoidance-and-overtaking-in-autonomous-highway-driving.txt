@@ -1,0 +1,1651 @@
+Title: Set-Theoretic Receding Horizon Control for Obstacle Avoidance and Overtaking in Autonomous Highway Driving
+
+URL Source: https://arxiv.org/pdf/2604.01790v1
+
+Published Time: Fri, 03 Apr 2026 00:47:48 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+> JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 1
+
+# Set-Theoretic Receding Horizon Control for Obstacle Avoidance and Overtaking in Autonomous Highway Driving 
+
+Gianni Cario, Valentino Carriuolo, Alessandro Casavola, Gianfranco Gagliardi*, Marco Lupia, Franco Angelo Torchiaro 
+
+Abstract —This article addresses obstacle avoidance motion planning for autonomous vehicles, specifically focusing on high-way overtaking maneuvers. The control design challenge is han-dled by considering a mathematical vehicle model that captures both lateral and longitudinal dynamics. Unlike existing numerical optimization methods that suffer from significant online computa-tional overhead, this work extends the state-of-the-art by leverag-ing a fast set-theoretic ellipsoidal Model Predictive Control (Fast-MPC) technique. While originally restricted to stabilization tasks, the proposed framework is successfully adapted to handle motion planning for vehicles modeled as uncertain polytopic discrete-time linear systems. The control action is computed online via a set-membership evaluation against a structured sequence of nested inner ellipsoidal approximations of the exact one-step ahead controllable set within a receding horizon framework. A six-degrees-of-freedom (6-DOF) nonlinear model characterizes the vehicle dynamics, while a polytopic embedding approximates the nonlinearities within a linear framework with parameter uncertainties. Finally, to assess performance and real-time feasi-bility, comparative co-simulations against a baseline Non-Linear MPC (NLMPC) were conducted. Using the high-fidelity CARLA 3D simulator, results demonstrate that the proposed approach seamlessly rejects dynamic traffic disturbances while reducing online computational time by over 90% compared to standard optimization-based approaches. 
+
+Index Terms —Autonomous Vehicles, Set-Theoretic ellipsoidal MPC, Receding Horizon Control, Obstacle-Avoidance, Polytopic Uncertainties 
+
+I. I NTRODUCTION 
+
+Driven by increasingly stringent traffic safety requirements, Advanced Driver Assistance Systems (ADAS) [1] and In-telligent Autonomous Vehicles (IAVs) [2] rely heavily on robust environmental perception and motion planning. To autonomously regulate steering, braking, and speed, these vehicles must accurately process real-time traffic data acquired through onboard sensors (e.g., cameras, radar, LiDAR) [3] and V2X communication. Obstacle Avoidance Motion Planning (OAMP) remains a fundamental challenge for autonomous vehicles in dynamic environments with a priori unknown ob-stacles [27], [29]. Such scenarios demand adaptive, real-time control strategies to ensure safe trajectory tracking and strict constraint satisfaction [28], [29]. While obstacle avoidance has been explored in diverse settings—ranging from 3D trajectory tracking for multi-quadrotor systems [8] to navigating ’nega-tive obstacles’ (e.g., potholes) for ground vehicles [9]—high-speed highway driving presents unique challenges. These 
+
+The authors are within the Dipartimento di Ingegneria Informatica, Model-listica, Elettronica e Sistemistica (DIMES), Universit` a della Calabria, 87046, Rende (CS), Italy Manuscript received XXXXX, XXXX; revised XXXXXX XX, XXXX. 
+
+scenarios underscore the need for robust, real-time control architectures capable of managing severe uncertainties. Within this framework, our work focuses on high-speed overtaking maneuvers, where maintaining a balance between agility and safety is paramount. Overtaking is a critical obstacle avoid-ance maneuver in autonomous driving. Because its execution depends heavily on dynamic traffic conditions and surrounding obstacles, ensuring a safe and efficient maneuver requires the simultaneous control of both longitudinal and lateral vehicle dynamics, guided by real-time sensor data. As illustrated in Figure 1, the overtaking maneuver typically involves three phases: lane change, passing, and returning to the original lane. Executing this maneuver requires robust trajectory planning and tracking, especially at high speeds where stability depends on precise dynamic control across the lane-changing and passing phases.       
+
+> ego lead 1 lead 2 lead n
+> ego ego
+> Safe approaching distance Safe merging distance
+> (i) (ii) (iii.a) (iii.b)
+> Direction of Travel Safe Lateral Distance
+> XY
+
+Fig. 1. Overtaking maneuver: the autonomous (ego) vehicle executes a lane change (i) to overtake the preceding (lead) vehicle (ii). After successfully passing the lead vehicle, the ego vehicle either returns to its original lane (iii.a) or continues in the new lane if necessary (iii.b), depending on traffic conditions. ( X,Y) global reference frame 
+
+Recent literature addresses autonomous overtaking primar-ily through AI-based methods and mathematical control tech-niques. Data-driven approaches - including Machine Learning, Deep Reinforcement Learning (DRL), and fuzzy systems -have proven highly effective in directly mapping complex inputs to overtaking actions [10]- [15]. On the other side, mathematical control approaches involve modeling various scenarios and translating vehicle dynamics into mathematical formulations, often used to enable overtak-ing maneuvers. Notable methods include standard, stochastic, and mixed-integer MPC [16]- [19], [21], alongside sliding mode control [20] (see [23] for a comprehensive survey). De-spite their effectiveness, such approaches frequently encounter limitations in balancing real-time performance and robustness against dynamic uncertainties, especially when strict constraint satisfaction is required. In recent years, hierarchical and inte-grated Deep Reinforcement Learning (DRL) frameworks [24],  
+
+> arXiv:2604.01790v1 [eess.SY] 2 Apr 2026 JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 2
+
+[25] have been proposed to manage overtaking sub-tasks and enforce physical constraints. However, despite their excellent reactivity, these data-driven approaches frequently fail to pro-vide the rigorous mathematical guarantees on state and input constraints provided by formal model-based methods. Within the MPC domain, recent overtaking algorithms [26], [27] offer valuable solutions. However, to bypass non-convexity and maintain real-time feasibility, they often require significant simplifications such as decoupled point-mass models [26] or complex switching heuristics [27]. Starting from this analysis, we focus on constrained receding horizon control approaches that are particularly attractive for obstacle avoidance in motion planning because they inherently generate feasible trajectories at every time step, ensuring safe progress toward a specified goal [28], [29]- [29]. The main contribution of this paper lies in overcoming the traditional limitations of the Set-Theoretic Fast Ellipsoidal MPC (ST-FE-MPC). Inspired by [30] -which was strictly limited to stabilization- this work significantly extends the theory to address reference tracking and motion planning for autonomous vehicles modeled as uncertain poly-topic systems. Unlike standard optimization-based approaches, our architecture transforms the online control phase into a highly efficient set-membership evaluation against a structured sequence of robust invariant ellipsoidal sets. This inherently guarantees recursive feasibility, strict state and input constraint satisfaction, and finite-time maneuver completion, effectively solving the complex obstacle avoidance problem without the need for computationally heavy online non-convex optimiza-tion. The proposed control architecture was validated through a dual-stage evaluation process. Initial testing was performed using the MATLAB Automated Driving Toolbox (ADT) in Simulink to assess core functionality. Subsequently, high-fidelity co-simulations in the CARLA 3D environment were conducted to rigorously test the controller against complex physics, unmodeled dynamics, and dynamic traffic conditions. This comprehensive validation confirms the controller’s ro-bustness and its suitability for real-world autonomous driving applications. The remainder of this paper is organized as follows. Section II introduces the necessary preliminaries and notation. In Section III, the problem is formally stated, while Section II-D presents the control procedure. The set-theoretic fast ellipsoidal MPC approach of [30] is here briefly recalled and subsequently extended to obstacle avoidance and mo-tion planning. Section IV describes the modeling approach, specifically presenting a suitable state-space representation and the corresponding uncertain polytopic approximation of the vehicle’s lateral and longitudinal dynamics. Finally, Section V reports simulation results and comparisons with other MPC strategies to demonstrate the effectiveness and advantages of the proposed control scheme. Finally, some conclusions end the paper. II. P RELIMINARIES AND NOTATIONS 
+
+This section presents a series of notations useful to under-stand the key aspects of the control design reported throughout the remainder of the paper.                 
+
+> ego
+> Goal (x f)
+> w! w" w# w$
+> w%&
+> ego
+> ego
+> ego ego
+> w'
+> w*
+> ego
+> Start (x+)
+> ego
+> ego
+> ego ego
+> ego ego
+> w, w-w.
+> Ob !
+> Ob "
+> w!+
+> XY
+> w!!
+> w%/ w%0 w%1 w"0 w"1 w"& w"/
+> Fig. 2. Way-points ( W= [ w1, . . . , w 6](red trajectory) describing a feasible paths; way-points W′= [ w7, . . . , w 6](blue trajectory) describing an alter-native feasible paths; points ( W1=[w11, . . . , w 41
+> ];W2=[w12, . . . , w 42
+> ])describing the obstacle scenario O={Ob 1, Ob 2}.
+
+A. Uncertain Polytopic Vehicle’s Model Approximation 
+
+We will focus on autonomous driving vehicles modeled as uncertain polytopic discrete-time linear systems of the form 
+
+x(t + 1) = Φ ( p) x(t) + G (p) u(t) + Gd (p) d(t) (1) where t ∈ Z+ := {0, 1, ... }, x(t) ∈ Rn is the state, u(t) ∈
+
+Rm the control input, d(t) ∈ Rnd an exogenous disturbance and p ∈ Rl a possibly time-varying scheduling parameter. We assume that 
+
+d(t) ∈ D ⊂ Rnd , ∀t ∈ Z+ (2) represents persistence disturbances with D compact with 0n ∈D and the system matrices Φ ( p), G (p) and Gd (p) belong to the polytopic matrix family 
+
+Σ ( P) := 
+
+{
+
+(Φ( p), G (p), G d(p)) = 
+
+> k
+
+∑
+
+> j=1
+
+pj (Φ j , G j , G dj ) , p ∈ P 
+
+}
+
+(3) 
+
+with the scheduling vector p = [ p1, . . . , p k]T belonging to the unit simplex 
+
+P := 
+
+p ∈ Rk : 0 ≤ pj ≤ 1,
+
+> k
+
+∑
+
+> j=1
+
+pj = 1 
+
+ . (4) It also assumed that the system is subject to input and state set-membership constraints 
+
+u(t) ∈ U ⊂ Rn, ∀t ≥ 0, (5) 
+
+x(t) ∈ X ⊂ Rm, ∀t ≥ 0, (6) with U and X convex and compact sets containing their zero vectors. 
+
+B. Obstacles 
+
+As depicted in Figure 2 where a normal driving situation is reported, lead vehicles traveling at lower speeds in the same lane can be treated as dynamic obstacles that the ego vehicle must overcome. Formally, let O denote a specific obstacle scenario represented by a collection of planar bounding boxes. Relying on real-time radar measurements, the ego vehicle’s adaptive cruise control (ACC) adjusts its longitudinal speed to maintain a predefined safe distance from these obstacles, or otherwise proceeds at a constant reference speed. In order to obtain an obstacle representation using directly measurable quantities, it is possible to define the avoidance JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 3
+
+conditions in terms of the relative longitudinal xrel (t) =
+
+Xlead (t) − Xego (t) and lateral yrel (t) = Y lead (t) − Y ego (t)
+
+distances. Specifically, xrel denotes the relative distance be-tween the ego vehicle and the detected object along the longitudinal axis, and yrel along the lateral axis. To facilitate obstacle avoidance in a modular and scalable manner, it is feasible to adopt a formulation that addresses obstacles individually - one at a time - utilizing sensor input, including radar, LiDAR, and camera. While the coordinates 
+
+Xego (t), Y ego (t) are obtained in real time from the vehicle’s GPS system, the coordinates of the obstacle center (xrel , y rel )
+
+are assumed to be available from onboard sensors. Based on this, we define the following region: 
+
+O := 
+
+{[ δx δy 
+
+]
+
+∈ R2 : |δx − xrel | ≤ δx, |δy − yrel | ≤ δy
+
+}
+
+(7) in terms of the slack variables (δx, δy ) to characterize the obstacles where δx and δy represent the required safety margins. To ensure strict collision avoidance in real-world autonomous driving, these margins are not merely pragmatic bounding boxes, but are rigorously defined to account for both the physical vehicle kinematics and the inherent measurement noise of the perception system. Specifically, the longitudinal margin can be formulated as 
+
+δx = Lego + Llead 
+
+2 + ǫx,
+
+where Lego and Llead are the physical lengths of the ego and leading vehicles, and ǫx represents the maximum bounded uncertainty derived from the sensor’s error model (e.g., a 
+
+3σ confidence interval for radar/LiDAR spatial resolution and bounding-box estimation noise). A similar formulation applies to the lateral margin δy based on the vehicle widths and lateral sensor variance. This ensures that the robust invariant sets inherently absorb worst-case sensor inaccuracies. Notice that the ego car and the obstacle are moving at the same speed when (xrel , y rel ) remain constant during the motion. Accordingly, the obstacle-free region can be defined as: 
+
+Ofree := 
+
+{[ δx δy 
+
+]
+
+∈ R2 : |δx − xrel | > δ x, |δy − yrel | > δ y
+
+}
+
+(8) Then, by assuming that each obstacle is evaluated indi-vidually based on its relative coordinates (xrel , y rel ), we also may argue that these components could be present in the state vector x ∈ Rn of the ego car. Then, a selection matrix P ∈ R2×n, could be introduced that maps x into its components (xrel , y rel ). Then, the safe set can be expressed directly in terms of the system’s state as 
+
+X free := {x ∈ Rn : P x / ∈ O} (9) 
+
+Remark 1 - Note that, each obstacle is conservatively modeled as a rectangular region aligned with the coordinate axes. Since such sets are already convex by construction, no additional convexification procedure is required. C. Robust Control Invariant Sets 
+
+A set T is said to be robustly control invariant with respect to the uncertain polytopic system 
+
+x(t + 1) = Φ( P)x(t) + G(P)u(t) + Gd(P)d(t), (10) if, for all x ∈ T and for any disturbance d ∈ D exits a u(t)
+
+such that 
+
+Φ( P)x(t) + G(P)u(t) + Gd(P)d(t) ⊂ T , (11) This ensures that, under any admissible disturbance d(t) the state evolution remains within T , preserving its invariance. Then, given a robustly control-invariant region T , we define the sets of states that can be driven into T within i steps, regardless of disturbances and uncertainties acting on the system, through the following recursive formulation 
+
+T0 := TTi := {x ∈ X : ∃u ∈ U : ∀d ∈ D ,
+
+∀p ∈ P , Φ( p)x + G(p)u + Gd(p)d ⊂ T i−1}(12) where:  
+
+> •
+
+T0 is known as the terminal region;  
+
+> •
+
+Ti is the set of states that can be driven into Ti−1, in a sin-gle control step, regardless of disturbances and parametric uncertainties, while satisfying causality constraints. By induction, it follows that Ti characterizes the set of states that can be driven into T in at most i control steps, with 
+
+Ti ⊂ T i+1 [30]. Moreover, if X is closed and bounded 
+
+T∞ := lim i→∞ Ti exists. Because the shapes of T grows in complexity with i, one of the main results in [30] was the determination of a variant of recursions (12) that employees maximum volume ellipsoidal inner approximations Ei, allowing a constant number of pa-rameters at each iteration for their characterization: 
+
+E0 := EEi := In [{x ∈ X : ∃u ∈ U : ∀d ∈ D ,
+
+∀p ∈ P Φ( p)x + G(p)u + Gd(p)d ⊂ E i−1}]= xT P −1 
+
+> i
+
+x ≤ 1 (13) with Ei−1 ⊂ Ei ⊂ E∞, where In [·] denotes the inner ellipsoidal approximation and Pi = P Ti ≥ 0 a sequence of symmetrical positive defined shaping matrices that character-ize the ellipsoidal sequence. See [30] for construction details. 
+
+D. Set-Theoretical Fast Ellipsoid MPC approach 
+
+Here, the ST-FE-MPC approach of [30] is briefly recalled. According to the uncertain polytopic system description (1). it is required to solve a 0x-stabilization problem under the input and state constraints (6). A way to address the above control problem is to consider a dual-mode MPC approach. Basically, a final robust control-invariant set T is introduced, where the system trajectories are ultimately trapped under a chosen control law, e.g. u(t) = Kx (t). Moreover, given T ,we could compute the sets of states controllable in i steps to T . The developments of previous subsection allow one to synthesize very easily an on-line Receding-Horizon control JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 4
+
+strategy. Specifically, at each time t, the smallest index i such that x(t) ∈ E i is first determined. Then, a command u(t) is de-termined by minimizing a convenient running cost. Notice that the determination of the ellipsoidal sets Ei does not depend on the running cost to be used during the on-line operations. This allows more flexibility in the choice of the cost which could eventually even be changed on-line along the system trajecto-ries. Then, the corresponding online procedure is as follows: 
+
+RHC Algorithm - Online Phase 
+
+(1) t = 0 
+
+(2) Let i(t) = min {i : x(t) ∈ E i}
+
+(3) If i(t) = 0 then u(t) = Kx (t)
+
+(4) Else 
+
+u(t) = argmin uJi(t)(x(t), u )
+
+subject to 
+
+Φj x(t) + Gj u ∈ In [Ei−1 ∼ Gdi D] , j =1, 2, ...., l, u ∈ U 
+
+(5) apply u(t); t = t + 1 ; goto 2 
+
+In the previous algorithm, In [A ∼ B ] denotes a suitable inner ellipsoidal approximation of the set A ∼ B and the operator 
+
+∼ denotes subtraction between set ( A ∼ B = {a : a + b ∈A, ∀b ∈ B} ) [34]. For a discussion on the selection of 
+
+Ji(t)(x(t), u ) see [30], where several choices were discussed. III. P ROBLEM STATEMENT AND CONTROL DESIGN 
+
+Building upon the OAMP framework introduced in [6] for mobile robots modeled as LTI systems, this section extends the approach to autonomous vehicles modeled as uncertain polytopic systems executing overtaking maneuvers. Accordingly, the problem is formally stated as follows. 
+
+OAMP Problem - With reference to Figure 1, consider an autonomous (ego) vehicle driving in traffic context. Given the polytopic family of discrete-time linear systems (1) and set of obstacle (lead vehicle) scenarios (11) . Determine a state-feedback control law 
+
+u(t) = g(x(t)) 
+
+s.t. (14) 
+
+u(t) ∈ U , ∀t ≥ 0,x(t) ∈ X , ∀t ≥ 0, (15) 
+
+with U and X compact subsets of Rm and Rn, respectively, such that starting from an initial condition x0 the vehicle trajectory x(t) is driven to a target position xf regardless of any obstacle scenario occurrence .To solve the OAMP problem, we propose a Set-Theoretic Fast Ellipsoidal MPC (ST-FE-MPC) strategy for autonomous vehicles modeled as uncertain polytopic systems. By leverag-ing sequences of inner ellipsoidal approximations of one-step controllable sets, this approach guarantees robust constraint satisfaction and computational tractability against disturbances and dynamic obstacles. 
+
+A. Computation of feasible trajectories 
+
+Figure 2 illustrates the feasible trajectory computation via a dynamic overtaking scenario. The ego vehicle, initially at x0,targets xf but encounters obstacle Ob 1. It computes an initial overtaking path ( w1 → w2 → w3) into the center lane. When a new dynamic obstacle Ob 2 appears, invalidating the planned route, the vehicle dynamically re-plans a secondary maneuver into the leftmost lane ( w7 → · · · → w11 ), safely reaching the final position w6 = xf .Based on this context, and given the initial and final states 
+
+x0 and xf and the obstacles scenarios, the objective is to design a procedure that: 1) Generates intermediate path segments between consec-utive way-points, ensuring local feasibility and satisfac-tion of system constraints; 2) Recursively composes these segments to construct a globally feasible trajectory that connects the initial and final configurations while avoiding obstacles. To this end, we assume that a set of way-points - W =[w1, . . . , w ℓ], with w1 = x0 as the initial point and wℓ = xf
+
+as the final goal, defining a candidate path (or sub-path) to be followed - is available. Given a set of way-points W, the proposed procedure con-structs a feasible trajectory by propagating backward from the goal xf to the initial state x0. By exploiting an extended set-theoretic robustly invariant framework, it progressively defines intermediate safe regions around equilibrium points, inherently ensuring feasible transitions despite dynamic obstacles and disturbances. Specifically, for each given point, it is possible to construct a sequence of ellipsoidal inner approximations of the 
+
+i-step ahead robustly control invariant obstacle-free ellipsoids, recursively defined as: 
+
+Es 
+
+> 0
+
+:= EEsi := {x − xseq ∈ X ∩ X free : ∃(u − useq ) ∈ U , ∀d ∈ D ,
+
+∀p ∈ P , Φ( p)( x − xseq ) + G(p)( u − useq )+ 
+
+Gd(p)d ⊂ E si−1
+
+}
+
+= (x − xseq )T P −1 
+
+> i
+
+(x − xseq ) ≤ 1 (16) where (xseq , u seq ) defines a suitable equilibrium point over which the ellipsoids are centered. This recursive formulation, if non-empty, allows the construction of a family of xseq -centred ellipsoidal sets that are by construction each one recursively one-step ahead controllable and robustly invariant with respect to all admissible disturbances d ∈ D and parameter variations 
+
+p ∈ P while ensuring constraint satisfaction and obstacle avoidance at every step. Intuitively, the trajectory generation process can be viewed as a multi-tier architecture involving three distinct layers: Algorithm 1 serves as a local planner, computing a ’safe virtual tube’ of nested invariant ellipsoids to connect adjacent spatial points; Algorithm 2 acts as a global planner, iteratively stitching these local tubes to form a continuous, collision-free corridor from start to goal; and Algorithm 3 operates as a real-time navigator, dynamically steering the vehicle’s state through this predefined corridor while rejecting local disturbances. JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 5 
+
+> x x x x
+> 2021
+> 22
+> 23
+> 30
+> 31
+> 32
+> 40414243
+> s=4
+> i= 0,...,3 s=3 i= 0,...,2 s=2 i= 0,...,3
+> Fig. 3. Sequence of ellipsoidal inner approximations construction.
+
+More in details, by using recursion (16), Algorithm 1
+
+allows the determination of:  
+
+> •
+
+the sequence ellipsoidal family {E si }; 
+
+> •
+
+the sequence of equilibrium points {xseq 
+
+}; 
+
+> •
+
+the sequence of stabilizing feedback gains {Ks}.Figure 3 provides a graphical representation of the con-struction of a sequence of ellipsoidal inner approximations. Specifically, the figure illustrates a family of ellipsoidal sets, each identified by two indices:  
+
+> •
+
+s, denoting the index of the ellipsoidal family;  
+
+> •
+
+i, indicating the specific ellipsoid within the s-th family. For instance, when s = 4 , the procedure generates a sequence {Es=4 
+
+> i
+
+} centered at x4 and iteratively expands the ellipsoidal regions until the point x3 is included. Next, a new sequence {Es=3 
+
+> i
+
+} is generated, centered at x3, and the process is repeated until the subsequent point is reached. This backward propagation continues through successive families until the initial point x1 is encompassed. 
+
+Algorithm 1 - One-step sequence computation 
+
+Input : x1, x2, sstart ;
+
+Output : {xseq 
+
+}, {Ks}, {E si }, Ns
+
+(1) Given x1 and x2;(2) Design the set E00 centered at x2 and the stabilizing gain 
+
+K0 satisfying constraints (15); (3) Set s = sstart and xseq = x2;(4) While x1 /∈ E N s
+
+> E
+> s
+
+- Derive the sequence {E si }N s 
+
+> E
+> i=1
+
+with initial value Es
+
+> 0
+
+using recursion (16); - xs+1  
+
+> eq
+
+:= argmin 
+
+> x∈E sN s
+> E
+
+‖x − x1‖2;
+
+If xs+1  
+
+> eq
+
+== xseq then stop 
+
+- Compute new pair (Ks+1 , Es+1 0 ) with Es+1 0 the ellipsoidal inner approximations centered at xs+1  
+
+> eq
+
+;- s ← s + 1 ;(5) EndWhile 
+
+(5) Set Ns = s.
+
+Note that, in Algorithm 1 : 
+
+> •
+
+N s 
+
+> E
+
+is an integer representing the saturation level for the region growth of the s family.  
+
+> •
+
+the pair (Ks, Es 
+
+> 0
+
+) are compute via standard LMI tech-niques [7].         
+
+> ego Ob
+> Ob !
+> Fig. 4. Full path generation: ellipsoid set Esisequence (white ellipsoid) generated in response to the presence of the vehicle Ob 1, updated ellipsoid set Esisequence (green ellipsoid) accounting the new vehicle Ob 2, final path (red arrows).
+
+Then, to construct a globally feasible trajectory that con-nects the initial and final configurations while avoiding ob-stacles it is possible to account the procedure described by 
+
+Algorithm 2 . This algorithm recursively exploits Algorithm 1 to the determine the full path by accounting the set of points representing the obstacles, the transitions and and the trajectory to be followed. 
+
+Algorithm 2 - Full path (FP) computation Input : Wp;
+
+Output : F P 
+
+(1) Given the set of points W = [ w1, . . . , w ℓ].(2) Define the full path as the index vector FP; (3) Set Ns = 0 ;(4) For wp = ℓ − 1 : 1 
+
+(a) Set x1 = wwp , x2 = wwp +1 and sstart = Ns;(b) Compute {xseq 
+
+}, {E si }, {Ks} and Ns using Algo-rithm 1 ;(c) F P (wp ) = ({ xseq 
+
+} , {E si } , {Ks});(5) EndFor 
+
+Note that, at the last iteration of Algorithm 2 Ns stores the total number of intermediate paths; It is important to note that, the procedure described by 
+
+Algorithm 1 and 2 can be viewed as a generic procedure that allows one to determine the ellipsoidal family and stabilizing feedback gains given any generic set of points. As an example, with reference to Figure 2 the procedure allows one to:  
+
+> •
+
+determine the ellipsoid sequence {E si } pertain to the way points W = [ w1, . . . , w 6] (red trajectory) that accounts for the presence of the obstacle Ob 1; 
+
+> •
+
+update the ellipsoid sequence {E si } by considering the way points W′ = [w7, . . . , w 6] (blue trajectory) that accounts for the presence of the new obstacle Ob 2;
+
+B. Set-Theoretic RHC for Obstacle Avoidance and Motion Planning 
+
+The aim is to design the final full path (e.g. the red arrows in Figure 4) that enable the vehicle to reach a destination goal. To achieve this, inspired by [6], the accounted approach relies on a strategy that exploitsthree key steps: 1) computing safe controllable zones ( Algorithm 1 ), 2) designing a viable path (Algorithm 2) ,JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 6
+
+3) adapting the route dynamically in response to obstacles. The last step captures real-world conditions that are con-stantly changing and require real-time navigation adjustments. It enables real-time monitoring of the vehicle’s position, verifying whether it remains on a valid and safe path. If a new obstacle appears or the current trajectory becomes unfeasible, the vehicle must dynamically shift to an alternative route, smoothly adapting to unexpected situations without compromising safety. To formally execute this strategy, an online Receding Hori-zon Control (RHC) procedure is required to select the optimal control input at each time step. Before outlining the algorithm, it is essential to define its key operational components. At any time t, the controller must first identify the most appropriate robust invariant safe region containing the current vehicle state 
+
+x(t). This is achieved by searching for the pair of indices 
+
+(s(t), i (t)) - where s denotes the specific path segment family and i indicates the specific ellipsoid within that family -that satisfies the set-membership condition. This search is performed in lexicographic order to prioritize forward progress along the planned route. Once the active ellipsoid is identified, the system evaluates whether the vehicle has reached the local equilibrium point ( i(t) = 0 ). If not, a control action u(t) must be computed to drive the state into the next, smaller inner ellipsoid Es(t)
+
+> i(t)−1
+
+. To ensure rapid progression, the controller minimizes a specific running cost formulated as a min-max optimization problem over the system’s polytopic vertices 
+
+j = 1 , . . . , k . The cost function utilizes the inverse of the shaping matrix, (P s(t) 
+
+> i(t)−1
+
+)−1, which characterizes the target ellipsoid {x ∈ Rn : ( x − xs(t) 
+
+> eq
+
+)T (P s(t)
+
+> i(t)−1
+
+)−1(x − xs(t) 
+
+> eq
+
+) ≤ 1}.Minimizing this norm effectively pushes the predicted state as deeply as possible into the target region, approximating a one-step minimum-time control action [30]. The complete online procedure is summarized in Algorithm 3 .
+
+Algorithm 3 - OAMP Algorithm 
+
+(1) t = 0 ;(2) Solve in lexicographic order with respect to s and i
+
+(s(t), i (t)) = arg min   
+
+> s∈{ 0,...,N s}
+> i∈{ 0,...,N s
+> E}
+
+{A 1}
+
+with: 
+
+A1 = ( s, i ) : ( x(t) − xseq )T (P si )−1(x(t) − xseq ) ≤ 1
+
+(3) If i(t) = 0 then u(t) = Ks(t)(x(t) − xs(t) 
+
+> eq
+
+);(4) Else 
+
+u(t) = argmin umax j ‖B‖ 2(P s(t) 
+
+> i(t)−1)−1
+
+subject to 
+
+B ∈ In 
+
+[
+
+Es(t) 
+
+> i(t)−1
+
+∼ Gdi D
+
+]
+
+,u ∈ U ;
+
+j = 1 , . . . , k 
+
+with: 
+
+B = Φ j (x − xs(t) 
+
+> eq
+
+) + Gj (u − us(t) 
+
+> eq
+
+)       
+
+> B
+> lf
+> lr
+> O
+> XY
+> O
+> xyvx
+> vy
+> Fair
+> Fy21 Fy22
+> Fx22 Fx21
+> Fy11 Fy12
+> Fx11 Fx12
+> δδ
+> ψ
+> (b) (c)
+> Longitudinal axis of the vehicle
+> v
+> Tire
+> δ
+> θα
+> x
+> (a)
+> Fig. 5. Vehicle Dynamic Model (a), Wheel Dynamic Model (b) and Slip Angle α(c).
+
+(5) Apply u(t); t = t + 1 ; go to step (2); 
+
+This online procedure ensures that the vehicle safely nav-igates obstacles while remaining within feasible and control-lable regions, leveraging the precomputed sequences to guide decision-making in real-time. For further analytical details refers to [6]. 
+
+Remark 2 - It is important to note that, the procedure described above, refereed to the particular case reported in Figure 2, can be easily extended to the any general driving scenario. 
+
+IV. V EHICLE MODEL 
+
+This section details the vehicle dynamics modeling. To bridge the gap between rigorous control design and practical real-time implementation, a dual-model architecture is used. First, a high-fidelity 6-DOF nonlinear model [18] is introduced (Figure 5). This model acts as a ”virtual plant” to simulate the real-world vehicle physics during validation, testing the controller against complex unmodeled dynamics. Second, a simplified bicycle model describing planar motion is utilized (Figure 6). Moreover, this simplified model is embedded into an uncertain polytopic system and used strictly to construct the sequences of robustly control-invariant ellipsoidal sets and local feedback gains during the design phase. By separating the high-fidelity simulation model from the simplified control-oriented model, the proposed approach ensures mathematical robustness while maintaining the low computational footprint required for real-time execution For geometric parameters, forces, and reference frames, see Figures 5 and 6. 
+
+A. 6-DOF Non-Linear Vehicle Model 
+
+Figure 5(a) illustrates the body ( x0y) and world ( X0Y )reference frames. According to Newton’s second law, the JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 7
+
+vehicle’s longitudinal, lateral, and yaw dynamics take the following form: 
+
+
+
+m¨x = Fx21 + Fx22 + ( Fx11 + Fx12 ) cos( δ)+ 
+
+−(Fy11 + Fy12 ) sin( δ) + m ˙ψ ˙y − Fair 
+
+m¨y = Fy21 + Fy22 + ( Fx11 + Fx12 ) sin( δ)+ +( Fy11 + Fy12 ) cos( δ) − m ˙ψ ˙x
+
+Iz ¨ψ = [( Fx11 + Fx12 ) sin( δ) + ( Fy11 + Fy12 ) cos( δ)] lf ++[( Fx12 − Fx11 ) cos( δ) + ( Fy11 − Fy12 ) sin( δ)] B 
+
+> 2
+
++
+
+−(Fy21 + Fy22 )lr + ( Fx22 − Fx21 ) B
+
+> 2
+
+(17) 
+
+Note that, the index i indicates the axes ( i = 1 for the front axis and i = 2 for the rear axis) whilst j indicates the wheel (j = 1 for the left wheels and j = 2 for the right wheels); The body coordinates ˙x, ˙y and ψ are then transformed into the world coordinates ˙X and ˙Y as follows 
+
+{ ˙X = ˙x cos( ψ) − ˙y sin( ψ)˙Y = ˙x sin( ψ) + ˙ y cos( ψ) (18) Moreover, with reference to Figure 5(b), it is possible to obtain the dynamic models of the front and rear wheel rotations 1 as [18] { Iw ˙ω1j = T1j − Fx1j R j = 1 , 2
+
+Iw ˙ω2j = −Fx2j R j = 1 , 2 (19) where also in this case j indicates the wheel. The longitudinal and lateral forces on the tire can be computed using Pacejka’s Magic Formula [18]. In this context, it is essential to introduce the concepts of slip angle and slip ratio. Referring to Figure 5(c), the slip angle for each wheel is defined as follows: 
+
+
+
+α11 = δ − arctan 
+
+( ˙y+lf ˙ψ  
+
+> ˙x−B˙ψ
+> 2
+
+)
+
+, α12 = δ − arctan 
+
+( ˙y+lf ˙ψ  
+
+> ˙x+B˙ψ
+> 2
+
+)
+
+α21 = arctan 
+
+( lr ˙ψ− ˙y  
+
+> ˙x−B˙ψ
+> 2
+
+)
+
+, α22 = arctan 
+
+( lr ˙ψ− ˙y  
+
+> ˙x+B˙ψ
+> 2
+
+)
+
+(20) 
+
+On the other side, the slip ratio is defined as 
+
+σxij =
+
+{ Rω ij − ˙xij  
+
+> Rω ij
+
+, Rω > ˙x (Acceleration )   
+
+> Rω ij −˙xij
+> ˙xij
+
+, Rω < ˙x (Braking ) , i, j = 1 , 2
+
+(21) where the longitudinal velocity of each wheel ( ˙xij ) is defined as 
+
+˙x11 =
+
+(
+
+˙x − B ˙ψ
+
+> 2
+
+)
+
+cos δ +
+
+(
+
+˙y + lf ˙ψ
+
+)
+
+sin δ
+
+˙x12 =
+
+(
+
+˙x + B ˙ψ
+
+> 2
+
+)
+
+cos δ +
+
+(
+
+˙y + lf ˙ψ
+
+)
+
+sin δ
+
+˙x21 = ˙x − B ˙ψ
+
+> 2
+
+˙x22 = ˙x + B ˙ψ
+
+> 2
+
+(22) The mathematical expression of the tire forces exchanged with the road is given by the sinusoidal version of the Magic Formula [35] 
+
+F (k) = D sin( C arctan( Sk − E(Sk − arctan( Sk )))) + SV
+
+(23) with 
+
+k = K + SH (24)  
+
+> 1We consider a front-wheel drive vehicle
+
+In eq. (23), depending on the type of motion considered (longitudinal or lateral), F represents either the longitudinal force Fx or the lateral force Fy , while K represents the Slip Ratio σx or the Slip Angle α. Note that the parameters of the Magic Formula can be found in [18]. 
+
+B. Vehicle bicycle model 
+
+According to Figure 6, it is possible to derive a three degrees of freedom vehicle bicycle model, where the degrees of freedom are represented by the vehicle longitudinal ( x) and lateral ( y) positions and the vehicle yaw angle ( ψ) [31]. In particular, the longitudinal, lateral and yaw dynamics can be obtained starting from Newton’s second law for motion along the x-axis, y-axis and by balancing the moments around the vertical z-axis: 
+
+m¨x = Fxf + Fxr (25) 
+
+m¨y = Fyf + Fyr (26) 
+
+Iz ¨ψ = lf Fyf − lr Fyr (27) where, m and Iz denote the vehicle mass and yaw inertia, lf , l r
+
+the distances from the center of gravity (CoG) to the front/rear axles, while Fi,j (with i ∈ { x, y }, j ∈ { f, r }) represents the longitudinal/lateral tire forces. Finally, ˙ψ is the yaw rate, and 
+
+δ is the steering angle. It is important to note that, in eq. (26)   
+
+> lflr
+> OXY
+> O
+> xy
+> Fxr
+> δ
+> ψ
+> θvf
+> v
+> θvr
+> Fig. 6. Vehicle lateral bicycle model. ( x, y ) body coordinates, ( X,Y) world coordinates.
+
+two terms contribute to the lateral acceleration ( ay ): 1) ¨y, the acceleration due to the motion along the y-axis; 2) ˙x ˙ψ, the centripetal acceleration. Moreover, the lateral tire forces are proportional to the slip angle, which is defined as the angle between the tire’s ori-entation and the direction of the wheel’s velocity vector (see Figure 5(c)). Furthermore, by introducing:  
+
+> •
+
+the steering angle δ; 
+
+> •
+
+the longitudinal velocity ˙x; 
+
+> •
+
+the Cornering Stiffness parameters Cαf and Cαr ; 
+
+> •
+
+the front and rear tire velocity angle θvf and θvr ;and, by assuming a small-angle approximation [32] that allows one to define 
+
+θvf ≈ ˙y − lf ˙ψ
+
+˙x , θvr ≈ ˙y − lr ˙ψ
+
+˙x (28) JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 8
+
+Then, eqs. (26)-(27) can be written as 
+
+
+
+m(¨ y + ˙ψ ˙x) = 2Cαf (δ − θvf )
+
+︸ ︷︷ ︸
+
+> Fyf
+
++ 2 Cαf (−θvr )
+
+︸ ︷︷ ︸
+
+> Fyr
+
+Iz ¨ψ = lf 2Cαf (δ − θvf )
+
+︸ ︷︷ ︸
+
+> Fyf
+
+−lr 2Cαf (−θvr )
+
+︸ ︷︷ ︸
+
+> Fyr
+
+(29) that leads to 
+
+
+
+¨y =
+
+(
+
+− ˙x − 2Cαf lf − 2Cαr lr
+
+m ˙x
+
+)
+
+˙ψ +
+
+(
+
+− 2Cαf + 2 Cαr 
+
+mvx
+
+)
+
+˙y+
+
+( 2Cαf 
+
+m
+
+)
+
+δ
+
+¨ψ =
+
+(
+
+− 2l2 
+
+> f
+
+Cαf − 2l2 
+
+> r
+
+Cαr 
+
+Iz ˙x
+
+)
+
+˙ψ +
+
+(
+
+− 2lf Cαf − 2lr Cαr 
+
+Iz ˙x
+
+)
+
+˙y+
+
+( 2lf Cαf 
+
+Iz
+
+)
+
+δ
+
+(30) 
+
+Note also that the lateral position y expressed in the body coordinates can be transformed in the world coordinates as follows ˙Y = ˙ y cos( ψ) + ˙x sin( ψ), (31) that, due to small angle approximation, simplifies to 
+
+˙Y ≈ ˙y + ˙xψ. (32) In addition, to rigorously analyze lateral motion in autonomous driving scenarios, such as overtaking, it is necessary to in-troduce the lateral relative distance concept. Specifically, the variables yrel and ˙yrel represent, respectively, the lateral distance and speed difference between the current vehicle (ego car) and the preceding vehicle (lead car): 
+
+yrel = Yego − Ylead , (33) 
+
+˙yrel = ˙Yego − ˙Ylead = ˙ y + ˙xψ − ˙Ylead . (34) where:  
+
+> •
+
+Yego and ˙Yego denote the lateral position and speed of the ego car;  
+
+> •
+
+Ylead and ˙Ylead denote the lateral position and speed of the lead car. 
+
+C. Longitudinal vehicle dynamics 
+
+The characterization of the vehicle’s longitudinal motion, can be done by accounting the following simplified equation 
+
+¨x = ˙∆vx = ˙ y ˙ψ + ¨ xdes , (35) which implies that the vehicle longitudinal acceleration ¨x can be obtained as the sum of two contributions:  
+
+> •
+
+¨xdes , the desired vehicle acceleration (e.g. due to adriving or braking force imposed by a control system)  
+
+> •
+
+˙y ˙ψ, the coupling term representing the effect of lateral dynamics on longitudinal dynamics. Note also that the lateral position x expressed in the body coordinates can be transformed in the world coordinates as follows ˙X = ˙ x cos( ψ) − vy sin( ψ), (36) that, due to small angle approximation, simplifies to 
+
+˙X ≈ ˙x − ˙yψ. (37) Moreover, to better analyze the vehicle longitudinal motion in autonomous vehicle’s context (e.g. an overtaking maneuver), it is necessary to introduce the longitudinal relative distance 
+
+xrel and velocity ˙xrel , that are the distance and the speed difference between the current vehicle (named ego car ) and a preceding vehicle (named lead car ): 
+
+xrel = Xego − Xlead , (38) 
+
+˙xrel = ˙Xego − ˙Xlead . (39) where:  
+
+> •
+
+Xego and ˙Xego represent the longitudinal position and speed of the ego car;  
+
+> •
+
+Xlead and ˙Xlead are the longitudinal position and speed of the lead car. In addition, the longitudinal speeds ˙xego and ˙xlead can be expressed as 
+
+˙xego = ¯ vx + ∆ vego x ; ˙xlead x = ¯ vx + ∆ vlead x ; (40) where ¯vx is the nominal velocity and ∆vego x and ∆vlead x rep-resent a variation on vehicles cruise velocities. By combining the two equations in (40), the relative velocity can be rewritten as 
+
+˙xrel = ˙xego − ˙xlead = (¯ vx + ∆ vego x ) − (¯vx + ∆ vlead x
+
+)
+
+= ∆vego x − ∆vlead x .
+
+(41) This formulation highlights that the relative velocity depends only on vehicles’ velocity variations. 
+
+D. Non-linear state-space representation 
+
+By considering eqs. (30), (34),(35) and (41) and the systems vectors  
+
+> •
+
+x =
+
+[
+
+∆vego x , ˙y, ψ, ˙ψ, yrel , xrel 
+
+]T
+
+∈ R6×1, the plant state;  
+
+> •
+
+u = [δf , ¨xdes ]T ∈ R2×1, the manipulable inputs;  
+
+> •
+
+d =
+
+[ ˙Y lead , ∆vlead x
+
+]
+
+∈ R2×1, the disturbance;  
+
+> •
+
+y =
+
+[
+
+˙x, ˙y, ψ, ˙ψ, yrel , xrel 
+
+]T
+
+∈ R6×1, the measured output; the following non-linear state-space representation of the lon-gitudinal and lateral vehicle dynamics can be achieved 
+
+
+
+˙x1 = x2x4 + u2
+
+˙x2 =
+
+(
+
+− 2Cαf + 2 Cαr 
+
+M (¯ v + x1)
+
+)
+
+x2 +
+
+( 2Caf 
+
+M
+
+)
+
+u1+
+
+(
+
+− (¯ v + x1) − 2Cαf lf − 2Cαr lr
+
+M (¯ v + x1)
+
+)
+
+x4
+
+˙x3 = x4
+
+˙x4 =
+
+(
+
+− 2lf Cαf − 2lrCαr 
+
+Iz (¯ v + x1)
+
+)
+
+x2 +
+
+( 2lf Cαf 
+
+Iz
+
+)
+
+u1+
+
+(
+
+− 2l2 
+
+> f
+
+Cαf − 2l2 
+
+> r
+
+Cαr 
+
+Iz (¯ v + x1)
+
+)
+
+x4
+
+˙x5 = x2 + (¯ v + x1) x3 − d1
+
+˙x6 = x1 − d2
+
+(42) JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 9                                                             
+
+> Φ =
+> 
+> 0γ20000
+> −γ2−γ3
+> 2Cαf + 2 Cαr
+> M0−
+> (
+> ¯v+ 2Cαf lf−2Cαr lr
+> Mγ3
+> )
+> 000001000−2lfCαf −2lrCαr
+> Iz
+> γ30−2l2
+> fCαf −2l2
+> rCαr
+> Iz
+> γ300
+> γ11¯v000100000
+> 
+> ;G
+> 
+> 012Cαf
+> M0002lfCaf
+> Iz
+> 00000
+> 
+> ;
+> Gd
+> 
+> 00000000
+> −100−1
+> 
+> ;
+> C=I6×6.
+> (43)
+
+Remark 3 - Note that, the exogenous disturbance vector d
+
+explicitly models the real-world, dynamic, and unpredictable actions of the surrounding traffic (i.e., the dynamic obstacles) with the possibility to include sensor noise as well. Specifically, it quantifies the variations in the lead vehicle’s longitudinal speed and lateral position. E. Embedded model 
+
+The control objective is to execute an overtaking maneuver by regulating the steering angle ( u1) and longitudinal acceler-ation ( u2). To enable a linear control design, the non-linear dynamics (42) are mapped into a convex polytopic struc-ture via a Quasi-LPV (Linear Parameter-Varying) embedding. This procedure reformulates the non-linearities into a set of bounded, state-dependent scheduling parameters, yielding a pseudo-linear state-space realization suitable for robust ST-FE-MPC synthesis. By analyzing the non-linear vehicle dynamics (42), it is evident that the non-linearities stem primarily from two sources: the multiplication between state variables (e.g., the coupling terms x2x4) and the rational fractions caused by the time-varying longitudinal velocity term 1/(¯ v + x1).To achieve an exact pseudo-linearization of the state-space equations without introducing approximation errors, we sys-tematically isolate these specific non-linear terms and define the following time-varying scheduling parameters: 
+
+γ1 = x3, γ2 = x4, γ3 = 1 /(¯ v + x1), (44) By algebraically substituting the definitions (44) back into the non-linear equations, the state multiplications and ra-tional fractions are factored out from the state vector. For instance, the non-linear coupling term x2x4 in the longitudinal dynamics is factored as γ2x2. This systematic substitution allows us to exactly rewrite the original non-linear system as the following parameter-dependent state-space realization 
+
+˙x(t) = Φ( γ(t)) x(t) + Gu (t) + Gdd(t):
+
+
+
+˙x1 = γ2x2 + u2
+
+˙x2 = −γ2x1 + γ3
+
+(
+
+− 2Cαf + 2 Cαr 
+
+M
+
+)
+
+x2 +
+
+( 2Cαf 
+
+M
+
+)
+
+u1−
+
+(
+
+¯v + 2Cαf lf − 2Cαr lr
+
+M γ3
+
+)
+
+x4
+
+˙x3 = x4
+
+˙x4 = γ3
+
+(
+
+− 2lf Cαf − 2lr Cαr 
+
+Iz
+
+)
+
+x2 +
+
+( 2lf Cαf 
+
+Iz
+
+)
+
+u1+
+
+γ3
+
+(
+
+− 2l2 
+
+> f
+
+Cαf − 2l2 
+
+> r
+
+Cαr 
+
+Iz
+
+)
+
+x4
+
+˙x5 = γ1x1 + x2 + ¯ vx3 − d1
+
+˙x6 = x1 − d2
+
+(45) 
+
+With this formulation, the state-dependent non-linearities are completely embedded within the matrix Φ( γ). Consequently, by assuming that the parameters γ1, γ 2, and γ3 are bounded within known minimum and maximum operational limits: 
+
+γi,min ≤ γi(t) ≤ γi,max , i = 1 , 2, 3 (46) the infinite-dimensional Quasi-LPV system (45), characterized by the system matrices (43), can be bounded by a finite convex polytope defined by its 23 = 8 vertices by introducing the following auxiliary normalized function 
+
+ρ1 = γ1 − γ1 min 
+
+γ1 max − γ1 min 
+
+, ρ2 = γ2 − γ2 min 
+
+γ2 max − γ2 min 
+
+,ρ3 = γ3 − γ3 min 
+
+γ3 max − γ3 min 
+
+,
+
+(47) that satisfies 0 ≤ ρi ≤ 1, i = 1 , . . . , 3 and are instrumentals to define the matrix vertices of the following uncertain polytopic model: { ˙x = Φ( p)x + Gu + Gddy = Cx ; (48) with 
+
+p = [ p1, . . . , p 8]T (49) and 
+
+[ Φ( p) G Gd
+
+C 0 0
+
+]
+
+:= 
+
+
+
+> l
+
+∑
+
+> i=1
+
+pi
+
+[ Φi G GC 0 0
+
+]
+
+,
+
+0 ≤ pi ≤ 1, l∑
+
+> i=1
+
+pi = 1 
+
+
+
+∈ Co 
+
+{[ Φ1 G Gd
+
+C 0 0
+
+]
+
+, . . . , 
+
+[ Φ8 G Gd
+
+C 0 0
+
+]} 
+
+(50) 
+
+Remark 4: The parameters γ1,2,3 treat intrinsic state-dependent nonlinearities as bounded, time-varying uncertain-ties. This polytopic structure encapsulates the complex vehi-cle kinematics and dynamics during maneuvers, rather than representing uncertainties in physical parameters (e.g., mass, friction) or external environmental factors. V. S IMULATIONS 
+
+This section validates the proposed control strategy for safe, collision-free overtaking under dynamic constraints. The framework was initially implemented in MATLAB/Simulink using the Automated Driving Toolbox (ADT) to integrate sensor fusion and path planning with a 6-DOF nonlinear vehicle model. Subsequently, high-fidelity co-simulations were conducted in the CARLA 3D environment to rigorously test the controller against realistic physics, unmodeled dynamics, and complex traffic scenarios. JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 10  
+
+> S t a r t
+> O b s t a c l e d e t e c t e d ?
+> P ro ce e d a t c r u i s e s p e e d
+> N o
+> M a i n t a i n c r u i s e s p e e d a n d s a f e d i s t a n c e
+> Yes
+> Continue monitoring
+> Is trajectory c o m p u t e d ?
+> C o m p u t e f e a s i b l e overtaking trajectory
+> N o
+> Activate overtaking m a n e u v e r
+> Yes
+> Fig. 7. Control logic: flow chart.
+
+A. Simulation Framework 
+
+The 6-DOF model is discretized with a 0.1s sampling time. During the real-time closed-loop operation, the proposed Set-Theoretic MPC samples the current state of the 6-DOF virtual plant and evaluates it against the robust invariant ellipsoidal sequences (derived from the simplified model). Based on this set-membership evaluation, the algorithm computes the optimal steering angle δf and longitudinal acceleration ˙xdes ,which are then fed-back into the 6-DOF model to dynamically update the vehicle’s trajectory. An ADT-simulated radar enables the ego vehicle to maintain safe distances from preceding vehicles through adaptive speed regulation. Moreover, the ego vehicle embedded polytopic model (48) was defined by the following parameter bounds: 
+
+{
+
+− π
+
+2 ≤ γ1 ≤ π
+
+2 , −2 ≤ γ2 ≤ 2, 0.03 ≤ γ3 ≤ 0.1 (51) Furthermore, to guarantee robust obstacle avoidance, the se-quence of invariant ellipsoidal sets was computed by assum-ing a bounded compact disturbance set D. Specifically, the disturbances-representing the unpredictable lateral and longitu-dinal speed variations of the leading vehicles-were rigorously quantified and bounded as: 
+
+D := 
+
+{
+
+d ∈ R2 : | ˙Y lead | ≤ 0.5 [m/s] , |∆vlead x | ≤ 1.5 [m/s] 
+
+}
+
+(52) These quantitative bounds ensure that the generated feasible trajectories remain strictly safe as long as the target vehicles maneuver within these velocity variation limits. In what fol-lows, two simulation scenario, referring to highway overtaking maneuver, are presented. Since the objective is to ensure safety and smooth behavior during overtaking, to determine the state-feedback control law (14), the following state and input constraints (6) are considered for the first simulation: 
+
+
+
+− 0.5 ≤ u1 ≤ 0.5, −2 ≤ u2 ≤ 2, −10 ≤ x1 ≤ 10 ,
+
+− π
+
+2 ≤ x3 ≤ π
+
+2 , −2 ≤ x4 ≤ 2, −3 ≤ x5 ≤ 3,
+
+12 ≤ | x6| ≤ 50 .
+
+(53) It is important to note that the last constraint in (53) ensures 
+
+> 8 [m]
+> 4 [m]
+
+50 [m] 
+
+ego lead 4 2 0 -2  -4 
+
+> 2 [m]
+
+ego  
+
+> Fig. 8. Scenario 1 - ego (blue) and lead (red) cars.
+
+a safe distance between the ego vehicle and any vehicle that may suddenly appear in its path. This constraint plays a critical role in enhancing safety, particularly during dynamic scenarios such as overtaking, lane changes, or when a new obstacle enters the ego vehicle’s lane unexpectedly. By enforcing this condition and by exploiting radar information, the controller is able to proactively reduce the risk of collisions through timely adjustments to the vehicle’s trajectory and speed. Furthermore note that, for the second scenario, the constraint on state x5
+
+in (53) is replaced by: 
+
+{ −5 ≤ x5 ≤ 5 (54) The constraints on x5 ensure safe lateral margins relative to the road geometry, distinguishing between the two-lane structure of Scenario 1 and the three-lane road of Scenario 2. Under these conditions, we evaluate control performance in two increasingly complex scenarios, assuming environmental awareness via V2X or on-board sensors. Figure 7 illustrates the control logic. Following initialization, the vehicle maintains cruise speed until a slower lead vehicle is detected, triggering a safe following mode. An overtaking maneuver is executed only upon the successful computation of a feasible trajectory; otherwise, the vehicle persists in safe following. This logic ensures that overtaking occurs only when valid planning guarantees safety, allowing the system to continuously adapt to dynamic traffic. 
+
+B. Scenario 1: Standard Highway Overtaking 
+
+This scenario involves a two-lane highway where the ego vehicle overtakes a slower lead vehicle (Fig. 8). The road consists of two 4 [m] lanes ( 8 [m] total width), with the ego vehicle initially positioned at Y = −2 [m] (center of the right lane). The lead vehicle acts as a dynamic obstacle traveling at a constant speed of ˙xlead = 20 [m/s] ( 72 [km/h]). The maneuver initiates at a relative longitudinal distance of xrel = 50 [m], providing sufficient clearance for a safe transition to the left overtaking lane. JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 11   
+
+> -5 05
+> Y [m]
+> -60 -40 -20 020 40 60
+> xrel [m]
+> Fig. 9. Scenario 1 - saturation region related to lateral position in the global reference frame ( x5) and relative distance ( x6), initial (red circle in the green rectangle) and final position (green circle in the cyan rectangle) of the ego car, lead car position (magenta rectangle), constraints on lateral position (dashed blue line), road lines (black lines and black dashed line) and ego vehicle trajectory (green line).
+
+Based on the above scenario configuration, we define the initial state as 
+
+x0 = [ 0 0 0 0 −2 −50 ]T (55) whereas the final state is set as 
+
+xf = [ 0 0 0 0 −2 50 ]T (56) This configuration ensures that, after completing the overtak-ing maneuver, the ego vehicle is positioned 50 meters ahead of the lead vehicle. Figure 9 reports the saturation region related to lateral position in the global reference frame ( x5) and relative dis-tance ( x6), the initial (red circle in the green rectangle) and final position (green circle in the cyan rectangle) of the ego car, the ego car position (green rectangle initial position, cyan rectangle final position), the lead car position (magenta rectangle), the constraints on lateral position (dashed blue line) and the road lines (black lines and black dashed line). Note also that the obstacle free region is so that the vehicles dimension are accounted as an obstacle. Consequently, the safe space, represented by the magenta dashed rectangle, is treated as an obstacle during the overtaking maneuver. In this scenario, the ego vehicle travels straight until radar detects a sudden obstacle, triggering deceleration. Upon com-puting a feasible trajectory, it executes a left lane change to overtake and proceeds to the target. All relevant results for this simulation scenario have been reported in Figures 10-13. In particular, Figure 10 illustrates the evolution of the signal 
+
+i(t), which represents the smallest ellipsoid that contains the current vehicle state x(t). This signal provides insight into the contraction properties of the control algorithm, ensuring that the vehicle remains within a feasible and safe trajectory throughout the maneuver. The strictly monotonic decrease of the switching signal empirically validates the recursive feasibility of the algorithm, ensuring that the vehicle remains within the safe invariant regions throughout the maneuver. Furthermore, it guarantees the finite-time completion of the overtaking sequence. The controller deterministically steers the vehicle from the outermost perturbed ellipsoid to the target invariant set, providing formal safety guarantees during execu-tion. From a control performance perspective, as illustrated in Fig. 11, the ST-FE-MPC generates smooth, chatter-free input                                   
+
+> 020 40 60 80 100
+> Time [s]
+> 0500 1000 1500 2000
+> i(t)
+> Switchig signal
+> Fig. 10. Scenario 1 - signal i(t).
+> 020 40 60 80 100
+> Time [s]
+> -0.5 00.5
+> u1(t) [rad]  u1
+> u1,min
+> u1,max
+> 45 50 55 60 65
+> -0.01 00.01 0.02
+> 020 40 60 80 100
+> Time [s]
+> -2 02
+> u2(t) [m/s 2] u2
+> u2,min
+> u2,max
+> Fig. 11. Scenario 1 - command inputs u1(t)and u2(t).
+> 020 40 60 80 100
+> Time [s]
+> -10 010
+> x1(t) [m/s]  x1
+> x1,min
+> x1,max
+> 020 40 60 80 100
+> Time [s]
+> -2 02
+> x3(t) [rad]  x3
+> x3,min
+> x3,max
+> 45 50 55 60 65
+> -10 -5 0
+> 10 -3
+> Fig. 12. Scenario 1 - states ( x1and x3) evolution.
+
+profiles that strictly respect the predefined physical bounds (±0.5 rad for steering and ±2 m/s 2 for acceleration). This demonstrates that the proposed strategy is fully compliant with real-world actuator limitations and passenger comfort require-ments, effectively eliminating aggressive control chattering. JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 12              
+
+> 020 40 60 80 100
+> -2 02
+> x4(t) [rad/s]  x4
+> x4,min
+> x4,max
+> 45 50 55 60 65
+> -0.02 00.02
+> 020 40 60 80 100
+> Time [s]
+> -2 02
+> x5(t) [m]  x5
+> x5,min
+> x5,max
+> Fig. 13. Scenario 1 - states ( x4and x5) evolution.
+
+On the other hand, Figures 12-13 show the state ( x1, x3, x4
+
+and x5) evolution related to this realizations. It is important to note that, because the proposed framework allows to avoid the aggressive control saturation that typically affects standard optimization-based controllers, consequently, as shown in the state evolutions (Figures 12 and 13), the vehicle performs a seamless lateral transition ( x5) with minimal yaw rate oscil-lations ( x4), ensuring passenger comfort and strict trajectory adherence. Finally, the vehicle trajectory is reported in Figure 9 (green line). The presented results clearly demonstrate that the ve-hicle successfully performs a safe overtaking maneuver while ensuring compliance with the constraints given in (53). 
+
+C. Scenario 2: Multi-Vehicle Dynamic Overtaking  
+
+> 4 [m]
+> 80 [m]
+> lead 2
+> lead 1
+> 50 [m]
+> ego
+> 12 [m] 6 4 2 0 -2  -4  -6
+> 2 [m]
+> ego
+> ego
+> Fig. 14. Scenario 2 - ego (blue) and lead (red and green) cars.
+
+Scenario 2 increases complexity by introducing a three-lane road ( 12 m total width) and a second dynamic obstacle to test real-time re-planning (Fig. 14). Initially, the ego vehicle is centered in the right lane ( Y = −4 [m]), with lead car 1 ( Ob 1)at xrel = 50 [m] and lead car 2 ( Ob 2) in the middle lane at xrel = 80 m. While Ob 1 maintains a constant speed of 
+
+20 [m/s], Ob 2 exhibits dynamic variations, accelerating from 
+
+19 [m/s] to 20 [m/s] as it aligns with Ob 1. This setup forces the controller to adapt its trajectory mid-maneuver to account for the evolving obstacle configuration and varying relative velocities. Based on this scenario configuration, we define the initial state as: 
+
+x0 = [ 0 0 0 0 −4 −40 ]T (57) whereas the final state is set as: 
+
+xf = [ 0 0 0 0 −4 50 ]T (58) This test account an obstacle scenario consisting of two  
+
+> -5 05
+> Y [m]
+> -60 -40 -20 020 40 60
+> xrel [m]
+> Fig. 15. Scenario 2 - saturation region related to lateral position in the global reference frame ( x5) and relative distance ( x6), initial (red circle in the green rectangle) and final position (green circle in the cyan rectangle) of the ego car, lead cars position (magenta rectangle), constraints on lateral position (dashed blue line), road lines (black lines and black dashed line) and ego vehicle trajectory (yellow/green line).
+
+object, i.e. lead cars 1 and 2. In particular this setting provide that the ego vehicle, to avoid collision with the lead car 1, starts an overtaking maneuver by shifting into the center lane by exploiting the feasible trajectory defined thanks to the sequence described by the red ellipsoid in Figure 15. During this maneuver, while the ego vehicle is traveling in the center lane, the second vehicle appears in the same lane. The presence of this new car invalidates the originally planned trajectory. Consequently, the planned trajectory is updated so that the ego vehicle can shift into the leftmost lane, exploiting the feasible path defined by the sequence described by the red ellipsoids in Figure 15. Moreover, as the radar sensor detects a decreasing distance to the vehicle ahead, the controller adaptively reduces the ego vehicle’s speed to preserve a safe following distance throughout the maneuver. All relevant results for this simulation scenario are presented in Figures 16-20. In particular, Figure 16 illustrates the signal 
+
+i(t), which allows the analysis of the contraction level induced by the control algorithm throughout the system’s evolution. Notably, this figure highlights the evolution of the signal i(t)
+
+across the sequences (red band pertain to the initial set se-quence while the blue band refers to the update set sequence). Meanwhile, Figure 17 presents the command inputs, while Figures 18-19 depict the state evolution of x1, x3, x4, and x5
+
+for these realizations. Moreover, pay attention to Figure 20. This figure highlights the controller’s capability to reduce the ego vehicle’s speed in order to avoid a collision with two ap-proaching vehicles in the same lane. In particular, this scenario requires the ego vehicle to execute a sequential overtaking maneuver: first avoiding lead car 1, and immediately evading a suddenly appearing lead car 2 while the initial action is still in progress. As a result, the ego vehicle reduces its speed and shifts into the leftmost lane. Furthermore, this scenario serves JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 13 
+
+as a quantitative evaluation of the system’s robustness against the defined disturbance effects. When lead car 2 unexpectedly accelerates from 19 [m/s] to 20 [m/s], it explicitly induces a longitudinal disturbance d2(t) = ∆ vlead x 6 = 0 into the ego vehicle’s relative dynamics. The performance shown in Figure 18 demonstrates that the ST-FE-MPC algorithm seamlessly re-jects this quantitative disturbance; the ego vehicle dynamically adjust its deceleration (Figure 17) to restore the target relative velocity without violating the physical input constraints or breaching the minimum safe relative distance. Finally, the vehicle trajectory is shown in Figure 15. The results clearly demonstrate that the vehicle successfully exe-cutes a safe overtaking maneuver while ensuring compliance with the constraints defined in (53) 2.      
+
+> 020 40 60 80 100 120
+
+Time [s] 
+
+> 0500 1000 1500 2000 2500 3000
+> i(t)
+
+Switchig signal 
+
+Fig. 16. Scenario 2 - signal i(t).      
+
+> 020 40 60 80 100 120
+
+Time [s]       
+
+> -0.5 00.5
+> u1(t) [rad]  u1
+> u1,min
+> u1,max
+> 45 50 55 60 65
+> -0.01 00.01 0.02
+> 020 40 60 80 100 120
+
+Time [s] 
+
+> -2 02
+> u2(t) [m/s 2] u2
+> u2,min
+> u2,max
+
+Fig. 17. Scenario 2 - command inputs u1(t) and u2(t).
+
+D. High-Fidelity Validation and Performance Evaluation 
+
+To rigorously assess the practical viability and the engineer-ing performance of the proposed ST-FE-MPC strategy beyond  
+
+> 2
+
+Simulation results obtained using the Automated Driving Toolbox (ADT) are available at the following link: https://youtu.be/To5bNUW5gu8.       
+
+> 020 40 60 80 100 120
+
+Time [s]       
+
+> -10 010
+> x1(t) [m/s]  x1
+> x1,min
+> x1,max
+> 020 40 60 80 100 120
+
+Time [s] 
+
+> -2 02
+> x3(t) [rad]  x3
+> x3,min
+> x3,max
+> 45 50 55 60 65
+> -0.01 00.01
+
+Fig. 18. Scenario 2 - states ( x1 and x3) evolution.             
+
+> 020 40 60 80 100 120
+> -2 02
+> x4(t) [rad/s]  x4
+> x4,min
+> x4,max
+> 45 50 55 60 65
+> -0.02 00.02
+> 020 40 60 80 100 120
+
+Time [s] 
+
+> -5 05
+> x5(t) [m]  x5
+> x5,min
+> x5,max
+
+Fig. 19. Scenario 2 - states ( x4 and x5) evolution.       
+
+> 020 40 60 80 100 120
+
+Time [s]       
+
+> 012
+> x1(t) [m/s]
+> 020 40 60 80 100 120
+
+Time [s] 
+
+> -50 050
+> x7(t) [m]
+
+Fig. 20. Scenario 2 - states ( x1 and x7) evolution. The green band highlights the simulation interval during which the ego car decreases its speed to avoid a collision with the second lead car. 
+
+idealized mathematical environments, the control framework was validated using CARLA, a state-of-the-art open-source 3D simulation benchmark [36]. By interfacing the control logic with CARLA’s high-fidelity physical engine, the ego vehicle JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 14 
+
+was exposed to realistic unmodeled dynamics, variable tire-road friction, and precise 3D spatial constraints (Fig. 21). Within this environment, a comparative study was conducted against a baseline Non-Linear MPC (NLMPC) scheme across the dynamic maneuvers described in Scenarios 1 and 2. The controller’s effectiveness is demonstrated across three critical domains:  
+
+> •
+
+Actuator Feasibility and Passenger Comfort: In both scenarios, the control inputs were strictly bounded to ensure stability. The steering angle u1(t) never exceeded ±0.5 rad, and the longitudinal acceleration u2(t) was maintained within [-2, 2] m/s², preventing aggressive saturation and ensuring smooth trajectories.  
+
+> •
+
+Strict Safety Guarantees: The distance to leading vehicles (x6) never dropped below the 12 m threshold, acting as a robust, mathematically certified Time-to-Collision (TTC) guarantee even under dynamic disturbances.  
+
+> •
+
+Maneuver Efficiency: The operational efficiency is demonstrated by the rapid, monotonic decrease of the switching signal i(t), guaranteeing maneuver completion within a mathematically bounded timeframe. The comparative tracking performance is visually reported in Figs. 22-25. The evolution of tracking errors (Figs.   
+
+> Carla UE4 Carla UE4
+> (a) (b)
+
+Fig. 21. CARLA Validation - Scenario 1 (a) and Scenario 2 (b).      
+
+> 020 40 60 80 100
+
+Time [s]      
+
+> -0.02 00.02
+> x3(t) [rad]  x3,ref
+> x3
+> x3,mpc
+> 020 40 60 80 100
+
+Time [s] 
+
+> -2 02
+> x5(t) [m]  x5,ref
+> x5
+> x5,mpc
+
+Fig. 22. Scenario 1 (CARLA) - Comparison: yaw angle ( x3(t)) and lateral position ( x5(t)). Blue: reference, red dashed: ST-FE-MPC, green dashed: NLMPC. 
+
+23 and 25) confirms convergence toward zero and robust disturbance rejection, with minimal transient peaks during dynamic disturbances in Scenario 2. Moreover, to provide a      
+
+> 020 40 60 80 100
+
+Time [s]      
+
+> 00.005 0.01
+> e3(t)
+> e3
+> e3,mpc
+> 020 40 60 80 100
+
+Time [s] 
+
+> 00.05 0.1
+> e5(t)
+> e5
+> e5,mpc
+
+Fig. 23. Scenario 1 (CARLA) - Comparison: orientation ( e3(t)) and lateral (e5(t)) errors. Blue: ST-FE-MPC, red dashed: NLMPC.       
+
+> 020 40 60 80 100 120
+
+Time [s]       
+
+> -0.02 00.02
+> x3(t) [rad]  x3,ref
+> x3
+> x3,mpc
+> 020 40 60 80 100 120
+
+Time [s] 
+
+> -5 05
+> x5(t) [m]  x5,ref
+> x5
+> x5,mpc
+
+Fig. 24. Scenario 2 (CARLA) - Comparison: yaw angle ( x3(t)) and lateral position ( x5(t)). Blue: reference, red dashed: ST-FE-MPC, green dashed: NLMPC. 
+
+quantitative evaluation, the Root Mean Square Error (RMSE) was computed: RMSE i =
+
+√√√√ 1
+
+T
+
+> T
+
+∑
+
+> t=1
+
+‖xi(t) − ˆxi(t)‖22, i = 1 , . . . , 6 (59) As detailed in Table I, both controllers succeed in Scenario 1, but the performance gap widens in Scenario 2. Under unmod-eled longitudinal disturbances, NLMPC exhibits significant degradation (lateral RMSE spikes to 0.4170), while ST-FE-MPC maintains tight accuracy (0.0969). Beyond precision, the 
+
+TABLE I ROOT MEAN SQUARE ERROR (RMSE) FOR SYSTEM STATES IN CARLA 
+
+State Scenario 1 Scenario 2 ST-FE-MPC NLMPC ST-FE-MPC NLMPC 
+
+1 0.0160 0.0450 0.0084 0.0092 2 0.0250 0.0640 0.0074 0.0130 3 0.0016 0.0015 0.0016 0.0016 4 0.0290 0.0340 0.0140 0.0170 5 0.0299 0.0398 0.0969 0.4170 6 0.0430 0.0690 0.0054 0.0064 JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 15       
+
+> 020 40 60 80 100 120
+
+Time [s]       
+
+> -0.5 00.5
+> u1(t) [rad]  u1
+> u1,min
+> u1,max
+> 45 50 55 60 65
+> -0.01 00.01 0.02
+> 020 40 60 80 100 120
+
+Time [s] 
+
+> -2 02
+> u2(t) [m/s 2] u2
+> u2,min
+> u2,max
+
+Fig. 25. Scenario 2 (CARLA) - Comparison: orientation ( e3(t)) and lateral (e5(t)) errors. Blue: ST-FE-MPC, red dashed: NLMPC. 
+
+core bottleneck is the online computational burden. Table II reports average execution times for Ts = 100 ms. NLMPC 
+
+TABLE II COMPUTATIONAL PERFORMANCE COMPARISON (Ts = 100 MS )
+
+Scenario Controller Average Time/Step Real-Time Feasible 
+
+Scenario 1 NLMPC 108.33 ms No ( > T s)
+
+ST-FE-MPC 7.12 ms Yes (7.1% of Ts)
+
+Scenario 2 NLMPC 116.54 ms No ( > T s)
+
+ST-FE-MPC 8.86 ms Yes (8.9% of Ts)
+
+violates real-time constraints in both scenarios. In contrast, ST-FE-MPC consistently requires less than 9% of the sampling window, proving its superior efficiency and deterministic real-time feasibility. The ST-FE-MPC structurally absorbs un-modeled variations, successfully confining the vehicle’s state within safe invariant tubes and neutralizing the drift typical of standard linear controllers in complex traffic. VI. C ONCLUSIONS 
+
+This work introduced a set-theoretic Receding Horizon Con-trol (RHC) strategy for autonomous vehicle motion planning and overtaking in highway scenarios. By leveraging inner ellipsoidal approximations of reachability sets for uncertain polytopic systems, the framework ensures safety, disturbance robustness, and strict constraint satisfaction. Validation in MATLAB/Simulink and CARLA confirmed the method’s computational efficiency and adherence to engineering perfor-mance metrics. Specifically, the approach guarantees stability by bounding lateral and longitudinal accelerations and main-tains deterministic safe-following distances, ensuring maneu-vers are both mathematically optimal and physically comfort-able for real-world automotive applications. While managing severe actuator failures falls outside the immediate scope of this OAMP framework, the proposed polytopic uncertainty structure inherently absorbs bounded parameter variations, providing robustness against mild mechanical wear. Future work will focus on extending the methodology to complex urban intersections, integrating machine learning for adversar-ial driving, and incorporating explicit Fault-Tolerant Control (FTC) mechanisms to address severe hardware degradation. VII. A CKNOWLEDGMENT 
+
+This work was partially supported by the European Union under the Italian National Recovery and Resilience Plan (NRRP) of NextGenerationEU, partnership on ”Technologies for Climate Change Adaptation and Quality of Life Improve-ment” (ECS00000009 - program ”TECH4YOU”). REFERENCES [1] Galvani M., ”History and future of driver assistance”. IEEE Instrum Meas Mag . 2019;22:11-16. [2] Eskandarian A., Handbook of Intelligent Vehicles . Springer; 2012. [3] Tideman M, van der Voort MC, van Arem B, Tillema F. ”A Review of Lateral Driver Support Systems”, 2007 IEEE Intelligent Trans-portation Systems Conference . Bellevue, WA, USA; 2007:992-999. doi:10.1109/ITSC.2007.4357753 [4] Jing S, Hui F, Zhao X, Rios-Torres J, Khattak AJ. ”Integrated longitudi-nal and lateral hierarchical control of cooperative merging of connected and automated vehicles at on-ramps”, IEEE Trans Intell Transp Syst. 
+
+2022;23(12):24248-24262. doi:10.1109/TITS.2022.3204033 [5] Eskandarian A. Handbook of Intelligent Vehicles . Springer; 2012. [6] G. Franz` e and W. Lucia, ”A Receding Horizon Control Strategy for Autonomous Vehicles in Dynamic Environments,” in IEEE Transactions on Control Systems Technology, vol. 24, no. 2, pp. 695-702, March 2016, doi: 10.1109/TCST.2015.2440999. [7] Mayuresh V. Kothare, Venkataramanan Balakrishnan, Manfred Morari, ”Robust constrained model predictive control using linear matrix in-equalities”, Automatica , Volume 32, Issue 10, 1996, Pages 1361-1379, ISSN 0005-1098, https://doi.org/10.1016/0005-1098(96)00063-5. [8] Jinlong Sun, Dong Zhang, Yuhe Chen, Lingzhi Mu, Guangyu Jia, ”Local obstacle avoidance and trajectory tracking control of multi-quadrotor cooperative transportation system”, Aerospace Science and Technology ,Volume 173, 2026, 111670, ISSN 1270-9638,https://doi.org/10.1016/j. ast.2026.111670. [9] Junxu Hou, Hong Wang, Tan Li, Eryi Dong, Tao Wang, Fengkai Kang, Navigating the unseen: ”System-enhanced real-time perception and decision-making for negative obstacle avoidance in autonomous vehicles”, Applied Soft Computing , Volume 189, 2026, 114496, ISSN 1568-4946, https://doi.org/10.1016/j.asoc.2025.114496. [10] M. Zhang, T. Zhang and Q. Zhang, ”An Autonomous Overtaking Maneuver Based on Relative Position Information,” 2018 IEEE 88th Vehicular Technology Conference (VTC-Fall) , Chicago, IL, USA, 2018, pp. 1-6, doi: 10.1109/VTCFall.2018.8690798. [11] H. Chen, X. Xu, X. Yin, Y. Tian, Y. Zeng, ”Imitating driver behavior for fast overtaking through Bagging Gaussian Process Regression”, in: 2019 2nd China Symposium on Cognitive Computing and Hybrid Intelligence (CCHI) , IEEE, September 2019, pp. 218–224. [12] S.B. Prathiba, G. Raja, N. Kumar, ”Intelligent cooperative collision avoidance at overtaking and lane changing maneuver in 6G-V2X com-munications”, IEEE Trans. Veh. Technol . 71 (1) (2021) 112–122 [13] L. Markolf, J. Eilbrecht, O. Stursberg, ”Trajectory planning for au-tonomous vehicles combining nonlinear optimal control and supervised learning”, IFACPapersOnLine 53 (2) (2020) 15608–15614. [14] B. N´ emeth, T. Hegedus, P. G` asp` ar, ”Performance guarantees on machine learning-based overtaking strategies for autonomous vehicles”, in: 2020 European Control Conference (ECC) , IEEE, May 2020, pp. 136–141. [15] E.S. Cha, K.E. Kim, S. Longo, A. Mehta, ”OP-CAS: collision avoidance with overtaking maneuvers”, in: 2018 21st International Conference on Intelligent Transportation Systems (ITSC) , IEEE, November 2018, pp. 1715–1720 [16] M. Obayashi, K. Uto, G. Takano, ”Appropriate overtaking motion generating method using predictive control with suitable car dynamics”, in: 2016 IEEE 55th Conference on Decision and Control (CDC) , IEEE, December 2016, pp. 4992–4997 [17] U. Rosolia, S. De Bruyne, A.G. Alleyne, ”Autonomous vehicle control: a nonconvex approach for obstacle avoidance”, IEEE Trans. Control Syst. Technol. 25 (2) (2016) 469–484 JOURNAL OF L ATEX CLASS FILES, VOL. XX, NO. X, XXXXX XXXX 16 
+
+[18] G. Gagliardi, V. D’Angelo, A. Casavola, ”Combined longitudinal and lateral dynamics regulation of autonomous vehicles via induced L2-gain linear parameter varying control strategies based on parameter-dependent Lyapunov functions”, International Journal of Robust and Nonlinear Control 34 (10) (2024) 6914-6946. [19] N.A. Nguyen, D. Moser, P. Schrangl, L. del Re, S. Jones, ”Au-tonomous overtaking using stochastic model predictive control”, in: 2017 11th Asian Control Conference (ASCC) , IEEE, December 2017, pp. 1005–1010. [20] J.A. de Carvalho Santana, D. Shah, M.M. Santos, A. Shimahara, ”Predictive sliding mode control for lane changing under overtaking maneuver”, in: IECON 2020 The 46th Annual Conference of the IEEE Industrial Electronics Society , IEEE, October 2020, pp. 5063–5068. [21] X. Qian, F. Altch´ e, P. Bender, C. Stiller, A. de La Fortelle, ”Optimal tra-jectory planning for autonomous driving integrating logical constraints: an MIQP perspective”, in: 2016 IEEE 19th International Conference on Intelligent Transportation Systems (ITSC), IEEE , November 2016, pp. 205–210. [22] M. Zhang, T. Zhang, L. Yang, H. Xu, Q. Zhang, ”An autonomous over-taking maneuver based on relative position information”, J. Commun. Inf. Netw. 4 (2) (2019) 101–110. [23] Shikhar Singh Lodhi, Neetesh Kumar, Pradumn Kumar Pandey, ”Au-tonomous vehicular overtaking maneuver: A survey and taxonomy”, 
+
+Vehicular Communications , Volume 42, 2023, 100623, ISSN 2214-2096, https://doi.org/10.1016/j.vehcom.2023.100623. [24] S. Singh Lodhi, N. Kumar and P. Kumar Pandey, ”Dynamic Option Policy Enabled Hierarchical Deep Reinforcement Learning Model for Autonomous Overtaking Maneuver,” in IEEE Transactions on Intelligent Transportation Systems , vol. 26, no. 4, pp. 5018-5029, April 2025, doi: 10.1109/TITS.2025.3536020. [25] Wang, Y.; Liu, J.; Yuan, X.; Yang, J., ”Safe Reinforcement Learning for Competitive Autonomous Racing: Integrated State–Action Map-ping and Exploration Guidance Framework,” Actuators 2025, 14, 315. https://doi.org/10.3390/act14070315 [26] I. Jaiswal, E. Saraf and A. Sinha, ”Planning and tracking for safe autonomous overtaking and abort overtaking through a model predictive controller,” 2024 IEEE Intelligent Vehicles Symposium (IV), Jeju Island, Korea, Republic of, 2024, pp. 2688-2693, doi: 10.1109/IV55156.2024.10588809. [27] Xue-Fang Wang, Wen-Hua Chen, Jingjing Jiang, Yunda Yan, ”High-level decision-making for autonomous overtaking: an MPC-based switching control approach,” IET Intelligent Transport Systems , (Loughborough University Research Repository), 2024. https://doi.org/10.1049/itr2.12507 [28] P. Ogren, N.E. Leonard, ”A convergent dynamic window approach to obstacle avoidance”, IEEE Trans. Robot. Automat. 21 (2) (2005) 188–195. [29] S. Rakovic, D. Mayne, ”Robust model predictive control for obstacle avoidance: discrete time case”, Lecture Notes in Control and Inform. Sci. 358 (1) (2007) 617–627. [30] Angeli, D., Casavola, A., Franz` e,G., Mosca E., ”An ellipsoidal off-line MPC scheme for uncertain polytopic discrete-time systems” Automatica ,44, pp. 3113–3119, November 2000. [31] Rajamani, R., Vehicle Dynamics and Control ; Springer: New York, NY, USA, 2006. [32] H. Zhang, X.J. Zhang, J.M. Wang, ”Robust gain-scheduling energy-to-peak control of vehicle lateral dynamics stabilisation”, International Journal of Vehicle Mechanics and Mobility , 2014, 52(3): 309–340. [33] Angeli D., Casavola A., Mosca E., ”Command Governors for Con-strained Nonlinear Systems: Direct Nonlinear vs. Linearization-Based Strategies”, International Journal of Robust and Nonlinear Control ,Volume 9, Issue 10, Pages 677 - 699, 1999. [34] A. Kurzhanski K. and I. Valyi, Ellipsoidal calculus for estimation and control . Berlin, Birkhauser, 1997. [35] Bakker, E., Nyborg, L., and Pacejka, H., ”Tyre Modelling for Use in Vehicle Dynamics Studies,” SAE Technical Paper 870421 , 1987, https: //doi.org/10.4271/870421. [36] Alexey Dosovitskiy and German Ros and Felipe Codevilla and Antonio Lopez and Vladlen Koltun, CARLA: An Open Urban Driving Simulato, 
+
+Proceedings of the 1st Annual Conference on Robot Learning , pages = 1–16, 2017
