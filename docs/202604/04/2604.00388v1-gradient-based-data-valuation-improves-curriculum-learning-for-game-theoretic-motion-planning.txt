@@ -1,0 +1,491 @@
+Title: Gradient-Based Data Valuation Improves Curriculum Learning for Game-Theoretic Motion Planning
+
+URL Source: https://arxiv.org/pdf/2604.00388v1
+
+Published Time: Thu, 02 Apr 2026 00:26:04 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Gradient-Based Data Valuation Improves Curriculum Learning for Game-Theoretic Motion Planning 
+
+Shihao Li, Jiachen Li, and Dongmei Chen 
+
+The University of Texas at Austin 
+
+{shihaoli01301, jiachenli }@utexas.edu, dmchen@me.utexas.edu 
+
+Abstract — We demonstrate that gradient-based data valu-ation produces curriculum orderings that significantly outper-form metadata-based heuristics for training game-theoretic mo-tion planners. Specifically, we apply TracIn gradient-similarity scoring to GameFormer on the nuPlan benchmark and con-struct a curriculum that weights training scenarios by their estimated contribution to validation loss reduction. Across three random seeds, the TracIn-weighted curriculum achieves a mean planning ADE of 1.704 ± 0.029 m, significantly outper-forming the metadata-based interaction-difficulty curriculum (1.822 ± 0.014 m; paired t-test p = 0 .021 , Cohen’s dz = 3 .88 )while exhibiting lower variance than the uniform baseline (1.772 ± 0.134 m). Our analysis reveals that TracIn scores and scenario metadata are nearly orthogonal (Spearman ρ =
+
+−0.014 ), indicating that gradient-based valuation captures training dynamics invisible to hand-crafted features. We further show that gradient-based curriculum weighting succeeds where hard data selection fails: TracIn-curated 20% subsets degrade performance by 2×, whereas full-data curriculum weighting with the same scores yields the best results. These findings establish gradient-based data valuation as a practical tool for improving sample efficiency in game-theoretic planning. [Project Page] [Code] 
+
+I. I NTRODUCTION 
+
+Game-theoretic motion planners model multi-agent inter-actions as strategic games, enabling autonomous vehicles to reason about the interdependent decisions of surround-ing agents [1], [2]. These planners have achieved state-of-the-art performance on interactive driving benchmarks, yet they inherit a fundamental data distribution problem: large-scale driving datasets such as nuPlan [3] are dominated by low-interaction scenarios (cruising, slow maneuvers), while safety-critical interactive situations—unprotected turns, near-collisions, lane changes—constitute a small minority. Agame-theoretic decoder that models multi-agent strategic reasoning receives most of its training signal from scenarios where strategic reasoning is unnecessary. A natural hypothesis is that curating training data to em-phasize interactive scenarios should improve planner perfor-mance. Prior work on data-centric methods for autonomous driving has explored scenario mining [4], optimal-transport-based selection [5], and active learning for trajectory pre-diction [6], but none have been applied to game-theoretic planners. We initially pursued this direction by designing a metadata-based interaction-difficulty score from scenario features (minimum TTC, conflict count, proximity duration). However, multi-seed experiments revealed that metadata-based curriculum learning does not significantly outperform uniform training ( p = 0 .622 , Table II). This negative result motivated our pivot to gradient-based data valuation. 
+
+Key insight. TracIn [7] scores each training example by the dot product of its gradient with the validation gradient, directly measuring how much each sample contributes to reducing validation loss. We find that TracIn scores are nearly orthogonal to metadata-based scores (Spearman ρ =
+
+−0.014 ), revealing that gradient similarity captures aspects of training dynamics—redundancy, optimization landscape curvature, implicit regularization effects—that hand-crafted scenario features cannot. When used to weight a full-data curriculum, TracIn scores produce a planner that significantly outperforms the metadata-based curriculum across all three random seeds. Our contributions are: 1) We establish the first application of gradient-based data valuation (TracIn) to a game-theoretic motion planner, showing it significantly outperforms metadata-based curriculum learning ( p = 0 .021 , dz = 3 .88 ). 2) We demonstrate empirical orthogonality between gradient-based and metadata-based scenario scoring (ρ = −0.014 ), explaining why hand-crafted features fail to capture training dynamics. 3) We identify a critical distinction between curriculum 
+
+weighting and hard data selection : gradient scores improve training when used as importance weights but degrade performance when used for subset selection. II. R ELATED WORK 
+
+A. Game-Theoretic Motion Planning 
+
+Multi-agent motion planning can be formulated as a game where agents optimize interdependent objectives. Game-Former [1] models this as iterative level-k reasoning with transformers, where each agent refines its strategy by pre-dicting others’ actions at the previous reasoning level. The level-k decoder iterates for K rounds: at each level, the ego agent’s future trajectory is planned conditioned on other agents’ predicted trajectories from the previous level, and vice versa. DTPP [2] extends this with differentiable joint prediction and planning via tree-structured policies. PDM-Hybrid [8] demonstrated that rule-based planners can outperform learning-based methods on nuPlan, highlighting the challenge of learning robust interactive behavior from data. PlanTF [9] introduced the Test14-Hard benchmark, revealing substantial performance gaps on difficult scenarios 
+
+> arXiv:2604.00388v1 [cs.LG] 1 Apr 2026
+
+Fig. 1: Method overview. Phase 1: Three scoring methods assign per-sample importance. Phase 2: A three-phase curriculum converts scores to weights; weighted training preserves coverage while hard selection fails. Phase 3: GameFormer trained with gradient-based curriculum achieves lower ADE ( p=0 .021 ) and reduced variance. that expose weaknesses in imitation-based planners. None of these works examine how training data composition affects planner quality, leaving a gap that our work addresses. 
+
+B. Data Valuation and Selection for Autonomous Driving 
+
+Data valuation assigns scalar scores to training exam-ples based on their contribution to model performance. Influence functions [10] estimate the effect of removing a sample via inverse Hessian-vector products (iHVP), but the iHVP approximation via LiSSA [11] becomes unreliable for large models due to Hessian ill-conditioning—a failure mode we directly observe in our experiments (Section III-B). TracIn [7] sidesteps the Hessian entirely by computing gradient dot products across checkpoints, providing a de-terministic, scalable alternative. Data Shapley [12] provides axiomatic valuation with game-theoretic fairness guarantees but is computationally prohibitive for deep networks. In the autonomous driving domain, TAROT [5] applies optimal-transport-based selection to motion prediction but targets Wayformer [13], a non-game-theoretic model. Ac-tiveAD [4] demonstrates that 30% of nuPlan data suffices for end-to-end planning with planning-oriented active learning. GALTraj [6] uses generative active learning to address long-tail trajectory prediction. Li et al. [14] provide a comprehen-sive survey of data-centric evolution in autonomous driving. No prior work applies any data valuation method to game-theoretic planners. 
+
+C. Curriculum Learning 
+
+Curriculum learning [15] trains models on progressively harder examples, motivated by the observation that present-ing training data in a meaningful order can improve conver-gence. Self-paced learning (SPL) [16] automates difficulty ordering by using training loss as a proxy, iteratively increas-ing the complexity of included samples. In autonomous driv-ing, curriculum strategies have been applied to reinforcement learning policies [17] but not to supervised game-theoretic prediction or planning. Our work systematically compares three curriculum signals—metadata-based difficulty, training loss (SPL), and TracIn gradient similarity—finding that the gradient-based signal is the most effective and stable. III. M ETHOD 
+
+We describe three scenario scoring methods and the curriculum schedule that converts scores into per-sample training weights. Fig. 1 presents the full pipeline; Fig. 2 visualizes the scoring method relationships. 
+
+A. Scenario Metadata Scoring 
+
+Each nuPlan scenario zi contains recorded trajectories of the ego vehicle and surrounding agents over an 8-second window. We compute six interaction-difficulty features from the raw trajectories: (1) minimum distance dmin between ego and any agent, (2) minimum time-to-collision TTC min ,(3) number of agents with trajectories conflicting with ego’s path ( nconflict ), (4) cumulative time agents spend within a proximity threshold ( tprox ), (5) maximum heading difference Fig. 2: Score correlation analysis. Left: Spearman rank correlation heatmap showing near-orthogonality of TracIn and metadata scores ( ρ = −0.014 ). Right: Scatter plot of TracIn vs. metadata scores for each training scenario, colored by scoring tier. The two scoring methods capture fundamentally different aspects of data utility. 
+
+∆θmax between ego and interacting agents, and (6) number of active (non-stationary) agents nactive . Each feature is independently normalized to [0 , 1] via min-max scaling and averaged into a composite metadata score smeta (zi) ∈ [0 , 1] .Higher values indicate scenarios with denser, more complex multi-agent interactions. 
+
+B. TracIn Gradient-Similarity Scoring 
+
+TracIn [7] estimates the influence of training example zi
+
+on validation performance by summing gradient dot products across training checkpoints: TracIn (zi) = − X
+
+> t∈T
+
+ηt ∇θ ℓ(zi; θt) · ∇ θ ℓ(zval ; θt) (1) where θt denotes the model parameters at checkpoint t, ηt
+
+is the learning rate at that checkpoint, ℓ is the combined prediction-and-planning loss, and zval represents the mean validation gradient computed over all validation samples. In practice, we use the final checkpoint ( |T | = 1 , ηt = 1 ) and compute a single dot product of each training sample’s gradi-ent with the mean validation gradient. This single-checkpoint simplification is computationally efficient (46 min for 5,148 scenarios on one RTX 4080 GPU) and produces well-calibrated scores. Higher TracIn scores indicate samples whose gradients align with the direction of validation loss reduction; lower or negative scores indicate samples that are redundant, noisy, or counter-productive for generalization. After scoring, we normalize TracIn values to [0 , 1] via min-max scaling to produce sTracIn (zi).
+
+Why not influence functions? We initially attempted classical influence function estimation via LiSSA [11] with 1,000 unrolling steps, damping λ = 0 .1, and scale factor s =50 ,000 . Across three independent repetitions on the 9.96M-parameter GameFormer, the resulting inverse-Hessian-vector products exhibited pairwise cosine similarities of −0.15 ,
+
+−0.28 , and −0.05 , indicating that the three estimates point in effectively random directions. The mean iHVP captured only 23% of total energy; 77% was noise. This failure stems from the severe ill-conditioning of the Hessian for models of this scale, confirming the practical limitations documented in prior work [10] and motivating TracIn as a Hessian-free alternative. 
+
+C. Hybrid Scoring 
+
+Given the near-orthogonality of TracIn and metadata scores (verified empirically in Section IV-B), we construct a hybrid score that combines both information sources via rank-averaging: 
+
+shybrid (zi) = 12
+
+rank %(sTracIn (zi)) + rank %(smeta (zi))  (2) where rank %(·) denotes the percentile rank within the re-spective score distribution. This rank-averaging is robust to differences in score magnitude and distribution shape between the two scoring methods. 
+
+D. Curriculum Schedule 
+
+Given a scoring function s : Z → [0 , 1] , we define a three-phase curriculum that assigns per-sample weights as a function of training epoch e. Let λ(e) = ( e−ewarm )/(eramp −
+
+ewarm ) denote the ramp fraction: 
+
+w(zi, e ) = 
+
+
+
+1 e ≤ ewarm 
+
+1 + ( wmax −1) λ(e) s(zi) ewarm < e ≤ eramp 
+
+1 + ( wmax −1) s(zi) e > e ramp 
+
+(3) The three phases serve distinct purposes: (1) Warm-up 
+
+(e ≤ ewarm = 3 ): all samples receive uniform weight w = 1 ,allowing the model to learn basic representations without bias. (2) Ramp-up (ewarm < e ≤ eramp = 8 ): high-scoring samples are progressively upweighted, linearly interpolating from uniform to fully differentiated weights. (3) Focus (e > eramp ): weights stabilize at maximum differentiation, with the highest-scoring sample receiving weight wmax = 3 .0 and the lowest receiving weight 1.0.Critically, all samples remain in the training set through-out; only their relative importance changes. This design avoids the distribution collapse observed with hard data selection (Section IV-F). Fig. 3 visualizes the weight tra-jectories for different score tiers and the resulting weight distribution at convergence. 
+
+E. Theoretical Analysis 
+
+We provide theoretical grounding for the empirical find-ings in three propositions. All proofs are included below; notation follows the definitions in Sections III-B–III-D. 
+
+Proposition 1 (Variance reduction via gradient-aligned weighting). Let gi = ∇θ ℓ(zi; θ) denote the gradient of sam-ple zi and gval = 1
+
+> |V|
+
+P 
+
+> v∈V
+
+∇θ ℓ(v; θ) the mean validation gradient. Define the TracIn-weighted gradient estimator 
+
+ˆgw = 1
+
+P 
+
+> i
+
+winX
+
+> i=1
+
+wi gi, wi = 1 + α · sTracIn (zi) (4) 
+
+where α ≥ 0 controls weighting strength. Then the alignment of ˆgw with gval satisfies 
+
+ˆgw · gval ≥ ¯g · gval (5) Algorithm 1 Gradient-Based Curriculum Training 
+
+Require: Training set D, validation set V, scoring mode 
+
+∈ {tracin , meta , hybrid }, warm-up epoch ewarm , ramp epoch eramp , max weight wmax , total epochs E
+
+Ensure: Trained model parameters θ∗ 
+
+> 1:
+
+// Phase 0: Score computation  
+
+> 2:
+
+if mode ∈ { tracin , hybrid } then  
+
+> 3:
+
+Train baseline model θ0 for E0 epochs  
+
+> 4:
+
+gval ← 1
+
+> |V|
+
+P 
+
+> v∈V
+
+∇θ ℓ(v; θ0) 
+
+> 5:
+
+for zi ∈ D do  
+
+> 6:
+
+sTracIn (zi) ← −∇ θ ℓ(zi; θ0) · gval  
+
+> 7:
+
+end for  
+
+> 8:
+
+end if  
+
+> 9:
+
+if mode ∈ { meta , hybrid } then  
+
+> 10:
+
+for zi ∈ D do  
+
+> 11:
+
+smeta (zi) ← 16
+
+P6 
+
+> k=1
+
+fk(zi) // Eq. 2 12: end for  
+
+> 13:
+
+end if  
+
+> 14:
+
+Normalize all scores to [0 , 1] ; combine via Eq. 2 if hybrid  
+
+> 15:
+
+// Phase 1–3: Curriculum training  
+
+> 16:
+
+for epoch e = 1 , . . . , E do  
+
+> 17:
+
+for mini-batch B ⊂ D do  
+
+> 18:
+
+wi ← w(zi, e ) for each zi ∈ B // Eq. 3 19: θ ← θ − η 1
+
+> |B|
+
+P 
+
+> zi∈B
+
+wi∇θ ℓ(zi; θ) 
+
+> 20:
+
+end for  
+
+> 21:
+
+end for  
+
+> 22:
+
+return θ∗ ← θ
+
+where ¯g = 1
+
+> n
+
+P 
+
+> i
+
+gi is the uniform-weighted gradient, with equality iff α = 0 .Proof. By definition of the normalized TracIn score, 
+
+sTracIn (zi) ∝ gi · gval (up to affine rescaling from min-max normalization). Expanding: 
+
+ˆgw · gval =
+
+P 
+
+> i
+
+wi(gi · gval )
+
+P 
+
+> i
+
+wi
+
+=
+
+P
+
+> i
+
+(gi · gval ) + α P 
+
+> i
+
+sTracIn (zi)( gi · gval )
+
+P 
+
+> i
+
+wi
+
+Since sTracIn (zi) is a monotone increasing function of gi ·
+
+gval , the second sum P 
+
+> i
+
+sTracIn (zi)( gi · gval ) is a weighted sum where higher-alignment samples receive proportionally more weight. By the rearrangement inequality, P 
+
+> i
+
+aibi ≥ 
+
+> 1
+> n
+
+(P 
+
+> i
+
+ai)( P 
+
+> i
+
+bi) when ai and bi are similarly ordered. Setting ai = sTracIn (zi) and bi = gi · gval (which are similarly ordered by construction), the weighted estimator achieves strictly higher alignment than the uniform estimator whenever α > 0 and the alignment values are non-constant. 
+
+□
+
+TracIn-based weighting tilts the effective gradient toward the validation loss reduction direction, explaining the faster convergence in Fig. 6. 
+
+Remark 1 (Bias-variance trade-off in weighting strength). The alignment gain from Eq. (5) increases monotonically with α, but in finite-sample mini-batch settings, large α
+
+Fig. 3: Curriculum weight schedule. (a) Weight trajectories over training epochs for samples at different score levels. All samples start at w = 1 during warm-up (epochs 1–3), ramp up during epochs 3–8, and stabilize at maximum dif-ferentiation. (b) Distribution of final weights ( e = 20 ) across all 5,148 training scenarios, showing smooth differentiation centered around w ≈ 2.concentrates effective weight on a few high-TracIn samples, reducing the effective sample size neff = ( P 
+
+> i
+
+wi)2/ P 
+
+> i
+
+w2
+
+> i
+
+and increasing gradient variance. The three-phase curricu-lum schedule (Section III-D) mediates this trade-off: during warm-up ( α = 0 ), the model builds general representations with maximum neff ; during ramp-up, α increases linearly, gradually trading variance for alignment; during focus, α
+
+stabilizes at wmax − 1. Our choice of wmax = 3 .0 yields 
+
+neff /n ≈ 0.82 at convergence, retaining 82% of the effective sample diversity while achieving the alignment advantage of Proposition 1. 
+
+Proposition 2 (Signal dilution in hybrid scoring). Let sA
+
+be an informative scoring function (positively correlated with the optimal curriculum signal) and sB an uninformative one (ρ(sB , s ∗) ≈ 0, where s∗ denotes the oracle score). Then the hybrid score sH = 12 (rank %(sA) + rank %(sB )) satisfies 
+
+|ρ(sH , s ∗)| ≤ | ρ(sA, s ∗)| (6) 
+
+with equality iff ρ(sA, s B ) = 0 and ρ(sB , s ∗) = 0 simulta-neously. Proof. Let rA = rank %(sA), rB = rank %(sB ), r∗ =
+
+rank %(s∗). Since percentile ranks are uniformly distributed, Var (rA) = Var (rB ) = Var (r∗) = 1/12 . The Spearman correlation of the hybrid with the oracle is: 
+
+ρ(sH , s ∗) = Corr ( 12 (rA + rB ), r ∗)= 
+
+> 12
+
+Cov (rA, r ∗) + 12 Cov (rB , r ∗)
+
+q
+
+Var ( 12 (rA + rB )) pVar (r∗)= ρ(sA, s ∗) + ρ(sB , s ∗)
+
+p2 + 2 ρ(sA, s B )
+
+When ρ(sB , s ∗) ≈ 0 and ρ(sA, s B ) ≈ 0 (our empirical setting): 
+
+ρ(sH , s ∗) ≈ ρ(sA, s ∗)
+
+√2 ≈ 0.707 · ρ(sA, s ∗)
+
+Thus equal-weight rank averaging of an informative and an uninformative source attenuates the signal by a factor of √2.
+
+□The √2 attenuation explains why the hybrid curriculum (1.766 m) does not improve over TracIn alone ( 1.704 m). 
+
+Proposition 3 (Curriculum weighting vs. hard selection). 
+
+Consider training on the top-k fraction of samples ranked by score s (hard selection) versus using all samples with im-portance weights proportional to s (curriculum weighting). If the score distribution has support on all of Z, hard selection with fraction k < 1 introduces a support mismatch: 
+
+DKL 
+
+ pval ∥ psel 
+
+ > D KL 
+
+ pval ∥ pw
+
+ (7) 
+
+where psel is the hard-selected subset distribution and pw
+
+is the importance-weighted distribution, whenever pval has support outside the top-k set. Proof sketch. Hard selection sets psel (zi) = 0 for all zi
+
+outside the top-k set. If any such zi has pval (zi) > 0, then 
+
+DKL (pval ∥psel ) = ∞. In practice, the infinite KL manifests as failure to generalize on validation scenarios that resemble the excluded training scenarios—precisely the distribution collapse observed empirically (planning ADE of 3.687 mwhen training on only the top 20%). Curriculum weighting maintains full support ( pw(zi) > 0 ∀zi) and hence finite KL divergence. With weights wi ≥ 1, the weighted distribution 
+
+pw(zi) ∝ wi/n is absolutely continuous with respect to pval ,guaranteeing bounded generalization error under standard importance-weighted ERM bounds [10]. □
+
+This explains the 2× degradation when training on TracIn’s top 20% (Section IV-F). 
+
+Corollary 1 (Convergence advantage of gradient-based curriculum). Combining Propositions 1–3, TracIn curriculum weighting simultaneously achieves: (i) higher per-step gradi-ent alignment with the validation objective, (ii) undiluted sig-nal strength relative to hybrid alternatives, and (iii) bounded generalization error through full-support training. 
+
+These three mechanisms are complementary and explain the empirical dominance of TracIn weighting. Gradient align-ment (Prop. 1) improves the direction of each optimiza-tion step; signal preservation (Prop. 2) ensures the curricu-lum signal is not wasted by averaging with uninformative sources; and full-support weighting (Prop. 3) prevents catas-trophic distribution mismatch that would negate both pre-vious benefits. Metadata curricula lack property (i) because 
+
+ρ(smeta , g val ) ≈ 0; hybrid curricula sacrifice property (ii); and hard selection violates property (iii). Only TracIn curriculum weighting satisfies all three conditions, predicting both faster convergence (confirmed in Fig. 6: lowest ADE by epoch 15) and lower cross-seed variance (confirmed in Table II: CV =1.7% ). IV. E XPERIMENTS 
+
+A. Experimental Setup 
+
+Model. We use GameFormer [1] with 9.96M parameters. The architecture consists of: (1) an LSTM encoder that processes observed trajectories and map polylines, (2) a transformer-based level-k interaction decoder with K = 2 
+
+reasoning iterations, and (3) a kinematic trajectory planner that outputs a feasible ego trajectory. The training loss TABLE I: Spearman rank correlations between scoring meth-ods ( n = 5 ,148 ). TracIn and metadata are nearly orthogonal (ρ = −0.014 ).                    
+
+> TracIn Meta Loss Hybrid TracIn 1.000 −0.014 0.155 0.695 Meta —1.000 −0.033 0.689 Loss ——1.000 0.087 Hybrid ———1.000
+
+combines prediction L2 loss (forecasting other agents) and planning L2 loss (imitating the expert ego trajectory). 
+
+Dataset. We train on nuPlan mini [3], comprising 5,148 training and 1,286 validation scenarios. Each scenario pro-vides 2 s of observed history and 8 s of future trajectory for the ego vehicle and up to 20 surrounding agents, along with vectorized map information (lanes, crosswalks, stop lines). 
+
+Training protocol. All models are trained for 20 epochs with AdamW optimizer (initial LR 10 −4, step decay by 0.5×
+
+every 5 epochs, weight decay 10 −4), effective batch size 32 (gradient accumulation 4× from physical batch 8), and FP16 mixed precision on a single NVIDIA RTX 4080 GPU (12 GB VRAM). Each training run completes in approximately 2.5 hours. We select the checkpoint with the lowest validation loss. 
+
+Metrics. We report: planning ADE (Average Displacement Error) and FDE (Final Displacement Error) in meters, plan-ning AHE (Average Heading Error) and FHE (Final Heading Error) in radians, and prediction ADE and FDE in meters. All metrics are lower-is-better. We report means and standard deviations across 3 random seeds (3407, 42, 2024). 
+
+B. Scoring Method Analysis 
+
+Table I reports Spearman rank correlations between the three scoring methods and training loss computed over all 5,148 training scenarios. TracIn and metadata scores are nearly uncorrelated ( ρ = −0.014 , p = 0 .31 ), confirming they capture fundamentally different aspects of data utility. TracIn moderately correlates with training loss ( ρ = 0 .155 ,
+
+p < 10 −28 ), consistent with its gradient-based construction: samples with higher loss tend to have larger gradients that align with the validation gradient direction. The hybrid score correlates approximately equally with both constituent sources ( ρ ≈ 0.69 ), as expected from symmetric rank-averaging. Fig. 4 shows four representative scenarios from the quad-rants of the TracIn × metadata scoring space, illustrating the practical implications of orthogonality. The two “surprise” quadrants are most informative: the top-left scenario has low metadata score (few nearby agents) yet high TracIn— the ego executes a significant turn whose gradient strongly aligns with validation loss reduction. Conversely, the bottom-right scenario has high metadata score (many close agents on adjacent lanes) yet low TracIn—the agents follow predictable parallel trajectories, producing a gradient that opposes vali-dation improvement. Metadata captures geometric proximity; TracIn captures model-specific learning utility. Fig. 4: Representative scenarios from four quadrants of the TracIn × metadata scoring space. Top-left: low metadata but high TracIn—few nearby agents, yet the ego executes a turn that strongly aligns with validation gradient. Bottom-right: 
+
+high metadata but low TracIn—many close agents in parallel lanes, yet the gradient opposes validation improvement. The off-diagonal quadrants illustrate the orthogonality of the two scoring methods ( ρ = −0.014 ). Blue/red lines: ego past/future; gray/orange: agent past/future. TABLE II: Multi-seed results (mean ± std, n = 3 seeds). Best mean values in bold . ↓ = lower is better. CV =coefficient of variation.                                                                       
+
+> Method planADE ↓planFDE ↓planAHE ↓predADE ↓CV Baseline 1.772 ±.134 3.837 ±.218 .146 ±.021 1.700 ±.205 7.6% Meta cur. 1.822 ±.014 3.996 ±.216 .142 ±.010 1.714 ±.016 0.7%
+> TracIn cur. 1.704 ±.029 3.731 ±.394 .133 ±.019 1.731 ±.095 1.7%
+> Loss SPL 2.003 ±.391 3.678 ±.200 .180 ±.041 1.633 ±.069 19.5% Hybrid cur. 1.766 ±.069 3.999 ±.185 .134 ±.016 1.707 ±.047 3.9%
+
+C. Main Results 
+
+Table II presents multi-seed results for five curriculum strategies, and Fig. 5 visualizes the planning ADE com-parison. The TracIn curriculum achieves the lowest mean planning ADE ( 1.704 m) and the second-lowest coefficient of variation (CV = 1.7% ), indicating both superior accuracy and high stability across random seeds. The metadata curriculum (1.822 m) performs worse than even the uniform baseline (1.772 m), while the loss-based SPL curriculum ( 2.003 m) exhibits severe instability (CV = 19 .5% ). Table III provides per-seed breakdowns, showing that the TracIn curriculum outperforms the metadata curriculum in 
+
+every seed, with improvements of 0.145 m, 0.122 m, and 0.085 m for seeds 3407, 42, and 2024 respectively. 
+
+Fig. 5: Multi-seed planning ADE comparison ( n=3 seeds per method). Horizontal bars: mean; whiskers: ±1 s.d.; shaped markers: individual seeds. Y-axis is broken to accommodate the Loss SPL outlier (seed 2024, ADE = 2 .555 ). The TracIn curriculum achieves the lowest mean ADE with the tightest seed clustering. ∗p=0 .021 (paired t-test, TracIn vs. Meta-data). TABLE III: Per-seed planning ADE (m, ↓). TracIn outper-forms Meta in all 3 seeds. Best per-seed in bold .                              
+
+> Seed Baseline Meta cur. TracIn cur. Loss SPL Hybrid cur. 3407 1.917 1.832 1.687 1.728 1.772 42 1.593 1.803 1.680 1.726 1.848 2024 1.807 1.831 1.746 2.555 1.680 Mean 1.772 1.822 1.704 2.003 1.766 Std 0.134 0.014 0.029 0.391 0.069
+
+D. Statistical Analysis 
+
+We conduct pairwise comparisons using paired t-tests across the three seeds (Table IV). The TracIn curriculum significantly outperforms the metadata curriculum (p =0.021 , Cohen’s dz = 3 .88 ), a large effect size indicating the improvement is not only statistically significant but practically meaningful. TracIn versus baseline is not statistically significant ( p =0.54 ) due to the high variance of the baseline: seed 42 achieves 1.593 m while seed 3407 reaches 1.917 m, a
+
+0.324 m swing. However, the TracIn curriculum achieves both a lower mean and substantially lower variance (CV = 
+
+1.7% vs. 7.6% ) than the baseline, a practically important distinction for deployment reliability. The metadata curricu-lum versus baseline comparison ( p = 0 .622 ) confirms that metadata-based scoring provides no benefit. 
+
+E. Training Dynamics 
+
+Fig. 6 shows validation planning ADE as a function of training epoch for the best seed of each method. The TracIn curriculum converges to a lower validation ADE than all other methods by epoch 15, and maintains this advantage through epoch 20. The metadata curriculum and baseline exhibit similar convergence trajectories, consistent with their TABLE IV: Paired t-tests (planning ADE, n = 3 seeds). Significant at α = 0 .05 marked with *.                        
+
+> Comparison ∆ADE (m) p-value Cohen’s dz
+> TracIn vs. Meta −0.117 0.021 ∗3.88
+> TracIn vs. Base −0.068 0.540 0.63
+> TracIn vs. SPL −0.299 0.296 1.20
+> TracIn vs. Hyb −0.062 0.186 1.71
+> Hybrid vs. Meta −0.056 0.291 1.23
+> Meta vs. Base +0 .050 0.622 0.33
+
+Fig. 6: Validation planning ADE over training epochs for the best seed of each method. The TracIn curriculum (blue) achieves the lowest final ADE, converging below all other methods by epoch 15. non-significant difference. The loss-based SPL curve shows higher initial ADE due to its easy-first ordering, which delays exposure to informative scenarios. 
+
+F. Failure Analysis 
+
+Hard selection degrades performance. Training on only the top 20% of scenarios ranked by TracIn score produces a planning ADE of 3.687 m, more than 2× worse than the full-data baseline. High-TracIn samples are those most aligned with the current validation gradient, so restricting to these samples biases the training distribution toward a narrow region of scenario space. Curriculum weighting preserves full data coverage while adjusting emphasis, avoiding this distribution collapse. 
+
+Loss-based SPL is unstable. The loss-based self-paced curriculum exhibits a coefficient of variation of 19.5% across seeds. Seed 2024 produces a catastrophic planning ADE of 2.555 m, while seeds 3407 and 42 achieve 1.728 m and 
+
+1.726 m respectively. Training loss conflates intrinsic sample difficulty with model-specific uncertainty and optimization noise, making it an unreliable proxy for curriculum ordering. 
+
+Hybrid scoring does not improve over TracIn. The hybrid rank-average of TracIn and metadata scores achieves 
+
+1.766 ± 0.069 m, which does not significantly differ from TracIn alone ( p = 0 .186 ). Since metadata scores provide no useful signal for curriculum ordering (the metadata cur-riculum underperforms the baseline), combining them with TracIn via rank-averaging dilutes the effective gradient-based 
+
+Fig. 7: Dot-and-whisker comparison across five curricu-lum methods and three planning metrics. Diamonds: mean; shaped markers: individual seeds ( n=3 ). Methods sorted by mean Planning ADE (lower is better). The TracIn curriculum achieves the best ADE with minimal seed-to-seed variation, while the loss-based SPL shows a large outlier. signal. This suggests that when one scoring component is uninformative, combining it with an informative component via equal weighting is counterproductive. 
+
+G. Multi-Metric Comparison 
+
+Fig. 7 shows per-seed performance across three planning metrics. Methods are sorted by mean planning ADE (best at top); individual seed results (distinct markers) reveal the variance structure that summary statistics alone obscure. The TracIn curriculum achieves the best mean ADE ( 1.704 m) with tight seed clustering, while the loss-based SPL exhibits a catastrophic outlier at seed 2024 (ADE = 2 .555 ), confirm-ing the instability reported in Table II. V. D ISCUSSION 
+
+Why gradients succeed where metadata fails. Metadata captures observable scenario properties that correlate with human-perceived difficulty but not with the model’s learning dynamics. A scenario with many nearby agents may be “easy” if interactions follow stereotypical patterns (Fig. 4, bottom-right), while a geometrically simple scenario may be “hard” because it represents an underexplored region (Fig. 4, top-left). TracIn measures alignment between each sample’s gradient and validation loss reduction, capturing model-specific difficulty that static features cannot encode (ρ = −0.014 ). 
+
+Curriculum weighting vs. hard selection. Our results establish a critical practical insight: gradient-based scores are effective for importance weighting but counterproductive for subset selection. Hard selection using TracIn’s top 20% removes diverse “easy” samples that provide necessary cov-erage of the scenario distribution, leading to overfitting on a narrow slice. Curriculum weighting preserves this coverage while modulating emphasis—a strictly better approach when compute permits training on the full dataset. 
+
+Connection to importance sampling. The curriculum weights in Eq. (3) can be interpreted through the lens of importance-weighted empirical risk minimization [10]. Stan-dard ERM minimizes the training loss under the empirical distribution ptrain , which may diverge from the effective deployment distribution. TracIn-based weighting constructs an implicit reweighted distribution pw(zi) ∝ wi·ptrain (zi) that concentrates mass on samples whose gradients best reduce validation loss. Under this view, the three-phase schedule corresponds to an annealing strategy: warm-up trains under the original ptrain to avoid premature bias, ramp-up gradually shifts toward pw, and focus stabilizes at the target distribu-tion. This annealing is analogous to temperature schedules in simulated annealing—direct optimization under pw from the start risks overfitting to the initial (potentially noisy) gradient estimates, while gradual annealing allows the score quality to improve as the model trains. 
+
+Practical considerations. TracIn scoring requires one forward-backward pass per sample: 46 min on a single GPU for 5,148 scenarios ( <0.5% of total compute). For larger datasets, TracIn can be computed on a representative subset or parallelized across GPUs. 
+
+Limitations. Our experiments use the nuPlan mini split (5,148 training scenarios). While the statistical significance holds, the absolute performance difference is 0.117 m ADE between TracIn and metadata curricula. Validation on the full nuPlan dataset (130K+ scenarios) would strengthen the findings. We evaluate only open-loop metrics; closed-loop simulation would provide a more complete assessment of planning quality. The paired t-test with n = 3 seeds has limited statistical power; increasing to n ≥ 5 seeds would provide more robust inference. Finally, our TracIn implementation uses a single checkpoint; multi-checkpoint scoring may yield richer temporal information about data utility. VI. C ONCLUSION 
+
+We investigated data-centric methods for improving game-theoretic motion planning, comparing metadata-based, loss-based, and gradient-based curriculum strategies for Game-Former on nuPlan. Our central finding is that TracIn gradient-similarity scoring produces curriculum orderings that sig-nificantly outperform metadata-based interaction-difficulty heuristics ( p = 0 .021 , Cohen’s dz = 3 .88 ), achieving the best mean planning ADE ( 1.704 m) with low cross-seed variance (CV = 1.7%). The orthogonality between gradient-based and metadata-based scores ( ρ = −0.014 ) reveals that gradient valuation captures model-specific training dynamics invisible to hand-crafted features. We further identify a criti-cal distinction between curriculum weighting (effective) and hard data selection (harmful), providing practical guidance for applying data valuation in planning systems. Future work includes scaling to the full nuPlan dataset, extending to closed-loop evaluation, multi-checkpoint TracIn scoring, and applying gradient-based curriculum learning to other game-theoretic architectures. REFERENCES [1] Z. Huang, H. Liu, and C. Lv, “GameFormer: Game-theoretic modeling and learning of transformer-based interactive prediction and planning for autonomous driving,” in Proceedings of the IEEE/CVF Interna-tional Conference on Computer Vision (ICCV) , 2023, pp. 3903–3913. [2] Z. Huang, P. Karkus, B. Ivanovic, Y. Chen, M. Pavone, and C. Lv, “DTPP: Differentiable joint conditional prediction and cost evaluation for tree policy planning in autonomous driving,” in Proceedings of the IEEE International Conference on Robotics and Automation (ICRA) ,2024, pp. 6806–6812. [3] H. Caesar, J. Kabzan, K. S. Tan, W. K. Fong, E. Wolff, A. Lang, L. Fletcher, O. Beijbom, and S. Omari, “nuPlan: A closed-loop ML-based planning benchmark for autonomous vehicles,” arXiv preprint arXiv:2106.11810 , 2021. [4] H. Lu, X. Jia, Y. Xie, W. Liao, X. Yang, and J. Yan, “ActiveAD: Planning-oriented active learning for end-to-end autonomous driving,” 
+
+arXiv preprint arXiv:2403.02877 , 2024. [5] L. Feng, F. Nie, Y. Liu, and A. Alahi, “TAROT: Targeted data selection via optimal transport,” in Proceedings of the International Conference on Machine Learning (ICML) , 2025. [6] D. Park, M. Surana, P. Desai, A. Mehta, R. M. John, and K.-J. Yoon, “Generative active learning for long-tail trajectory prediction via controllable diffusion model,” in Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV) , 2025. [7] G. Pruthi, F. Liu, S. Kale, and M. Sundararajan, “Estimating training data influence by tracing gradient descent,” in Advances in Neural Information Processing Systems (NeurIPS) , vol. 33, 2020, pp. 19 920– 19 930. [8] D. Dauner, M. Hallgarten, A. Geiger, and K. Chitta, “Parting with misconceptions about learning-based vehicle motion planning,” in 
+
+Conference on Robot Learning (CoRL) , 2023, pp. 1268–1281. [9] J. Cheng, Y. Chen, X. Mei, B. Yang, B. Li, and M. Liu, “Rethinking imitation-based planners for autonomous driving,” in Proceedings of the IEEE International Conference on Robotics and Automation (ICRA) , 2024, pp. 14 123–14 130. [10] P. W. Koh and P. Liang, “Understanding black-box predictions via influence functions,” in Proceedings of the International Conference on Machine Learning (ICML) , 2017, pp. 1885–1894. [11] N. Agarwal, B. Bullins, and E. Hazan, “Second-order stochastic optimization for machine learning in linear time,” Journal of Machine Learning Research , vol. 18, no. 116, pp. 1–40, 2017. [12] A. Ghorbani and J. Zou, “Data Shapley: Equitable valuation of data for machine learning,” in Proceedings of the International Conference on Machine Learning (ICML) , 2019, pp. 2242–2251. [13] N. Nayakanti, R. Al-Rfou, A. Zhou, K. Goel, K. S. Refaat, and B. Sapp, “Wayformer: Motion forecasting via simple & efficient atten-tion networks,” in Proceedings of the IEEE International Conference on Robotics and Automation (ICRA) , 2023, pp. 2980–2987. [14] L. Li, W. Shao, W. Dong, Y. Tian, Q. Zhang, K. Yang, and W. Zhang, “Data-centric evolution in autonomous driving: A comprehensive survey of big data system, data mining, and closed-loop technologies,” 
+
+arXiv preprint arXiv:2401.12888 , 2024. [15] Y. Bengio, J. Louradour, R. Collobert, and J. Weston, “Curriculum learning,” in Proceedings of the International Conference on Machine Learning (ICML) , 2009, pp. 41–48. [16] M. P. Kumar, B. Packer, and D. Koller, “Self-paced learning for latent variable models,” in Advances in Neural Information Processing Systems (NeurIPS) , vol. 23, 2010, pp. 1189–1197. [17] Z. Qiao, K. Muelling, J. M. Dolan, P. Palanisamy, and P. Mudalige, “Automatically generated curriculum based reinforcement learning for autonomous vehicles in urban environment,” in Proceedings of the IEEE Intelligent Vehicles Symposium (IV) , 2018, pp. 1233–1238.

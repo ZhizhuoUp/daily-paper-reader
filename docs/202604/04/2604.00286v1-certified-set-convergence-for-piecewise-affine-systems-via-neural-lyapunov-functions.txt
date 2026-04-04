@@ -1,0 +1,894 @@
+Title: Certified Set Convergence for Piecewise Affine Systems via Neural Lyapunov Functions
+
+URL Source: https://arxiv.org/pdf/2604.00286v1
+
+Published Time: Thu, 02 Apr 2026 00:17:09 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Certified Set Convergence for Piecewise Affine Systems via Neural Lyapunov Functions 
+
+Yanliang Huang 1,∗, Peng Xie 1,∗, Zhen Zhang 1, Wenyuan Wu 1, Zhuoqi Zeng 2, Amr Alanwar 1
+
+Abstract — Safety-critical control of piecewise affine (PWA) systems under bounded additive disturbances requires guaran-tees not for individual states but for entire state sets simulta-neously: a single control action must steer every state in the set toward a target, even as sets crossing mode boundaries split and evolve under distinct affine dynamics. Certifying such set convergence via neural Lyapunov functions couples the Lipschitz constants of the value function and the policy, yet certified bounds for expressive networks exceed true values by orders of magnitude, creating a certification barrier. We resolve this through a three-stage pipeline that decouples verifi-cation from the policy. A value function from Hamilton-Jacobi backward reachability, trained via reinforcement learning, is the Lyapunov candidate. A permutation-invariant Deep Sets controller, distilled via regret minimization, produces a common action. Verification propagates zonotopes through the value network, yielding verified Lyapunov upper bounds over entire sets without bounding the policy Lipschitz constant. On four benchmarks up to dimension six, including systems with per-mode operator norms exceeding unity, the framework certifies set convergence with positive margin on every system. Aspectrally constrained local certificate completes the terminal guarantee, and the set-actor is the only tested method to achieve full strict set containment, at constant-time online cost. 
+
+I. I NTRODUCTION 
+
+Piecewise affine (PWA) systems [1], [2] model hybrid dynamics where continuous state evolution switches across polyhedral regions. Safety-critical deployment demands con-troller guarantees not at individual states but over entire state sets under bounded uncertainty: a single control action must steer every state in the set toward a target simultaneously. For PWA systems, state sets crossing mode boundaries must be split and propagated under distinct affine dynamics, compounding the certification challenge. Several lines of work address related aspects of this problem. Sch¨ urmann and Althoff [3], [4] optimize directly over zonotope reachable sets, certifying constraint satisfac-tion by geometric containment of the over-approximated reachable set within the feasible region, without requiring a Lyapunov function. Neural Lyapunov methods [5], [6] learn Lyapunov functions jointly with controllers, verified via counterexample-guided search, while Chen et al. [7] extend to PWA systems with piecewise quadratic candidates. These provide exact pointwise certificates, but verification complexity scales exponentially with network size, and the  
+
+> ∗Equal contribution.
+> 1School of Computation, Information and Technology, Technical Univer-sity of Munich, Munich, Germany.
+
+{yanliang.huang, p.xie, zhenzhang.zhang, wenyuan.wu, alanwar }@tum.de  
+
+> 2School of Engineering, Hainan Bielefeld University of Applied Sciences, Hainan, China.
+
+zhuoqi.zeng@hainan-biuh.edu.cn 
+
+certificates do not extend to state sets. Zonotope propaga-tion [8] bounds neural network outputs layer-by-layer and has been extended to polynomial zonotopes [9], constrained polynomial zonotopes for data-driven systems [10], and hybrid zonotopes [11], but these verify safety or constraint satisfaction rather than set convergence under a common control action. Solanki et al. [12], [13] certify reinforcement-learning-trained Hamilton-Jacobi (HJ) values for reachable-set membership but not set convergence. Wendl et al. [14] integrate zonotope propagation into the training loss to train agents verifiable via reachability analysis, but their verification propagates sets through the policy network, so certificate tightness inherits the policy’s Lipschitz sensitivity. Extending these results to certified set convergence via Lyapunov conditions faces a structural barrier: it requires that a common action decrease a Lyapunov function for every state in the set, not just the center. Since a single action can-not be simultaneously optimal for all states, the gap to each state’s pointwise optimum couples the Lipschitz constants of the value function and the policy. For expressive ReLU networks, certified Lipschitz bounds exceed true values by orders of magnitude, and this gap grows exponentially in depth, creating an expressivity–certifiability trade-off [15]. This paper resolves the trade-off by decoupling the veri-fication from the policy entirely, via the three-stage pipeline shown in Fig. 1. The contributions of this paper are: 1) A set-based control pipeline comprising mode-boundary zonotope decomposition [8] for affine prop-agation, a Deep Sets controller [16] that processes variable-size zonotope fragments as unordered token sets, and sampling-based regret distillation from apointwise HJ actor [12], [17], [18]. 2) Trajectory-certified set convergence via Theorem 1: zonotope propagation through the learned value func-tion provides a verified certificate that decouples the verification from the policy entirely. Unlike Lipschitz-based certificates [5], [19] and propagation-coupled training [14], no bound on the policy Lipschitz constant is required. 3) A diagnostic condition (Propositions 1–2) that quan-tifies the expressivity–certifiability trade-off [15], to-gether with a terminal certificate (Theorem 2) that closes this gap within a near-target core using spec-trally constrained local networks and completes the certification hierarchy. The remainder of this paper is organized as follows. Section II formulates the PWA system dynamics, zonotope 
+
+> arXiv:2604.00286v1 [eess.SY] 31 Mar 2026
+
+Z0     
+
+> a0
+> PWA boundary
+> a1
+> Z(1)
+> Z(2)
+> Z(3)
+> Z(4)
+> a2
+> Target T
+> 0123
+> time step k
+
+Fig. 1: Certified set convergence for PWA systems over discrete time steps. An initial zonotope Z0 evolves under action 
+
+a0 and, upon reaching mode boundaries at step k=1 , splits into fragments that each evolve under distinct affine dynamics, distinguished by color. At every step, the set-actor produces a single control action ak that steers all fragments toward the target simultaneously. The fragments finally converge into the target T , verified via zonotope propagation through the learned value function (Theorem 1). representation, and the set convergence objective. Section III presents the three-stage pipeline. Section IV evaluates the framework on four benchmarks. Section V summarizes the contributions and discusses limitations and future directions. II. P ROBLEM FORMULATION 
+
+A. PWA System Dynamics 
+
+Consider a discrete-time PWA system on Rn partitioned into M polyhedral regions {X i}Mi=1 :
+
+xk+1 = Ai xk + Bu,i uk + wk, xk ∈ X i, (1) where xk ∈ Rn is the state, uk ∈ U ⊂ Rm is the control input with U compact, Ai ∈ Rn×n is the mode-dependent state matrix, Bu,i ∈ Rn×m is the mode-dependent input matrix, and wk ∈ W is an additive disturbance with 
+
+W = ⟨0, σ wIn⟩ compact. We write f (x, u ) for the nominal piecewise map defined by (1) with wk = 0 . Let Ω ⊂ Rn be a compact operating domain. The regions form a polyhedral partition of Ω: S 
+
+> i
+
+Xi ⊇ Ω and int( Xi) ∩ int( Xj ) = ∅ for 
+
+i̸ = j.
+
+B. Zonotope Representation 
+
+A zonotope Z ⊂ Rn is defined as 
+
+Z = c + Gα : α ∈ [−1, 1] p , (2) where c ∈ Rn is the center and G ∈ Rn×p is the generator matrix, written compactly as Z = ⟨c, G ⟩. Zonotopes are closed under affine maps AZ + b, making them well-suited for PWA reachability. 
+
+C. Control Objective 
+
+Given a design reference Tref = {x : ∥x − xt∥2 ≤ rt}, the objective is to find a set-based controller πset such that for a given initial zonotope Z0, the reachable set converges to a compact certification target T within finite time K:
+
+[ 
+
+> j
+
+Z(j) 
+
+> K
+
+⊆ T , (3) where superscript (j) indexes zonotope fragments arising from mode-boundary decomposition, defined as follows. 
+
+Definition 1 (Reachable Set Propagation) . The reachable set at step k is a zonotope family Zk = {Z(j)}Nk 
+
+> j=1
+
+with physical extent U(Zk) = SNk 
+
+> j=1
+
+Z(j). Given a control action uk ∈ U,the one-step reachable set is 
+
+Zk,i = Zk ∩ X i, i = 1 , . . . , M, (4a) 
+
+Zk+1 =
+
+> M
+
+[
+
+> i=1
+
+ AiZk,i + Bu,i uk ⊕ W , (4b) where Zk,i collects the fragments of Zk contained in mode region Xi.III. M ETHODOLOGY 
+
+The pipeline has three stages: Section III-A trains a deep HJ value function V ∗ as a Lyapunov candidate, Section III-B distills a set-based controller from the pointwise actor, and Section III-C provides the theoretical guarantees at three certification levels. 
+
+A. Deep HJ as Lyapunov Guidance 
+
+The travel-cost formulation [12] encodes reachability through a calibrated reward: identically zero outside the target region and strictly negative inside. For a circular target 
+
+Tref with center xt and radius rt, this calibration takes the form 
+
+r(x) = 
+
+(
+
+−(rt − ∥ x − xt∥2), ∥x − xt∥2 < r t,
+
+0, otherwise . (5) Since every reward term satisfies r(x) ≤ 0, the optimal discounted return V ∗(x) = P∞ 
+
+> k=0
+
+γkr(x∗
+
+> k
+
+), where {x∗
+
+> k
+
+} is the state trajectory under the optimal policy starting from 
+
+x∗ 
+
+> 0
+
+= x, is non-positive for all x. For states from which no admissible trajectory reaches Tref , every reward vanishes and V ∗(x) = 0. For states that can reach Tref under optimal control, at least one reward is strictly negative, giving 
+
+V ∗(x) < 0. The negative sublevel set {V ∗ < 0} therefore recovers the backward reachable set [12], and deeper sublevel sets correspond to trajectories that penetrate further into the target interior. This sign structure makes V ∗ a Lyapunov candidate whose certification target can be defined directly as a sublevel set without auxiliary construction. The discount factor γ ∈ (0 , 1) ensures that the Bellman operator is γ-contractive, guaranteeing convergence of value iteration. To learn V ∗, an actor πθ : Rn → U and critic Qϕ : Rn ×
+
+U → R are trained via deep deterministic policy gradient (DDPG) [20]. Since all rewards are non-positive, the actor minimizes Qϕ via Lactor = E[Qϕ(x, π θ (x))] , steering states toward the most negative region. The Bellman target Qtgt 
+
+and critic loss Lcritic are 
+
+Qtgt = r(x′) + γ Q ¯ϕ
+
+ x′, π ¯θ (x′), (6) 
+
+Lcritic = E(Qϕ(x, u ) − Qtgt )2, (7) where x′ = f (x, u ) + w with w sampled uniformly from 
+
+W during training, and Q ¯ϕ, π¯θ are target networks whose parameters are Polyak-averaged copies ¯ϕ ← τ ϕ + (1 −τ ) ¯ϕ,
+
+¯θ ← τ θ + (1 −τ )¯θ with rate τ ≪ 1, used to stabilize the Bellman target. Training with noise produces a value function that accounts for process disturbances, yielding more conservative sublevel sets. A reverse curriculum [21] expands the sampling annulus from the target outward. From the converged critic, the Lyapunov candidate is 
+
+V ∗(x) = Qϕ(x, π θ (x)) . Since training is approximate, V ∗
+
+is an approximation of the true HJ value, but this does not compromise certification, as Theorem 1 is independent of optimality. The certification target is 
+
+T = {x : V ∗(x) ≤ − cT }, cT = min 
+
+> x∈∂Tref
+
+|V ∗(x)|, (8) where ∂Tref denotes the boundary of Tref . In practice, cT is computed by propagating zonotopes covering ∂Tref through 
+
+V ∗: since V ∗ ≤ 0, zonotope propagation yields an upper bound on V ∗ per boundary fragment, and the minimum over all fragments gives a verified lower bound on the true cT .
+
+B. Set-Based Policy Distillation 
+
+Since a pointwise policy ignores generator spread, it may produce actions that fail to steer all states in the set toward the target. To account for set geometry, the trained actor serves as the oracle π∗ for distilling a set-based controller 
+
+πset that maps zonotopes to a single control action. Because the fragment count and generator dimensions vary across time steps, the set-actor uses a Deep Sets [16] archi-tecture. Given a fragment collection Z = {Z(1) , . . . , Z (N )},each fragment with pj generators is tokenized into pj +1 vec-tors: a center token [c⊤ 
+
+> j
+
+, 1] ⊤ and generator tokens [g⊤
+
+> jk
+
+, 0] ⊤.The appended flag bit distinguishes positional information from uncertainty directions within a unified token space, en-abling permutation invariance over both fragments and gen-erators simultaneously without requiring separate encoders. Tokens from all N fragments are concatenated into a single set {tl}Ll=1 where L = PNj=1 (1 + pj ). A shared encoder 
+
+φ : Rn+1 → R64 processes each token independently, and the embeddings are aggregated via max-pooling over the entire token set, with padding tokens masked when batches contain variable-size zonotopes. A decoder φdec : R64 → U
+
+produces the action: 
+
+πset (Z) = φdec 
+
+ L
+
+max  
+
+> l=1
+
+φ(tl)
+
+
+
+. (9) For each training iteration, Bz random zonotopes are sam-pled. An H-step rollout propagates each zonotope through the PWA dynamics: at each step the set-actor computes 
+
+us = πset (Zk), the zonotope is mapped to Zk+1 via the affine update in (1), and Ns points are sampled from Zk.The regret at each point is 
+
+reg( p) = V ∗ f (p, u s) − V ∗ f (p, π ∗(p)) . (10) Let reg k,b = {reg( p) : p ∼ Z(b) 
+
+> k
+
+} denote the regret samples for the b-th zonotope at step k. The ReLU first gates to positive regret, discarding samples where the set-actor outperforms the oracle. From the remaining positive regrets, only the top 30% are retained, focusing the loss on the worst-case tail. The training loss is 
+
+L = 1
+
+HB zHX
+
+> k=1
+> Bz
+
+X
+
+> b=1
+
+mean  top 30% 
+
+ ReLU  reg k,b 
+
+ . (11) 
+
+C. Theoretical Guarantees 
+
+Lipschitz-based certification faces a structural barrier: it requires bounding the worst-case regret of the deployed controller. Let Dk denote the collection of all fragments at step k after mode-boundary decomposition (4a). The worst-case regret at step k is 
+
+ϵk = max 
+
+> S∈D k
+
+sup 
+
+> x∈S
+
+V ∗(f (x, u k)) − min  
+
+> u
+
+V ∗(f (x, u )) . (12) To bound ϵk via Lipschitz constants, consider the center-tracking policy u = π∗(c). With π∗ being Lπ -Lipschitz and 
+
+V ∗ being LV -Lipschitz, for any x ∈ S ⊆ X i with center c,
+
+V ∗ f (x, π ∗(c))  − V ∗ f (x, π ∗(x)) 
+
+≤ LV Bu,i 
+
+ π∗(c)−π∗(x) ≤ LV LB Lπ ∥x−c∥,
+
+where the first inequality uses Lipschitz continuity of V ∗ and affinity of f in u, and the second uses LB = max i ∥Bu,i ∥.Since ∥x − c∥ ≤ diam( Z)/2, the regret satisfies ϵk ≤
+
+LV LB Lπ · diam( Z)/2. Inverting this bound gives a critical radius below which the regret budget ϵ can be met: 
+
+rcrit = 2ϵLV LB Lπ
+
+. (13) 
+
+Proposition 1 (Expressivity–Certifiability Barrier) . For aReLU network with D hidden layers and output-layer weights Wout , satisfying ∥Wi∥2 ≤ ρ for all hidden layers, Lipschitz-based certification requires 
+
+diam( Z) < 2DΩ(1 −γ)
+
+γ ρ D ∥Wout ∥2LB
+
+,
+
+where DΩ = diam(Ω) . For ρ > 1, this bound shrinks exponentially in D. For ρ < 1, cT vanishes exponentially in D.
+
+Proof. Write ∥Wout ∥2 = max( ∥W V
+
+> out
+
+∥2, ∥W π
+
+> out
+
+∥2) for the spectral norms of the output layers of the value and policy networks. Spectral-norm bounds then give LV ≤
+
+ρD ∥Wout ∥2, Lπ ≤ ρD ∥Wout ∥2, and cT ≤ ρD ∥Wout ∥2DΩ.Substituting into the descent condition cT > γϵ/ (1 −γ)
+
+with (13) yields the stated bound. The following theorem bypasses the Lπ bottleneck entirely by propagating zonotopes through V ∗ rather than through the policy. 
+
+Assumption 1 (Value Function Sign) . V ∗(x) ≤ − cT < 0 for 
+
+x ∈ T and V ∗(x) → 0 as dist( x, T ) increases. 
+
+Theorem 1 (Trajectory-Certified Set Convergence) . Given a reachable set trajectory {Z(j) 
+
+> k
+
+} under πset , propagate each fragment through V ∗ via zonotope neural network propaga-tion [8], [14]: 
+
+Y(j) 
+
+> k
+
+= prop( V ∗, Z (j) 
+
+> k
+
+) = ⟨c(j) 
+
+> Y
+
+, G (j) 
+
+> Y
+
+⟩ ⊇ { V ∗(x) : x ∈ Z(j) 
+
+> k
+
+}.
+
+(14) Define the certified V ∗-envelope 
+
+¯Vk = max 
+
+> j
+
+c(j) 
+
+> Y
+
++ ∥G(j) 
+
+> Y
+
+∥1
+
+.
+
+If ¯VK ≤ − cT , then U(ZK ) ⊆ T . No bound on Lπ is required. 
+
+Proof. By (14), Y(j) 
+
+> k
+
+is a scalar zonotope enclosing {V ∗(x) : 
+
+x ∈ Z(j) 
+
+> k
+
+}. Since each generator coefficient αj ∈ [−1, 1] is chosen independently, max α∈[−1,1] p (c + Gα ) = c + ∥G∥1,so 
+
+max 
+
+> x∈Z(j)
+> k
+
+V ∗(x) ≤ c(j) 
+
+> Y
+
++ ∥G(j) 
+
+> Y
+
+∥1 ≤ ¯Vk.
+
+Thus V ∗(x) ≤ − cT for all x ∈ U (ZK ), giving U(ZK ) ⊆{x : V ∗(x) ≤ − cT } ⊆ T by Assumption 1. Algorithm 1 implements this procedure. Because it re-quires a separate run per initial condition, the following assumptions are introduced to characterize when certification succeeds and to close the terminal guarantee. 
+
+Assumption 2 (Domain Invariance) . The operating domain 
+
+Ω is forward-invariant under πset : f (Z, π set (Z)) ⊆ Ω for all 
+
+Z ⊆ Ω.
+
+Assumption 3 (Common Quadratic Lyapunov Function (CQLF)) . There exists P ≻ 0 satisfying A⊤ 
+
+> i
+
+P A i ⪯ ¯σ2P for all i ∈ [M ] with ¯σ < 1 [22]. Congruence by P −1/2 yields 
+
+˜A⊤ 
+
+> i
+
+˜Ai ⪯ ¯σ2I where ˜Ai = P 1/2AiP −1/2, so ∥ ˜Ai∥2 ≤ ¯σ
+
+in the P -norm ∥x∥P =∥P 1/2x∥2. When ∥Ai∥2 < 1, P =I
+
+suffices. Otherwise, the linear matrix inequality (LMI) is 
+
+Algorithm 1 Trajectory-Certified Set Convergence 
+
+Input: Initial zonotope Z0, Lyapunov candidate V ∗, set-actor πset , horizon Kmax , target depth cT
+
+Output: certified , Kcert  
+
+> 1:
+
+for k = 0 , . . . , K max − 1 do  
+
+> 2:
+
+uk ← πset (Zk) 
+
+> 3:
+
+Zk+1 ← ∅  
+
+> 4:
+
+for i = 1 , . . . , M do  
+
+> 5:
+
+Zk,i ← Zk ∩ X i 
+
+> 6:
+
+Zk+1 ← Zk+1 ∪  Ai Zk,i + Bu,i uk ⊕ W  
+
+> 7:
+
+end for  
+
+> 8:
+
+for each Z(j) ∈ Zk+1 do  
+
+> 9:
+
+Y(j) ← prop( V ∗, Z (j)) 
+
+> 10:
+
+end for  
+
+> 11:
+
+¯Vk+1 ← max j
+
+c(j) 
+
+> Y
+
++ ∥G(j) 
+
+> Y
+
+∥1
+
+ 
+
+> 12:
+
+if ¯Vk+1 ≤ − cT then  
+
+> 13:
+
+return (true , k +1)  
+
+> 14:
+
+end if  
+
+> 15:
+
+end for  
+
+> 16:
+
+return (false , K max )
+
+solved via YALMIP. If infeasible, the framework requires extension to piecewise quadratic Lyapunov functions [22]. 
+
+Assumption 4 (Lyapunov Regularity) . In addition to Assump-tion 1, V ∗ : Ω → R≤0 satisfies: (i) V ∗ is LV -Lipschitz on 
+
+Ω, (ii) for any x ∈ Ω \ T ,
+
+min  
+
+> u∈U
+
+V ∗(f (x, u )) ≤ 1
+
+γ V ∗(x), (15) where γ ∈ (0 , 1) is the HJ discount factor. Condition (ii) is motivated by Bellman optimality: for deterministic dy-namics with W = {0}, r(x) = 0 for x /∈ T by (5), so the Bellman equation gives V ∗(x) = γ min u V ∗(f (x, u )) ,yielding condition (ii) with equality. Under bounded noise, Lipschitz continuity gives |Ew[V ∗(f (x, u ) + w)] −
+
+V ∗(f (x, u )) | ≤ LV E[∥w∥], introducing a perturbation of order O(LV σw
+
+√n) that is negligible relative to cT for small 
+
+σw. It is used only by Proposition 2 and Theorem 2. 
+
+Remark 1 (Over-Approximation and Hausdorff Inflation) .
+
+Since each reachability step produces an over-approximating zonotope ˆZ ⊇ Z and V ∗ is LV -Lipschitz, the value over-approximation satisfies sup ˆZ V ∗ ≤ sup Z V ∗ + LV η, where 
+
+η bounds the Hausdorff distance dH ( ˆZ, Z ) uniformly over all steps and fragments. In practice, η arises from three sources: zonotope–halfspace intersection at mode boundaries yields enclosing zonotopes rather than exact intersections, generator order reduction when the budget is exceeded, and the Minkowski sum with the disturbance set W at each step. Within each mode, the affine map itself is exact for zonotopes. We write Rw = ∥Gw∥P = σw
+
+Pnj=1 ∥P 1/2ej ∥2
+
+for the per-step noise contribution in the P -norm. Theorem 1 requires only Assumption 1 and zonotope propagation and is independent of Assumptions 2–4. Each initial condition requires a separate verification run. Proposition 2 (Diagnostic Sufficient Condition) . A sufficient condition for universal, initialization-independent, set con-vergence is 
+
+cT > L V
+
+η
+
+1 − ¯σ + γ ϵ 
+
+1 − γ , (16) where ¯σ is the CQLF contraction rate, η the Hausdorff over-approximation error, and ϵ = sup k ϵk the worst-case regret (12). The first term is the steady-state Lipschitz deviation and the second the geometric regret accumulation. 
+
+Proof. For a generator matrix G, define ∥G∥P = P 
+
+> j
+
+∥gj ∥P
+
+as the sum of column P -norms, which bounds the zonotope radius in the P -norm. By the CQLF condition (Assump-tion 3), within each mode the generator norm contracts as ∥AiGk∥P ≤ ¯σ∥Gk∥P . Accounting for per-step over-approximation inflation η, the generator norm follows the recurrence 
+
+Rk+1 ≤ ¯σR k + η, so Rk ≤ ¯σkR0 + η 
+
+> 1−¯σ
+
+.
+
+For the center trajectory {ck} of a representative frag-ment, Assumption 4(ii) and the worst-case regret (12) give 
+
+V ∗(f (ck, u k)) ≤ γ−1V ∗(ck) + ϵ. Combining with Lipschitz continuity of V ∗,
+
+sup x∈U (Zk ) V ∗(x) ≤ V ∗(ck) + LV Rk.
+
+As k → ∞, Rk → η/ (1 − ¯σ) and the geometric re-gret series sums to γϵ/ (1 −γ), so condition (16) ensures 
+
+LV R∞ +γϵ/ (1 −γ) < c T , giving U(ZK ) ⊆ T in finite time. The center-tracking argument assumes that each fragment center remains interior to its mode region, and when mode-boundary splitting reassigns a center, the displacement is absorbed into LV Rk.In practice, the global Lipschitz bounds LV and Lπ
+
+severely over-estimate the true local behavior, causing the RHS of condition (16) to exceed cT by a large margin. The following theorem closes this gap within a near-target core by introducing a local value depth cℓ 
+
+> T
+
+= min x∈∂T |V ∗ 
+
+> ℓ
+
+(x)|,the minimum absolute value of the local certificate network on the target boundary. 
+
+Theorem 2 (Certified Terminal Convergence) . Let C ⊇ T 
+
+be a terminal core region, and let V ∗ 
+
+> ℓ
+
+, π∗ 
+
+> ℓ
+
+be a locally trained certificate network on C satisfying Assumption 4 restricted to C, with Lipschitz bounds Lcert  
+
+> V
+
+, Lcert  
+
+> π
+
+certified via zonotope propagation [8]. Let ηC be a per-step bound on the Hausdorff inflation within C, accounting for mode-boundary splitting, order reduction, and the disturbance W.Then any zonotope fragment entering C with diameter below 
+
+¯dcert = 2 cℓ 
+
+> T
+
+− Lcert  
+
+> V
+
+ηC /(1 −¯σ)(1 −γ)
+
+γ L cert  
+
+> V
+
+LB Lcert 
+
+> π
+
+(17) satisfies condition (16) with all quantities certified, provided 
+
+cℓ 
+
+> T
+
+> L cert  
+
+> V
+
+ηC /(1 −¯σ).
+
+Proof. Proposition 2 establishes condition (16) with general 
+
+η. Within C, the per-step Hausdorff inflation is bounded by 
+
+ηC , giving steady-state generator radius R∞ = ηC /(1 −¯σ).When C lies within a single mode region, no splitting occurs TABLE I: Benchmark PWA systems. n: state dim, m: input dim, M : modes, Target: center xt, rt: target radius.                                       
+
+> System nmM∥Ai∥2/∥˜Ai∥2Bdry. Target rt
+> 4Quad 2240.79 axis (2 ,2) 0.50
+> 8Sec 2280.79 diag. (1 .2,0.4) 0.50
+> CoupledOsc 4241.40 →0.84 non-axis 00.30
+> TripleOsc 6381.31 →0.89 non-axis 00.30
+
+and ηC = Rw. When C spans multiple modes, ηC additionally accounts for intersection and order-reduction errors. Condi-tion (16) thus requires cℓ 
+
+> T
+
+> L cert  
+
+> V
+
+ηC /(1 −¯σ) + γϵ/ (1 −γ).The per-fragment regret bound gives ϵ ≤ Lcert  
+
+> V
+
+LB Lcert  
+
+> π
+
+·
+
+diam /2. Substituting and solving for diam yields ¯dcert as stated. 
+
+Remark 2 (Indirect Verification of Descent) . Direct verifica-tion of the composite descent γV ∗ 
+
+> ℓ
+
+(f (x, π ∗ 
+
+> ℓ
+
+(x))) −V ∗ 
+
+> ℓ
+
+(x) ≤ 0
+
+via zonotope propagation is infeasible: ReLU relaxation gaps accumulate multiplicatively across composed networks. The-orem 2 avoids this by bounding Lcert  
+
+> V
+
+and Lcert  
+
+> π
+
+separately, each via propagation through a single network. The local certificate network V ∗ 
+
+> ℓ
+
+, π∗ 
+
+> ℓ
+
+uses the same spectral constraint ∥Wi∥2 ≤ 1.0 and the same travel-cost reward (5) as the global training, but is trained on the restricted domain 
+
+C with radius only slightly larger than rt. Because C is compact around T , the majority of sampled states fall inside 
+
+Tref and receive non-zero reward, making the reward signal effectively dense. In contrast, global training samples from a much larger domain where the target volume is exponentially small in n, so most samples receive zero reward and produce negligible cℓ 
+
+> T
+
+.IV. N UMERICAL EXPERIMENTS 
+
+A. Benchmark Systems 
+
+Four PWA systems are evaluated in Table I in order of in-creasing complexity. 4Quad tests baseline functionality with axis-aligned splitting. 8Sec tests non-axis-aligned boundaries and larger mode count. CoupledOsc introduces ∥Ai∥2 > 1,underactuation with m < n , and CQLF necessity. TripleOsc pushes to n=6 with M =8 modes to test scalability of both trajectory and terminal certificates. 4Quad, M =4 with axis-aligned boundaries, uses mode matrices A1 = A3 = Abase , A2 = A4 = A⊤ 
+
+> base
+
+with 
+
+Abase =  0.75 0.25 
+
+> −0.25 0 .75
+
+, yielding ∥Ai∥2 = 0 .79 < 1 so P =I
+
+suffices. 8Sec, M =8 with non-axis-aligned boundaries, partitions the state space into eight sectors defined by the hyperplanes 
+
+x1=0 , x2=0 , x1=x2, x1=−x2, with rotation matrices Ai =0.79 R(θi), θi ∈ [π/ 12 , π/ 6] .CoupledOsc, n=4 and M =4 , models two masses cou-pled by a piecewise-linear spring whose stiffness switches between tension and compression regimes. In original co-ordinates, ∥Ai∥2 ∈ [1 .14 , 1.40] , all exceeding unity, while 
+
+ρ(Ai) < 1. The CQLF transformation ˜x = P 1/2x yields 
+
+∥ ˜Ai∥2 = 0 .84 , which shows that the framework handles -2 0 2    
+
+> x1
+> -3 -2 -1 0123
+> x2
+> -9 -8.5 -8 -7.5
+> V $(x)-2 -1 012
+> x1
+> -2 -1.5 -1 -0.5 00.5 11.5 2
+> x2
+> 04811 15 Time Step
+> Target
+
+Fig. 2: 8Sec benchmark, M =8 with non-axis-aligned boundaries. Left: Learned HJ value function V ∗(x) with eight mode boundaries shown dashed. The target T is located at the basin minimum, and contour lines show level sets. Right: Set-actor reachability from Z0 = ⟨(−1, −1) ⊤, 0.5I2⟩. Color encodes time step. systems with per-mode transient growth. Mode boundaries become non-axis-aligned in P -coordinates, testing halfspace splitting at n=4 .TripleOsc, n=6 and M =8 , extends to three coupled oscillators with ∥Ai∥2 up to 1.31 . The CQLF yields ∥ ˜Ai∥2 =0.89 , input dimension m=3 .
+
+B. Training Configuration 
+
+Stage 1, HJ training, uses DDPG [20] with batch 512 , γ =0.95 , learning rates 10 −3/10 −4 for critic/actor, Polyak rate 
+
+τ = 0 .005 , exploration noise σexpl = 0 .2, and actor/critic networks of 2 × 256 ReLU units. The reverse curriculum starts at the target boundary and expands at rate 0.10 per 
+
+5,000 iterations, running up to 100 k, extended to 150 k for 
+
+n=4 and 500 k for n=6 .Stage 2, distillation, uses Bz =96 zonotopes per batch with 
+
+2–10 generators, H=6 -step rollouts, Ns=32 sampled points per fragment, top-30% regret aggregation, and cosine anneal-ing from 5×10 −4 to 5×10 −5 over 2,000 –3,000 iterations. To prepare the set-actor for the multi-fragment inputs produced by mode-boundary splitting during verification, 30% of train-ing iterations present 2–4 small zonotopes clustered around a base point, teaching the encoder to produce consistent representations regardless of center token count. Stage 3, verification, uses CORA 2024 [23] with 
+
+Kmax =15 steps, generator budget 40 , and fragment budget 
+
+500 , reduced to 300 for n ≥ 4. All experiments run in MATLAB R2024b on a workstation with an NVIDIA RTX 4070 Ti GPU. HJ training completes in 40 –55 minutes, distillation in 8–15 minutes, CORA verification in 2–13 
+
+minutes per configuration. 
+
+C. Results 
+
+Three key findings emerge: (i) the set-actor achieves 
+
+100% strict containment on all four benchmarks and is the only tested method to do so (Table II), (ii) Theorem 1 certifies convergence with positive margin up to n=6 without bounding Lπ , confirmed in Table III, and (iii) Theorem 2 closes the terminal guarantee on all four benchmarks up to 
+
+n=6 , with restricted-domain training resolving the sparse-reward signal attenuation at higher dimensions. 
+
+1) Pipeline Results: The reverse curriculum stabilizes HJ training under sparse rewards, expanding from the tar-get boundary to [−3, 3] 2 at n=2 , [−2, 2] 4 at n=4 , and 
+
+[−1.5, 1.5] 6 at n=6 . The learned V ∗(x) forms a smooth basin centered on the target as shown in Fig. 2. The dis-tillation loss converges within 200 iterations, and worst-case regret remains bounded throughout training. As shown in Table II and Figs. 2–3, the set-actor achieves 
+
+100% strict containment on all four benchmarks. For n≥4,the fragment budget of 300 is reached by step 10 on Couple-dOsc and step 7 on TripleOsc, and Monte Carlo evaluations confirm that tracked fragments retain over 94% of the true reachable set volume. Theorem 1 certifies convergence for the tracked subset on every system, consistent with standard practice in zonotope-based reachability tools [23]. We further evaluate on a grid of 60 initializations for 4Quad, comprising 5 × 4 centers in [−2.5, 0.5] 2 with initial generator magnitude r0 ∈ {0.20 , 0.35 , 0.50 }, i.e., Z0 =
+
+⟨c, r 0I2⟩. Success rate: 100% at r0=0 .20 , 85% at r0=0 .35 ,
+
+50% at r0=0 .50 , yielding 47 /60 = 78 .3% overall. All 13 
+
+failures satisfy the predictive criterion N0 ≥ Bbudget /K max ,where N0 is the fragment count at step 1 and Bbudget is the fragment budget, set to 500 for n=2 and 300 for n≥4: initial zonotopes straddling ≥3 mode boundaries produce >100 
+
+fragments at step 1. Among the 47 successful configurations, all produce terminal diameters below ¯dcert = 0 .135 , entering the regime of Theorem 2. 
+
+2) Comparative Evaluation: Table II compares the set-actor against an oracle-center ablation where uk = π∗(ck)
+
+with ck the center of the enclosing zonotope and a V ∗-Opt baseline that samples K points from the zonotope and solves uk = arg min u max i V ∗(f (xi, u )) via fmincon. On 4Quad, the oracle-center achieves 22 /25 fragments inside T
+
+but three fragments exit, one of which diverges to a distant quadrant with max viol. = 3 .81 . The V ∗-Opt also fails, with 
+
+3 of 18 fragments exiting and max viol. = 0 .118 , because the scenario-based fmincon solver does not globally optimize over zonotope vertices, despite 300 × higher online cost. Four ablation variants are evaluated on 4Quad: (i) Without mode-boundary splitting, the enclosing area explodes by -2 -1 0 1 2 3          
+
+> x1
+> -2 -1 0123
+> x2
+> 04811 15 Time Step
+> Target -2 -1 0123
+> x1
+> -2 -1 0123
+> x2
+> 04811 15 Time Step
+> Target -2 -1 0123
+> x1
+> -2 -1 0123
+> x2
+> 04811 15 Time Step
+> Target
+
+Fig. 3: 4Quad reachability comparison. Left: Set-actor. Center: Oracle baseline. Right: V ∗-Opt baseline. The oracle applies 
+
+π∗(ck) without generator awareness, while V ∗-Opt uses scenario-based fmincon optimization. Color encodes time step. TABLE II: Reachability verification across benchmarks. Frags ⊆T : fragments fully contained / total. Contain.: area coverage (%). Max viol.: maximum Hausdorff distance (×10 −2) of any fragment to ∂T , where 0.0 denotes strict containment. Online: per-step inference time. Baselines eval-uated on 4Quad only. Orc: oracle-center ablation. 
+
+Set-Actor Orc V ∗-Opt 4Q 8Sec CplO TrO 4Q 4Q 
+
+n/M 2/4 2/8 4/4 6/8 2/4 2/4 Frags ⊆T 14/14 106/106 300/300 300/300 22/25 15/18 Contain. 100% 100% 100% 100% 98.8% 99.4% Max viol. 0.0 0.0 0.0 0.0 380.8 11.8 Online 2.2ms 1.8ms 4.1ms 3.8ms 2.1ms 669ms 
+
+TABLE III: Trajectory-certified convergence via Theorem 1. 
+
+Kcert : certification step. Margin = | ¯VK | − cT > 0 certifies 
+
+U(ZK ) ⊆ T . Frags: fragment count at Kcert .
+
+System n Kcert Frags cT ¯VK Margin 4Quad 2 9 12 8.50 −8.80 +0 .30 
+
+8Sec 2 7 7 9.32 −9.34 +0 .02 
+
+CoupledOsc 4 8 300 2.91 −3.18 +0 .27 
+
+TripleOsc 6 9 300 3.31 −3.76 +0 .45 
+
+step 3. (ii) Mean aggregation instead of top-30% converges slower but achieves comparable final containment. (iii) Max aggregation produces noisier gradients. (iv) Varying the top-k threshold over {10% , 20% , 30% , 50% , 100% } yields 
+
+100% containment for all values in [20% , 50%] , suggesting insensitivity to this hyperparameter. 
+
+3) Certification Analysis: Table III confirms positive cer-tification margin on all four benchmarks. The margin | ¯VK | − 
+
+cT decreases with trajectory length but remains positive at the certification step in every case. Center-trajectory descent holds universally: across 10 ran-dom initializations, all 150 /150 center points reach V ∗ <
+
+−cT , consistent with the positive margins reported in Ta-ble III. The expressivity–certifiability trade-off [15] is quantified by the diagnostic condition (16). On 4Quad, global spectral-norm Lipschitz bounds give Lsp  
+
+> π
+
+= 1,035 and Lsp  
+
+> V
+
+=263 ,284 , where superscript sp denotes spectral-norm product bounds, while local zonotope propagation yields Lcert  
+
+> π
+
+= 8 .9
+
+and Lcert  
+
+> V
+
+= 6 .9, reducing LV by 38 ,000 ×. With these global bounds, the RHS of condition (16) evaluates to 42 against 
+
+cT = 8.5, yielding a 5× infeasibility gap. A spectrally normalized network reduces the gap but remains infeasible at LHS /RHS = 0 .02 /2.3. The empirically observed RHS is only 0.9, showing that the infeasibility is a Lipschitz over-estimation artifact rather than a true limitation. This gap is resolved locally: within a restricted terminal core, a spectrally constrained certificate network with ∥Wi∥2 ≤ 1.0 achieves 
+
+LHS /RHS = 0 .046 /0.012 , yielding a feasible margin of 
+
++0 .035 and demonstrating that sufficient value depth and tight certification can coexist. Table IV reports the certified bounds via zonotope propa-gation [8]. 4Quad achieves cℓ 
+
+> T
+
+= 0 .046 at crossover diameter 
+
+¯dcert ≈ 0.135 . At step 15 the observed diameter of 0.045 is well below this threshold. 8Sec achieves cℓ 
+
+> T
+
+= 2 .67 with positive margin even at diam = 0 .20 . CoupledOsc, n=4 ,achieves cℓ 
+
+> T
+
+= 0 .203 with ¯dcert = 3 .63 . The low LB = 0 .006 
+
+makes the regret term negligible. TripleOsc, n=6 , demonstrates that the dimension barrier can be resolved by restricting the local certificate training domain C to a compact neighbourhood of Tref , so that the same travel-cost reward (5) generates effectively dense gradient signal. With global-domain training, a constrained 
+
+32 -unit network achieves cℓ 
+
+> T
+
+= 2 ×10 −6 because the 6D target volume is too small for effective gradient signal. A restricted-domain 64 -unit network with the same spectral constraint ∥Wi∥2 ≤ 1.0 achieves cℓ 
+
+> T
+
+= 0 .170 , an 85 ,000 ×
+
+improvement, at crossover diameter ¯dcert = 4.52 . The Lipschitz bounds increase only modestly from Lcert  
+
+> π
+
+= 0 .62 
+
+to 1.01 and Lcert  
+
+> V
+
+= 0 .27 to 0.81 , indicating that value depth, not Lipschitz tightness, is the binding constraint at higher di-mensions. All four benchmarks now achieve positive margin at all tested diameters. TABLE IV: Certified value depth cℓ 
+
+> T
+
+and local condition (16) within C, closing the terminal guarantee at all dimensions up to n=6 . Unst.: number of unstable ReLU neurons in actor and critic. Margin = cℓ 
+
+> T
+
+− RHS , where positive values confirm Theorem 2. 
+
+diam Lcert  
+
+> π
+
+Lcert  
+
+> V
+
+Unst. ϵcert RHS Margin 4Quad  0.04 0.98 0.03 0+0 4·10 −4 0.012 +0 .035 0.07 0.98 0.03 0+0 7·10 −4 0.021 +0 .026 0.10 0.98 0.03 0+1 1·10 −3 0.032 +0 .015 
+
+> 8Sec
+
+0.04 2.18 0.16 0+2 0.006 0.12 +2 .56 0.07 2.17 0.17 0+7 0.010 0.21 +2 .46 0.10 2.17 0.19 0+7 0.016 0.32 +2 .35 0.20 2.15 0.20 0+15 0.033 0.65 +2 .03 
+
+> CplO
+
+0.04 1.00 1.00 2+50 1·10 −4 0.002 +0 .200 0.10 1.00 1.00 2+50 3·10 −4 0.006 +0 .197 0.30 1.00 1.00 2+50 9·10 −4 0.017 +0 .186 
+
+> TrO
+
+0.04 1.01 0.81 0+0 2·10 −5 8·10 −4 +0 .169 0.10 1.01 0.81 0+0 4·10 −5 0.004 +0 .166 0.30 1.01 0.81 0+0 1·10 −4 0.011 +0 .159 
+
+V. C ONCLUSIONS 
+
+This paper presents a framework for certified set conver-gence in neural-controlled PWA systems, combining deep HJ reachability with a set-based controller trained via regret-based policy distillation. On four benchmarks up to n=6 
+
+with M =8 modes and ∥Ai∥2 up to 1.40 , the set-actor is the only method achieving full set containment among all tested baselines. The three-level certification hierarchy, which comprises the diagnostic condition, the trajectory certificate, and the ter-minal certificate, operates at different scales: Propositions 1– 2 identify the expressivity–certifiability barrier and provide a diagnostic condition that motivates the design, Theorem 1 certifies trajectory-specific set convergence without bounding 
+
+Lπ , and Theorem 2 closes the terminal guarantee using spectrally constrained local networks. The main limitations are the CQLF assumption, which excludes systems lacking a common contraction metric, and the trajectory-specific nature of Theorem 1, which requires a separate verification run per initial condition. Extensions to piecewise quadratic Lyapunov functions [22] would relax the former, and amortized verification across initialization families is a direction for the latter. Data-driven formula-tions [24] would further extend the framework to systems with unknown dynamics. REFERENCES [1] D. Liberzon, Switching in Systems and Control . Birkh¨ auser Boston, 2003. [2] E. D. Sontag, “Nonlinear regulation: The piecewise linear approach,” 
+
+IEEE Transactions on Automatic Control , vol. 26, no. 2, pp. 346–358, 1981. [3] B. Sch¨ urmann and M. Althoff, “Optimal control of sets of solutions to formally guarantee constraints of disturbed linear systems,” in 2017 American control conference (ACC) . IEEE, 2017, pp. 2522–2529. [4] ——, “Optimizing sets of solutions for controlling constrained nonlin-ear systems,” IEEE Transactions on Automatic Control , vol. 66, no. 3, pp. 981–994, 2020. [5] Y.-C. Chang, N. Roohi, and S. Gao, “Neural Lyapunov control,” in Advances in Neural Information Processing Systems (NeurIPS) ,vol. 32, 2019, pp. 3240–3249. [6] H. Dai, B. Landry, L. Yang, M. Pavone, and R. Tedrake, “Lyapunov-stable neural-network control,” in Robotics: Science and Systems (RSS) , 2021. [7] S. Chen, M. Fazlyab, M. Morari, G. J. Pappas, and V. M. Preciado, “Learning Lyapunov functions for piecewise affine systems with neural network controllers,” arXiv preprint arXiv:2008.06546 , 2020. [8] G. Singh, T. Gehr, M. Mirman, M. P¨ uschel, and M. Vechev, “Fast and effective robustness certification,” in Advances in Neural Information Processing Systems (NeurIPS) , vol. 31, 2018, pp. 10 802–10 813. [9] N. Kochdumper, C. Schilling, M. Althoff, and S. Bak, “Open- and closed-loop neural network verification using polynomial zonotopes,” in NASA Formal Methods (NFM) , 2023, pp. 16–36. [10] Z. Zhang, M. U. B. Niazi, M. S. Chong, K. H. Johansson, and A. Alanwar, “Data-driven nonconvex reachability analysis using exact multiplication,” in 2025 IEEE 64th Conference on Decision and Control (CDC) . IEEE, 2025, pp. 4882–4889. [11] T. J. Bird, H. C. Pangborn, N. Jain, and J. P. Koeln, “Hybrid zonotopes: A new set representation for reachability analysis of mixed logical dynamical systems,” Automatica , vol. 154, p. 111107, 2023. [12] P. Solanki, I. El-Hajj, J. J. van Beers, E.-J. van Kampen, and C. C. de Visser, “Formalizing the relationship between Hamilton-Jacobi reachability and reinforcement learning,” arXiv preprint arXiv:2601.08050 , 2026. [13] ——, “Certifying Hamilton-Jacobi reachability learned via reinforce-ment learning,” arXiv preprint arXiv:2602.16475 , 2026. [14] M. Wendl, L. Koller, T. Ladner, and M. Althoff, “Training verifiably robust agents using set-based reinforcement learning,” arXiv preprint arXiv:2408.09112 , 2024. [15] N. Jovanovi´ c, M. Balunovi´ c, M. Baader, and M. Vechev, “On the paradox of certified training,” Transactions on Machine Learning Research (TMLR) , 2022. [16] M. Zaheer, S. Kottur, S. Ravanbakhsh, B. P´ oczos, R. Salakhutdinov, and A. J. Smola, “Deep sets,” in Advances in Neural Information Processing Systems (NeurIPS) , 2017, pp. 3391–3401. [17] S. Bansal and C. J. Tomlin, “DeepReach: A deep learning approach to high-dimensional reachability,” in IEEE International Conference on Robotics and Automation (ICRA) , 2021, pp. 1817–1824. [18] J. F. Fisac, M. Chen, C. J. Tomlin, and S. Shankar Sastry, “Reach-avoid problems with time-varying dynamics, targets and constraints,” in International Conference on Hybrid Systems: Computation and Control , 2015, pp. 11–20. [19] C. Dawson, S. Gao, and C. Fan, “Safe control with learned certificates: A survey of neural Lyapunov, barrier, and contraction methods for robotics and control,” IEEE Transactions on Robotics , vol. 39, no. 3, pp. 1749–1767, 2023. [20] T. P. Lillicrap, J. J. Hunt, A. Pritzel, N. Heess, T. Erez, Y. Tassa, D. Sil-ver, and D. Wierstra, “Continuous control with deep reinforcement learning,” in International Conference on Learning Representations (ICLR) , 2016. [21] Y. Bengio, J. Louradour, R. Collobert, and J. Weston, “Curriculum learning,” in International Conference on Machine Learning (ICML) ,2009, pp. 41–48. [22] M. Johansson and A. Rantzer, “Computation of piecewise quadratic Lyapunov functions for hybrid systems,” IEEE Transactions on Auto-matic Control , vol. 43, no. 4, pp. 555–559, 1998. [23] M. Althoff, “An introduction to cora 2015,” in Proc. of the workshop on applied verification for continuous and hybrid systems , 2015, pp. 120–151. [24] P. Xie, J. Betz, D. M. Raimondo, and A. Alanwar, “Data-driven reachability analysis for piecewise affine systems,” in 2025 IEEE 64th Conference on Decision and Control (CDC) . IEEE, 2025, pp. 1356– 1363.
