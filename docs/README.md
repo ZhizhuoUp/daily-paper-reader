@@ -6,56 +6,55 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-04-04
-- 运行时间：2026-04-04 19:53:28 UTC
+- 最新运行日期：2026-04-05
+- 运行时间：2026-04-05 19:41:14 UTC
 - 运行状态：成功
 - 本次总论文数：11
-- 精读区：0
-- 速读区：11
+- 精读区：1
+- 速读区：10
 
 ### 今日简报（AI）
-今日速览 11 篇前沿论文，聚焦机器人精细操作的动作迭代优化与实时自动驾驶的规则融合。
-重点关注通过离散流匹配（DFM-VLA）实现的动作精炼技术，以及利用各向异性摩擦力提升灵巧手操作稳定性的硬件新思路。
-建议深入了解 RAD-LAD 系统如何将语言规则转化为实时驾驶决策，这是提升自动驾驶可靠性的关键方向。
-- 详情：[/202604/04/README](/202604/04/README)
+今日精选 11 篇论文，深度解析基于形态学的全身交互运动控制框架 MorphoGuard。
+重点关注多传感器融合在无人机高速避障及复杂环境下 LiDAR 鲁棒性的最新突破。
+建议开发者深入研究形态感知控制，以提升机器人在动态交互中的灵活性与稳定性。
+- 详情：[/202604/05/README](/202604/05/README)
 
 ### 精读区论文标签
-- 本次无精读推荐。
+1. [MorphoGuard: A Morphology-Based Whole-Body Interactive Motion Controller](/202604/05/2604.01517v1-morphoguard-a-morphology-based-whole-body-interactive-motion-controller)  
+   标签：评分：8.0/10、query:q6
+   evidence：双臂平台的全身交互运动控制器
 
 ### 速读区论文标签
-1. [DFM-VLA: Iterative Action Refinement for Robot Manipulation via Discrete Flow Matching](/202604/04/2603.26320v1-dfm-vla-iterative-action-refinement-for-robot-manipulation-via-discrete-flow-matching)  
-   标签：评分：7.0/10、query:q6
-   evidence：机器人操作的迭代动作细化
-2. [Robotic Dexterous Manipulation via Anisotropic Friction Modulation using Passive Rollers](/202604/04/2603.27452v1-robotic-dexterous-manipulation-via-anisotropic-friction-modulation-using-passive-rollers)  
-   标签：评分：7.0/10、query:q6
-   evidence：机器人灵巧操作与基于约束的模型
-3. [RAD-LAD: Rule and Language Grounded Autonomous Driving in Real-Time](/202604/04/2603.28522v1-rad-lad-rule-and-language-grounded-autonomous-driving-in-real-time)  
+1. [An End-to-end Flight Control Network for High-speed UAV Obstacle Avoidance based on Event-Depth Fusion](/202604/05/2603.27181v1-an-end-to-end-flight-control-network-for-high-speed-uav-obstacle-avoidance-based-on-event-depth-fusion)  
+   标签：评分：7.0/10、query:q1
+   evidence：无人机避障与飞行控制
+2. [Robust Global-Local Behavior Arbitration via Continuous Command Fusion Under LiDAR Errors](/202604/05/2603.27273v1-robust-global-local-behavior-arbitration-via-continuous-command-fusion-under-lidar-errors)  
    标签：评分：7.0/10、query:q5
-   evidence：用于自动驾驶运动规划的实时语言动作规划器
-4. [GraSP-STL: A Graph-Based Framework for Zero-Shot Signal Temporal Logic Planning via Offline Goal-Conditioned Reinforcement Learning](/202604/04/2603.29533v1-grasp-stl-a-graph-based-framework-for-zero-shot-signal-temporal-logic-planning-via-offline-goal-conditioned-reinforcement-learning)  
-   标签：评分：7.0/10、query:q3
-   evidence：时序逻辑规范下的轨迹合成
-5. [SoftHand Model-W: A 3D-Printed, Anthropomorphic, Underactuated Robot Hand with Integrated Wrist and Carpal Tunnel](/202604/04/2604.00738v1-softhand-model-w-a-3d-printed-anthropomorphic-underactuated-robot-hand-with-integrated-wrist-and-carpal-tunnel)  
+   evidence：自动驾驶仲裁中的实时性约束
+3. [Competitor-aware Race Management for Electric Endurance Racing](/202604/05/2603.28286v1-competitor-aware-race-management-for-electric-endurance-racing)  
+   标签：评分：7.0/10、query:q1
+   evidence：最优控制中的非对称避障约束
+4. [Deep Reinforcement Learning for Robotic Manipulation under Distribution Shift with Bounded Extremum Seeking](/202604/05/2604.01142v1-deep-reinforcement-learning-for-robotic-manipulation-under-distribution-shift-with-bounded-extremum-seeking)  
    标签：评分：7.0/10、query:q6
-   evidence：用于操作任务的类人机器人手
-6. [Tube-Based Safety for Anticipative Tracking in Multi-Agent Systems](/202604/04/2604.00992v1-tube-based-safety-for-anticipative-tracking-in-multi-agent-systems)  
-   标签：评分：7.0/10、query:q5
-   evidence：多智能体系统跟踪中的管道安全框架
-7. [Tele-Catch: Adaptive Teleoperation for Dexterous Dynamic 3D Object Catching](/202604/04/2603.28427v1-tele-catch-adaptive-teleoperation-for-dexterous-dynamic-3d-object-catching)  
+   evidence：机器人操作和增强鲁棒性的混合控制
+5. [jaxsgp4: GPU-accelerated mega-constellation propagation with batch parallelism](/202604/05/2603.27830v1-jaxsgp4-gpu-accelerated-mega-constellation-propagation-with-batch-parallelism)  
+   标签：评分：6.0/10、query:q1
+   evidence：GPU 加速的空间避障
+6. [Uncertainty-Aware Trajectory Prediction: A Unified Framework Harnessing Positional and Semantic Uncertainties](/202604/05/2603.29362v1-uncertainty-aware-trajectory-prediction-a-unified-framework-harnessing-positional-and-semantic-uncertainties)  
+   标签：评分：6.0/10、query:q3
+   evidence：针对动态实体的确定性感知轨迹预测
+7. [Infinite-Horizon Ergodic Control via Kernel Mean Embeddings](/202604/05/2604.01023v1-infinite-horizon-ergodic-control-via-kernel-mean-embeddings)  
+   标签：评分：6.0/10、query:q2
+   evidence：用于覆盖任务的无限时界遍历控制器
+8. [Functional Force-Aware Retargeting from Virtual Human Demos to Soft Robot Policies](/202604/05/2604.01224v1-functional-force-aware-retargeting-from-virtual-human-demos-to-soft-robot-policies)  
    标签：评分：6.0/10、query:q6
-   evidence：动态物体抓取的灵巧手遥操作
-8. [Feel Robot Feels: Tactile Feedback Array Glove for Dexterous Manipulation](/202604/04/2603.28542v1-feel-robot-feels-tactile-feedback-array-glove-for-dexterous-manipulation)  
-   标签：评分：6.0/10、query:q6
-   evidence：用于遥操作灵巧操纵的触觉反馈手套
-9. [Data-Driven Reachability of Nonlinear Lipschitz Systems via Koopman Operator Embeddings](/202604/04/2604.00150v1-data-driven-reachability-of-nonlinear-lipschitz-systems-via-koopman-operator-embeddings)  
-   标签：评分：6.0/10、query:q5
-   evidence：机器人系统安全验证的数据驱动可达性分析
-10. [Certified Set Convergence for Piecewise Affine Systems via Neural Lyapunov Functions](/202604/04/2604.00286v1-certified-set-convergence-for-piecewise-affine-systems-via-neural-lyapunov-functions)  
-   标签：评分：6.0/10、query:q5
-   evidence：基于神经Lyapunov函数的分段仿射系统安全关键控制
-11. [Gradient-Based Data Valuation Improves Curriculum Learning for Game-Theoretic Motion Planning](/202604/04/2604.00388v1-gradient-based-data-valuation-improves-curriculum-learning-for-game-theoretic-motion-planning)  
+   evidence：将人类演示重定向到软体机器人策略以实现操作技能
+9. [Rendezvous Planning from Sparse Observations of Optimally Controlled Targets](/202604/05/2604.01428v1-rendezvous-planning-from-sparse-observations-of-optimally-controlled-targets)  
    标签：评分：6.0/10、query:q4
-   evidence：自动驾驶场景下的博弈论运动规划
+   evidence：寻找最优控制目标的智能体交会规划
+10. [Preferential Bayesian Optimization with Crash Feedback](/202604/05/2604.01776v1-preferential-bayesian-optimization-with-crash-feedback)  
+   标签：评分：6.0/10、query:q2
+   evidence：用于控制参数学习的贝叶斯优化
 
 
 <div class="dpr-home-promo-card">

@@ -1,0 +1,537 @@
+Title: Preferential Bayesian Optimization with Crash Feedback
+
+URL Source: https://arxiv.org/pdf/2604.01776v1
+
+Published Time: Fri, 03 Apr 2026 00:46:35 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+> IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED FEBRUARY, 2026 1
+
+# Preferential Bayesian Optimization with Crash Feedback 
+
+Johanna Menn 1, David Stenger 1,2, and Sebastian Trimpe 1
+
+Abstract —Bayesian optimization is a popular black-box opti-mization method for parameter learning in control and robotics. It typically requires an objective function that reflects the user’s optimization goal. However, in practical applications, this objec-tive function is often inaccessible due to complex or unmeasurable performance metrics. Preferential Bayesian optimization (PBO) overcomes this limitation by leveraging human feedback through pairwise comparisons, eliminating the need for explicit perfor-mance quantification. When applying PBO to hardware systems, such as in quadcopter control, crashes can cause time-consuming experimental resets, wear and tear, or otherwise undesired outcomes. Standard PBO methods cannot incorporate feedback from such crashed experiments, resulting in the exploration of parameters that frequently lead to experimental crashes. We thus introduce CrashPBO, a user-friendly mechanism that enables users to both express preferences and report crashes during the optimization process. Benchmarking on synthetic functions shows that this mechanism reduces crashes by 63 % and increases data efficiency. Through experiments on three robotics platforms, we demonstrate the wide applicability and transferability of CrashPBO, highlighting that it provides a flexible, user-friendly framework for parameter learning with human feedback on preferences and crashes. Video: https://www.youtube.com/watch?v=2FTbzqT4wP8 
+
+Index Terms —Optimization and optimal control, machine learning for robot control, human factors and human-in-the-loop 
+
+I. INTRODUCTION 
+
+# ARTIFICIAL intelligence methods such as Bayesian opti-mization (BO) efficiently find optimal parameter settings in robotic applications and have demonstrated success in nu-merous use cases [1–3]. However, finding optimal parameters typically requires the specification of a numeric objective, which demands a rigorous understanding of optimal system behavior and is a challenge in its own right. In contrast, when humans observe a robotic system, they often readily assess 
+
+Manuscript received: August 20, 2025; Revised November 19, 2025; Accepted February 11, 2026. © 2026 IEEE. Personal use of this material is permitted. Permission from IEEE must be obtained for all other uses, in any current or future media, including reprinting/republishing this material for advertising or promotional purposes, creating new collective works, for resale or redistribution to servers or lists, or reuse of any copyrighted component of this work in other works. DOI: 10.1109/LRA.2026.3665446 This paper was recommended for publication by Editor J. Kober upon evaluation of the Associate Editor and Reviewers’ comments. This work was funded in part by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) under Germany’s Excellence Strategy – EXC-2023 Internet of Production – 390621612 and project TR 1433/4-1. Computations were performed using resources granted by RWTH Aachen University under Project rwth1705. This work was conducted in part within the Helmholtz School for Data Science in Life, Earth and Energy (HDS-LEE). 
+
+> 1
+
+Johanna Menn, David Stenger, and Sebastian Trimpe are with the Institute for Data Science in Mechanical Engineering (DSME), RWTH Aachen Univer-sity, Aachen, Germany ( {johanna.menn, david.stenger, trimpe }@dsme.rwth-aachen.de). 
+
+> 2
+
+David Stenger is with aiXopt GmbH, Aachen, Germany. A preferred 
+
+> B crashed
+> CrashPBO
+> Do experiments
+> with parameters
+> Suggest new
+> parameters
+
+B
+
+A
+
+> Get
+> human
+> feedback
+> Add comparison
+> to dataset
+> Experiments: Backflip
+> Experiment
+> A
+> Experiment
+> B
+
+Fig. 1: CrashPBO enables optimization of robotic tasks directly from human preferences. The human provides feedback on preferences (“Experiment A was better than B”) and crashes (i.e., totally undesirable experiments). A crashed experiment is ranked worse than all successful ones, preventing the exploration of unsafe or undesirable regions. 
+
+whether a system behaves as desired or not, while they will struggle to suggest optimal parameters in high-dimensional spaces. In this work, we combine BO’s systematic search with human intuition by extending preferential BO (PBO) for optimizing robotic system parameters. PBO [4] circumvents the need for an explicit numerical objective function by inferring task performance directly from human feedback. Because humans find it difficult to provide objective ratings [5], PBO iteratively proposes parameter pairs, or “duels”, for testing. This enables human users, or as they are called in PBO, decision makers (DMs), to indicate their preferred outcomes without requiring in-depth knowledge of parameter influence. Despite the advantages of PBO, its application to robotic systems with inherent instability remains limited. Testing specific parameters for these systems can lead to failed experiments (crashes), which slow down optimization, require system resets, and increase mechanical stress. Standard PBO treats such outcomes as normal experiments and therefore provides no special signal that helps avoid unsafe or highly undesirable regions. As a result, the algorithm may repeatedly explore risky or undesired settings. In this work, we introduce CrashPBO (Figure 1), a novel feedback mechanism that allows users to report crashes as out-comes that are strictly worse than all successful experiments. The term “crash” follows the concept of crash constraints in BO [6, 7], an established approach for handling failed evaluations with no measurable objective value. In CrashPBO, a crash does not necessarily correspond to a physical failure, as users may also flag strongly disliked yet technically successful  
+
+> arXiv:2604.01776v1 [cs.RO] 2 Apr 2026 IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED FEBRUARY, 2026 2
+
+trials as crashes. This preserves the entirely subjective nature of PBO by removing the need to quantify objectives or constraints and by allowing users to reject outcomes without formal definitions. We validate CrashPBO through empirical studies on syn-thetic functions, showing that it substantially reduces crashes compared to traditional PBO and does not influence optimiza-tion efficiency by incorporating feedback from crashed experi-ments. Further, we investigate different comparison modes by comparing three strategies for selecting experimental duels. This allows us to identify the most sample-efficient approach for hardware experiments, reducing the number of experiments needed. To demonstrate the practical applicability of CrashPBO, we perform hardware experiments across three robotic platforms (Figure 2): Quadcopter backflips [8], Furuta pendulum swing-up [9], and balancing unicycle robot remote control [10]. These experiments are new applications for PBO and demon-strate the versatility and fast transferability of CrashPBO. We investigate time savings resulting from fewer experimental resets, reduced wear and tear, and the rejection of subjectively poor parameter sets. As CrashPBO is hyperparameter-free and only influences the data generation, it can be easily applied to new robotic systems and combined with all PBO acquisition functions, foregoing the need to define and shape numeric objective or constraint functions. In summary, our key contributions are:  
+
+> •
+
+CrashPBO: We propose a hyperparameter-free mecha-nism to introduce crash feedback into PBO.  
+
+> •
+
+Investigation of comparison modalities: We compare the effect of how experimental duels are chosen in PBO on synthetic functions to find the most sample-efficient variant for hardware experiments.  
+
+> •
+
+Robot applications: We conduct three hardware experi-ments that demonstrate the versatility and effectiveness of CrashPBO in real-world robotic systems. The source code can be accessed at https://github.com/ Data-Science-in-Mechanical-Engineering/crashpbo. II. R ELATED WORK 
+
+In this work, we propose a mechanism to deal with crashed experiments in PBO, which only requires comparative feed-back between two experimental outcomes and binary feedback for crashes. In standard (non-preferential) BO [11], failed or undesirable experiments are typically addressed through safe BO [12], constrained BO [13], or crash constraints [6, 7]. All these variants have been successfully applied in real-world appli-cations, e.g., safe BO in [14–18], constrained BO in [19], and crash constraints in [6, 20]. Safe and constrained BO include undesirable behavior as constraint functions, which are learned from experiments and modeled as Gaussian processes (GP). Safe BO enforces constraint satisfaction in every iteration with high probability and requires regularity assumptions on the constraint functions to achieve safe exploration [12, 21–23]. Constrained BO [13] only enforces feasibility for the final optimizer, allowing temporary violations and global exploration without safety guarantees. Crash constraints [6, 7, 24] do not require a measurable constraint function, but only binary feedback, if the experiment failed. This is incorporated in BO by an additional GP to classify crash and safe regions [6], or by virtual data points to steer the optimization away from the crashed region [7]. Our approach is similar to the virtual data point approach [7], as we identify crashed points as significantly worse than safe evaluations through additional virtual comparisons. This form of crash feedback is new to 
+
+preferential BO. While it does not guarantee safety, it makes PBO suitable for domains where experiments can fail or yield subjectively undesirable outcomes, without the need to formalize and measure objective and constraint functions. PBO (without crash constraints) has been used in multi-ple applications to tune the parameters of robotic systems with human interactions. Different PBO algorithms have been proposed for human gait optimization in [25, 26] and for quadrupedal robots in [27], which includes safety-aware be-havior in PBO. In [28], a learning framework for robot-to-human object handover is proposed. The human can give either preference feedback or an absolute evaluation of the outcome. Moreover, the potential of PBO for controller tuning in simulations was investigated in [29], demonstrating its ability to speed up the controller tuning process when no quantifiable target function is available. However, all these studies lack a mechanism for rejecting unwanted parameters, which motivates the introduction of a crash mechanism that can be integrated into other PBO frameworks. Additionally, we present three new applications of PBO. Other non-BO preference learning frameworks like GLISp [30] and C-GLISp [31] have been used for MPC tuning with human preferences [31, 32] in simulation. GLISp has been applied to different robot-human interaction use cases like [33] and [34]. In settings similar to our work, C-GLISp permits users to state whether the experiment’s performance is satisfactory. To utilize this feedback, C-GLISp introduces a constraint function, which is learned in addition to the prefer-ence function. In contrast, we use the feedback directly instead of learning an additional constraint function, and CrashPBO can be combined with any PBO acquisition function, as only data generation is influenced. III. P ROBLEM FORMULATION 
+
+We aim to maximize the unknown performance function f :
+
+X → R, where the parameter space is X ⊆ Rd and d ∈ N is the number of input dimensions. However, we cannot observe the function directly. We can only observe k = 0 , . . . , K pairwise comparisons (duels) between the experimental outcomes of the parameters of xA,k and xB,k . This can be formalized as the 
+
+{0, 1}-valued random variable πk such that 
+
+πk =
+
+(
+
+0, if yA,k > y B,k ,
+
+1, otherwise , (1) where xi,k ∈ X and yi,k is 
+
+yi,k = f (xi,k ) + ϵi,k , i ∈ { 0, 1}, (2) with ϵ ∼ N (0 , σ 2) being independent and iden-tically distributed Gaussian noise. The data set IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED FEBRUARY, 2026 3     
+
+> (a) Subjective tuning of quadcopter backflips (b) Automatic controller tuning without the need to define a performance function
+> (c) Tuning of control parameters of the Mini Wheelbot for two experiments, figure 8 (left) and ramp (right)
+> Fig. 2: Applications of CrashPBO
+
+D = {(xA,k , xB,k , π k)}k=0 ,...,K is created by observing 
+
+πk (K + 1) times. Typically, this corresponds to a human providing preferences πk for each k.As we consider unknown constraints, we treat feedback about unwanted behavior, including hardware crashes, as con-straint information. 
+
+Definition 1. A crash is any user-defined unwanted behavior that may require a manual or automatic reset but does not render the system unrecoverable. 
+
+Therefore, we introduce the unknown satisfaction set , where no crashes occur Ωs ⊆ X. We assume that the DM can directly evaluate an experimental outcome as “satisfying” or “crashed” and formalize this as the satisfaction function S : X → { 0, 1}
+
+with 
+
+S(x) = 
+
+(
+
+0, if x /∈ Ωs,
+
+1, otherwise . (3) We aim to find the maximizer of the unknown function f
+
+that satisfies the satisfaction function S. During the optimiza-tion, experiments can crash, and we only evaluate comparisons and the satisfaction function. The constrained optimization problem is 
+
+max  
+
+> x∈X
+
+f (x)
+
+s.t. S(x) = 1 . (4) 
+
+Assumption 2. We assume that the initial comparison con-tains at least one parameter vector x that fulfills S(x) = 1 .
+
+This assumption is necessary, as two crashed points in the first comparison would render the comparison impossible, and it corresponds to the assumption of a feasible initial point in standard crash constraints [24]. BO with preferential feedback (1) is standard in PBO. Prior work in PBO has not considered the formulation in (4), leveraging crash information (3) in addition. IV. P REFERENTIAL BAYESIAN OPTIMIZATION 
+
+BO [11] is a sample-efficient black-box optimization algo-rithm for expensive-to-evaluate and noisy functions. In stan-dard BO [11], the unknown function can be queried directly to get a noisy function value. A GP is typically used as a surrogate model for the function, and an acquisition function suggests the next query. The acquisition function leverages the uncertainty and mean prediction of the GP model to suggest a few queries to reach the function’s optimum. In this work, we use PBO, a variant of BO specifically designed for settings where only pairwise comparisons can be observed as described in (1). Bayesian models best account for this by introducing an appropriate likelihood function connecting f and the comparison measurements. The resulting posterior distribution is known as a pairwise GP [35], and constitutes our model. The acquisition functions in PBO differ from standard BO, as the uncertainty of the function remains high at the queried points without direct measurements. 
+
+A. Pairwise Gaussian Processes 
+
+GPs are a class of non-parametric models and can be used to model functions on arbitrary input domains. A GP 
+
+f is uniquely defined by its mean function m(x) and the covariance function kxx (x, x′). Further, we assume, as is common in literature, a zero prior mean function, such that 
+
+f ∼ GP (0 , k xx ).The Gaussian prior over f at K training points is 
+
+P (f ) = 1(2 π)K/ 2|Σ|1/2 exp 
+
+
+
+− 12 f T Σ−1f
+
+
+
+(5) where f = [ f (x1), f (x2), . . . , f (xK )] T and Σ ∈ RK×K is the covariance matrix, whose ij -th element is the covariance function kxx (xi, xj ).For the likelihood model of the pairwise GP P (D|f ),we assume feedback corrupted by i.i.d Gaussian noise 
+
+y(xk) = f (xk) + ϵk, where ϵ ∼ N (0 , σ 2). The probability that the outcome of parameter x0,k is preferred over xB,k then is 
+
+P (π(xA,k , xB,k ) = 0 |f ) = P (yA,k > y B,k |f (xA,k ), f (xB,k )) = Φ 
+
+ f (xA,k ) − f (xB,k )
+
+√2σ
+
+
+
+,
+
+(6) where Φ is a standard normal cumulative distribution function. Thus, the formulation for the likelihood is 
+
+P (D|f ) = 
+
+> N
+
+Y
+
+> k=1
+
+Φ
+
+ f (xA,k ) − f (xB,k )
+
+√2σ
+
+
+
+. (7) This likelihood model relates binary observations to contin-uous latent function values and is known as binomial-probit IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED FEBRUARY, 2026 40.00 0.25 0.50 0.75 1.00                  
+
+> x
+> 0.75
+> 0.50
+> 0.25
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> f (x)
+> Without Crash Mechanism
+> 0.00 0.25 0.50 0.75 1.00
+> x
+> With Crash Mechanism
+> Mean
+> Standard Deviation
+> Comparison
+> Comparison (Crash)
+> Comparisons
+> 0≻0.20.5≻0.40.5≻0.6
+> Fig. 3: Crash mechanism in PBO: By adding virtual comparisons of the crashed experiment (red) with all successful experiments (black), we ensure that the posterior is worse in the crashed regions. This reduces the likelihood of exploration in the crashed region. Comparisons between data points are indicated by xA≻xB, meaning that xAis preferred over xB, a comparison is indicated with a line in the plot.
+
+regression in statistics. If, instead of Gaussian noise, Gumbel noise is assumed, logit likelihood models result. For more details, refer to [36]. The posterior probability is 
+
+P (f |D) ∝ P (D|f )P (f ). (8) with the prior defined in (5) and the likelihood in (7). The posterior can be estimated via Laplace approximation as a multivariate Gaussian distribution. Details on this can be found in [35, 37]. 
+
+B. Acquisition Functions and Comparison Modalities 
+
+There are different acquisition functions for PBO. In this work, we build upon the commonly used [29] acquisition function EUBO [38, 39], which is implemented in the state-of-the-art library BoTorch [40]. This acquisition function chooses the duel of parameters (xA, xB) such that it would maximize the expected utility of the best option, if it were the last to be chosen 
+
+EUBO( xA, xB) = E[max {f (xA), f (xB)}]. (9) The acquisition function can be either used to generate both parameters of the duel (xA, xB) or only one of the parameters. If only one parameter is newly generated, the other parameter can be either the last observed experimental outcome xlast , or the best observed experimental outcome so far xbest . In this work, we compare the effectiveness of these modalities. V. M ETHOD : C RASH MECHANISM PBO This section introduces our crash feedback mechanism for PBO, CrashPBO. The optimization algorithm is described in Algorithm 1, and the feedback mechanism for obtaining new data is in Algorithm 2. A comparison between PBO with and without the crash mechanism is illustrated in Figure 3. Before starting the optimization loop in Algorithm 1, we require an initial data set of comparisons (Require, Algorithm 1), just as in standard PBO. Then, the optimization is repeated 
+
+T times, which is our experiment budget. In each iteration, we first train a pairwise GP model using the current dataset (Line 2, Algorithm 1) as described in (8). We then use the EUBO acquisition function to suggest a new pair of parameters (Line 3, Algorithm 1). Any PBO acquisition function could be used 
+
+Algorithm 1 PBO with Crash Feedback 
+
+Require: Initial dataset D0 = {(xA,n , xB,n , π n)}Nn=1  
+
+> 1:
+
+for t = 1 , 2, . . . T do  
+
+> 2:
+
+Fit a pairwise GP to Dt−1 
+
+> 3:
+
+Next duel: xA,t , xB,t = arg max EUBO( xA, xB) 
+
+> 4:
+
+Get DM feedback S(xA,t ), S (xB,t ), π t 
+
+> 5:
+
+Obtain Dadd ▷ Algorithm 2  
+
+> 6:
+
+Augment Dt ← { Dt−1 ∪ Dadd } 
+
+> 7:
+
+end for 
+
+here. For the suggested parameters, we obtain the DM’s feed-back about the outcome of the satisfaction function for each parameter and the result of the preference function (Line 4, Algorithm 1). In standard PBO, only the preference feedback is obtained at this point. Then, we augment the dataset (Line 5, Algorithm 1). Instead of only adding the outcome of the preference function, we use the feedback mechanism described in Algorithm 2 to generate the additional dataset Dadd . Finally, we augment the dataset with the additional dataset (Line 6, Algorithm 1) and restart the optimization loop. Intuitively, our crash feedback mechanism adds comparisons to the dataset, such that parameters that lead to experimental crashes are always rated worse than those that do not crash. To achieve this algorithmically, we track the set of crashed parameters as Xc ⊂ X and the set of non-crashed parameters as Xs ⊂ X. These sets are initialized based on the first comparison, which must contain at least one feasible point, such that Xs is not empty. When a new duel and the corre-sponding feedback are given, we augment the dataset by using the following rules: (1) For each crashed experiment in the duel: add virtual preference observations expressing that the crashed point is disadvantaged to each of the non-crashed points in Xs (Lines 3-5, Algorithm 2). Then, add the point to the list of crashed points Xc (Line 5, Algorithm 2). (2) For each successful experiment in the duel: add virtual preference observations expressing that the successful point is preferred to each of the non-crashed points in Xc (Lines 8-10 in Algorithm 2). Then, add the point to the list of non-crashed points Xs (Line 11, Algorithm 2). (3) If both parameters are feasible, we also add the com-parison of the duel, as we would normally do in PBO (Line 15, Algorithm 2). To reduce crashes, our algorithm adds O(|Xs| · | Xc|) com-parisons. This increases the GP training cost. However, as in BO, we often deal with a low-sample setting and expensive experiments (see Sec. VII B), this is often negligible compared to the duration of the experiments. VI. B ENCHMARKING ON SYNTHETIC FUNCTIONS 
+
+In this section, we evaluate our method CrashPBO, and different comparison modalities using synthetic test functions and GP sample paths. With this extensive synthetic bench-marking, we select the best setting for CrashPBO to apply to real experiments. IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED FEBRUARY, 2026 5
+
+Algorithm 2 Augment data set, including information on crashes 
+
+Require: current duel xA,t , xB,t ,set of non-crashed parameters Xs
+
+set of crashed parameters Xc 
+
+> 1:
+
+for xj ∈ { xA,t , xB,t } do  
+
+> 2:
+
+if S(xj ) = 0 then ▷ handling of crashed point  
+
+> 3:
+
+for all xs in Xs do  
+
+> 4:
+
+Dadd ← Dadd ∪ { (xj , xs, 1) } 
+
+> 5:
+
+end for  
+
+> 6:
+
+Xc ← Xc ∪ { xj } 
+
+> 7:
+
+else if S(xj ) = 1 then ▷ handling of non-crashed point  
+
+> 8:
+
+for xc ∈ Xc do  
+
+> 9:
+
+Dadd ← Dadd ∪ { (xj , xc, 0) } 
+
+> 10:
+
+end for  
+
+> 11:
+
+Xs ← Xs ∪ { xj } 
+
+> 12:
+
+end if  
+
+> 13:
+
+end for  
+
+> 14:
+
+if xA,t ∈ Xs and xB,t ∈ Xs then ▷ standard PBO  
+
+> 15:
+
+Dadd ← Dadd ∪ { (xA,t , xB,t , π t)} 
+
+> 16:
+
+end if 
+
+A. Setup 
+
+We evaluate our crash mechanism in combination with EUBO, which we denote as CrashPBO in the experiments and compare to standard EUBO [38, 39] (without crash con-straints). As further baselines, we consider random sampling, max-value entropy search (MES) [41] as a standard BO algorithm, and SafeOpt [12] as a safe BO variant. We utilize the implementation from [22] and apply the original SafeOpt for low-dimensional problems, while using LineSafeOpt [42] for dimensions higher than three. For all algorithms except safe BO, we use the standard BoTorch [40] setting for the GP and either fix the hyperparameters for the within-model comparison or use the standard prior. For safe BO, we need to select fixed GP hyperparameters and an upper bound of the Lipschitz constant. We set the parameter that scales the uncer-tainty bounds to β = 2 , as is common in the literature [21]. We use the standard test functions Ackley 2D, Branin 2D, Hartmann 6D function, as well as a Cosine 8D function as implemented in [40]. Furthermore, we sample paths from a GP with a squared-exponential kernel with lengthscale l = 0 .3
+
+and variance σ2 
+
+> k
+
+= 1 for one to eight dimensions. For each dimension, we sample ten different functions from the GP. For the GP hyperparameters, we use correctly specified GP hyperparameters in the BO algorithms (within-model compar-ison). We consider the noise setting as described in (2) and use Gaussian noise with a variance of σ2 = 0 .01 . We generate comparisons by comparing the noisy function evaluations as described in (1) for CrashPBO and EUBO. If the evaluation of the test function is below a certain threshold, CrashPBO re-ceives crash information, while EUBO obtains the comparison for the noisy function values. The non-preferential algorithms, MES, SafeOpt, and random search, obtain the noisy function evaluations directly. To simulate crashed experiments, we approximate a thresh-old below which a sample is considered infeasible by gridding the domain and choosing the threshold so that half of the points seen when gridding the functions are below it. This means that approximately half of the domain is infeasible. For each synthetic function and for each sampled GP function, we run the algorithms from 20 different initializations. Given Assumption 2, this initialization always includes one feasible point. When applying PBO on hardware, there are different ways to make comparisons. The standard setting is to compare two new parameters, corresponding to q = 2 in EUBO, such that for every comparison, two new experiments are required. However, given that there might be only one system on which the experiments can be run, it can make sense to only compare to the best seen parameter (“compare to best”). This is possible if the outcome can be plotted so that the DM can remember the best point, or this point can be queried again. In the “two new” case, no explicit notion of a “best-so-far” parameter exists, but it is also not needed as only newly proposed pairs are compared. Finally, we can also compare only to the last queried parameters as a direct comparison. The “compare to best” and “compare to last” settings can be represented in EUBO by setting q = 1 and using the parameter that won past comparisons or the last used parameter set for the other experiment. 
+
+B. Results 
+
+The results of the synthetic experiments are summarized in Table I. We compare the different settings for EUBO and CrashPBO. In our evaluation, we have two metrics, first, the normalized final performance over all test functions after 10 ×d
+
+experiments, where d is the dimension of the test function. For this metric, higher performance is better. As a second metric, we use the average number of crashes, so where S(x) = 0 ,per experiment over all test functions. Here, fewer crashes are better. Table I shows that the crash feedback reduces the number of crashes and slightly improves the performance independently of the used comparison mode. The analysis of the different comparison modes shows that comparing to the best seen parameter leads to the best performance and the lowest number of crashes. The comparison to the last experiment increases the number of crashes drastically and reduces performance. The setting with two new experiments is slightly worse than comparing to the best, but leads to fewer crashes in EUBO. Based on these results, we choose the setting to compare always to the best observed result so far. This requires some memory of this parametrization. However, this might be avail-able by, e.g., a plot of the experiment. Figure 4 separates the within-model comparison from the synthetic-function results. In the within-model comparison setting, where all GP hyperparameters are correctly specified, CrashPBO performs on par with MES and EUBO while yielding fewer crashed experiments. SafeOpt achieves low crash counts in this idealized setting but performs no better than random search due to its restricted exploration. On the synthetic test functions, where model mismatch is present, CrashPBO again delivers competitive performance IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED FEBRUARY, 2026 60.0 0.2 0.4 0.6 0.8 1.0                    
+
+> 0.6
+> 0.8
+> 1.0
+> Normalized performance  Within-model
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> 0.0
+> 0.2
+> 0.5
+> 0.8
+> 1.0
+> Normalized performance  Synthetic functions
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Iterations / (dim * 10)
+> 0
+> 10
+> 20
+> 30
+> Cumulative crashes
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Iterations / (dim * 10)
+> 0
+> 10
+> 20
+> 30
+> Cumulative crashes
+> CrashPBO (ours) EUBO MES SafeOpt random
+
+Fig. 4: Synthetic results showing average normalized performance and average crashes for within-model comparison and synthetic functions. We compare CrashPBO to the PBO method EUBO, the standard BO method MES, the safe BO method SafeOpt, and random search. CrashPBO performs similarly to MES and EUBO and outperforms safe BO and random search while reducing crashes compared to EUBO in both settings. 
+
+compared to MES and EUBO, and results in slightly fewer crashes than SafeOpt. SafeOpt occasionally stalls in its initial safe region or fails to reach high-performing areas, and its crashes arise from the heuristic GP hyperparameter selection required to run it in practice. A detailed discussion on this can be found in [23]. CrashPBO and EUBO are competitive with the classical BO methods in terms of performance. Overall, we can conclude that the crash feedback in PBO can reduce the number of crashes by up to 63 % while achieving, on average, slightly better performance with the same number of experiments. Thus, assuming that a crash experiment takes longer due to the increased effort in the environmental reset, e.g., in VII-A, CrashPBO can reduce overall experimentation time. 
+
+TABLE I: Comparison on average performance (“higher is better”, ↑) and crashes (“fewer is better”, ↓) over four test functions and within-model comparison for one- to eight-dimensional GPs after 10 d evaluations, where 
+
+d is the dimension of the test function. Algorithm Metric best last two new 
+
+EUBO Perf. ↑ 0.85 ± 0.11 0.83 ± 0.12 0.83 ± 0.13 
+
+CrashPBO Perf. ↑ 0.87 ± 0.11 0.84 ± 0.13 0.85 ± 0.11 
+
+EUBO Crashes ↓ 0.30 ± 0.10 0.34 ± 0.14 0.18 ± 0.07 
+
+CrashPBO Crashes ↓ 0.11 ± 0.04 0.17 ± 0.08 0.12 ± 0.05 
+
+VII. H ARDWARE EXPERIMENTS 
+
+We evaluate CrashPBO on three robotic platforms for two to four-dimensional parameter tuning tasks, demonstrating its ease of application across different experimental setups and tasks. For all experiments, we use the compare-to-best 
+
+mode and identical algorithm hyperparameters. Feedback is provided through a web-based interface, allowing DMs to express preferences, report crashes, and repeat uncertain trials. Each experiment highlights a different use case for CrashPBO. 
+
+A. Quadcopter Backflips 
+
+Purpose: Demonstrate CrashPBO to yield different out-comes based on user preferences and in a setting with costly resets (actual crashes). 0.5 1.0 1.5        
+
+> T0
+> 0.6
+> 0.8
+> 1.0
+> T1
+> DM 1 (small)
+> 0.5 1.0 1.5
+> T0
+> DM 2 (round)
+> 0.5 1.0 1.5
+> T0
+> DM 3 (fast)
+> Iterations
+> Initial
+> Best
+> Crashed
+> 10
+> X Coordinate
+> 0.0
+> 0.5
+> 1.0
+> 1.5
+> 2.0
+> Z Coordinate
+> Trajectories DM 1
+> 10
+> X Coordinate
+> Trajectories DM 2
+> 10
+> X Coordinate
+> Trajectories DM 3
+> Initial
+> Iterations
+> Best
+
+Fig. 5: Experimental outcomes of three DMs tuning the backflip maneuver with subjective preferences. The top row shows the mean of the learned pair-wise GP after the optimization, and the bottom row shows the trajectories of all evaluated flips. The black points indicate the shared initial parameters, which correspond to the black trajectories below. The final preferred parameters are marked with a star and appear as the bold trajectory. All other evaluated parameters are shown as points when the flip succeeded and as crosses when the experiment crashed. 
+
+Setup: We tune two timing parameters, T0 and T1, of a ge-ometric backflip controller for a Crazyflie 2.1 quadcopter [8]. These parameters control the ascent and recovery durations. A Vicon motion capture system records the trajectory for feedback. Three DMs each conducted 15 trials. The DMs are lab members with subjective preferences. All DMs start from the same initial parameters that were selected through prior experiments. 
+
+Results: Figure 5 shows the learned preference functions and resulting trajectories. Each DM converged to a distinct pre-ferred flip without explicit objective definitions. DM 1 prefers a small backflip, DM 2 a round backflip, and DM 3 a fast back-flip. Crashes occurred near parameter-space boundaries (two to three per DM) and required resets. The median duration is 75 s for crashed experiments and 25 s for non-crashed experiments. The mean durations are 77 s and 34 s, respectively. These numbers include long experiments for battery changes for the non-crashed experiments. Crash feedback prevented repeated sampling in unsafe regions, enabling efficient and personalized tuning. 
+
+B. Furuta Pendulum 
+
+Purpose: Demonstrate human-guided controller tuning and compare CrashPBO to baseline algorithms. 
+
+Setup: We use a Quanser Qube Servo 2 pendulum [43] to tune three parameters: two swing-up gains and the switching angle to an LQR controller. Two configurations are tested: one without and one with an added 5 g weight, starting from the same randomly sampled parameters, of which one is feasible. Each method (CrashPBO, EUBO, random search) is run for 20 iterations. The DM can repeat uncertain trials. One criterion for the DM is: Reduce the swing-up time, while the pendulum IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED FEBRUARY, 2026 7cable 
+
+> protection
+> 5g
+> weight Show SVG
+
+Enter LaTeX Show SVG 
+
+Enter LaTeX              
+
+> (a) Pendulum 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> 1.25
+> 1.50
+> Density
+> KDE
+> without weight
+> CrashPBO
+> EUBO
+> random
+> 42024
+> Values in rad
+> 0.0
+> 0.5
+> 1.0
+> 1.5
+> 2.0
+> Density
+> KDE
+> without weight
+> CrashPBO
+> EUBO
+> random (b) without weight 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> 1.25
+> 1.50
+> Density
+> KDE
+> 5g weight
+> CrashPBO
+> EUBO
+> random
+> 42024
+> Values in rad
+> 0.0
+> 0.5
+> 1.0
+> 1.5
+> 2.0
+> Density
+> KDE
+> 5g weight
+> CrashPBO
+> EUBO
+> random (c) with added weight
+
+Fig. 6: (a) Furuta pendulum. (b)–(c) State distributions during learning with CrashPBO, EUBO, and random search, estimated using kernel density estimation (KDE). Successful swing-ups yield α, θ ≈ 0, while large θ values indicate aggressive motion or cable protection impacts. CrashPBO’s lighter tails reflect more stable and less aggressive behavior. 
+
+should not visit states with high θ values, as this leads to hitting against overswing protection, which causes wear and tear of the system. The DM can decide how conservative constraints are, and they do not need to be formulated directly. Code follows [44]. 
+
+Results: A feasible initial point was found after two random samples. One of the initial parameters resulted in a failed swing-up under CrashPBO but not under EUBO in the non-weight setting, highlighting outcome variability due to noise and differing initial states. Random search completed 20 iterations in about 5 min, whereas human-in-the-loop methods required about 15 min. 
+
+TABLE II: Failed pendulum swing-ups CrashPBO EUBO Random no weights 4/20 8/20 9/20 weights 6/20 8/20 12/20 
+
+The DM reported eight crashes in total (four failed swing-ups and four overly aggressive behaviors) in the setting without weights, and six in the setting with weights (all failed pen-dulum swing-ups). Table II summarizes unsuccessful swing-ups and shows that CrashPBO reduces these relative to the baselines. Figures 6b and 6c show the state distributions for 
+
+α and θ: CrashPBO yields sharper peaks at α = 0 and lighter tails in θ, indicating more successful swing-ups and better avoidance of large, wear-inducing angles, consistent with the optimization goal. The behavior changes noticeably when weight is added, reflecting the altered dynamics. 
+
+C. Mini Wheelbot 
+
+Purpose: CrashPBO to tune for subjective driving experi-ence, while crashes act as strong rejections. 
+
+Setup: The Mini Wheelbot [10] is a self-balancing unicycle robot, which receives manual steering com-mands in this experiment. We tune four parameters, 
+
+x = [ xyaw , x drive , x friction , x slope ], affecting joystick scaling and low-level controller behavior. Two tasks are considered: ramp traversal and a figure-eight maneuver around cones. Each task consists of 20 experiments with up to five repetitions. The DM can report preferences or crashes and terminate runs 
+
+TABLE III: Summary of Mini Wheelbot results, as in this setting it is hard to recall the best observed parameters, the best parameters can be repeated, so that not every experiment results in a decision. Experiment Decisions Crashes Final Parameters Figure 8 15/20 4/20 0.79, 0.64, 0.0081, 0.82 Ramp 15/20 3/20 0.55, 0.55, 0.000, 2.61 
+
+freely. The initial parameters are chosen relatively conser-vatively for the joystick scaling and based on engineering knowledge from [2] for the low-level controller parameters. 
+
+Results: Table III summarizes the outcomes. In the figure-eight task, four strong rejections occurred at domain edges due to unstable motion; in the ramp task, three crashes were reported for overly slow turning. Preferred parameters concentrate near mid-range input scalings, while controller parameters vary more widely, indicating lower sensitivity. Experiment durations range from 3 s to 286 s (mean 64 s), illustrating that CrashPBO supports non-episodic tuning. 
+
+D. Summary 
+
+Our hardware results demonstrate that we can utilize PBO for user-friendly, personalized tuning in both subjective and objective tasks across episodic and non-episodic settings. The crash feedback mechanism effectively steers the optimization away from unwanted parameters, reducing the need for exten-sive tuning of parameter bounds in PBO. VIII. C ONCLUSION 
+
+In this letter, we proposed CrashPBO, a mechanism to provide crash feedback for PBO. In synthetic experiments, we demonstrated the potential to reduce crashes and increase data efficiency. In three robotic experiments, we showed how PBO can be effectively utilized for robotic parameter tuning, particularly in settings where a human can assess performance. We demonstrated CrashPBO for automatic controller tuning without the need to quantify an objective or constraint function on a Furuta pendulum and subjective preference tuning in a crash-prone setting when tuning quadcopter backflips. Further, we enabled preferential tuning with varying episode lengths on the Mini Wheelbot. CrashPBO, a hyperparameter-free algorithm, combines user preferences with crash feedback, circumventing tedious objective function tuning, making it a ready-to-use tool for robotic systems. While our DMs provided consistent feedback, future work should assess how feedback variability and quality affect CrashPBO’s robustness and in-clude a “cannot decide” option for uncertain comparisons. ACKNOWLEDGMENT 
+
+The authors thank Alexander Gr¨ afe, Paul Brunzema, Hen-rik Hose, Devdutt Subhasish, Sebastian Giedyk, and Miriam Kober for fruitful discussions and help with hardware setups. REFERENCES [1] J. G. Lechuz-Sierra, A. E. H. Martin, A. M. Sundaram, R. Martinez-Cantin, and M. A. Roa, “Bayesian optimization for robust robotic grasping using a sensorized compliant hand,” IEEE Robotics and Automation Letters , vol. 9, no. 11, pp. 10 503–10 510, 2024. IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED FEBRUARY, 2026 8
+
+[2] H. Hose, P. Brunzema, A. von Rohr, A. Gr¨ afe, A. P. Schoellig, and S. Trimpe, Fine-tuning of neural network approximate MPC without retraining via Bayesian optimization , 2026. arXiv: 2512.14350. [3] A. Marco, P. Hennig, J. Bohg, S. Schaal, and S. Trimpe, “Automatic LQR tuning based on Gaussian process global optimization,” in IEEE International Conference on Robotics and Automation , 2016, pp. 270– 277. [4] J. Gonz´ alez, Z. Dai, A. Damianou, and N. D. Lawrence, “Preferential Bayesian optimization,” in International Conference on Machine Learning , vol. 70, PMLR, 2017, pp. 1282–1291. [5] D. Sadigh, A. D. Dragan, S. Sastry, and S. A. Seshia, “Active preference-based learning of reward functions,” in Robotics: Science and Systems , 2017. [6] A. Marco, D. Baumann, M. Khadiv, P. Hennig, L. Righetti, and S. Trimpe, “Robot learning with crash constraints,” IEEE Robotics and Automation Letters , vol. 6, no. 2, pp. 1439–1446, 2021. [7] D. Stenger and D. Abel, Benchmark of Bayesian optimization and metaheuristics for control engineering tuning problems with crash constraints , 2022. arXiv: 2211.02571. [8] P. Antal, T. P´ eni, and R. T´ oth, “Nonlinear control method for back-flipping with miniature quadcopters,” IFAC-PapersOnLine , vol. 55, no. 14, pp. 133–138, 2022. [9] K. ˚Astr¨ om and K. Furuta, “Swinging up a pendulum by energy control,” Automatica , vol. 36, no. 2, pp. 287–295, 2000. [10] H. Hose, J. Weisgerber, and S. Trimpe, “The mini wheelbot: A testbed for learning-based balancing, flips, and articulated driving,” in IEEE International Conference on Robotics and Automation , 2025. [11] R. Garnett, Bayesian optimization . Cambridge University Press, 2023. [12] Y. Sui, A. Gotovos, J. Burdick, and A. Krause, “Safe exploration for optimization with Gaussian processes,” in International Conference on Machine Learning , vol. 37, PMLR, 2015, pp. 997–1005. [13] J. Gardner, M. Kusner, Zhixiang, K. Weinberger, and J. Cunningham, “Bayesian optimization with inequality constraints,” in International Conference on Machine Learning , vol. 32, PMLR, 2014, pp. 937–945. [14] F. Berkenkamp, A. Krause, and A. P. Schoellig, “Bayesian optimiza-tion with safety constraints: Safe and automatic parameter tuning in robotics,” Mach. Learn. , vol. 112, no. 10, pp. 3713–3747, 2023. [15] J. Menn, P. Pelizzari, M. Fleps-Dezasse, and S. Trimpe, “Lipschitz safe Bayesian optimization for automotive control,” in IEEE Confer-ence on Decision and Control , 2024, pp. 3782–3788. [16] A. Holzapfel, P. Brunzema, and S. Trimpe, “Event-triggered safe Bayesian optimization on quadcopters,” in Annual Learning for Dynamics and Control Conference , vol. 242, PMLR, 2024, pp. 1033– 1045. [17] H. Wang, X. Li, W. Wang, A. Bhaumik, R. Xie, L. Zheng, and P. Vadakkepat, “Safety-aware controller optimization for a flexure-joint biaxial gantry robot,” IEEE/ASME Transactions on Mechatronics ,vol. 30, no. 4, pp. 3117–3124, 2025. [18] Y. Wei, Z. Yi, H. Li, S. Soedarmadji, and Y. Sui, “Safe Bayesian optimization for the control of high-dimensional embodied systems,” in Conference on Robot Learning , PMLR, 2024, pp. 4771–4792. [19] M. Khosravi, C. K¨ onig, M. Maier, R. S. Smith, J. Lygeros, and A. Rupenyan, “Safety-aware cascade controller tuning using constrained Bayesian optimization,” IEEE Transactions on Industrial Electronics ,vol. 70, no. 2, pp. 2128–2138, 2023. [20] M. G. Zimmermann, J. Menn, C. Ullmann, V. Glushych, T. Schop-phoven, W. Meiners, S. Trimpe, and C. Holly, “Bayesian optimization for extreme high-speed laser material deposition,” Journal of Laser Applications , vol. 37, no. 4, p. 042 013, 2025. [21] F. Berkenkamp, A. P. Schoellig, and A. Krause, “Safe controller optimization for quadrotors with Gaussian processes,” in IEEE Inter-national Conference on Robotics and Automation , 2016, pp. 491–496. [22] A. Bottero, C. Luis, J. Vinogradska, F. Berkenkamp, and J. R. Peters, “Information-theoretic safe exploration with Gaussian processes,” in 
+
+Neural Information Processing Systems , 2022, pp. 30 707–30 719. [23] C. Fiedler, J. Menn, L. Kreisk¨ other, and S. Trimpe, “On safety in safe Bayesian optimization,” Transactions on Machine Learning Research ,2024. [24] A. von Rohr, D. Stenger, D. Scheurenberg, and S. Trimpe, “Local Bayesian optimization for controller tuning with crash constraints,” 
+
+at-Automatisierungstechnik , vol. 72, no. 4, pp. 281–292, 2024. [25] M. Tucker, E. Novoseller, C. Kann, Y. Sui, Y. Yue, J. W. Burdick, and A. D. Ames, “Preference-based learning for exoskeleton gait optimization,” in IEEE International Conference on Robotics and Automation , 2020, pp. 2351–2357. [26] M. Tucker, M. Cheng, E. Novoseller, R. Cheng, Y. Yue, J. W. Burdick, and A. D. Ames, “Human preference-based learning for high-dimensional optimization of exoskeleton walking gaits,” in IEEE International Conference on Intelligent Robots and Systems , 2020, pp. 3423–3430. [27] R. K. Cosner, M. Tucker, A. J. Taylor, K. Li, T. G. Moln´ ar, W. Ubellacker, A. Alan, G. Orosz, Y. Yue, and A. D. Ames, “Safety-aware preference-based learning for safety-critical control,” in Annual Learning for Dynamics and Control Conference , vol. 168, PMLR, 2022, pp. 1020–1033. [28] A. G. Kupcsik, D. Hsu, and W. S. Lee, “Learning dynamic robot-to-human object handover from human feedback,” in Robotics Re-search, Proceedings of the 17th International Symposium of Robotics Research , vol. 2, Springer, 2015, pp. 161–176. [29] J. P. Coutinho, I. Castillo, and M. S. Reis, “Human-in-the-loop controller tuning using preferential Bayesian optimization,” IFAC-PapersOnLine , vol. 58, no. 14, pp. 13–18, 2024. [30] A. Bemporad and D. Piga, “Global optimization based on active pref-erence learning with radial basis functions,” Mach. Learn. , vol. 110, no. 2, pp. 417–448, 2021. [31] M. Zhu, D. Piga, and A. Bemporad, “C-glisp: Preference-based global optimization under unknown constraints with applications to controller calibration,” IEEE Trans. Control. Syst. Technol. , vol. 30, no. 5, pp. 2176–2187, 2022. [32] M. Zhu, A. Bemporad, and D. Piga, “Preference-based MPC calibra-tion,” in European Control Conference , IEEE, 2021, pp. 638–645. [33] G. Campagna, M. Lagomarsino, M. Lorenzini, D. Chrysostomou, M. Rehm, and A. Ajoudani, “Promoting trust in industrial human-robot collaboration through preference-based optimization,” IEEE Robotics and Automation Letters , vol. 9, no. 11, pp. 9255–9262, 2024. [34] L. Roveda, L. Mantovani, M. Maccarini, F. Braghin, and D. Piga, “Optimal physical human–robot collaborative controller with user-centric tuning,” Control Engineering Practice , vol. 139, p. 105 621, 2023. [35] W. Chu and Z. Ghahramani, “Preference learning with Gaussian pro-cesses,” in International Conference on Machine Learning , vol. 119, ACM, 2005, pp. 137–144. [36] A. Benavoli and D. Azzimonti, A tutorial on learning from prefer-ences and choices with Gaussian processes , 2024. arXiv: 2403.11782. [37] E. Brochu, “Interactive Bayesian optimization: Learning user prefer-ences for graphics and animation,” Ph.D. dissertation, University of British Columbia, 2010. [38] Z. Lin, R. Astudillo, P. I. Frazier, and E. Bakshy, “Preference exploration for efficient Bayesian optimization with multiple out-comes,” in Artificial Intelligence and Statistics , vol. 151, PMLR, 2022, pp. 4235–4258. [39] R. Astudillo, Z. Lin, E. Bakshy, and P. I. Frazier, “Qeubo: A decision-theoretic acquisition function for preferential Bayesian optimization,” in Artificial Intelligence and Statistics , vol. 206, PMLR, 2023, pp. 1093–1114. [40] M. Balandat, B. Karrer, D. Jiang, S. Daulton, B. Letham, A. G. Wil-son, and E. Bakshy, “Botorch: A framework for efficient monte-carlo Bayesian optimization,” in Neural Information Processing Systems ,2020, pp. 21 524–21 538. [41] Z. Wang and S. Jegelka, “Max-value entropy search for efficient Bayesian optimization,” in International Conference on Machine Learning , D. Precup and Y. W. Teh, Eds., vol. 70, PMLR, 2017, pp. 3627–3635. [42] J. Kirschner, M. Mutny, N. Hiller, R. Ischebeck, and A. Krause, “Adaptive and safe Bayesian optimization in high dimensions via one-dimensional subspaces,” in International Conference on Machine Learning , vol. 97, PMLR, 2019, pp. 3429–3438. [43] K. Furuta, M. Yamakita, and S. Kobayashi, “Swing-up control of inverted pendulum using pseudo-state feedback,” Proceedings of the Institution of Mechanical Engineers, Part I: Journal of Systems and Control Engineering , vol. 206, no. 4, pp. 263–269, 1992. [44] S. Bleher, S. Heim, and S. Trimpe, “Learning fast and precise pixel-to-torque control: A platform for reproducible research of learning on hardware,” IEEE Robotics Autom. Mag. , vol. 29, no. 2, pp. 75–84, 2022.

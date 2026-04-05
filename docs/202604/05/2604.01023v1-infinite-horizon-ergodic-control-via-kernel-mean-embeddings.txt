@@ -1,0 +1,688 @@
+Title: Infinite-Horizon Ergodic Control via Kernel Mean Embeddings
+
+URL Source: https://arxiv.org/pdf/2604.01023v1
+
+Published Time: Thu, 02 Apr 2026 01:14:37 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Infinite-Horizon Ergodic Control via Kernel Mean Embeddings 
+
+Christian Hughes and Ian Abraham 
+
+Abstract — This paper derives an infinite-horizon ergodic controller based on kernel mean embeddings for long-duration coverage tasks on general domains. While existing kernel-based ergodic control methods provide strong coverage guarantees on general coverage domains, their practical use has been limited to sub-ergodic, finite-time horizons due to intractable computational scaling, prohibiting its use for long-duration coverage. We resolve this scaling by deriving an infinite-horizon ergodic controller equipped with an extended kernel mean embedding error visitation state that recursively records state visitation. This extended state decouples past visitation from future control synthesis and expands ergodic control to infinite-time settings. In addition, we present a variation of the con-troller that operates on a receding-horizon control formulation with the extended error state. We demonstrate theoretical proof of asymptotic convergence of the derived controller and show preservation of ergodic coverage guarantees for a class of 2D and 3D coverage problems. 
+
+I. I NTRODUCTION 
+
+Modern autonomous systems are tasked with long-duration coverage and exploration in remote and complex environments. In problem domains like underwater monitor-ing or planetary exploration, agents must distribute their time across environments in proportion to the utility, or impor-tance, of each area. Proportional coverage ensures that high-priority areas receive frequent attention while maintaining complete visitation of the entire coverage domain. Ergodic control methods provide a robust approach to proportional coverage tasks by minimizing the discrepancy between how often an agent visits an area (a time-average distribution) and a target spatial distribution [1]. Classical ergodic control methods optimize spectral ergodic metrics to produce proportional coverage trajectories in continuous-space environments, but these methods are generally re-stricted to bounded Euclidean domains using well-defined Fourier basis functions [2], [3]. Recent work has shown that kernel-based metrics like maximum mean discrepancy (MMD) successfully metrize weak convergence between trajectory and target measures [4] and enable ergodic path planning on non-Euclidean manifolds via a Reproducing Kernel Hilbert Space [5], [6]. Despite their generality to arbitrary domains, kernel-based ergodic metrics suffer from a fundamental computational bottleneck over long-time horizons. In order to ensure er-godicity in long time-horizons, the control objective must account for the agent’s entire visitation history. Visitation recording is commonly treated as a cumulative sampling problem where history is represented as a growing list of discrete state observations [7] while others formulate a recursive approximation of the spectral ergodic metric [8], [9] that facilitates infinite-horizon control. The goal in this                
+
+> Fig. 1. Infinite-Horizon Ergodic Control Feedback Loop. The desired target distribution is embedded into a kernel mean embedding function μq
+> that is tracked. At each time-step, the agent computes an ergodic control based on its current state x(t)and its visitation embedding μρx,t according to its time-average visitation distribution ρx,t . The ergodic controller then seeks to minimize the distance between these embeddings eωi(t)at distinct points in the domain ωias t→ ∞ , inducing ergodicity.
+
+work is to derive an equivalent formulation for the kernel mean embedding formulation of ergodic control [5], [6] for the infinite-horizon setting. To achieve our goal, we derive an infinite-horizon ergodic controller based on kernel mean embeddings (KME) to represent visitation history. We show that the derived infinite-horizon ergodic controller induces an error visitation state that records past visitations in a single embedding which de-couples past states from future control synthesis. In addition, we introduce a recursive model-predictive control variation that produces infinite-horizon ergodic controls that converge more quickly towards ergodicity. This approach ensures the controller can asymptotically achieve ergodic coverage (and thus ergodicity) over long mission durations. We demonstrate our approach on a number of coverage problems in 2D and 3D, and provide analysis on the impact of receding-horizon control as well as kernel selection. In summary, the primary contributions of this work are:  
+
+> •
+
+Derivation of an infinite-horizon ergodic controller based on kernel mean embeddings.  
+
+> •
+
+Introduction of an extended error visitation state that tracks past visitations in a compact form.  
+
+> •
+
+Presentation of a receding-horizon formulation with the extended error visitation state.  
+
+> •
+
+Theoretical analysis of asymptotic convergence of the infinite-horizon ergodic controller.  
+
+> •
+
+Experimental validation on 2D and 3D manifolds demonstrating effective coverage over long-durations. The remainder of this paper is organized as follows: Section II provides preliminaries on ergodicity and MMD; Section III derives the proposed recursive framework; and Sections IV and V present experimental results and conclud-ing remarks. 
+
+> arXiv:2604.01023v1 [cs.RO] 1 Apr 2026
+
+II. P RELIMINARIES 
+
+In this section, we introduce the problem of coverage control from the perspective of satisfying ergodicity as a controllable property. An introduction to kernel mean em-beddings and its connection to ergodicity and ergodic control is provided. 
+
+A. Ergodicity 
+
+We consider the class of deterministic control-affine sys-tems of the form 
+
+˙x = f (x) + g(x)u, (1) where x ∈ X ⊂ Rn is the state, u ∈ U ⊂ Rm is the control input, f : X → Rn is the drift vector field, and 
+
+g : X → Rn×m is the input matrix field. Next, let us define a point on the coverage manifold and an twice differentiable map σ : X → Ω that converts state to a visited point on Ω.
+
+Definition 1: (Time-Averaged Trajectory Distribution) Let 
+
+x(t) : R+ → X be a trajectory following (1) subject to a controller u(t) : R+ → U at some initial condition 
+
+x0 = x(0) . The time-averaged trajectory distribution on Ω
+
+is defined as 
+
+ρx,t (ω) = 1
+
+t
+
+Z t
+
+> 0
+
+δ[ω − σ(x(τ ))] dτ, (2) where δ is the Dirac-delta function. 
+
+Definition 2: (Ergodicity) [10, Theorem 6.14] Let q :Ω → R+ be a probability measure on Ω, i.e., q ∈ P (Ω) .A trajectory x(t) is said to be ergodic with respect to q if its time-averaged trajectory distribution ρx,t at the limit t → ∞ 
+
+converges weakly to q. More concretely, 
+
+lim 
+
+> t→∞
+
+Z
+
+> Ω
+
+ϕ(ω)dρ x,t (ω) = 
+
+Z
+
+> Ω
+
+ϕ(ω)dq (ω)
+
+for all continuous functions ϕ ∈ C (Ω) , where, 
+
+Z
+
+> Ω
+
+ϕ(ω)dρ x,t (ω) = 1
+
+t
+
+Z t
+
+> 0
+
+ϕ(σ(x(τ ))) dτ, 
+
+making the equality 
+
+lim 
+
+> t→∞
+
+1
+
+t
+
+Z t
+
+> 0
+
+ϕ(σ(x(τ ))) dτ =
+
+Z
+
+> Ω
+
+ϕ(ω)dq (ω). (3) Intuitively, a trajectory that satisfies (3) traverses all points in Ω proportional to the expected value of q over Ω which is ideal for coverage and exploration problems. However, many systems are not naturally ergodic and require some form of controller to induce ergodicity. 
+
+B. Metrics on Ergodicity 
+
+Ergodicity can be rigorously quantified by defining ametric that evaluates the difference between a trajectory’s time-averaged distribution and a given target distribution q.Specifically, the distance to ergodicity (2) given a trajectory 
+
+x(t) and target distribution q as 
+
+E(x, q, t ) = F[ρx,t ] − F [q] 2
+
+> H
+
+(4) where F : P(Ω) → H is a integral transform [1], [5] and 
+
+∥ · ∥ H is the associated functional norm. Ergodicity is then equivalently satisfied when the following holds 
+
+lim  
+
+> t→∞
+
+E(x, q, t ) = 0 .
+
+One can then formulate the optimal sub-ergodic control problem as 
+
+min   
+
+> u(t)∀t∈[0 ,t f]
+
+E(x, q, t f ) + 
+
+Z tf
+
+> 0
+
+ℓ(x(t), u (t)) dt (5) subject to ˙x = f (x) + g(x)u, u(t) ∈ U ∀ t ∈ [0 , t f ]
+
+given x0 = x(0) , q, σ 
+
+over the more tractable finite-time horizon tf < ∞ where 
+
+ℓ : X × U → R is an additional running cost. 1 The main challenge is that the finite-time restriction is necessary for solving ergodic controllers as infinite-time formulations are computationally challenging to optimize. Prior work has solved these ergodic trajectory optimization problems in finite-horizon using the Fourier transform F
+
+[2], [7] where more recent approaches adopt general kernel-based techniques to approximate the ergodic metric [5], [6] over finite-time horizons. In general, the infinite-time ergodic control problem has only been solved through manipulation of the Fourier ergodic metric [1], [9] that is restricted to domains where the Fourier transform is well-defined, or through a heat-equation variation of ergodic control that requires solving a costly partial-differential equation at all times [11], [12]. In this work, we seek to derive the infinite-time ergodic controller through the more general, kernel formulation that allows more general specification of Ω as shown in [5]. 
+
+C. Kernel Mean Embedding 
+
+An alternate formulation of an ergodic metric in (4) can be derived through kernel mean embeddings as stand-in for 
+
+F in a Reproducing Kernel Hilbert Space (RKHS). Let k :Ω × Ω → R≥0 be a positive-definite kernel on a compact domain Ω, with H as the associated RKHS. The kernel mean embedding for a probability distribution p is given by 
+
+p 7 → μp = Eω∼p[k(ω, ·)] . (6) A kernel is characteristic [13] if this mapping is injective and a unique representation of p in H. Given two probability distributions p and q on Ω, the maximum mean discrepancy (MMD) [14] measures the difference between the distribu-tions by comparing their kernel mean embeddings in the RKHS, MMD 2
+
+> k
+
+(p, q ) = ∥μp − μq ∥2
+
+> H
+
+. (7) 
+
+Theorem 1 (Weak Convergence of MMD, [4], Theorem 7): 
+
+A bounded and measurable kernel metricizes the weak convergence of probability measures on a compact Hausdorff 
+
+> 1The resulting controller yields sub-ergodic trajectories rather than opti-mal ergodic trajectories.
+
+space Ω if and only if that kernel is both characteristic and continuous. Theorem 1 supports that MMD is a valid metric for ergodic-ity. In addition, it is valuable to define the expanded variation of the MMD metric. 
+
+Lemma 1 (Expanded MMD, [14], Lemma 4): Let x, x ′,and y, y ′ be independent variables with distribution p, q 
+
+respectively on Ω. MMD can be expanded to obtain the following MMD 2
+
+> k
+
+(p, q ) = Ex,x ′ [k(x, x ′)] (8) 
+
+− 2Ex,y [k(x, y )] + Ey,y ′ [k(y, y ′)] ,
+
+where x′ ∼ p and y′ ∼ q are independent copies of x, y
+
+with the same distribution. The advantage of MMD is that one does not need access to the underlying distributions to compute the metric through Monte-Carlo sampling of the expected values. 
+
+D. Ergodic MMD Metric 
+
+Given a trajectory x(t) and its time-averaged distribution 
+
+ρx,t , the ergodic MMD metric can readily be formulated. 
+
+Proposition 1 (Ergodic MMD Metric): Given a target distribution q : Ω → R+, trajectory x(t) : R+ → X and its time-averaged distribution ρx,t the ergodic maximum mean discrepancy metric for t > 0 is given as 
+
+EMMD (x, q, t ) = 1
+
+t2
+
+Z Z 
+
+> t,t
+
+k(ωx,τ , ω x,τ ′ )dτ dτ ′ (9) 
+
+− 2
+
+t
+
+Z Z 
+
+> Ω,t
+
+k(ωx,τ , ω )dτ dq + z(q),
+
+where ωx,τ = σ(x(τ )) and z(q) = RR  
+
+> Ω,Ω
+
+k(ω, ω ′)dqdq is a normalization constant. 
+
+Proof: Substituting ρx,t and q into the definition of MMD in (7) and then applying the expanded MMD formu-lation in (8) we get the following MMD 2
+
+> k
+
+(ρx,t , q ) = ∥μρx,t − μq ∥2 
+
+> H
+
+(10) 
+
+= Eω,ω ′∼ρx,t [k(ω, ω ′)] (11) 
+
+− 2Eω∼ρx,t ,ω ′∼q [k(ω, ω ′)] + Eω,ω ′∼q [k(ω, ω ′)] = 1
+
+t2
+
+Z Z 
+
+> t,t
+
+k(ωx,τ , ω x,τ ′ )dτ dτ (12) 
+
+− 2
+
+t
+
+Z Z 
+
+> Ω,t
+
+k(ωx,τ , ω )dτ dq, 
+
++
+
+Z Z 
+
+> Ω,Ω
+
+k(ω, ω ′)dqdq 
+
+EMMD (x, q, t ) = 1
+
+t2
+
+Z Z 
+
+> t,t
+
+k(ωx,τ , ω x,τ ′ )dτ dτ 
+
+− 2
+
+t
+
+Z Z 
+
+> Ω,t
+
+k(ωx,τ , ω )dτ dq + z(q),
+
+where (12) is the result of the Dirac-delta in ρx,t that reduces the expected values to (11) and z(q) is the normalization constant that does not depend on x.Computing the integral over Ω can be computationally expensive in practice. Instead, it is common to approximate the integral through Monte-Carlo samples {ωi}Mi=1 ∼ q as 
+
+EMMD (x, q, t ) ≈ 1
+
+t2
+
+Z Z 
+
+> t,t
+
+k(ωx,τ , ω x,τ ′ )dτ dτ ′ (13) 
+
+− 2
+
+tM 
+
+> M
+
+X
+
+> i=1
+
+Z
+
+> t
+
+k(ωx,t , ω i)dτ 
+
++ 1
+
+M 2
+
+> M
+
+X
+
+> i=1
+> M
+
+X
+
+> j=1
+
+k(ωi, ω j ).
+
+It is possible to now use (13) in a optimal control problem as described in (5) for a finite time t > 0.III. I NFINITE -H ORIZON ERGODIC CONTROL 
+
+In this section, we derive the infinite-horizon ergodic controller based on kernel mean embeddings and then prove the convergence of the proposed control law to the target distribution. 
+
+A. Time-Aug. Ergodic MMD with Visitation Error States 
+
+In order to derive the infinite time ergodic controller, we first adapt the metric EMMD with a temporal scaling factor 
+
+t2.
+
+Definition 3: (Time-Augmented Ergodic MMD Metric) 
+
+The time-augmented ergodic MMD metric is defined as 
+
+˜E(x, q, t ) = |t|2EMMD (x, q, t ), or equivalently 
+
+˜E(x, q, t ) = |t|2EMMD (x, q, t ) (14) 
+
+= |t|2∥μρx,t − μq ∥2
+
+> H
+
+Proposition 2 (Visitation Error State Representation of Ergodic MMD 
+
+Let e(x, q, t ) = t  μρx,t − μq
+
+ be known as the visitation error state. Then, the time-augmented ergodic MMD metric 
+
+˜EMMD is equivalently represented as 
+
+˜EMMD (x, q, t ) = ∥e(x, q, t )∥2 
+
+> H
+
+(15) where the visitation error state e(x, q, t ) is the solution to the following initial value problem: 
+
+ddt e(x, q, t ) = k(σ(x(t)) , ·) − μq , e(x, q, 0) = 0 . (16) 
+
+ddt x = f (x) + g(x)u, x(0) = x0.
+
+Proof: It is straightforward to verify that 
+
+|t|2EMMD (x, q, t ) = ∥e(x, q, t )∥2 
+
+> H
+
+= ∥t(μρx,t − μq )∥2 
+
+> H
+
+=
+
+|t|2∥μρx,t − μq ∥2
+
+> H
+
+. To obtain the initial value problem, we expand the expression e(x, q, t ) = t(μρx,t − μq ) to yield the following integral form 
+
+e(x, q, t ) = 
+
+Z
+
+> Ω
+
+k(ω, ·)
+
+Z t
+
+> 0
+
+δ[ω − σ(x(τ ))] dτ 
+
+
+
+dω − tμ q
+
+=
+
+Z t
+
+> 0
+
+k(σ(x(τ )) , ·)dτ − tμ q
+
+=
+
+Z t
+
+> 0
+
+k(σ(x(τ )) , ·) − μq dτ. Taking the time derivative and applying the Leibniz integral rule yields 
+
+ddt e(x, q, t ) = ddt 
+
+Z t
+
+> 0
+
+k(σ(x(τ )) , ·) − μq dτ 
+
+
+
+= k(σ(x(t)) , ·) − μq (17) with the initial condition e(x, q, 0) = 0 .Note that the visitation error state e(x, q, t ) is a functional over Ω that is integrated out through the RKHS H norm. We define e(t) = e(x, q, t ) as the visitation error state functional along the trajectory x(t), that is, e(t) tracks the deviation of the trajectory from the target distribution over time. In practice, we represent e(t) as a vector of evaluations on a set of sampled points {ωi}M 
+
+> 1
+
+∼ q, where eωi (t) is the evaluation of the error state at point ωi.
+
+B. Infinite-Horizon Ergodic Control via KME 
+
+Given the visitation error state representation of the er-godic MMD metric, we can derive a steepest descent control law to drive the error state toward zero as t → ∞ .
+
+Theorem 2 (Infinite-Horizon Ergodic Control): Consider the initial value problem defined in (16) for a given target distribution q ∈ P (Ω) , RKHS H, and characteristic kernel 
+
+k. Assuming smoothness and boundedness conditions on 
+
+f , g, and k, the steepest descent control law that locally minimizes the ergodic MMD metric is given by 
+
+u(x, e, t ) = −α
+
+
+
+g(x)⊤
+
+Z
+
+> Ω
+
+eω (t)∇xk(σ(x(t)) , ω ) dω 
+
+
+
+(18) where α : Rm → U is a projection operator that ensures the control input remains within the admissible set U.
+
+Proof: We first compute the second-order Taylor ex-pansion of ˜EMMD centered around t as follows 
+
+˜EMMD (x, q, t + ∆ t) ≈ ˜EMMD (x, q, t ) + 2∆ t⟨e(t), ˙e(t)⟩H
+
++ (∆ t)2 (⟨ ˙e(t), ˙e(t)⟩H + ⟨e(t), ¨e(t)⟩H) .
+
+Using the expression of ˙e(t) from (16), and noting that 
+
+¨e(t) = ∇xk(σ(x(t)) , ·)⊤ ˙x(t)= ∇xk(σ(x(t)) , ·)⊤(f (x(t)) + g(x(t)) u(t)) 
+
+is the only term that directly depends on the control input 
+
+u(t), we formulate the following steepest descent optimiza-tion 
+
+min 
+
+> u(t)∈U
+
+D
+
+e(t), ∇xk(σ(x(t)) , ·)⊤ ˙x(t)
+
+E
+
+> H
+
+subject to ˙x(t) = f (x(t)) + g(x(t)) u(t).
+
+For U = {u ∈ Rm | ∥ u∥ ≤ umax }, the optimization problem has the exact solution 
+
+u(x, e, t ) = −α
+
+
+
+g(x)⊤
+
+Z
+
+> Ω
+
+eω (t)∇xk(σ(x(t)) , ω ) dω 
+
+
+
+where α : Rm → U is a projection operator that ensures the control input remains within the admissible set U.In the scenario where g(x) is not full rank, the control law can be modified to project the descent direction onto the range of g(x). Additionally, the control law can be implemented in a receding horizon fashion by solving the optimization problem over a finite time horizon th and applying the control input for a short duration before re-solving the optimization problem at the next time step which we demonstrate in the following sections. In summary, the optimization formulation can be solved numerically using off-the-shelf solvers and is given as 
+
+min 
+
+> u(t)∈[t,t +th]
+
+˜E(x, q, t + th) ≈ 1
+
+M
+
+> M
+
+X
+
+> i=1
+
+eωi (x, q, t + th)2
+
+subject to Eq. (16) given x(t), e (x, q, t ) (19) where x(t), e (x, q, t ) is the system state at time t.The primary advantage of the proposed visitation error state representation is that it acts like a fixed memory of where the system has visited in the past. As a result, the ergodic system becomes independent from the total mission duration. In standard MMD-based ergodic control (13), the explicit integration of time required tracking some visitation history to optimize for control. This led to scaling issues with the time-horizon, namely O(( th + tp)2), where tp is the past trajectory time and th is the planning horizon. For long-duration missions, the computational cost becomes prohibitive for real-time control. In contrast, by representing visitation as an embedding via e, the proposed control law (18) scales as O(M ) and O(th + M ), if using a discrete integration N = th/∆t in (19). 
+
+C. Asymptotics 
+
+We can show that under certain regularity conditions, the steepest descent control law in (18) ensures that the ergodic MMD metric converges to zero as t → ∞ .
+
+Theorem 3 (Ergodicity of Closed-Loop Ergodic Control): 
+
+Consider the single-integrator dynamics ˙x = g(x)u where 
+
+X , U are compact, g(x) is full rank, and for simplicity α is the identity map. Then, the steepest descent control law in (18) satisfies the following closed-loop dynamics 
+
+˙x = −g(x)⊤
+
+Z
+
+> Ω
+
+eω (t)∇xk(σ(x(t)) , ω ) dω, (20) and generates a trajectory that asymptotically converges to the target distribution q in the ergodic sense that 
+
+lim t→∞ ˜EMMD (x, q, t ) = 0 .
+
+Proof: Substituting the control law into the closed-loop dynamics yields ˙x = −g(x)⊤ R 
+
+> Ω
+
+eω (t)∇xk(σ(x(t)) , ω ) dω .Defining ˜E(x, q, t + ∆ t) − ˜E(x, q, t ) − 2∆ t⟨e(t), ˙e(t)⟩H −
+
+∆t2∥ ˙e(t)∥2 
+
+> H
+
+= ∆ ˜E for simplicity and substituting the control law into the second-order Taylor expansion of ˜E yields 
+
+∆ ˜E ≈ ⟨ e(t), ¨e(t)⟩H (21) 
+
+= ⟨e(t), ∇xk(σ(x(t)) , ·)⊤g(x)u(x, e, t )⟩H
+
+= −
+
+Z
+
+> Ω
+
+Z
+
+> Ω
+
+∥g(x)⊤eω (t)∇xk(σ(x(t)) , ω )∥2dωdω ′
+
+≤ 0.
+
+Given X is compact and k is smooth, ˙x, e, ˙e, are bounded and ¨˜EMMD is bounded and ˙˜EMMD is uniformly Fig. 2. Time Series Evolution of Ergodic Controller (18) . Illustrated are time snapshots of the infinite-time ergodic controller derived form the kernel mean embedding for (top) a planar multi-modal target distribution and (bottom) a bunny manifold with uniform distribution. The dynamics are given by the single-integrator system and the error visitation state is tracked via (16) for M = 500 samples. As t → ∞ , the ergodic controller fully covers the domain without increasing computation.       
+
+> Fig. 3. Reduction of Ergodicity vs. Planning Horizon . Here, we illustrate the impact that the receding-horizon formulation in (19) has on the reduction of ergodicity over the planning horizon for a single-integration dynamical system. As the planning horizon increases, so does the reduction in ergodicity. Note that for large samples, numerical precision becomes a limited factor which motivates the use of the extended error visitation state which is a direct tradeoff between planning controls versus reactive control.
+
+continuous by inspection. By Barbalat’s Lemma [15] and that (21) approximates the change in the ergodic MMD metric, lim t→∞ ˙˜EMMD (t) = 0, which necessitates 
+
+lim t→∞ ˜EMMD (t) = 0 .The above result shows that the proposed steepest descent control law ensures that the trajectory distribution converges to the target distribution in the ergodic sense as time goes to infinity. In practice, the integral over Ω can be approximated through Monte-Carlo sampling as described in (13) and the control law can be implemented in a receding horizon fashion to achieve ergodic coverage over a finite time horizon. IV. R ESULTS 
+
+A. Robustness of Ergodic Convergence to Planning Horizon 1) Problem Formulation: Consider the receding-horizon optimization problem defined in (19) over a finite horizon 
+
+N ∈ Z+. We aim to characterize the sensitivity of the ergodic metric E(t) to variations in N for a single-integrator system   
+
+> Fig. 4. Impact of MPC Planning Horizon on Short-Term Ergodic Convergence. Here, we show a qualitative illustration of the impact of control planning horizon on the effective coverage trajectory. As the time-horizon increases, the trajectory tries to span more of domain proportional to the target distribution. However, as planning time becomes longer, so does the complexity of the trajectory and control, leading to numerical instabilities.
+
+operating on a compact domain Ω ∈ Rn. The objective is to verify that the control law (18) preserves asymptotic convergence to the target distribution q in arbitrary planning horizons. We define the mission duration as T > 0 and evaluate the resultant approximated visitation distribution 
+
+μρx,t against the target μq .
+
+2) Results: The influence of the planning horizon N on the convergence rate of ergodicity is shown qualitatively in Fig. 4 and quantitatively in Fig. 8. We prescribe a target distribution on a bounded domain Ω = [ −1, 1] 2 and evaluate trajectories for N ∈ { 30 , 60 , 100 } with a fixed mission length 
+
+T = 150 .As N increases, so too does the optimizer’s ability to account for global information density, which results in a trajectory that more efficiently balances the repulsion from the current state x(t) with the attraction to high-probability regions in μq . This behavior is consistent with the perfor-mance characteristics of traditional model predictive control in constrained regulation tasks. To establish a lower bound of robustness, we analyze the degenerate case where N = 1 . Figures 2 & 5 demonstrate that even with minimal lookahead, the control law in (18) successfully drives the agent’s visitation towards proportion-ality to μq . These results confirm that the proposed ergodic control law does not rely on large planning horizons to guarantee ergodicity, as the visitation embedding within (18) ensures that the agent’s future visitation remains proportion-ally consistent with μq for all N ≥ 1.         
+
+> Fig. 5. Illustration of Infinite-Horizon Feedback Control. (Left) A target reference distribution qon Ωwith samples {ωi}Mi=0 ∼q. (Right) An ergodic trajectory from a single-integrator dynamical system following the proposed control law (18).
+
+B. Parameter Sensitivity & Physical Consistency 1) Problem Formulation: The performance of the pro-posed ergodic controller is intrinsically coupled to the spec-tral properties of the visitation embedding’s kernel function 
+
+k(·, ·) and its associated length scale h ∈ R>0. These parameters define the Reproducing Kernel Hilbert Space in which visitation data is stored. We evaluate the sensitivity of the resulting trajectory x(t) to variations in the visitation em-bedding’s length scale h and the choice of kernel definition (e.g., RBF). We seek to characterize the qualitative balance between local visitation resolution and global regularity of the resulting control law. Simulations are performed on a manifold represented by samples from the Stanford Dragon mesh, normalized to a compact domain Ω = [ −0.5, 0.5] 3,with a fixed planning horizon N = 100 and mission duration 
+
+T = 500 .
+
+2) Results: The influence of the length scale h on the visitation density and qualitative trajectory behavior is given in Fig. 6. The length scale parameterizes the strength of the repulsive forces generated by the visitation KME. As 
+
+h → 0, the visitation KME approaches a summation of Dirac measures that provide a discontinuous and highly-localized representation of past visitation. This behavior results in myopic trajectories that frequently revisit the same local neighborhoods due to prematurely vanishing gradients outside of a small radius of x(t).As the length scale increases, the repulsive force from the visitation KME expands to facilitate broader exploration. However, as shown in Fig. 6 (Bottom), an excessively large 
+
+h overestimates the effective coverage produced by x(t).When these repulsive forces dominate the MMD’s attraction to high-value regions, trajectories prematurely diverge from the manifold boundary. We validate that the proposed method is adaptable to non-Gaussian kernel functions by comparing tuned Gaussian, Laplace, and Matern Kernels (shown in Fig. 7). While each       
+
+> Fig. 6. Kernel Parameters on Visitation Density & Trajectory Behavior.
+> We evaluate the sensitivity of the kernel mean embedding (KME) and ergodic controller on the Stanford Dragon mesh with a uniform target distribution. (Top) Impact of KME length scale on spatial spread of vis-itation history. Increasing the length scale yields a coarser, more expansive representation of past coverage. (Bottom) Influence of length scale selection on receding-horizon trajectories. As the length scale increases, so does the separation of the trajectory between itself and the mesh.
+> Fig. 7. Ergodic Control Trajectories Using Different Kernel Definitions.
+> We demonstrate that our controller can adapt to alternative kernel definitions on the Stanford Dragon mesh. While each kernel possesses subtly different behaviors and smoothness properties, all three successfully drive trajectories toward uniform coverage when their respective length scales are tuned.
+
+kernel possesses distinct tail behaviors and smoothness prop-erties, the fundamental ergodic behavior of each system is preserved when their respective length scales are tuned. This result reinforces the assertion in [14] that the MMD metric is compatible with any valid Mercer kernel, which confirms that the proposed objective yields trajectories consistent with 
+
+μq provided the kernel bandwidth is appropriately scaled to the domain Ω.
+
+C. Computational Complexity & Long-Horizon Scalability 1) Problem Formulation: In traditional maximum mean discrepancy formulations, the evaluation of the repulsive gra-dient requires an O(t) summation over all past states, which results in an O(t2) cumulative complexity for a mission of duration T . We evaluate the computational scaling of the proposed KME formulation against three representative ergodic baselines:  
+
+> •
+
+KME , our method derived from kernel mean embed-dings with error visitation dynamics (16),  
+
+> •
+
+Full-History , which retains all past visited trajectory history,  
+
+> •
+
+Short-Term Memory , which retains the trajectory his-tory past for K discrete-points.  
+
+> •
+
+Subsampled Memory , which uniformly samples K
+
+points from the full visitation history. Benchmarks are conducted on a manifold M ⊂ R3 defined Fig. 8. Convergence to Ergodicity . Here, we demonstrate the convergence property of the ergodic controller (18) derived in Theorem 2 for the single-integrator dynamics for varying sample-size approximation of the integral. Shown is the mean and standard error ergodicity for 5 random seeds. Samples are drawn directly from the target distribution q described in Fig. 5. Monotonically decreasing ergodicity and ergodic behavior induced by the controller (18) is observed even in low-sample settings. 
+
+by the Stanford Bunny mesh ( M = 1000 spatial samples) over 10 independent trials. 
+
+2) Results: The computational complexity relative to the discrete mission length T ∈ Z+ is shown in Fig. 9 (Left). While standard EMMD formulations theoretically exhibit quadratic growth in cumulative cost, practical implementa-tions often suffer from super-polynomial scaling due to the increasing overhead of kernel matrix operations and memory bandwidth constraints. In contrast, our proposed planner demonstrates computa-tional invariance to mission length, where the per-step com-putational cost scales O(1) for a fixed domain and planning horizon. For the given mesh resolution, the crossover point, where the proposed method is computationally superior to baselines, occurs at t ≈ 30 iterations. Although memory-limited baselines eventually achieve constant-time scaling once they saturate their visitation memory, they necessitate an explicit loss of historical visitation. However, the KME-based planner preserves an implicit infinite-horizon represen-tation of ˆμρx,t without increasing the dimensionality of the optimization problem. Figure 9 (Middle and Right) confirms that the proposed method preserves traditional EMMD scaling laws with re-spect to the number of spatial samples M and the planning horizon N . Specifically, the O(1) scaling with respect to mission length does not introduce significant overhead in other planning dimensions. This validates that the proposed method is uniquely suited for long-horizon autonomous exploration and the respective control law remains real-time tractable over arbitrarily-large mission lengths while main-taining a consistent memory of the visitation distribution. 
+
+D. Exploration Performance & Coverage Quality 1) Problem Formulation: Finally, we evaluate the cov-erage quality of the KME-based planner against several baselines, including the baselines discussed in Sec. IV.C,          
+
+> Fig. 9. Computational Scaling of Infinite-Horizon Ergodic Control.
+> We compare the computational scaling of the proposed approach against ergodic baselines over 10 independent trials on the Stanford bunny mesh with single-integrator dynamics. (Left) Recording all past visitations causes the ergodic controller to have exponential growth in compute compared to fixed-length variations. (Middle) All methods are shown to scale linearly with the number of spatial samples Mneeded to compute the kernel mean embedding. (Right) Likewise, our approach retains the computational scaling if used in a receding-horizon formulation in (19) which only scales to the discrete planning time.
+
+a Traveling Salesperson (TSP) heuristic, and a Next-Best View (NBV) greedy planner. All solvers are evaluated on a manifold represented by the Stanford Bunny mesh Ω = [−0.5, 0.5] 3 (M = 1000 ) with a fixed mission duration 
+
+T = 500 , planning horizon N = 150 , and a maximum control effort constraint ∥∆xmax ∥ = 0 .05 per step. To ensure a rigorous comparison under equivalent computational com-plexity against the ergodic baselines, the K-limited baselines are constrained to K = 30 points, matching the per-iteration overhead of the proposed method. 
+
+2) Results: The qualitative and quantitative exploration results are presented in Figs. 10 and 11, respectively. The recursive KME-based planner achieves the highest rate of convergence to μq . As shown in Fig. 11, K-limited baselines           
+
+> Fig. 10. Qualitative Coverage Performance Against Baselines. Trajec-tory snapshots are taken at the time stamp where our KME-based method first achieves 100% coverage of the Stanford Bunny Mesh. Our KME approach achieves coverage quality nearly identical to the computationally expensive full-memory EMMD, which validates the fidelity of the kernel mean embedding’s visitation. When constrained to the same computational budget per control cycle ( K≈30 points), the short-term and sampled memory baselines achieve only ≈50% coverage, while the TSP solver reaches only ≈40% . While a more traditional method like next-best view eventually achieves full coverage, they lack proportional coverage guarantees and fall short in trajectory smoothness.
+
+Fig. 11. Quantitative Coverage Rate. We compare coverage performance across 10 independent trials with separate initial positions placed on random seeded points in the Stanford Bunny mesh. The proposed KME-based controller achieves the highest coverage at the fastest rate. Short-term memory methods fall into limit cycles and repeatedly traverse the same paths once previous visitation data is discarded. Subsampled memory exhibits high variance due to the stochastic nature of history representation. Next Best View provides competitive coverage but is slower at full coverage. 
+
+exhibit significant performance degradation due to the loss of historical visitation information. Specifically, as the mem-ory buffer saturates, the short-term memory approach loses global context for its exploration, which causes the control law to converge to local limit cycles. While the subsampled baseline provides a broader temporal window, the stochastic nature of the sampling introduces variance in the repulsive gradient, which leads to suboptimal coverage trajectories. In contrast, the KME-based planner maintains a high-fidelity representation of the full-horizon visitation history without the O(( th + tp)2) cumulative complexity of tradi-tional EMMD. A key advantage of the proposed method is the ability to decouple the visitation embedding’s kernel and length scale from the MMD objective’s kernel. By prescribing a slightly larger bandwidth ( h = 0 .02 ) for the visitation KME, we can induce a more expansive repulsive field. This allows the recursive planner to outperform even the full-history EMMD baseline in coverage speed, as shown in Fig. 11. Furthermore, while the NBV planner achieves competitive coverage, it lacks the formal distribution-matching guaran-tees inherent to ergodic control, which results in less propor-tionate visitation across the domain. The TSP-based heuristic demonstrates the lowest convergence rate, as it lacks a global incentive for uniform coverage. These results confirm that the proposed KME-based method provides a balance between infinite-horizon memory fidelity, computational invariance to mission length, and tunable exploration dynamics for long-horizon autonomous missions. V. C ONCLUSION 
+
+In this paper, we present a computationally-bounded MPC objective for ergodic trajectory planning in complex, non-Euclidean domains. By leveraging the recursive properties of kernel mean embeddings (KMEs), we reformulate the ergodic maximum mean discrepancy (EMMD) objective to decouple an agent’s visitation history from the trajectory optimization process. This formulation ensures that the per-step computational complexity remains temporally invariant (O(1) ) with respect to the mission duration, allowing infinite-horizon exploration tasks without the memory overhead inherent to traditional implementations. We establish the theoretical foundation of this approach by deriving a proof of asymptotic convergence for the recursive objective to ensure that the proposed method preserves the proportional visitation guarantees of ergodic theory. Numer-ical validation across two- and three-dimensional manifolds demonstrates that our approach maintains high-frequency control performance and superior coverage fidelity over extended mission durations by significantly outperforming memory-intensive baselines in both computational scaling and coverage quality. Future work will investigate the ex-tension of this recursive KME-based planner to time-varying domains and flow-field dynamics to facilitate robust ergodic planning in non-stationary environments. REFERENCES [1] G. Mathew and I. Mezic, “Metrics for ergodicity and design of ergodic dynamics for multi-agent systems,” Physica D: Nonlinear Phenomena ,vol. 240, 02 2011. [2] D. Lee, C. Lerch, F. Ramos, and I. Abraham, “Stein variational ergodic search,” 2024. [Online]. Available: https://arxiv.org/abs/2406.11767 [3] G. Sartoretti, A. Rao, and H. Choset, “Spectral-based distributed er-godic coverage for heterogeneous multi-agent search,” in International Symposium Distributed Autonomous Robotic Systems . Springer, 2021, pp. 227–241. [4] C. J. Simon-Gabriel, A. Barp, B. Sch¨ olkopf, and L. Mackey, “Metriz-ing weak convergence with maximum mean discrepancies,” Journal of Machine Learning Research , vol. 24, no. 184, pp. 1–20, 2023. [5] C. Hughes, H. Warren, D. Lee, F. Ramos, and I. Abraham, “Ergodic trajectory optimization on generalized domains using maximum mean discrepancy,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) , 2025, pp. 01–07. [6] M. Sun, A. Gaggar, P. Trautman, and T. Murphey, “Fast ergodic search with kernel functions,” arXiv preprint arXiv:2403.01536 , 2024. [7] L. M. Miller, Y. Silverman, M. A. MacIver, and T. D. Murphey, “Ergodic exploration of distributed information,” IEEE Transactions on Robotics , vol. 32, pp. 36–52, 2016. [Online]. Available: https://api.semanticscholar.org/CorpusID:1010714 [8] A. Mavrommati, E. Tzorakoleftherakis, I. Abraham, and T. Murphey, “Real-time area coverage and target localization using receding-horizon ergodic exploration,” IEEE Transactions on Robotics , vol. 34, no. 1, pp. 62–80, 2018. [9] G. De La Torre, K. Flasskamp, A. Prabhakar, and T. D. Murphey, “Ergodic exploration with stochastic sensor dynamics,” in 2016 American Control Conference (ACC) . Boston, MA, USA: IEEE, Jul. 2016, pp. 2971–2976. [Online]. Available: http://ieeexplore.ieee.org/document/7525371/ [10] P. Walters, An Introduction to Ergodic Theory . Springer Science & Business Media, 2000. [11] S. Ivi´ c, A. Sikirica, and B. Crnkovi´ c, “Constrained multi-agent ergodic area surveying control based on finite element approximation of the potential field,” Engineering Applications of Artificial Intelligence , vol. 116, p. 105441, Nov. 2022. [12] C. Bilaloglu, T. L¨ ow, and S. Calinon, “Tactile ergodic control using diffusion and geometric algebra,” arXiv preprint arXiv:2402.04862 ,2024. [13] B. K. Sriperumbudur, K. Fukumizu, and G. R. G. Lanckriet, “Uni-versality, Characteristic Kernels and RKHS Embedding of Measures,” vol. 12, no. 70, pp. 2389–2410. [14] A. Gretton, K. M. Borgwardt, M. J. Rasch, B. Sch¨ olkopf, and A. Smola, “A kernel two-sample test,” Journal of Machine Learning Research , vol. 13, no. 25, pp. 723–773, 2012. [Online]. Available: http://jmlr.org/papers/v13/gretton12a.html [15] I. Barbalat, “Syst` emes d’´ equations diff´ erentielles d’oscillations non lin´ eaires,” Revue de Math´ ematiques Pures et Appliqu´ ees , vol. 4, pp. 267–270, 1959.
