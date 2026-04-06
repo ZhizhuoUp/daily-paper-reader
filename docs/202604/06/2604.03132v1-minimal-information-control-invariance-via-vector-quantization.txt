@@ -1,0 +1,496 @@
+Title: Minimal Information Control Invariance via Vector Quantization
+
+URL Source: https://arxiv.org/pdf/2604.03132v1
+
+Published Time: Mon, 06 Apr 2026 00:55:19 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Minimal Information Control Invariance via Vector Quantization 
+
+Ege Yuceel 1, Teodor Tchalakov 1, and Sayan Mitra 1
+
+Abstract — Safety-critical autonomous systems must satisfy hard state constraints under tight computational and sensing budgets, yet learning-based controllers are often far more complex than safe operation requires. To formalize this gap, we study how many distinct control signals are needed to render a compact set forward invariant under sampled-data control, connecting the question to the information-theoretic notion of invariance entropy. We propose a vector-quantized autoencoder that jointly learns a state-space partition and a finite control codebook, and develop an iterative forward certification algorithm that uses Lipschitz-based reachable-set enclosures and sum-of-squares programming. On a 12-dimensional nonlinear quadrotor model, the learned controller achieves a 157 × reduction in codebook size over a uniform grid baseline while preserving invariance, and we empirically characterize the minimum sensing resolution compatible with safe operation. 
+
+I. I NTRODUCTION 
+
+Autonomous systems such as quadrotors [1], fixed-wing UAVs [2], and embedded robotic platforms must satisfy hard safety constraints while operating under tight computational, sensing, and communication budgets. Controllers for such platforms often consume far more resources than may be nec-essary: vision-based obstacle avoidance on a nano-drone has been achieved by distilling a 3.1M-parameter depth network down to a 310K-parameter model [3], pruning techniques can reduce trained network parameter counts by over 90% 
+
+without loss of accuracy [4], [5], and dynamic obstacle avoidance on quadrotors has been demonstrated using the sparse event stream of an event camera in place of dense video [6]. This suggests that the resources strictly necessary for safe operation may be far smaller than what current practice allocates. There are many notions of minimality one could pursue; in this paper we focus on one: what is the minimum number of distinct control signals needed to guarantee that the system remains inside a prescribed safe set? Two threads of prior work address aspects of this question. In control theory, invariance [7], [8] and stabilization [9] entropy characterize the minimum data rate necessary over the control channel for achieving their corresponding perfor-mance. These results provide fundamental lower bounds but do not yield constructive procedures for designing controllers that achieve or even approach these lower bounds. One such controller for LTI systems is [10], which proposes a practical encoding/decoding scheme. On the computer vision side, reducing sensor resolution directly lowers power  
+
+> 1Department of Electrical and Computer Engineering, University of Illinois at Urbana-Champaign, Urbana, IL 61801, USA.
+
+{eyceel2, ttcha2, mitras}@illinois.edu                        
+
+> Fig. 1. VQ-AE controller architecture. The quadrotor estimates its state
+> ˆx(t)∈R12 from images of an ArUco marker. The encoder Eθmaps
+> ˆx(t)to a latent vector z, quantized to the nearest codebook entry i=arg min k∥z−ek∥22, inducing a partition {Ai}Mi=1 of Q. A 2D projection of the partition is shown; the full 12-dimensional partition contains additional regions. Arrows display the controlled vector field within each region, directing trajectories inward to maintain invariance of Q. The decoder Dϕ
+> maps index ito an open-loop control applied over [tk, t k+Ts).
+
+consumption and onboard computation. Recent work shows that even extremely low-resolution sensors can solve vision-based control tasks when their design is optimized computa-tionally [11], [12], but these efforts treat sensing in isolation and do not provide guarantees about safety or invariance. When the control channel also operates at a minimal bitrate, the sensor need only distinguish among fewer actions, which can relax the sensing requirements in turn. In this paper, we study the following problem: Given a nonlinear dynamical system ˙x = f (x, u ) and a candidate invariant set Q ⊂ Rn, what is the minimum number of distinct open-loop control signals u(·) that is sufficient to render Q forward invariant under sampled-data control for a given period Ts? We define the complexity of a controller as the number of distinct open-loop control signals it uses. Minimizing this complexity is therefore practically meaning-ful: a simpler controller requires fewer distinct signals to be distinguished, stored, and transmitted, reducing demands on sensors, communication networks, and onboard computation. Sufficient conditions for the existence of minimal controllers have been established [7], [8] through, for example, grid partitions and Lipschitz-type arguments; related minimum data-rate problems for estimation have been analyzed via matrix measure-based entropy bounds [13], [14]. Concretely, we present a method that connects invariance entropy theory to constructive learning-based synthesis in three steps. (1) We learn a compact partition of the state space and an associated control codebook via a vector quantized autoencoder (VQ-AE), (2) we certify the learned controller through an iterative forward certification (IFC) 
+
+> arXiv:2604.03132v1 [eess.SY] 3 Apr 2026
+
+algorithm, and (3) we empirically characterize the sensing resolution compatible with safe operation. The resulting con-troller achieves invariance with orders-of-magnitude fewer control signals. The encoder Eθ : Rn → Z maps each state to a discrete index in a finite codebook Z = {1, . . . , M }, inducing a partition on Q. The decoder Dϕ : Z → U Ts assigns each region a fixed open-loop control sequence over the sampling horizon Ts. We design the training objective to balance four competing goals: an invariance loss penalizes trajectories that leave Q, a codebook entropy loss regularizes the number of active codes [15], a commitment loss anchors encoder outputs to their assigned codebook vectors via the straight-through estimator [16], [17], and a control effort loss prevents excessive control signals. The result is a compact codebook of open-loop control sequences sufficient to keep the system within Q.While data-driven controllers have demonstrated strong empirical performance in complex control tasks, formal safety guarantees are rare [18], and to the best of our knowledge no VQ-based representation carries a certificate of set invariance. We address this gap by imposing structure on the encoder while leaving the decoder unrestricted: when the encoder is an invertible affine map, nearest-neighbor code assignment induces a convex partitioning in state space, enabling region-wise verification. The IFC algorithm propagates polyhedral reachable-set enclosures through each control segment using Lipschitz-based bloating and certifies invariance at each step via a sum-of-squares (SOS) feasibility program [19]. We prove that if the algorithm terminates successfully, the closed-loop system is forward invariant on Q, and demonstrate certification on the 12-dimensional quadrotor. Finally, we connect control minimality to sensing. Since the controller selects among finitely many distinct controls, the observer need only determine at the sampling period Ts
+
+which partition region the state belongs to, not reconstruct the full state. This relaxation suggests that the sensing resolution required for invariance is governed by the partition granularity. We empirically identify the minimum monocular camera resolution sufficient to support invariance on the quadrotor by training an observer network that estimates the state from images of an ArUco marker [20] at progressively coarser resolutions and recording the threshold at which closed-loop safety degrades. The remainder of the paper is organized as follows. Section II introduces the problem formally and defines the invariance objective. Section III reviews invariance entropy and spanning sets. Section IV presents the VQ-AE train-ing procedure and controller design. Section V develops the iterative forward certification algorithm and its correct-ness proof. Section VI reports empirical results on a 12-dimensional nonlinear quadrotor, including baseline com-parisons, codebook compression, and the minimum sensing resolution compatible with invariance. II. P ROBLEM DEFINITION 
+
+Consider the nonlinear continuous-time system 
+
+˙x(t) = f (x(t), u (t)) , (1) where x(t) ∈ Rn, u(t) ∈ U ⊂ Rm, and f : Rn × U → Rn is Lipschitz in x. Let Q ⊂ Rn be a compact set with nonempty interior. The objective is to design a sampled-data controller with sampling period Ts > 0 such that 
+
+x(0) ∈ Q ⇒ x(t) ∈ Q ∀ t ≥ 0, (2) using the minimum number of distinct open-loop control signals. III. P RELIMINARIES 
+
+Notation. For T > 0, let UT := L∞([0 , T ], U) denote the space of admissible open-loop control signals of duration 
+
+T , and let ∥ · ∥ denote the Euclidean norm. For an initial condition x0 ∈ Rn and input u(·) ∈ U T , let φ(t, x 0, u )
+
+denote the unique solution of (1) at time t ≥ 0, and write 
+
+φ(t, A, u ) := {φ(t, x 0, u ) : x0 ∈ A} for a bounded set 
+
+A ⊂ Rn. The Lipschitz constant of f (·, u ) over a bounded set A for fixed u is denoted L(f (·, u ), A ).
+
+Assumption 1 (Weak Invariance) . For every x ∈ Q, there exists ux ∈ U Ts such that 
+
+φ(t, x, u x) ∈ Q ∀ t ∈ [0 , T s].
+
+Assumption 1 is necessary because without a feasible con-trol for every state in Q, no controller can render Q invariant, even with infinitely many open-loop control signals. 
+
+Minimal Controllers and Invariance Entropy. Fix T > 
+
+0. By Assumption 1, every state x ∈ Q admits at least one control u ∈ U T keeping it inside Q over [0 , T ]. The question is whether a finite collection of such signals suffices: if Q
+
+can be covered by regions, each assigned a single control that keeps every state in that region inside Q over the horizon T ,then invariance is achievable with a finite set of open-loop controls [7]. 
+
+Definition 1 (T -Spanning Set) . Let T > 0. A finite set VT ⊂UT is called T -spanning for Q if there exists an open cover 
+
+A of Q and a selection map α : A → V T such that 
+
+φ(t, A, α (A)) ⊂ Q ∀A ∈ A , ∀t ∈ [0 , T ],
+
+where 
+
+φ(t, A, u ) := {φ(t, x, u ) : x ∈ A}.
+
+The minimal cardinality of such a family is 
+
+rinv (T, Q ) := min |V T | : VT is T -spanning for Q .
+
+The quantity rinv (T, Q ) measures the minimal number of open-loop control signals of duration T required to guarantee invariance of Q. As T increases, this number may grow. Its asymptotic growth rate is captured by the following definition from [8]. Definition 2 (Invariance Entropy) . The asymptotic growth rate of rinv (T, Q ) is called the invariance entropy of the system on Q and is defined by 
+
+hinv (Q) := lim sup  
+
+> T→∞
+
+1
+
+T log rinv (T, Q ).
+
+Proposition 1. 
+
+hinv (Q) = inf 
+
+> T > 0
+
+1
+
+T log rinv (T, Q ).
+
+Proof. Concatenation of T1- and T2-spanning sets yields a (T1 + T2)-spanning set of cardinality at most 
+
+rinv (T1, Q ) rinv (T2, Q ), so log rinv (T, Q ) is subadditive. The result follows from Fekete’s lemma [7], [8]. Proposition 1 implies rinv (Ts, Q ) ≥ ehinv (Q) Ts for any 
+
+Ts > 0: a larger sampling period demands exponentially more distinct control signals, and no controller can maintain invariance with fewer than ehinv (Q) Ts codes regardless of architecture. In practice, Ts is fixed by the sampling rate, so we focus on control sets defined over this horizon. IV. M INIMAL CONTROLLER DESIGN VIA VQ-AE S
+
+Fix the sampling period Ts and consider a minimal Ts-spanning set 
+
+VTs = {u1, . . . , u M } ⊂ U Ts , M = rinv (Ts, Q ).
+
+By definition, there exists an open cover A = {A1, . . . , A M }
+
+of Q and a selection map α such that 
+
+φ(Ts, A i, u i) ⊂ Q, i = 1 , . . . , M. 
+
+A sampled-data controller that enforces invariance can therefore be constructed as follows: at time tk, determine an index i ∈ { 1, . . . , M } such that x(tk) ∈ Ai and apply 
+
+ui over [tk, t k+1 ). Since each ui keeps all states in Ai
+
+inside Q over one sampling period, recursive application guarantees (2). Thus invariance reduces to selecting an index 
+
+i ∈ { 1, . . . , M } at each sampling time. Controller design becomes equivalent to constructing a partition of Q together with an assignment of each partition element to an open-loop control in UTs . The geometry of the sets Ai is not prescribed, and determining a partition achieving minimal cardinality rinv (Ts, Q ) is, in general, nontrivial. 
+
+A. Learning a Minimal Control Codebook via VQ-AE 
+
+A constructive approximation of the partition–assignment pair is obtained using a vector-quantized autoencoder (VQ-AE). A discrete latent space indexing Z = {1, . . . , M } of fixed cardinality M parameterizes the partition of Q. To generate this partition, an encoder network fθ : Rn → Rd,parametrized by θ, maps each state x(tk) to a latent vector. Our discrete encoder Eθ : Rn → Z then assigns each state to the nearest code index in a codebook {e1, . . . , e M } ⊂ Rd:
+
+Eθ (x) = arg min  
+
+> k∈Z
+
+∥fθ (x) − ek∥22 .
+
+A decoder Dϕ : Z → U Ts , parametrized by ϕ, maps each code index to a control input over the horizon Ts. Therefore, applied control over [tk, t k+1 ) is u(·) = Dϕ(Eθ (x(tk))) . Let 
+
+{xj }Nj=1 ⊂ Q be sampled states. For each xj , rollout over one sampling period yields φ(t, x j , D ϕ(Eθ (xj ))) . Empirical invariance violation is measured by 
+
+Linv = 1
+
+N
+
+> N
+
+X
+
+> j=1
+
+Z Ts
+
+> 0
+
+dist( φ(t, x j , D ϕ(Eθ (xj ))) , Q )
+
+> +
+
+dt, 
+
+where [·]+ denotes the positive part denoting a minimum distance from a state to the set Q. To train the VQ-AE end-to-end, gradients are passed through the discrete assignment via the straight-through estimator. The codebook vectors are updated using exponential moving averages (EMA) of the encoder outputs assigned to each code, which stabilizes training without requiring explicit codebook gradients found in standard VQ-AE formulations. A commitment loss 
+
+Lcommit = 1
+
+N
+
+> N
+
+X
+
+> j=1
+
+∥zj − sg( eEθ (xj ))∥22,
+
+where zj = fθ (xj ) and sg( ·) denotes the stop-gradient operator. This term anchors the encoder outputs to their assigned codebook vectors. Consistent with minimizing the number of open-loop controls, the soft assignment 
+
+pk(xj ) = exp  −∥ zj − ek∥22/τ PMm=1 exp ( −∥ zj − em∥22/τ ) ,
+
+where τ > 0 controls the temperature, gives empiri-cal usage πi = 1
+
+> N
+
+PNj=1 pi(xj ) and entropy H(π) =
+
+− PMi=1 πi log πi. The codebook usage loss is then defined as the weighted entropy: 
+
+Lcodebook = −
+
+> M
+
+X
+
+> i=1
+
+wi πi log πi
+
+!p
+
+,
+
+where p > 1 concentrates compression pressure on large codebooks and softens it near collapse. The per-code weights 
+
+wi, computed via a sigmoid on each code’s empirical safety rate, shield codes with high violation rates from elimination. To prevent excessive control effort, a regularization loss Lreg 
+
+penalizes the magnitude of the learned control sequences. The complete training objective is 
+
+min  
+
+> θ,ϕ
+
+λinv Linv + λreg Lreg + λvq Lcommit + λpr Lcodebook .
+
+Training states are drawn from a boundary-biased distribu-tion over Q, where a fixed fraction of samples are concen-trated near ∂Q and the remainder drawn uniformly from the interior. This overweighting of boundary regions ensures suf-ficient coverage where invariance violations are most likely to occur. The learned decoder outputs {Dϕ(i)}Mi=1 which is an upper bound on rinv (Ts, Q ), with tightness governed by the richness of the admissible control and partition sets, while the encoder induces the associated partition of Q. Since the space of open-loop controls on [0 , T s] is infinite-dimensional, we consider the decoder outputs to be piecewise-constant controls with H segments of duration ¯Ts satisfying H ¯Ts =Ts. The resulting controller becomes 
+
+C(x(tk)) = uEθ (x(tk )) , t ∈ [tk + j ¯Ts, t k + ( j + 1) ¯Ts),Ai = {x ∈ Q : Eθ (x) = i}, i = 1 , . . . , M, ui = Dϕ(i) = {uji }H−1 
+
+> j=0
+
+.
+
+(3) where Ts = H ¯Ts and each uji is constant. V. C ORRECTNESS OF THE LEARNED CONTROLLER 
+
+Each index i ∈ { 1, . . . , M } is associated with a fixed open-loop control sequence ui = Dϕ(i) ∈ U Ts , yielding a control family VTs . The main difficulty in verification lies in the geometry of the state-space partition Ai := {x ∈
+
+Q : Eθ (x) = i}. For nonlinear encoders these regions may have implicit and nonconvex boundaries, making explicit characterization difficult. To obtain an analytic description of the partition, we define the encoder to be an invertible affine map T (x) = W x + b, where W ∈ Rn×n and 
+
+det W̸ = 0 . We use the matrix exponential parametrization to enforce an invertible mapping [21]. Nearest-neighbor code selection in latent space induces Voronoi cells in the latent coordinates, which are convex polytopes. Since each region is the preimage Ai = T −1(Vi) of a Voronoi cell and T is affine, each Ai is a convex polytope, i.e., a finite intersection of halfspaces {α⊤ 
+
+> j
+
+x ≤ βj }.The set Q introduced in the problem formulation is chosen as a quadratic sublevel set 
+
+Q = {x ∈ Rn : V (x) ≤ ρ}, V (x) = x⊤P x, 
+
+with P ≻ 0. The matrix P is obtained from the LQR design associated with the linearization of (1) around the equilibrium. For nonlinear systems, LQR controllers typi-cally stabilize the dynamics locally around the equilibrium, and therefore the corresponding Lyapunov sublevel sets provide natural candidates for invariant regions. The set Q
+
+is chosen within this neighborhood. This choice is justified a posteriori, as we later verify that the learned controller preserves invariance of Q.Verification proceeds region-wise over the learned parti-tion. Each region Ai is associated with a control sequence 
+
+{uji }H−1 
+
+> j=0
+
+applied over intervals of length ¯Ts. Initialization of Ai ∩ Q occurs in Line 3, and the centroid c is com-puted in Line 5. The Gronwall-based enclosure requires a Lipschitz constant valid over the entire reachable tube, not just the initial region, since trajectories may leave A over 
+
+[0 , ¯Ts]. C OMPUTE L addresses this by iteratively expanding the enclosure: at each iteration, L defines a reachable set 
+
+B via rollouts and a polyhedral over-approximation ˜A, over which a Lipschitz estimate ˆL is recomputed. The bound is updated as L ← max( L + ε, ˆL) and the process terminates when ˆL ≤ L, ensuring validity over a region containing the reachable tube. Since f is globally Lipschitz, ˆL is bounded while L grows by at least ε, so termination is finite. The enclosure ˜A is intersected with Q in Line 7, after which an SOS feasibility problem is solved in Line 8. 
+
+Algorithm 1 COMPUTE L 
+
+> 1:
+
+Input: A, c, u, ¯Ts, ε 
+
+> 2:
+
+˜A ← A, L ← 0 
+
+> 3:
+
+loop  
+
+> 4:
+
+ˆL ← Lip( f (·, u ), ˜A) 
+
+> 5:
+
+if ˆL ≤ L then return (L, ˜A) 
+
+> 6:
+
+L ← max( L + ε, ˆL) 
+
+> 7:
+
+B ← S 
+
+> t∈[0 ,¯Ts]
+
+n
+
+φ(t, c, u ) + eL ¯Ts (x − c) : x ∈ A
+
+o 
+
+> 8:
+
+βl ← max y∈B a⊤ 
+
+> l
+
+y, l = 1 , . . . , m  
+
+> 9:
+
+˜A ← { x : a⊤ 
+
+> l
+
+x ≤ βl, l = 1 , . . . , m } 
+
+> 10:
+
+end loop Algorithm 2 Iterative Forward Certification  
+
+> 1:
+
+Input: {(Ai, {uji }H−1 
+
+> j=0
+
+)}Mi=1 , Q, ¯Ts, ε 
+
+> 2:
+
+for i = 1 , . . . , M do  
+
+> 3:
+
+A ← Ai ∩ Q 
+
+> 4:
+
+for j = 0 , . . . , H − 1 do  
+
+> 5:
+
+c ← centroid( A) 
+
+> 6:
+
+(L, ˜A) ← COMPUTE L(A, c, u ji , ¯Ts, ε ) 
+
+> 7:
+
+A ← ˜A ∩ Q 
+
+> 8:
+
+if SOS (A, u ji ) is infeasible then return FAIL 9: end for  
+
+> 10:
+
+end for  
+
+> 11:
+
+return SUCCESS 
+
+A. Sum-of-Squares Certification 
+
+For each region Ai = {x : a⊤ 
+
+> il
+
+x ≤ βil , l = 1 , . . . , m i}
+
+and control segment uji , invariance is certified by enforcing 
+
+˙V (x) ≤ 0 on Ai ∩ Q via the S-procedure [19]. SOS verification requires ∇V (x)⊤f (x, u ji ) to be polynomial in x;since the true dynamics contain trigonometric nonlinearities, we replace f with a polynomial surrogate ˜f obtained by 3rd-order Taylor expansion around the equilibrium, justified by the choice of Q as a near-equilibrium set with small attitude deviations. Define gl(x) = βil −a⊤ 
+
+> il
+
+x and gQ(x) = ρ−x⊤P x .The condition ˙V (x) = ∇V (x)⊤ ˜f (x, u ji ) ≤ 0 on Ai ∩ Q is enforced by requiring 
+
+− ˙V (x) −
+
+> mi
+
+X
+
+> l=1
+
+λil (x) gl(x) − λQ(x) gQ(x)
+
+to be a sum-of-squares polynomial, with SOS multipliers 
+
+λil (x), λQ(x). Feasibility certifies that surrogate-model tra-jectories starting in Ai ∩ Q remain inside Q under uji .
+
+Theorem 1. Suppose there exist H ∈ N>0, ¯Ts > 0, and Q ⊂
+
+Rn such that Algorithm 2 completes, then the closed-loop system ˙x(t) = ˜f  x(t), C(x(t)) , where C is the constructed controller defined in (3) , is forward invariant on Q.Proof. Assume Algorithm 2 completes. We show that un-der each control segment, the Lipschitz-based reachable-set enclosure combined with the SOS certificate confines trajec-tories to Q, even though the polyhedral overapproximation 
+
+˜A may extend beyond Q.Consider a region A ⊂ Q at the beginning of a segment of length ¯Ts under control uji , and let c = centroid( A).Let (L, ˜A) denote the output of C OMPUTE L. The sequence 
+
+{Lk} is non-decreasing. Since f is globally Lipschitz, ˆL is bounded, while the update L ← max( L + ε, ˆL) ensures L
+
+increases by at least ε at each unsuccessful iteration, so the loop terminates finitely. Upon termination, ˆL ≤ L ensures 
+
+Lip( f (·, u ji ), ˜A) ≤ L.Since L is a valid Lipschitz constant on ˜A, the Bellman Gronwall inequality gives, for any x ∈ A,
+
+∥φ(t, x, u ji ) − φ(t, c, u ji )∥ ≤ eLt ∥x − c∥≤ eL ¯Ts ∥x − c∥, ∀ t ∈ [0 , ¯Ts].
+
+Hence φ(t, A, u ji ) ⊆ B for all t ∈ [0 , ¯Ts], where 
+
+B = [ 
+
+> t∈[0 ,¯Ts]
+
+φ(t, c, u ji ) + eL ¯Ts (x − c) : x ∈ A .
+
+The polyhedral enclosure ˜A = {x : a⊤ 
+
+> il
+
+x ≤ βil , l =1, . . . , m i} with βil = max y∈B a⊤ 
+
+> il
+
+y satisfies B ⊆ ˜A by construction, so φ([0 , ¯Ts], A, u ji ) ⊆ B ⊆ ˜A.The region is updated as A ← ˜A ∩ Q, and feasibility of the SOS program guarantees ˙V (x) ≤ 0 for all x ∈ ˜A ∩
+
+Q. It remains to show that this certificate, established only on ˜A ∩ Q, suffices to prevent trajectories from reaching the portion of ˜A outside Q. Suppose for contradiction that some 
+
+x0 ∈ A ∩ Q satisfies V (φ(t∗, x 0, u ji )) > ρ for some t∗ ∈
+
+(0 , ¯Ts]. Let te = inf {t > 0 : V (φ(t, x 0, u ji )) > ρ }. For all 
+
+t ∈ [0 , t e] the trajectory satisfies V (φ(t, x 0, u ji )) ≤ ρ, hence lies in ˜A ∩ Q. The SOS certificate gives ˙V ≤ 0 along the trajectory, so V (φ(te, x 0, u ji )) ≤ V (x0) ≤ ρ, contradicting the definition of te. Therefore any trajectory starting in A∩Q
+
+remains in Q over [0 , ¯Ts].The argument extends to all segments by forward chaining over j = 0 , . . . , H − 1: at the start of each segment the current region satisfies A ⊂ Q, and the preceding argument shows that trajectories remain in Q and lie within ˜A ∩ Q,which Algorithm 2 passes as the input region to the next segment (Line 8). Thus trajectories starting in Ai remain in 
+
+Q over [tk, t k+1 ). Since {Ai}Mi=1 partitions Q, every x(0) ∈
+
+Q belongs to some region, and the closed-loop system is forward invariant on Q.VI. E MPIRICAL RESULTS 
+
+We consider the nonlinear quadrotor [1] with state x =[px, p y , p z , v x, v y , v z , ϕ, θ, ψ, ω x, ω y , ω z ]⊤ ∈ R12 consisting of position, linear velocity, Euler angles, and body angular rates, and control input u = [ T, τ x, τ y , τ z ]⊤ ∈ R4, where T
+
+is thrust and τ is torque. The dynamics ˙x = f (x, u ) are 
+
+˙p = v, ˙v = Tm R(ϕ, θ, ψ ) e3 − ge 3,
+
+˙η = W (ϕ, θ ) ω, ˙ω = I−1(−ω × Iω + τ ) . (4) where m is the vehicle mass, g is gravitational acceleration, I
+
+is the inertia matrix, e3 = [0 , 0, 1] ⊤ is the vertical unit vector, 
+
+R(ϕ, θ, ψ ) ∈ SO (3) is the rotation matrix and W (ϕ, θ ) is the Euler angle kinematic matrix. The training process and closed-loop simulations use the polynomial surrogate ˜f , so that the reported invariance rates are directly comparable to the IFC certificate established in Theorem 1. The sublevel parameter is set to ρ = 5 , the sampling period is Ts = H ¯Ts
+
+with ¯Ts = 0 .01 s and H = 2 , and the VQ-AE is initialized with M = 8192 codes. We justify the polynomial surrogate ˜f by evaluating 
+
+|V (φf (t)) − V (φ ˜f (t)) | at every integration step over [0 , T s]
+
+with Ts = 0 .02 s across 10 7 trajectories from states sam-pled uniformly in Q under admissible controls. The 99th-percentile gap is 3.0×10 −4 (0.006% of ρ), with a maximum of 7.0 × 10 −3 (0.14% of ρ), indicating that the surrogate approximation error is negligible. Closed-loop invariance is evaluated by sampling 10 5 initial states uniformly from Q, simulating the closed-loop system for 10 s, and recording a trajectory as a failure if it leaves Q
+
+at any point. After training, rarely used codes are pruned and states are reassigned to their nearest surviving code, reducing the number of regions that must be verified. We investigate three questions: (i) how far can the codebook be compressed before invariance breaks down (Section VI-A), (ii) how does the learned controller compare to baselines (Section VI-B), and (iii) what is the coarsest image resolution at which a vision-based observer can still support the controller (Sec-tion VI-C).              
+
+> Fig. 2. Codebook size |V Ts|and closed-loop invariance vs. codebook pressure λpr . Invariance holds at 100% down to |V Ts|=14 codes, then collapses. Green checkmarks indicate IFC certification success; all controllers at or beyond the collapse point are unverified.
+
+A. Codebook Compression 
+
+We stress-test the pipeline by varying the entropy pressure 
+
+λpr that penalizes codebook usage. Fig. 2 shows the result: as 
+
+λpr increases, the number of active open-loop controls |V Ts |
+
+decreases monotonically from 36 to 14 while closed-loop invariance remains near 100% . Below 14 codes, invariance collapses to below 10% , suggesting that the invariance task for this system and choice of Q requires at least ∼ 14 
+
+distinct open-loop signals. This empirical bound has the inductive bias of the architecture; the true rinv (Ts, Q ) may be lower under a richer control set. We also observe that even at higher code counts, a small number of closed-loop trajectories violate invariance in simulation (up to 0.01% ), while the IFC pipeline successfully certifies these controllers. We attribute this gap to accumulating integration error of the RK4 scheme; the open-loop invariance violation rate remains below 3.6 × 10 −5%. IFC certification is consistent with the observed safety trend. All controllers at or beyond the collapse point ( λ ≥ 0.028 ) are unverified, consistent with empirical invariance degradation. Among the remaining controllers, those with the most codes tend to be certified, while some intermediate cases are not. Since IFC pro-vides a sufficient condition for invariance via reachable-set overapproximation, unverified controllers are not necessarily unsafe; certification failure indicates only that the overap-proximation was conservative to confirm invariance.                   
+
+> TABLE I COMPARISON OF CODEBOOK SIZE AND CLOSED -LOOP INVARIANCE RATE ACROSS BASELINES ,EVALUATED OVER 10 5TRIALS FOR 10 S.
+> Method |V Ts|CL Inv. (%) VQ-AE (ours, pruned) 26 99.979 VQ-AE (ours, unpruned) 171 99.989 VQ-AE partition + OL LQR 171 0.000 Uniform grid + NN 4096 99.975 Uniform grid + CL LQR 2.2M 76.870
+
+B. Baseline Comparisons 
+
+We compare the proposed controller, trained with code-book pressure λ = 0.01 and evaluated over 10 5 initial conditions, against four alternatives. Methods (i) and (ii) correspond to our approach: (i) VQ-AE (pruned) and (ii) VQ-AE (unpruned) , where the pruned version discards rarely used codes and reassigns states to the nearest remaining code. The baselines are (iii) VQ-AE partition + OL LQR , which retains the learned partition but replaces the learned decoder outputs with a open-loop LQR rollout for Ts = 0.02 s
+
+initialized at the region centroid; (iv) uniform grid + NN ,which partitions each of the 12 state dimensions into 2 intervals ( 212 = 4096 cells) and assigns each cell an open-loop control via an independently trained neural network; and (v) uniform grid + CL LQR , which partitions each dimension into 5 intervals ( 512 ≈ 244 M cells), retains only the ∼2.2Mcells intersecting Q, and applies closed-loop LQR with state re-sampling at each ¯Ts interval, in contrast to the open-loop rollout used in (iii). All methods are evaluated over 10 5 initial conditions sam-pled uniformly from Q, with 10 s simulations. Table I shows that (ii) slightly outperforms (iii) while using approximately 
+
+24 × fewer codes (171 vs. 4096). After pruning, (i) uses 26 codes, achieving a 157 × reduction relative to (iv) while still maintaining higher closed-loop invariance. Method (v), de-spite using over 2.2 million partitions, achieves substantially lower invariance. We attribute this to quantization error: even with ∼2.2M cells, the within-cell state variation exceeds the tolerance of the LQR controller over each ¯Ts interval, particularly near ∂Q . Remarkably, neither the partition nor the controller alone is sufficient: (iii) fails despite using the learned partition, and (v) underperforms despite using a dense partition with closed-loop control. In contrast, the joint encoder–decoder structure in (i) achieves higher invariance with nearly 10 5× fewer regions, highlighting the importance of co-designing the partition and control signals. 
+
+C. Sensing Resolution and Invariance 
+
+Since C maps states to discrete indices i ∈ { 1, . . . , M },the observer need not reconstruct the full state; it suffices to identify which region Ai the current state belongs to. This raises a natural question: what is the coarsest image resolution at which the observer can still support invariance? We fix the same controller used for baselines comparison and the observer network Oψ is trained to estimate the state from r × r grayscale images of an ArUco marker [20] rendered at the quadrotor’s current pose. At each sampling time tk, the observer processes the K-step observation history with K = 4 yk := ( yk−K (r), . . . , y k(r)) , where 
+
+yk(r) := h(x(tk), r ) ∈ Rr×r, and produces a state estimate 
+
+ˆxk = Oψ (yk) passed to C to yield the composite mapping 
+
+g = C ◦ O ψ .      
+
+> Fig. 3. Outputs at different resolutions (indicated above). Closed-loop invariance and terminal safety over 10 s versus image resolution. Invariance remains above 99% down to ∼65 px, then degrades with lower resolution.
+
+The observer uses a ResNet-18 [22] backbone applied independently to each image in the history, followed by an MLP head that fuses per-image features into a state estimate. Only ψ is optimized; Eθ and Dϕ are frozen. Training combines a mean squared state reconstruction loss with a binary cross-entropy loss that penalizes region misidentifica-tion. Correct code selection matters because it ensures the true state lies in a partition region with a certified control, maintaining invariance even when the state estimate is noisy. The reconstruction loss is necessary alongside classification: without spatial grounding, the classification loss alone is fragile and cannot distinguish between misclassifying to a neighboring region versus a distant one, so the observer fails to learn the geometric structure of the partition. For each candidate resolution r, the observer is independently retrained and the closed-loop system is evaluated over 10 s from 1000 initial states sampled uniformly from Q.Fig. 3 reports two metrics as resolution decreases: the fraction of trajectories that never leave Q (closed-loop invari-ance), and the fraction that end inside Q at the terminal time of each open-loop segment (terminal safety). Both metrics are reported because vision-based control is susceptible to transient misclassifications that cause brief departures from 
+
+Q without diverging. Closed-loop invariance remains near 
+
+99% for resolutions down to approximately r = 65 px, then degrades progressively. At r = 40 px roughly 58% 
+
+of trajectories maintain invariance; the controller fails al-most entirely below r = 30 px. The terminal safety curve is substantially more robust, staying above 99% down to approximately r = 30 px, indicating that trajectories which leave Q frequently return by the end of the open-loop control execution. VII. C ONCLUSION 
+
+This paper studied the problem of constructing low-complexity controllers that certify forward invariance of a compact set under sampled-data control. A VQ-AE archi-tecture learns a state-space partition and control codebook, and an iterative forward certification algorithm verifies cor-rectness via Lipschitz-based reachable-set enclosures and SOS feasibility. On a 12-dimensional nonlinear quadrotor, the learned controller maintains invariance with 14 control signals, a 157 × reduction over a uniform grid baseline, and vision-based experiments show that closed-loop invariance is preserved down to approximately 65 px resolution. Future work includes generalizing the verification frame-work from polynomial surrogate dynamics to broader model classes, extending the encoder beyond affine maps while preserving certifiable partition geometry, and establishing theoretical lower bounds on codebook size. REFERENCES [1] R. Mahony, V. Kumar, and P. Corke, “Multirotor aerial vehicles: Modeling, estimation, and control of quadrotor,” IEEE robotics & automation magazine , vol. 19, no. 3, pp. 20–32, 2012. [2] R. W. Beard and T. W. McLain, Small unmanned aircraft: Theory and practice . Princeton university press, 2012. [3] N. Zhang, F. Nex, G. Vosselman, and N. Kerle, “End-to-end nano-drone obstacle avoidance for indoor exploration,” Drones , vol. 8, no. 2, p. 33, 2024. [4] J. Frankle and M. Carbin, “The lottery ticket hypothesis: Finding sparse, trainable neural networks,” arXiv preprint arXiv:1803.03635 ,2018. [5] S. Han, J. Pool, J. Tran, and W. Dally, “Learning both weights and connections for efficient neural network,” Advances in neural information processing systems , vol. 28, 2015. [6] D. Falanga, K. Kleber, and D. Scaramuzza, “Dynamic obstacle avoid-ance for quadrotors with event cameras,” Science Robotics , vol. 5, no. 40, p. eaaz9712, 2020. [7] F. Colonius and C. Kawan, “Invariance entropy for control systems,” 
+
+SIAM Journal on Control and Optimization , vol. 48, no. 3, pp. 1701– 1721, 2009. [8] C. Kawan, “Invariance entropy for deterministic control systems,” 
+
+Lecture notes in mathematics , vol. 2089, 2013. [9] F. Colonius, “Minimal bit rates and entropy for exponential stabiliza-tion,” SIAM Journal on Control and Optimization , vol. 50, no. 5, pp. 2988–3010, 2012. [10] J. Hespanha, A. Ortega, and L. Vasudevan, “Towards the control of linear systems with minimum bit-rate,” in Proc. 15th Int. Symp. on Mathematical Theory of Networks and Systems (MTNS) , 2002, pp. 1–15. [11] A. Atanov, J. Fu, R. Singh, I. Yu, A. Spielberg, and A. Zamir, “How far can a 1-pixel camera go? solving vision tasks using photorecep-tors and computationally designed visual morphology,” in European Conference on Computer Vision . Springer, 2024, pp. 458–476. [12] J. Klotz and S. K. Nayar, “Minimalist vision with freeform pixels,” in European Conference on Computer Vision . Springer, 2024, pp. 329–346. [13] D. Liberzon and S. Mitra, “Entropy and minimal data rates for state estimation and model detection,” in Proceedings of the 19th international conference on hybrid systems: Computation and control ,2016, pp. 247–256. [14] H. Sibai and S. Mitra, “State estimation of dynamical systems with unknown inputs: Entropy and bit rates,” in Proceedings of the 21st In-ternational Conference on Hybrid Systems: Computation and Control (part of CPS Week) , 2018, pp. 217–226. [15] L. Wang, R. Shelim, W. Saad, and N. Ramakrishnan, “A theoretically-grounded codebook for digital semantic communications,” in 2026 IEEE 23rd Consumer Communications & Networking Conference (CCNC) . IEEE, 2026, pp. 1–6. [16] Y. Bengio, N. Léonard, and A. Courville, “Estimating or propagating gradients through stochastic neurons for conditional computation,” 
+
+arXiv preprint arXiv:1308.3432 , 2013. [17] A. Van Den Oord, O. Vinyals et al. , “Neural discrete representation learning,” Advances in neural information processing systems , vol. 30, 2017. [18] L. Brunke, M. Greeff, A. W. Hall, Z. Yuan, S. Zhou, J. Panerati, and A. P. Schoellig, “Safe learning in robotics: From learning-based control to safe reinforcement learning,” Annual Review of Control, Robotics, and Autonomous Systems , vol. 5, pp. 411–444, 2022. [19] P. A. Parrilo, “Semidefinite programming relaxations for semialgebraic problems,” Mathematical programming , vol. 96, no. 2, pp. 293–320, 2003. [20] S. Garrido-Jurado, R. Muñoz-Salinas, F. Madrid-Cuevas, and M. Marín-Jiménez, “Automatic generation and detection of highly re-liable fiducial markers under occlusion,” Pattern Recognition , vol. 47, no. 6, pp. 2280–2292, 2014. [21] M. L. Casado and D. Martínez-Rubio, “Cheap orthogonal constraints in neural networks: A simple parametrization of the orthogonal and unitary group,” CoRR , vol. abs/1901.08428, 2019. [Online]. Available: http://arxiv.org/abs/1901.08428 [22] S. Targ, D. Almeida, and K. Lyman, “Resnet in resnet: Generalizing residual architectures,” arXiv preprint arXiv:1603.08029 , 2016.

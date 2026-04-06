@@ -1,0 +1,629 @@
+Title: Safety-Critical Centralized Nonlinear MPC for Cooperative Payload Transportation by Two Quadrupedal Robots
+
+URL Source: https://arxiv.org/pdf/2604.03200v1
+
+Published Time: Mon, 06 Apr 2026 01:01:49 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Safety-Critical Centralized Nonlinear MPC for Cooperative Payload Transportation by Two Quadrupedal Robots 
+
+Ruturaj S. Sambhus 1, Yicheng Zeng 1, Kapi Ketan Mehta 1, Jeeseop Kim 2, and Kaveh Akbari Hamed 1
+
+Abstract — This paper presents a safety-critical centralized nonlinear model predictive control (NMPC) framework for cooperative payload transportation by two quadrupedal robots. The interconnected robot–payload system is modeled as adiscrete-time nonlinear differential–algebraic system, capturing the coupled dynamics through holonomic constraints and in-teraction wrenches. To ensure safety in complex environments, we develop a control barrier function (CBF)-based NMPC formulation that enforces collision avoidance constraints for both the robots and the payload. The proposed approach retains the interaction wrenches as decision variables, resulting in a structured DAE-constrained optimal control problem that enables efficient real-time implementation. The effectiveness of the algorithm is validated through extensive hardware exper-iments on two Unitree Go2 platforms performing cooperative payload transportation in cluttered environments under mass and inertia uncertainty and external push disturbances. 
+
+I. I NTRODUCTION 
+
+Cooperative payload transportation using legged robots has recently gained significant attention due to its potential in applications such as search and rescue, construction, and logistics in complex and unstructured environments. Compared to single-robot systems, multi-robot cooperative transportation enables handling heavier and larger payloads while providing improved robustness and redundancy. How-ever, the coordination of multiple quadrupedal robots carry-ing a shared payload introduces strong dynamical coupling through physical interactions, making motion planning and control significantly more challenging. A key challenge in cooperative payload transportation lies in ensuring safe and dynamically feasible motion in clut-tered environments while respecting the coupled dynamics between the robots and the payload. The presence of rigid or semi-rigid connections introduces holonomic constraints that couple the motion of all subsystems, leading to aconstrained dynamical system with interaction forces and torques exchanged among agents. Furthermore, real-world deployments must account for model uncertainties, external disturbances, and contact constraints, all of which necessitate robust and safety-critical control strategies. Model predictive control (MPC) has become a prominent framework for trajectory planning and control of legged robots due to its ability to systematically incorporate system  
+
+> The work of R.S. Sambhus and K. Akbari Hamed is partially supported by the NSF under Grant 2423725.
+> 1R.S. Sambhus, Y. Zeng, K. K. Mehta, and K. Akbari Hamed ( Cor-responding Author ) are with the Department of Mechanical Engineering, Virginia Tech, Blacksburg, VA 24061, USA,
+
+{ruturajsambhus, zyicheng, kmehta4, kavehakbarihamed }@vt.edu  
+
+> 2J. Kim is with The University of Texas at El Paso, El Paso, TX 79968, USA,
+
+jkim16@utep.edu  
+
+> Fig. 1. Snapshot of two Unitree Go2 quadrupedal robots cooperatively transporting a shared payload using the proposed CBF-based centralized NMPC framework in a cluttered environment with cylindrical obstacles. The framework autonomously adjusts the orientations of the robots and the payload to avoid collisions while maintaining safe and stable transportation.
+
+dynamics, constraints, and performance objectives within a finite prediction horizon. Existing MPC-based approaches span both reduced-order and full-order modeling paradigms. Reduced-order template models provide simplified repre-sentations of locomotion dynamics that enable real-time trajectory optimization [1]. Representative examples include the linear inverted pendulum (LIP) model [2] and its variants, such as angular momentum LIP [3], spring-loaded inverted pendulum (SLIP) [4], vertical SLIP [5], and hybrid LIP [6], as well as centroidal dynamics [7] and single rigid body (SRB) models [8]–[13]. In contrast, full-order nonlinear MPC methods directly utilize the complete robot dynamics to achieve improved accuracy and dynamic performance, albeit at the expense of increased computational complexity [14]– [16]. Control barrier functions (CBFs) offer a systematic ap-proach to enforcing safety constraints by guaranteeing for-ward invariance of designated safe sets [17], [18]. Incorporat-ing CBFs within MPC provides a principled framework for safety-critical trajectory optimization by embedding safety constraints directly into the optimal control problem while maintaining feasibility and performance. This paradigm has been successfully demonstrated in both single-robot and multi-robot quadrupedal systems [19]–[22]. However, ex-tending these approaches to cooperative payload transporta-tion with shared dynamics remains a significant challenge, as the presence of holonomic constraints introduces strong coupling between robots and the payload, complicating the  
+
+> arXiv:2604.03200v1 [cs.RO] 3 Apr 2026 Fig. 2. Overview of the proposed layered control framework. The high-level CBF-based NMPC computes optimal trajectories for the interconnected robot–payload SRB system under holonomic constraints, while low-level nonlinear whole-body controllers enforce full-order robot dynamics.
+
+integration of safety-critical constraints within MPC frame-works. In this paper, we address this challenge by develop-ing a safety-critical centralized nonlinear model predictive control (NMPC) framework for cooperative payload trans-portation by two quadrupedal robots. The interconnected robot–payload system is modeled as a discrete-time nonlinear differential–algebraic system that captures both subsystem dynamics and holonomic coupling constraints. Safety is enforced through the integration of higher-order control barrier functions (HOCBFs) within the NMPC formulation, enabling collision avoidance for both the robots and the payload. A key feature of the proposed approach is that the interaction wrenches are retained as decision variables, resulting in a structured DAE-constrained optimal control problem that facilitates efficient real-time implementation. The effectiveness of the proposed framework is validated through extensive hardware experiments, demonstrating ro-bust and safe performance under model uncertainties and external disturbances (see Fig. 1). 
+
+A. Related Work 
+
+Recent works have explored MPC-based approaches for multi-legged robot coordination and cooperative manipula-tion. In [23], [24], a layered control framework was proposed for cooperative locomotion of two holonomically constrained quadrupedal robots using centralized and distributed con-vex quadratic programming (QP)-based MPC for real-time trajectory planning and whole-body control; however, the dynamics of a shared payload were not explicitly modeled. In our prior work [25], a distributed data-driven predictive control framework was developed for cooperative locomotion of multiple holonomically constrained quadrupedal robots, enabling scalable coordination without relying on explicit model-based optimization; however, payload dynamics and safety-critical constraints were not considered. The works in [21], [22] develop distributed NMPC frame-works for teams of quadrupedal robots that are not physi-cally interconnected, but instead coupled through inter-agent safety constraints. The work in [26] proposes a layered framework in which CBFs are incorporated at a high-level kinematic planner formulated as a zero-horizon QP to ensure collision avoidance for a team of interconnected quadrupedal robots without explicitly modeling payload dynamics. How-ever, because the CBF constraints are enforced only at the kinematic planning layer, safety is guaranteed only for the reference trajectories provided to the lower-level controllers, and not for the real-time trajectory optimization within the MPC itself. A distributed MPC framework in [27] addresses cooperative loco-manipulation with shared payload dynamics by decomposing a centralized optimal control problem into parallel subproblems via consensus optimization; however, it relies on iterative consensus updates and is primarily val-idated in simulation. In contrast, the current work develops a centralized safety-critical NMPC framework that explicitly captures holonomic coupling and is validated through real-time hardware experiments. The work in [28] formulates a centralized MPC ap-proach for collaborative loco-manipulation using single rigid body dynamics and multiple-shooting trajectory optimiza-tion; however, it does not incorporate safety-critical con-straints or provide formal safety guarantees, and its validation is limited to simulation. The work in [29] proposes ahierarchical reinforcement learning framework with a dy-namic reward curriculum for collaborative pick-and-place tasks using legged manipulators, focusing on learning-based coordination rather than model-based control. In contrast, the current work develops a model-based, safety-critical NMPC framework that explicitly captures robot–payload dynamics and enforces safety constraints with real-time guarantees. 
+
+B. Contributions 
+
+The main contributions of this paper are as follows. We develop a safety-critical centralized NMPC framework for cooperative payload transportation by two quadrupedal robots, modeling the interconnected system as a discrete-time nonlinear differential–algebraic equation (DAE) system with holonomic constraints. We incorporate higher-order control barrier functions (HOCBFs) to enforce collision avoidance for both the robots and the payload, thereby providing formal safety guarantees. We formulate a structured DAE-constrained optimal control problem that retains interaction wrenches as decision variables, enabling efficient real-time implementation (see Fig. 2). The proposed framework is vali-dated through real-time hardware experiments on two Unitree Go2 robots that cooperatively and safely transport a payload, demonstrating robust performance under uncertainties and external disturbances. II. I NTERCONNECTED DYNAMICAL MODEL 
+
+In this section, we present the dynamical model of the interconnected robot–payload system, including the SRB dynamics, interaction wrenches, and holonomic coupling constraints. We consider a system composed of three in-terconnected single rigid bodies (SRBs) arranged in an Fig. 3. Illustration of the interconnected SRB model of the robotic agents and the shared payload, showing the rigid holonomic coupling constraints and interaction wrenches. 
+
+open-chain structure. The two side SRBs correspond to the quadrupedal robotic agents, while the middle SRB represents the shared payload (see Fig. 3). The interconnection between these bodies is described by an undirected graph G(V, E),where the node set is defined as V := {1, 2, L}. Nodes 1 and 
+
+2 correspond to the robotic agents, and node L corresponds to the payload. The edge set is defined as E := {{ 1, L}, {2, L}} ,which captures the physical coupling between each robot and the payload. In our notation, quantities associated with node i ∈ V are denoted using the superscript i. Furthermore, quantities associated with an edge {i, j } ∈ E are denoted using the superscript ij .We assume that the state and control input associated with each robotic agent i ∈ V \ { L} are denoted by xi(t) ∈X ⊂ Rnx and ui(t) ∈ U ⊂ Rnu , respectively. For the SRB dynamics, the state vector consists of the Cartesian position of the center of mass (CoM) pi, the orientation of the body parameterized by Euler angles θi, the linear velocity of the CoM ˙pi, and the angular velocity of the body ωi, all expressed in the world frame. Specifically, 
+
+xi := col (pi, θ i, ˙pi, ω i), (1) where col (·) denotes the column stacking operator. The control input ui represents the ground reaction forces (GRFs) applied at the stance feet of robot i. Similarly, we define the state of the shared payload by xL. Unlike the robotic agents, the payload does not interact with the ground and does not have actuation through contact forces. Instead, its dynamics are influenced by the interaction wrenches exchanged with the robotic agents, denoted by λiL ∈ Rnλ for i ∈ V\{ L}. The interaction wrenches represent the forces and torques at the connection points and will be further discussed in Remark 1 (see Fig. 3). Because the interaction wrenches also act on the robotic agents, the SRB dynamics of each agent can be modeled by the following discrete-time nonlinear system: 
+
+xi(t + 1) = f i  xi(t), u i(t), λ iL(t) , i ∈ V \ { L}. (2) Here, t ∈ Z≥0 := {0, 1, · · · } denotes the discrete-time index, and f i is a nonlinear mapping obtained via time discretiza-tion (e.g., using the Euler or Runge–Kutta method). Simi-larly, the payload dynamics are described by the discrete-time nonlinear model 
+
+xL(t + 1) = f L  xL(t), λ 1L(t), λ 2L(t) . (3)  
+
+> Fig. 4. Illustration of the rigid mechanism between the robots and the payload, with additional masses placed in the basket. The connection enforces translational rigidity, restricts relative roll and pitch motions, and allows relative yaw motion between the robots and the payload.
+
+SRB Dynamics: We describe the continuous-time SRB dynamics used in our formulation for both the robotic agents and the payload as follows: 
+
+ΣSRB :
+
+
+
+¨pi = f i, net 
+
+mi − g0,
+
+˙θi = A(θi) ωi,
+
+˙ωi = ( Ii)−1  τ i, net − S(ωi) Ii ωi ,
+
+(4) where mi denotes the mass of SRB i, g0 ∈ R3 is the gravitational acceleration vector, and Ii ∈ R3×3 is the inertia matrix of SRB i expressed in the world frame as 
+
+Ii = R(θi) IiB R⊤(θi), with IiB being the inertia in the body frame. Here, R(θi) ∈ SO (3) denotes the rotation matrix, and S(·) : R3 → so (3) denotes the skew-symmetric operator. The net force and torque applied at the CoM of SRB i are denoted by (f i, net , τ i, net ).For robotic agents i ∈ V \{ L}, the net wrench is given by a linear combination of the individual GRFs and the interaction wrench with the payload. Specifically, matrices Ei(t) and 
+
+F iL map the GRFs and interaction wrench to the net wrench as f i, net 
+
+τ i, net 
+
+
+
+= Ei(t) ui(t) + F iL λiL(t). (5) We remark that this model is valid if the local GRFs for the robotic agents belong to the friction cone, that is 
+
+U = FC , where FC represents the friction cone. For the shared payload, the net wrench is determined solely by the interaction wrenches according to Newton’s third law: 
+
+f L,net 
+
+τ L,net 
+
+
+
+= − X
+
+> i∈V\{ L}
+
+F iL λiL(t). (6) 
+
+Holonomic Constraints: We consider a rigid connection mechanism between each robot and the payload, as shown in Fig. 4. This mechanism imposes a holonomic constraint between the robotic agents and the payload. In particular, the connection enforces rigidity in translation while restricting the relative roll and pitch motions between the robots and the payload, and allowing free relative yaw motion. This connection induces a five-dimensional holonomic constraint between each robotic agent SRB and the SRB of the shared payload, corresponding to three translational constraints and two rotational constraints (roll and pitch), while allowing free relative yaw motion. These holonomic constraints can be expressed compactly as 
+
+φiL  xi(t), x L(t) = 0 , ∀i ∈ V \ { L}, (7) where φiL : X × X → R5 represents the constraint function enforcing (i) coincidence of the interaction points in position and (ii) alignment of the roll and pitch components of the relative orientation between the robot and the payload. Differentiating the holonomic constraints twice along the system dynamics yields 
+
+¨φiL  xi(t), x L(t), u i(t), λ 1L(t), λ 2L(t) = 0 , ∀i ∈ V \ { L}
+
+(8) which imposes an equality constraint on the control inputs and interaction wrenches that must be satisfied for all t ≥ 0.
+
+Remark 1: The interaction wrenches λiL have the same dimension as the corresponding holonomic constraints, i.e., 
+
+dim( λiL) = dim( φiL) = 5 for all i ∈ V \ { L}. More specifically, the interaction wrenches can be obtained by solving the algebraic constraints (8). However, we do not pur-sue this approach in this paper, as substituting the resulting expressions for the interaction wrenches in terms of the states and local control inputs into the agent and payload dynamics (2) and (3) would increase the nonlinearity of the model and complicate the resulting optimal control problem. Instead, we adopt an alternative approach, presented in Section IV, in which the interaction wrenches are retained as decision variables in the NMPC formulation. The NMPC then solves for the interaction wrenches while enforcing the algebraic constraints (8). 
+
+DAE-constrained Nonlinear Global Model: For compact notation, we define the global state and input vectors as 
+
+x := col {xi}i∈V , u := col {(ui, λ iL)}i∈V\{ L}. (9) The sets of feasible global states and admissible inputs are denoted by X global and Uglobal , respectively. We then consider the global dynamics of the interconnected robot–payload system obtained by stacking the local dynamics (2) and (3), together with the algebraic constraints (8). This yields the following compact representation: 
+
+Σglobal :
+
+(
+
+x(t + 1) = f (x(t), u (t)) ,
+
+¨φ(x(t), u (t)) = 0 , (10) where f := col {f i}i∈V denotes the global dynamics of the two robotic agents and the payload, and ¨φ := 
+
+col { ¨φiL}i∈V\{ L} encodes the holonomic constraints between the robots and the payload. Here, the input u includes both the ground reaction forces and the interaction wrenches. The global model in (10) defines a discrete-time nonlinear differential–algebraic system with algebraic coupling con-straints, leading to a DAE-constrained nonlinear optimal control problem for trajectory generation. III. CBF S FOR THE INTERCONNECTED SYSTEM 
+
+Building on the system model developed in Section II, we develop a safety framework using control barrier functions (CBFs) and higher-order CBFs to systematically enforce collision avoidance for the interconnected robot–payload system. We consider a set of static obstacles indexed by 
+
+O := {1, · · · , n O }, where oℓ ∈ R2 denotes the Cartesian position of obstacle ℓ ∈ O . The objective is to develop a real-time, safety-critical NMPC scheme that tracks a refer-ence trajectory while respecting the interconnected system dynamics and feasibility constraints, and ensuring collision avoidance for the robot–payload system. Let g : X → R2 be a continuous mapping such that g(xi)
+
+gives the projection of the Cartesian coordinates of the CoM of SRB i onto the xy -plane. To formally encode safety, we define the agent–obstacle safe set as 
+
+S := 
+
+n
+
+x ∈ X global | ∥ g(xi) − oℓ∥ ≥ dth , ∀i ∈ V , ∀ℓ ∈ O 
+
+o
+
+,
+
+(11) where ∥ · ∥ denotes the Euclidean norm and dth > 0 is a prescribed safety margin. To establish the proposed real-time safety-critical NMPC algorithm, we briefly review the concepts of CBFs and higher-order CBFs for discrete-time systems. 
+
+Definition 1 (Discrete-Time CBF [30]): A function h :
+
+X global → R is said to be a discrete-time CBF for the global dynamics (10) if there exists a class K function α satisfying 
+
+α(s) < s for all s > 0 such that 
+
+∆h (x(t), u (t)) ≥ − α (h(x(t))) , ∀x(t) ∈ X global , (12) where ∆h(x(t), u (t)) := h(x(t + 1)) − h(x(t)) .For systems with relative degree r > 1, the control input does not appear in the first-order difference of the CBF h. In particular, for the interconnected robot–payload system with force and torque inputs, the relative degree is r = 2 . For a general relative degree r > 1, we construct a sequence of functions as follows: 
+
+ψ0(x(t)) := h(x(t)) ,ψ1(x(t)) := ∆ ψ0 (x(t), u (t)) + α1 (ψ0(x(t))) ,
+
+...
+
+ψr (x(t), u (t)) := ∆ ψr−1 (x(t), u (t)) + αr (ψr−1(x(t))) ,
+
+(13) where ∆ψj (x(t), u (t)) := ψj (x(t + 1)) − ψj (x(t)) for 0 ≤
+
+j ≤ r−1, and αj (·) are class K functions satisfying αj (s) <s for all s > 0 and j = 1 , · · · , r . This sequence induces the sets 
+
+Sj := {x ∈ X global | ψj (x) ≥ 0}, 0 ≤ j ≤ r − 1. (14) 
+
+Definition 2 (Higher-Order Discrete-Time CBF [30]): 
+
+The function h : X global → R is a higher-order discrete-time CBF (HOCBF) of relative degree r if there exist functions 
+
+ψj for j ∈ { 0, 1, . . . , r } defined by (13) and corresponding sets Sj for j ∈ { 0, 1, . . . , r − 1} defined by (14) such that 
+
+ψr (x(t), u (t)) ≥ 0 (15) for all x(t) ∈ Tr−1 
+
+> j=0
+
+Sj and for some admissible control input 
+
+u(t) ∈ U global .
+
+Theorem 1 (HOCBF Condition [30]): Let h : X global →
+
+R be a continuous HOCBF of relative degree r defined on Tr−1 
+
+> j=0
+
+Sj . If there exists a control input u(t) ∈ U global 
+
+satisfying the HOCBF condition (15) for all x(t) ∈ Tr−1 
+
+> j=0
+
+Sj ,then the set Tr−1 
+
+> j=0
+
+Sj is forward invariant for the global system (10). To enforce safety for the multi-robot–payload system, we introduce HOCBFs corresponding to agent–obstacle and payload–obstacle collision avoidance. Specifically, for each SRB i ∈ V (i.e., each robot and the payload) and each obstacle ℓ ∈ O , we define the safety function hi,ℓ (xi) := ∥g(xi) − oℓ∥ − dth . (16) Since the relative degree is r = 2 , the corresponding HOCBF condition for each SRB and each obstacle is given by 
+
+ψi,ℓ  
+
+> 2
+
+(x(t), u (t)) ≥ 0, ∀i ∈ V , ∀ℓ ∈ O . (17) IV. CBF-BASED CENTRALIZED NMPC We aim to design a computationally efficient, real-time centralized NMPC algorithm that computes feasible and optimal state–input trajectories for the interconnected system, composed of two SRBs corresponding to the robotic agents and one SRB corresponding to the shared payload, while ensuring satisfaction of the HOCBF-based safety constraints (17) for obstacle avoidance. The NMPC formulation retains the interaction wrenches as decision variables, rather than eliminating them via the algebraic constraints, and enforces the holonomic constraints explicitly within the optimization problem. Let us define the predicted global state and input trajectories at time t over a prediction horizon N as 
+
+x(·) := col {xt+1 |t, x t+2 |t, · · · , x t+N |t} and u(·) := 
+
+col {ut|t, u t+1 |t, · · · , u t+N −1|t}, respectively, where xt+k|t
+
+and ut+k|t denote the predicted global state and input at time t + k, computed at time t. Similarly, the local state, control input, and interaction wrench trajectories are defined as xi(·), ui(·), and λiL(·) for i ∈ V \ { L}. For compactness, we define the stacked interaction wrench trajectory as 
+
+λL(·) := col {λiL(·)}i∈V\{ L}. (18) We propose the following NMPC algorithm for the inter-connected system 
+
+min 
+
+> (x(·),u (·))
+
+Jglobal (x(·), u (·)) := X
+
+> i∈V\{ L}
+
+Ji(xi(·), u i(·)) + JL(xL(·), λ L(·)) (19) s.t. xit+k+1 |t = f i(xit+k|t, u it+k|t, λ iL
+
+> t+k|t
+
+), ∀i ∈ V \ { L}
+
+(20) 
+
+xL 
+
+> t+k+1 |t
+
+= f L(xL
+
+> t+k|t
+
+, λ L
+
+> t+k|t
+
+) (21) 
+
+¨φ(xit+k|t, x L
+
+> t+k|t
+
+, u it+k|t, λ L
+
+> t+k|t
+
+) = 0 (22) 
+
+ψi,ℓ  
+
+> 2
+
+(xt+k|t, u t+k|t) ≥ 0, ∀i ∈ V , ∀ℓ ∈ O (23) 
+
+uit+k|t ∈ U , ∀i ∈ V \ { L} (24) 
+
+k = 0 , 1 · · · , N − 1,
+
+with the initial condition xt|t = x(t), where x(t) denotes the measured global state at time t. Here, Ji(xi(·), u i(·)) for i ∈V \ { L} and JL(xL(·), λ L(·)) denote the local cost functions for the robotic agents and the payload, respectively, and will be specified subsequently. The equality constraints (20) and (21) represent the local dynamics of the robotic agents and the payload. The algebraic holonomic constraints enforcing the rigid coupling between the SRBs are captured by (22), which also enables the NMPC to solve for the interaction wrenches, as discussed in Remark 1. The HOCBF constraints for both robot–obstacle and payload–obstacle avoidance are imposed via (23). Finally, the admissibility of the control inputs (i.e., GRFs) is enforced through (24). The local cost functions for all SRBs in (19) are defined as 
+
+Ji(xi(·), u i(·)) := Ji
+
+> terminal
+
+
+
+xit+N |t − xi, des  
+
+> t+N|t
+
+
+
++ 
+
+> N−1
+
+X
+
+> k=0
+
+Ji
+
+> stage
+
+
+
+xit+k|t − xi, des 
+
+> t+k|t
+
+, u it+k|t
+
+
+
+(25) which are convex cost functions penalizing the deviation of the local state trajectory xi(·) from a given reference trajectory xi, des (·) using quadratic terminal and stage costs, defined as 
+
+Ji
+
+> terminal
+
+(xi) = ∥xi∥2  
+
+> Pi
+
+, Ji
+
+> stage
+
+(xi, u i) := ∥xi∥2 
+
+> Qi
+
++∥ui∥2 
+
+> Ri
+
+,
+
+where P i ≻ 0, Qi ≻ 0, and Ri ≻ 0 are positive definite weighting matrices. For the payload subsystem, the control input ui(·) is replaced by the interaction wrench trajectory 
+
+λL(·) in the corresponding cost function. 
+
+Layered Control Structure: The proposed framework adopts a hierarchical control architecture (see Fig. 2). The high-level CBF-based centralized NMPC runs at 60 Hz and computes optimal trajectories for the interconnected SRB states, ground reaction forces (GRFs), and interaction wrenches. The numerical details of the NMPC solver are provided in Section V-A. At the low level, a nonlinear whole-body controller (WBC) tracks the desired SRB states and GRF references generated for the robotic agents while enforcing full-order robot dynamics. The WBC, adopted from [13], [31], is implemented as a real-time QP running at 500 Hz, ensuring consistency with full-body dynamics and actuation limits. V. E XPERIMENTS 
+
+This section reports the performance of the proposed layered control framework through hardware experiments. 
+
+A. Setup and Controller Synthesis 
+
+The experimental and simulation studies are conducted using Unitree Go2 quadrupedal robots. Each platform has a mass of approximately 15 kg, a nominal standing height of about 0.28 m, and a total of 18 degrees of freedom (DoFs), comprising 12 actuated joints in the legs (hip roll, hip pitch, and knee pitch per leg) and 6 unactuated floating-base DoFs describing the torso pose. For perception and localization, each robot is equipped with a Unitree L1 4D LiDAR sensor. The layered control architecture is realized using a multi-threaded implementation on an offboard desktop system equipped with an Intel i9-14900KF CPU and 64 GB of DDR5 RAM, with one thread dedicated to the centralized CBF-based NMPC and two threads assigned to the decentral-ized low-level WBCs. The robot states are measured in real time using joint encoders and an IMU through the Unitree API, and a kinematic estimator is employed to compute the translational position of the SRB for each robotic agent. Due to the rigid bar mechanism, which constrains the relative translation between the two robots and restricts their roll and pitch motions, an alternative kinematic estimator is used to reconstruct the SRB states of the payload from Fig. 5. Snapshots of all experiments: (a) Experiment 1 with a nominal payload of 5 kg; (b) Experiment 2 with an unmodeled payload of 11.2 kg; (c) Experiment 3 with an unmodeled payload of 11.2 kg under external push disturbances; and (d)–(e) Experiment 4 with different obstacle layouts. TABLE I Statistics of NMPC solve time (in milliseconds) across three experiments 
+
+Experiment Mean Std. Dev. 
+
+Exp. 1 (Nominal Payload) 11 .42 0.6
+
+Exp. 2 (Robustness to Payload Uncertainty) 11 .56 0.42 
+
+Exp. 3 (Robustness to Disturbances) 11 .45 0.5
+
+the estimated SRB states of the two robots. Since the yaw motion is not constrained by the rigid connection, the yaw angle of the payload SRB can be uniquely determined from the relative positions of the two robot SRBs once their states are known. Alternatively, a motion capture (MoCap) system can be used to directly and accurately measure the payload SRB states; however, such instrumentation is not employed in this work and is left for future investigation. 
+
+Real-Time Computation: The weighting matrices for all SRB subsystem states are selected as Qi =
+
+diag {Qip, Q iθ , Q i˙p, Q iω }, where Qip = diag {1e7, 1e7, 16 e7},
+
+Qiθ = diag {1e7, 1e7, 1e7}, Qi˙p = diag {1e6, 1e6, 1e6},and Qiω = diag {1e5, 1e5, 1e5}, the terminal cost matrices 
+
+P i = 10 Qi. The control penalty for robotic agents is set as Ri = 20 I. For the interaction forces, the weighting matrices are defined as RL = block diag {RL 
+
+> f
+
+, R L 
+
+> τ
+
+}, with 
+
+RL 
+
+> f
+
+= diag {5e1, 5e1, 5e1} and RL 
+
+> τ
+
+= diag {5e2, 5e2}. The prediction horizon is set to N = 8 with a sampling time of Ts = 16 .67 ms. The collision avoidance threshold is chosen as dth = 0 .5 m for experiment one and dth = 0 .6
+
+m for experiments two and three. The class K functions for the HOCBF conditions are selected as α1(s) = 0 .4s
+
+and α2(s) = 0 .04 s. Trotting gaits are employed for the quadrupedal robots. The CBF-based centralized NMPC is solved at 60 Hz using CasADi [32] with the IPOPT solver [33], allowing a maximum of 10 iterations per cycle and warm-starting from the previous solution. The resulting nonlinear program in (19)–(24) comprises 596 decision variables, with the initial SRB states constrained to match the measured state feedback at time t. The framework is evaluated in a complex environment with up to nO = 6 
+
+obstacles using the RaiSim physics engine [34]. Table I reports the NMPC solve-time statistics (in milliseconds) across three representative experiments. The average solve time of 11 ms enables real-time implementation at 60 Hz. 
+
+B. Hardware Experiments 
+
+We experimentally evaluate the proposed CBF-based cen-tralized NMPC framework on two Unitree Go2 quadrupedal robots connected to a shared payload via the aforementioned rigid mechanism (see Fig. 5). The experiments are designed to assess (i) safety-critical cooperative payload transportation in cluttered environments and (ii) robustness to payload 0 5 10 15 20                                                            
+
+> Velocity (m/s)
+> -0.5
+> 0
+> 0.5
+> 1
+> Yaw (rad)
+> -0.5
+> 0
+> 0.5
+> 1
+> Nominalpayloadof5.0kg
+> _xref_x$_yref_y$yaw
+> 0510 15 20
+> Forces (N)
+> -50
+> 0
+> 50
+> 100
+> 150
+> 200
+> 250
+> F$
+> xF$
+> yF$
+> z
+> Time(s)
+> 0510 15 20
+> Forces (N)
+> -60
+> -40
+> -20
+> 0
+> 20
+> 40
+> Moments (Nm)
+> -60
+> -40
+> -20
+> 0
+> 20
+> 40
+> 61L$
+> Fx61L$
+> Fy61L$
+> Fz61L$
+> =x61L$
+> =y
+> 0510 15 20
+> h(x) (m)
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> HOCBFsforagent1
+> Unsafeseth<0
+> h1;1
+> h1;2
+> h1;3
+> h1;4
+> h1;5
+> h1;6
+> 0510 15 20
+> h(x) (m)
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> HOCBFsforpayload
+> Unsafeseth<0
+> hL;1
+> hL;2
+> hL;3
+> hL;4
+> hL;5
+> hL;6
+> Time(s)
+> 0510 15 20
+> h(x) (m)
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> HOCBFsforagent2
+> Unsafeseth<0
+> h2;1
+> h2;2
+> h2;3
+> h2;4
+> h2;5
+> h2;6
+
+Fig. 6. Reference and actual CoM velocity trajectories along the xy -axes for agent 1 during nominal cooperative payload transportation with a 5 kg payload. The yaw plot corresponds to the payload orientation, which is autonomously adjusted by the proposed algorithm to safely navigate through obstacles. The figure also shows the optimal GRFs and interaction wrench profiles (forces and torques) computed by the high-level CBF-based NMPC. The second column illustrates the HOCBF functions hi,ℓ for each agent and the six obstacles. All HOCBF functions remain nonnegative throughout the experiment, certifying safety for both the robots and the payload. 
+
+mass and inertia uncertainties, as well as external push disturbances. Accompanying experiment videos are available online [35]. 
+
+Experiment 1 (Nominal Payload Transportation in Clut-tered Environments): In the first experiment, the payload mass and inertia are set to their nominal values, with a payload mass of 5 kg, which corresponds to approximately 33.33% of the mass of a single robot (15 kg). The two robots are tasked with navigating a workspace containing six static obstacles while transporting the shared payload (see Fig. 5(a)). Individual reference trajectories are assigned to both the robots and the payload with a desired speed of 0.3 m/s. The proposed framework maintains dynamic stability of the interconnected system while tracking the reference trajectories and ensuring collision avoidance for both the robots and the payload. Figure 6 illustrates the actual CoM velocity trajectories of agent 1 and the yaw trajectory of the shared payload. The algorithm autonomously adjusts the payload orientation to safely navigate through obstacles. The figure also depicts the corresponding optimal GRF and wrench profiles prescribed by the NMPC for the same agent. In addition, it shows the HOCBF functions hi,ℓ for all i ∈ V 
+
+and ℓ ∈ O . The results demonstrate that the interconnected -1 0 1 2 3 4 5 6                     
+
+> X Coordinate (m)
+> -2 -1 0123
+> Y Coordinate (m)
+> Experiment 1: Nominal
+> Agent 1 Agent 2 Payload
+> -1 0123456
+> X Coordinate (m)
+> -2 -1 0123
+> Y Coordinate (m)
+> Experiment 3: Robustness
+> Agent 1 Agent 2 Payload
+> -1 0123456
+> X Coordinate (m)
+> -2 -1 0123
+> Y Coordinate (m)
+> Experiment 4: Additional Configuration 1
+> Agent 1 Agent 2 Payload
+> -1 0123456
+> X Coordinate (m)
+> -2 -1 0123
+> Y Coordinate (m)
+> Experiment 4: Additional Configuration 2
+> Agent 1 Agent 2 Payload
+
+Fig. 7. CoM trajectories of the robotic agents and the shared payload in the xy -plane. The rigid mechanism is illustrated by a black line connecting the three systems. The obstacles are represented by solid circles, and the dashed regions around them denote the corresponding safe sets. The plot presents results for Experiments 1, 3, and 4. 
+
+system tracks the prescribed velocity commands whenever it is safe to do so, while all HOCBF functions remain nonnegative, thereby certifying safety throughout the motion. Figure 7 presents the CoM trajectories of the robotic agents and the shared payload in the xy -plane. 
+
+Experiment 2 (Robustness to Payload Mass Uncertainty): 
+
+In the second experiment, we evaluate the robustness of the proposed framework to payload uncertainty. Specifically, an additional mass is attached to the back of the payload holder, resulting in a total payload mass of 11.2 kg (approximately 74.67% of the mass of a single robot), while the controller continues to use the nominal payload model of 5 kg from Experiment 1. The robots are tasked with performing the same navigation task in the presence of obstacles (see Fig. 5(b)). The results demonstrate that the proposed NMPC framework maintains stable cooperative transportation and continues to track the reference trajectories despite the mismatch between the true and modeled payload dynamics. Furthermore, safety is preserved, as all HOCBF constraints remain satisfied throughout the experiment. 
+
+Experiment 3 (Robustness to External Disturbances): The third experiment extends Experiment 2 by introducing exter-nal disturbances during cooperative payload transportation. In addition to the unmodeled payload mass, a bystander applies external pushes to one of the robots, resulting in dis-turbances acting on the interconnected system (see Fig. 5(c)). The results demonstrate that the proposed framework main-tains stable cooperative transportation and continues to track the reference trajectories despite the combined effects of payload uncertainty and external disturbances. Furthermore, safety is preserved throughout the experiment, except for a minor and transient violation in h2,6 immediately following a push disturbance; the controller subsequently drives agent 2 back to the safe set (see Fig. 8 and Fig. 7). 
+
+Experiment 4 (Alternative Obstacle Layouts): Experi-ments 1–3 were conducted using a fixed obstacle config-0 5 10 15 20                                                               
+
+> Velocity (m/s)
+> -0.5
+> 0
+> 0.5
+> 1
+> Yaw (rad)
+> -0.5
+> 0
+> 0.5
+> 1
+> Pushexperimentswithapayloadof11.2kg
+> Pushes
+> _xref_x$_yref_y$yaw
+> 0510 15 20
+> Forces (N)
+> -50
+> 0
+> 50
+> 100
+> 150
+> 200
+> 250
+> Pushes
+> F$
+> xF$
+> yF$
+> z
+> Time(s)
+> 0510 15 20
+> Forces (N)
+> -60
+> -40
+> -20
+> 0
+> 20
+> 40
+> Moments (Nm)
+> -60
+> -40
+> -20
+> 0
+> 20
+> 40
+> Pushes
+> 61L$
+> Fx61L$
+> Fy61L$
+> Fz61L$
+> =x61L$
+> =y
+> 0510 15 20
+> h(x) (m)
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> HOCBFsforagent1
+> Unsafeseth<0
+> Pushes
+> h1;1
+> h1;2
+> h1;3
+> h1;4
+> h1;5
+> h1;6
+> 0510 15 20
+> h(x) (m)
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> HOCBFsforpayload
+> Unsafeseth<0
+> Pushes
+> hL;1
+> hL;2
+> hL;3
+> hL;4
+> hL;5
+> hL;6
+> Time(s)
+> 0510 15 20
+> h(x) (m)
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> HOCBFsforagent2
+> Unsafeseth<0
+> Pushes
+> h2;1
+> h2;2
+> h2;3
+> h2;4
+> h2;5
+> h2;6
+
+Fig. 8. Reference and actual CoM velocity trajectories along the xy -axes for agent 1 during cooperative payload transportation with an uncertain payload of 11.2 kg, subject to unmodeled external push disturbances. The yaw plot corresponds to the payload orientation, which is autonomously adjusted by the proposed algorithm to safely navigate through obstacles. The figure also shows the optimal GRFs and interaction wrench profiles (forces and torques) computed by the high-level CBF-based NMPC. The second column illustrates the HOCBF functions hi,ℓ for each agent and the six obstacles, with the time intervals of external pushes highlighted. The HOCBF functions remain nonnegative throughout the experiment, except for a minor and transient violation in h2,6 immediately following a push disturbance; the controller subsequently drives agent 2 back to the safe set. 
+
+uration. To further evaluate the generality of the proposed framework, we perform additional experiments with alterna-tive obstacle layouts (see Fig. 5(d)-(e)). The CoM trajectories of the robots and the payload in the xy -plane for these experiments are shown in Fig. 7. Overall, the results demonstrate that the proposed frame-work achieves reliable, safety-critical cooperative transporta-tion under nominal conditions, significant payload uncer-tainty, and external disturbances, highlighting its robustness and practical applicability. We further observe that the pro-posed payload-aware NMPC formulation, which explicitly models the payload as a third SRB and incorporates safety constraints via CBFs, enables cooperative transportation of payloads with higher mass relative to the robot body. In par-ticular, compared to our prior work in [23], which employed a two-SRB model without explicit payload dynamics or safety-critical constraints and relied on a convex MPC formu-lation, achieving payload transportation up to approximately 55% of the robot mass, the present framework achieves payload transportation at approximately 74.67% of the robot mass. VI. C ONCLUSIONS 
+
+This paper presented a safety-critical centralized nonlinear MPC framework for cooperative payload transportation by two quadrupedal robots. The interconnected robot–payload system was modeled as a discrete-time nonlinear DAE sys-tem capturing holonomic coupling constraints and interac-tion wrenches. By integrating higher-order CBFs within the NMPC formulation, the proposed approach ensures collision avoidance for both the robots and the payload while main-taining real-time feasibility. The effectiveness of the frame-work was demonstrated through hardware experiments on Unitree Go2 platforms operating in cluttered environments under model uncertainties and external disturbances. Future work will focus on extending the proposed frame-work to collaborative loco-manipulation tasks by incorporat-ing articulated manipulators on the quadrupedal platforms. In addition, we aim to develop distributed NMPC formulations to improve scalability, along with robust and adaptive control strategies to explicitly account for payload uncertainty. REFERENCES [1] R. Full and D. Koditschek, “Templates and anchors: Neuromechanical hypotheses of legged locomotion on land,” Journal of Experimental Biology , vol. 202, no. 23, pp. 3325–3332, 1999. [2] S. Kajita and K. Tani, “Study of dynamic biped locomotion on rugged terrain-derivation and application of the linear inverted pendulum mode,” in IEEE International Conference on Robotics and Automation ,1991, pp. 1405–1406. [3] G. Gibson, O. Dosunmu-Ogunbi, Y. Gong, and J. Grizzle, “Terrain-adaptive, ALIP-based bipedal locomotion controller via model pre-dictive control and virtual constraints,” in IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2022, pp. 6724– 6731. [4] H. Geyer, A. Seyfarth, and R. Blickhan, “Compliant leg behavior explains basic dynamics of walking and running,” Proceedings. Bi-ological sciences / The Royal Society , vol. 273, pp. 2861–7, 08 2006. [5] Z. Li, J. Zeng, S. Chen, and K. Sreenath, “Autonomous navigation of underactuated bipedal robots in height-constrained environments,” 
+
+The International Journal of Robotics Research , vol. 42, no. 8, pp. 565–585, 2023. [6] X. Xiong and A. Ames, “3-D underactuated bipedal walking via H-LIP based gait synthesis and stepping stabilization,” IEEE Transactions on Robotics , vol. 38, no. 4, pp. 2405–2425, 2022. [7] D. E. Orin, A. Goswami, and S.-H. Lee, “Centroidal dynamics of a humanoid robot,” Autonomous robots , vol. 35, no. 2, pp. 161–176, 2013. [8] J. Di Carlo, P. M. Wensing, B. Katz, G. Bledt, and S. Kim, “Dynamic locomotion in the MIT Cheetah 3 through convex model-predictive control,” in IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , Oct 2018, pp. 1–9. [9] M. Chignoli and P. M. Wensing, “Variational-based optimal control of underactuated balancing for dynamic quadrupeds,” IEEE Access ,vol. 8, pp. 49 785–49 797, 2020. [10] Y. Ding, A. Pandala, C. Li, Y.-H. Shin, and H.-W. Park, “Representation-free model predictive control for dynamic motions in quadrupeds,” IEEE Transactions on Robotics , vol. 37, no. 4, pp. 1154–1171, 2021. [11] L. Amanzadeh, T. Chunawala, R. T. Fawcett, A. Leonessa, and K. Akbari Hamed, “Predictive control with indirect adaptive laws for payload transportation by quadrupedal robots,” IEEE Robotics and Automation Letters , vol. 9, no. 11, pp. 10 359–10 366, 2024. [12] A. Pandala, R. T. Fawcett, U. Rosolia, A. D. Ames, and K. Ak-bari Hamed, “Robust predictive control for quadrupedal locomotion: Learning to close the gap between reduced-and full-order models,” 
+
+IEEE Robotics and Automation Letters , vol. 7, no. 3, pp. 6622–6629, 2022. [13] R. S. Sambhus, K. K. Mehta, A. M. Sadeghi, B. M. Imran, J. Kim, T. Chunawala, V. Pastore, S. Vijayan, and K. Akbari Hamed, “A nonlinear MPC framework for loco-manipulation of quadrupedal robots with non-negligible manipulator dynamics,” IEEE Robotics and Automation Letters , vol. 11, no. 4, pp. 4050–4057, 2026. [14] P. M. Wensing, M. Posa, Y. Hu, A. Escande, N. Mansard, and A. D. Prete, “Optimization-based control for dynamic legged robots,” IEEE Transactions on Robotics , vol. 40, pp. 43–63, 2024. [15] C. Mastalli, R. Budhiraja, W. Merkt, G. Saurel, B. Hammoud, M. Naveau, J. Carpentier, L. Righetti, S. Vijayakumar, and N. Mansard, “Crocoddyl: An efficient and versatile framework for multi-contact optimal control,” in IEEE International Conference on Robotics and Automation (ICRA) , 2020. [16] W. Jallet, A. Bambade, E. Arlaud, S. El-Kazdadi, N. Mansard, and J. Carpentier, “ProxDDP: Proximal constrained trajectory optimiza-tion,” IEEE Transactions on Robotics , vol. 41, pp. 2605–2624, 2025. [17] L. Wang, A. D. Ames, and M. Egerstedt, “Safety barrier certificates for collisions-free multirobot systems,” IEEE Transactions on Robotics ,vol. 33, no. 3, pp. 661–674, 2017. [18] M. Cavorsi, L. Sabattini, and S. Gil, “Multirobot adversarial resilience using control barrier functions,” IEEE Transactions on Robotics ,vol. 40, pp. 797–815, 2024. [19] Q. Liao, Z. Li, A. Thirugnanam, J. Zeng, and K. Sreenath, “Walking in narrow spaces: Safety-critical locomotion control for quadrupedal robots with duality-based optimization,” in 2023 IEEE/RSJ Interna-tional Conference on Intelligent Robots and Systems (IROS) , 2023, pp. 2723–2730. [20] R. Grandia, A. J. Taylor, A. D. Ames, and M. Hutter, “Multi-layered safety for legged robots via control barrier functions and model predictive control,” in 2021 IEEE International Conference on Robotics and Automation , 2021, pp. 8352–8358. [21] B. M. Imran, J. Kim, T. Chunawala, A. Leonessa, and K. Ak-bari Hamed, “Safety-critical and distributed nonlinear predictive con-trollers for teams of quadrupedal robots,” IEEE Robotics and Automa-tion Letters , vol. 10, no. 9, pp. 9176–9183, 2025. [22] Y. Zeng, R. S. Sambhus, B. M. Imran, J. Kim, V. Pastore, and K. Akbari Hamed, “ADMM-based distributed MPC with control barrier functions for safe multi-robot quadrupedal locomotion,” arXiv preprint arXiv:2603.19170 , 2026. [23] J. Kim, R. T. Fawcett, V. R. Kamidi, A. D. Ames, and K. Ak-bari Hamed, “Layered control for cooperative locomotion of two quadrupedal robots: Centralized and distributed approaches,” IEEE Transactions on Robotics , vol. 39, no. 6, pp. 4728–4748, 2023. [24] J. Kim and K. Akbari Hamed, “Cooperative locomotion via supervi-sory predictive control and distributed nonlinear controllers,” Journal of Dynamic Systems, Measurement, and Control , vol. 144, no. 3, p. 031005, Mar. 2022. [25] R. T. Fawcett, L. Amanzadeh, J. Kim, A. D. Ames, and K. Ak-bari Hamed, “Distributed data-driven predictive control for multi-agent collaborative legged locomotion,” in IEEE International Conference on Robotics and Automation (ICRA) , 2023, pp. 9924–9930. [26] J. Kim, J. Lee, and A. D. Ames, “Safety-critical coordination for cooperative legged locomotion via control barrier functions,” in 2023 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2023, pp. 2368–2375. [27] Z. Zhou, P. Shu, R. Cao, Y. Zhao, and Y. Zhao, “ACLM: ADMM-based distributed model predictive control for collaborative loco-manipulation,” arXiv preprint arXiv:2603.07095 , 2026. [28] F. De Vincenti and S. Coros, “Centralized model predictive control for collaborative loco-manipulation,” in Robotics: Science and Systems (RSS) , Daegu, Republic of Korea, 2023. [29] T. An, F. De Vincenti, Y. Ma, M. Hutter, and S. Coros, “Collabora-tive loco-manipulation for pick-and-place tasks with dynamic reward curriculum,” arXiv preprint arXiv:2509.13239 , 2025. [30] Y. Xiong, D.-H. Zhai, M. Tavakoli, and Y. Xia, “Discrete-time control barrier function: High-order case and adaptive case,” IEEE Transac-tions on Cybernetics , vol. 53, no. 5, pp. 3231–3239, 2023. [31] R. T. Fawcett, A. Pandala, A. D. Ames, and K. Akbari Hamed, “Robust stabilization of periodic gaits for quadrupedal locomotion via QP-based virtual constraint controllers,” IEEE Control Systems Letters ,pp. 1736–1741, 2021. [32] J. A. E. Andersson, J. Gillis, G. Horn, J. B. Rawlings, and M. Diehl, “CasADi – A software framework for nonlinear optimization and optimal control,” Mathematical Programming Computation , vol. 11, no. 1, pp. 1–36, 2019. [33] A. W¨ achter and L. T. Biegler, “On the implementation of an interior-point filter line-search algorithm for large-scale nonlinear program-ming,” Mathematical programming , vol. 106, pp. 25–57, 2006. [34] J. Hwangbo, J. Lee, and M. Hutter, “Per-contact iteration method for solving contact dynamics,” IEEE Robotics and Automation Letters ,vol. 3, no. 2, pp. 895–902, April 2018. [35] “Safety-critical centralized nmpc for cooperative payload transporta-tion by two quadrupedal robots. [Online]. Available on YouTube: https://youtu.be/tsVo09eszCo.”

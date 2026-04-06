@@ -1,0 +1,623 @@
+Title: Data Center Chiller Plant Optimization via Mixed-Integer Nonlinear Differentiable Predictive Control
+
+URL Source: https://arxiv.org/pdf/2603.28323v1
+
+Published Time: Tue, 31 Mar 2026 02:00:04 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Data Center Chiller Plant Optimization via Mixed-Integer Nonlinear Differentiable Predictive Control 
+
+J´ an Boldock´ y ∗,∗∗ Cary Faulkner ∗∗ Elad Michael ∗∗ 
+
+Martin Gulan ∗ Aaron Tuor ∗∗ J´ an Drgoˇ na ∗∗∗ ,∗∗ ∗ Slovak University of Technology, Bratislava, Slovakia (e-mail: {jan.boldocky, martin.gulan }@stuba.sk)  
+
+> ∗∗
+
+Pacific Northwest National Laboratory, Richland, WA 99352 USA (e-mail: {cary.faulkner, elad.michael, aaron.tuor }@pnnl.gov)  
+
+> ∗∗∗
+
+Johns Hopkins University, MD 21218, USA, (e-mail: jdrgona1@jh.edu) 
+
+Abstract: We present a computationally tractable framework for real-time predictive control of multi-chiller plants that involve both discrete and continuous control decisions coupled through nonlinear dynamics, resulting in a mixed-integer optimal control problem. To address this challenge, we extend Differentiable Predictive Control (DPC)—a self-supervised, model-based learning methodology for approximately solving parametric optimal control problems—to accommodate mixed-integer control policies. We benchmark the proposed framework against a state-of-the-art Model Predictive Control (MPC) solver and a fast heuristic Rule-Based Controller (RBC). Simulation results demonstrate that our approach achieves significant energy savings over the RBC while maintaining orders-of-magnitude faster computation times than MPC, offering a scalable and practical alternative to conventional combinatorial mixed-integer control formulations. 
+
+Keywords: control and management of energy systems, mixed-integer control, differentiable programming, energy systems optimization 1. INTRODUCTION The rapid expansion of artificial intelligence and digital infrastructure has led to a sharp increase in global data center electricity demand. In the United States alone, data centers currently consume about 150 TWh of elec-tricity annually and are projected to grow to between 200 TWh and 500 TWh by 2030 (Aljbour et al., 2024). With this expansion comes an accompanying demand for high-efficiency cooling systems in data centers. Chiller plants are commonly deployed to perform this task. A chiller plant typically includes heat pumps (often referred to as chillers), pumps, and cooling towers, with the chillers being the most energy-intensive components within the plant. The controls of chiller plants involve both continu-ous decision variables (e.g., chilled water supply tempera-ture, differential pressure) and discrete decision variables (e.g., number of chillers active, pump mode). Optimizing these coupled decisions can significantly reduce electricity consumption, ensure reliable operation, and extend the           
+
+> ⋆This research was supported by the U.S. Department of Energy Building Technologies Office (BTO), USA within the Office of Energy Efficiency and Renewable Energy (EERE), USA under Contract No. DE-AC05-76RL01830. J´ an Drgoˇ na was supported by the Ralph O’Connor Sustainable Energy Institute at Johns Hopkins University. J.B. and M.G. also acknowledge the contribution of the Slovak Research and Development Agency under the project APVV-22-0436, and the Scientific Grant Agency of the Slovak Republic under the grant 1/0401/26.
+
+lifespan of costly mechanical assets. However, this requires the solution to a high-dimensional mixed-integer nonlinear optimal control problem, which is computationally chal-lenging to solve in real time. The most widely used industrial strategy is Rule-Based Control (RBC), valued for its interpretability and low implementation cost. Several works have focused on re-fining RBC through heuristic tuning and performance optimization. For example, Ma and Wang (2011) devel-oped a supervisory RBC framework that stages chillers based on the part-load ratio (PLR) to improve efficiency; Huang et al. (2016) proposed adaptive PLR thresholds to balance energy use and load following; Liu et al. (2017) formulated rule-based optimization of chiller sequencing using plant-level performance metrics; and Faulkner et al. (2025) recently performed simulations optimizing control parameters of RBC strategies to balance chiller, pump, and tower loads. While RBC methods offer fast and inter-pretable operation, they rely on fixed heuristics and typi-cally fail to account for future disturbances, often resulting in suboptimal energy efficiency or constraint violations. To overcome these limitations, researchers have investi-gated predictive control strategies for chiller plants (Sala-Cardoso et al., 2020; Terzi et al., 2020; Chan et al., 2022; Fan and Zhou, 2023; He et al., 2023), that leverage dy-namic models and load forecasts to proactively schedule chillers and optimize continuous setpoints. For example, 
+
+> arXiv:2603.28323v1 [eess.SY] 30 Mar 2026
+
+Model Predictive Control (MPC) has been shown to im-prove chiller staging under varying ambient and load con-ditions (Sala-Cardoso et al., 2020; He et al., 2023), while data-driven or learning-based predictive control variants adapt to plant-specific nonlinearities (Terzi et al., 2020; Chan et al., 2022; Fan and Zhou, 2023). However, most existing methods handle either continuous (Pan and Li, 2024) or discrete control actions in isolation, and few address the mixed-integer nature of chiller plant operation. A principled way to unify discrete and continuous decisions under constraints is Mixed-Integer Model Predictive Con-trol (MI-MPC) (McAllister and Rawlings, 2022; Dua et al., 2002; Richards and How, 2005; Kirches, 2011; Takapoui et al., 2020). MI-MPC provides a systematic framework for incorporating nonlinear dynamics and hard constraints while producing high-quality solutions. However, its com-putational complexity grows combinatorially with the horizon length and the number of integer variables, mak-ing real-time operation intractable, particularly for large-scale systems such as multi-chiller plants. Approximation strategies such as move blocking, surrogate linearizations, or warm-starts help alleviate but do not eliminate these scaling limitations, especially when tight sampling periods and long prediction horizons are required. A representa-tive example in the context of central chiller plants is the decomposition-based MPC framework of Deng et al. (2015), which combines dynamic programming and mixed-integer linear programming to obtain tractable suboptimal solutions; however, the approach still requires repeated online optimization, limiting the computational scalability. These challenges have motivated a growing body of re-search on learning-based alternatives that avoid online combinatorial search. In imitation-based or approximate MPC approaches, machine learning (ML) policies are trained to mimic optimal or near-optimal mixed-integer solutions offline and then deployed as explicit controllers, offering fast real-time evaluation while maintaining reason-able constraint satisfaction(Karg and Lucia, 2018; Cauligi et al., 2020; Domahidi et al., 2014). In parallel, warm-start techniques utilize ML on previously solved MIP in-stances to initialize subsequent optimizations with good primal and dual guesses, reducing branch-and-bound ex-ploration and improving real-time feasibility in receding-horizon settings (Masti and Bemporad, 2019; Marcucci and Tedrake, 2021; Reiter et al., 2024). Beyond imitation learning, the broader field of learning to optimize (L2O) has also explored data-driven acceleration of MIP solvers through learned branching, node selection, cutting, and heuristic policies that reduce solve times by orders of mag-nitude (Bertsimas and Stellato, 2022; Tang et al., 2025; He et al., 2014; Zarpellon et al., 2021). These developments motivate a self-supervised Differentiable Predictive Con-trol framework, which merges the interpretability of MPC with the scalability of L2O. To address these challenges, we build on our prior work on Differentiable Predictive Control (DPC) (Drgoˇ na et al., 2022; Drgoˇ na et al., 2024), which formulates parametric MPC problems as differentiable programs, enabling offline self-supervised learning of explicit neural control poli-cies through gradient-based learning. Building upon this foundation, our recent work on Mixed-Integer DPC (MI-DPC) (Boldock´ y et al., 2025) extended this idea to handle mixed-integer optimal control problems (MI-OCP) with discrete decision variables. In this work, we demonstrate the application of MI-DPC to a challenging multi-chiller plant optimization problem characterized by nonlinear dy-namics, mixed-integer decisions, subject to input and state constraints. The proposed MI-DPC approach provides a scalable self-supervised learning algorithm for synthesizing real-time capable explicit neural control policies that yield high-quality approximate solutions to the underlying MI-OCP, without online combinatorial search. The contributions of this work include: (i) a nonlinear control-oriented multiple chiller system model; (ii) exten-sion of the MI-DPC framework to mixed-integer nonlinear optimal control problems arising in chiller plant opera-tions; (iii) extension of the MI-DPC framework to han-dle binary decision variables and the introduction of the binary-variance regularization technique, necessary to pre-vent high-frequency switching behavior; (iv) a systematic performance comparison of the proposed MI-DPC against an RBC and an MPC solved with a state-of-the-art mixed-integer solver; and (v) the release of open-source code 1
+
+enabling replication of the numerical experiments. 2. PROBLEM FORMULATION We consider a simplified multi-chiller plant, illustrated in Figure 1, with chillers operating in parallel. In the following, we use a superscript to denote an association of a variable with chiller loop i, i.e. ˙m(1) represents the mass flow through the first chiller. We further denote quantities sharing the same units by a common symbol with asubscript, such as Te, T s, T r for the evaporator, supply and return temperatures, respectively. In the following, we use 
+
+M to denote the number of chillers in the system. Pump 1 Pump M m(M)
+
+m(1) Chiller M (T e(M))Chiller 1 ( Te(1) )
+
+T s(M)
+
+Ts(1) 
+
+Tr Thermal Load (Q load )(i) (i)
+
+Fig. 1. Schematic of a multiple-chiller plant arranged in a parallel configuration. 
+
+2.1 System Model 
+
+The continuous-time thermal dynamics of the multi-chiller system are  
+
+> 1Code is available at github.com/pnnl/MI-DPC.
+
+Q(i)(t) = ηr ˙m(i)(t) cpδ(i)(t)
+
+
+
+Tr(t) − T (i)s (t)
+
+
+
+, (1a) ˙Tr(t) = 1
+
+Cr
+
+˜Qload (t) −
+
+> M
+
+X
+
+> i=1
+
+Q(i)(t)
+
+!
+
+, (1b) ˙T (i)s (t) = − cpηs
+
+C(i)
+
+
+
+δ(i)(t) ˙ m(i)(t)
+
+
+
+T (i)s (t) − T (i)e (t)
+
+ 
+
+, (1c) where Q(i)(t) ∈ R≥0 is the delivered cooling from chiller 
+
+i at time t, δ(i)(t) ∈ { 0, 1} denotes chiller’s on/off state, 
+
+cp ∈ R>0 is the specific heat capacity of the coolant, and Cr, C (i) ∈ R>0 are the thermal capacitances of the return and chiller loops. Moreover, ηr, η s ∈ (0 , 1) denote the heat-exchanger efficiency coefficients, and ˜Qload (t) ∈ R≥0
+
+is the effective thermal load, estimated using a low-pass, discrete-time finite impulse response filter ˜Qload (t) = 
+
+> L
+
+X
+
+> l=0
+
+hlQload (t − l∆t), (2) where Qload ∈ R≥0 is the direct server load—an exogenous variable in this context, ∆ t denotes the length of a discrete-time step, L ∈ N≥1 is the filter order, and ( hl)Ll=0 ∈ R>0
+
+are the filter coefficients, with P 
+
+> l
+
+hl = 1. Note that 
+
+Qload is treated as a deterministic known variable in our study. We consider the FIR filter to capture higher-order heat-transfer dynamics, thereby enhancing the model’s expressive capacity. Naturally, the filter coefficients can be a subject of system identification along with other system parameters. The power consumption of chillers P (i)chiller (t) ∈ R≥0 and pumps P (i)pump (t) ∈ R≥0 are modeled as 
+
+P (i)chiller (t) = Q(i)(t)COP (i)(t) + ρ(i)δ(i)(t), (3a) COP (i)(t) = a(i)0 + a(i)1
+
+Q(i)(t)
+
+Q(i)max 
+
++ a(i)2
+
+Q(i)(t)
+
+Q(i)max 
+
+!2
+
+, (3b) 
+
+P (i)pump (t) = γ(i) 
+
+˙m(i)(t)δ(i)(t)
+
+3
+
+, (3c) for the system constants a(i)0:2 , γ (i), ρ (i), Q (i)max ∈ R. The constant ρ represents the base power required for chiller operation. In this formulation, the chiller’s coefficient of performance COP (i)(t) ∈ R≥0 is a function of the part load ratio (PLR), the ratio of current cooling to maximum cooling capacity. Ensuring that each chiller is operating near its highest efficiency load ratio is the core of the underlying optimal control problem. In the following, we discretize the continuous time dynamics given by (1b) and (1c) using a fourth-order Runge-Kutta method with a time-step length ∆ t and discrete time index k.
+
+2.2 Optimal Control Problem 
+
+Let u(i) 
+
+> k
+
+:= {δ(i)(t), T (i)e (t), ˙m(i)(t)} denote the set of con-trol variables and x(i) 
+
+> k
+
+:= {T (i)s (t), T r(t)} denote the set of state variables at discrete time step k. Then the optimal control problem (OCP) can be formulated as follows: min   
+
+> {u(i)
+> k}Mi=1 ,N−1
+> k=0
+> N−1
+
+X
+
+> k=0
+> M
+
+X
+
+> i=1
+
+P (i)chiller ,k + P (i)pump ,k +
+
+∥∆δ(i) 
+
+> k
+
+∥2
+
+> R
+
++λW (Qk −Qload ,k )2 (4a) s.t. 
+
+x(i) 
+
+> k+1
+
+=f
+
+
+
+x(i) 
+
+> k
+
+, u (i) 
+
+> k
+
+, ˜Qload ,k , ∆t
+
+
+
+, (4b) 
+
+Qk = X
+
+> i
+
+Q(i) 
+
+> k
+
+, ∀k ∈ { 0, . . . , N −1}, (4c) 
+
+X
+
+> i
+
+δ(i) 
+
+> k
+
+≥ 1, ∀k ∈ { 0, . . . , N −1}, (4d) 
+
+u(i)min ≤ u(i) 
+
+> k
+
+≤ u(i)max , ∀k ∈ { 0, . . . , N −1}, (4e) 
+
+x(i)min ≤ x(i) 
+
+> k
+
+≤ x(i)max , ∀k ∈ { 0, . . . , N }, (4f) 
+
+Q(i) 
+
+> k
+
+≤ Q(i)max , ∀k ∈ { 0, . . . , N −1}, (4g) (3a) − (3c) , ∀k ∈ { 0, . . . , N −1}, (4h) 
+
+δ(i) 
+
+> k
+
+∈ { 0, 1}, ∀k ∈ { 0, . . . , N −1}, (4i) 
+
+x(i)(0) = x(i)(t). (4j) Here, the objective function (4a) penalizes the chiller and pump power consumption, switching of chiller on/off sta-tus ∆ δ(i) 
+
+> k
+
+:= δ(i)
+
+> k+1
+
+−δ(i) 
+
+> k
+
+∀k ∈ { 0, . . . , N −2}—weighted by a di-agonal matrix R of size M , and the squared error between total delivered cooling Q ∈ R≥0 and the thermal load de-mand, weighted by coefficient λW ∈ R>0. Weighting matri-ces R and λW directly govern the trade-off between integer switching frequency and load tracking error minimization. Larger R suppresses frequent switching behavuour, while larger λW values prioritizes minimizing the load tracking error. The dynamics (4b) is solved using RK4 integration of the thermal equations (1b)–(1c). Constraint (4d) en-sures that at least one chiller remains active at all times, serving as a process safety constraint. Finally, constraints (4e)–(4h) enforce operational and physical systems limits. Note that the OCP (4) is non-trivial, primarily due to system dynamics, where the binary decision variable is coupled with two bilinear terms in (1b) and (1c). Addi-tionally, the OCP includes a set of polynomial constraints in (4h), making it a mixed-integer nonlinear program. 
+
+2.3 Rule-Based Control 
+
+Due to the complexity of the given OCP, a rule-based con-trol (RBC) is the most common control strategy used for improving energy efficiency of the chiller plants. Assuming the PLR–COP characteristic is known, a typical approach for multi-chiller systems is to stage the chillers based on system’s PLR, defined as PLR k =
+
+PMi=1 Q(i)
+
+> k
+
+[Q(1) max , . . . , Q (M )max ][ δ(1)  
+
+> k
+
+, . . . , δ (M ) 
+
+> k
+
+]⊤ . (5) In cases where the chiller plant consists of units with similar PLR–COP characteristics, a simple sequential threshold-based staging strategy can be employed: 
+
+sk+1 =
+
+
+
+min ( M, s k+1 ) , if PLR k > t, 
+
+max (1 , s k−1) , if PLR k < t, sk, otherwise, (6) where sk := PMi=1 δ(i) 
+
+> k
+
+∈ Z>0 denotes the number of active chillers at time k, and t, t ∈ (0 , 1) are the stag-ing thresholds—selected to avoid high-frequency switching while maintaining the effective operating range of the system. In addition, the continuous control variables are typically fixed at constant values that prevent process constraint violations. 3. METHODOLOGY In this section, we describe the methodology designed to reformulate the defined OCP (4) as a differentiable program suitable for the DPC framework. We preserve the differentiable control objective (4a) and enforce con-straints (4b)–(4h) using either projections, where the con-straints are enforced within a differentiable computational graph by projecting the variables onto their feasible sets, or relaxations using penalty terms, where the constraints are relaxed and incorporated within a loss function. The technique used to ensure the integrality of the discrete-valued decision variable is discussed in Section 3.2. 
+
+3.1 Problem Reformulation 
+
+To cast (4) as a differentiable program, we relax the constraints (4e)–(4f) using the penalty method. Moreover, the constraint (4d) is enforced by fixing δ(2) (k) = 1, whereas (4b), (4g), and (4h) can be incorporated within the differentiable computational graph and thus do not require any relaxation. Considering the above, the OCP can be recast as min 
+
+> θ1,θ 2,θ 3
+
+Eξk ∼Pξ
+
+ N −1X
+
+> k=0
+> M
+
+X
+
+> i=1
+
+P (i)chiller ,k +P (i)pump ,k +∥∆δ(i) 
+
+> k
+
+∥2
+
+> R
+
++ λW (Qk −Qload ,k )2 +λxq(xk)+λup(uk) + ∥˜δ(i)(1 − ˜δ(i))∥2Λ
+
+
+
+(7a) s.t. 
+
+x(i) 
+
+> k+1
+
+=f
+
+
+
+x(i) 
+
+> k
+
+, u (i) 
+
+> k
+
+, ˜Qload ,k , ∆t
+
+
+
+, (7b) ˙m(i) 
+
+> k
+
+= πθ1 (ξk), (7c) 
+
+T (i)e,k = πθ2 (ξk), (7d) ˜δ(i) 
+
+> k
+
+= πθ3 (ξk), (7e) 
+
+δ(i) 
+
+> k
+
+∈ { 0, 1}, ∀k ∈ { 0, . . . , N −1}, (7f) 
+
+δ(2)  
+
+> k
+
+=1 , ∀k ∈ { 0, . . . , N − 1}, (7g) 
+
+ξ0 := [ x(i)(t), ˜Qload (t), Q load (t), . . . , Q load (t+N ∆t)] ⊤
+
+.
+
+(7h) Here, we optimize the parameters θ(·) of the control poli-cies πθ1 , πθ2 , and πθ3 that map the vector of control param-eters ξ, defined in (7h), to continuous-valued control vari-ables ˙m, Te, and a slack variable ˜δ ∈ RM −1—representing the relaxed value of the binary control variable δ. Notice that by fixing one of the binary variables, the dimension of ˜δ is reduced to M −1. To compute control variables, we use separate neural modules that are represented by fully connected deep neural networks. Moreover, we sample the control parameters from a known probability distribution 
+
+Pξ to emulate scenarios that are likely to occur during the system’s operation, which defines a self-supervised nature of the DPC methodology. Functions q(·) and p(·) denote state and input penalty functions weighted by λx and λu,respectively. Equation (7g) states that one chiller in the system must always remain in operation. 
+
+3.2 Differentiable Rounding 
+
+To facilitate gradient-based optimization, each compo-nent of the problem (7) must be differentiable with well-defined gradients. This requirement is satisfied for all terms in (7) except for constraint (7f), which enforces the integrality of the binary variable δ, thereby introduc-ing non-differentiability. We enforce the binary integrality through a threshold-based discretization scheme with a fixed threshold of 0.5, given as 
+
+δ(i) 
+
+> k
+
+=
+
+(
+
+1, if ˜δ(i) 
+
+> k
+
+> 0.5,
+
+0, otherwise. (8) This function behaves analogously to a Heaviside (unit step) function exhibiting a discontinuity at 0 .5. To en-able gradient-based optimization, we leverage a Straight-through estimation heuristic introduced by Bengio et al. (2013). We approximate the gradient of (8) using its dif-ferentiable surrogate, given by a scaled Sigmoid function 
+
+σ(x) = 1
+
+ 1 + e−μ(x−0.5)  , (9) where μ ∈ R>0 is a slope parameter determining the sharpness of the transition, and the function is centered at 0 .5. Accordingly, the derivative is approximated as 
+
+∂δ (i)
+
+> k
+
+∂ ˜δ(i)
+
+> k
+
+≈
+
+∂σ 
+
+˜δ(i)
+
+> k
+
+
+
+∂ ˜δ(i)
+
+> k
+
+. (10) 
+
+3.3 Binary-Variance Regularization 
+
+To promote binary polarity of the relaxed variable ˜δ and to complement the ∆ δ penalty in suppressing high-frequency switching, we introduce a binary-variance regularization (BVR) defined as ∥˜δ(i)(1 − ˜δ(i))∥2Λ, where Λ ∈ RM −1×M −1
+
+denotes the weighting matrix. As the weight increases, the regularization penalizes values of ˜δ near the discretization threshold (0 .5), as well as those outside the [0 , 1] range. Based on extensive numerical experiments, this regular-ization has proven crucial to the proposed framework, as its omission leads to ˜δ values clustering around the discretization threshold, thereby increasing the likelihood of high-frequency switching behavior. The influence of this regularization on the relaxed binary variable for different penalty magnitudes is illustrated in Figure 3. 
+
+3.4 Mixed-Integer Policy Optimization 
+
+The computational graph, illustrated in Figure 2, com-prises four components: a continuous neural policy, a dif-ferentiable rounding layer, a differentiable ordinary differ-ential equation (ODE) solver (numerical integrator), and a model predictive loss function. Given synthetically sam-pled control parameters that include the initial conditions and an N -long vector of exogenous variables (server load), a closed-loop rollout of length N is performed through the integrated system dynamics, constituting the single shooting forward pass. Consequently, the loss function is evaluated based on the resulting closed-loop trajectories. control parameters initialconditionsreferencesconstraints
+
+continuous neural policy energyminimizationswitchingpenalty
+
+chiller plant predictive control loss function referencetrackingconstraintspenalties
+
+differentiable rounding ... ... 
+
+chiller dynamics ODE solver 
+
+> f
+
+Fig. 2. Conceptual diagram of the mixed-integer differentiable predictive control for nonlinear chiller plant optimization. Green dashed arrows represent the forward pass, while red dashed arrows represent the backward pass.     
+
+> 0510 15 20
+
+Time step — k
+
+> 0.0
+> 0.5
+> 1.0
+> ˜δ(k)
+> Λ = 0
+> Λ = 1
+> Λ = 10
+> Λ = 100
+
+Fig. 3. Effect of binary-variance regularization on relaxed integer values, showing switching behavior under a step change in cooling load from 150kW to 500kW occurring at time k = 20 (setup from Sec. 4, N =20). The dotted black line indicates the rounding threshold. The backward pass is used to enable the policy opti-mization by propagating gradients through the compu-tational graph. Specifically, gradients of the loss func-tion with respect to policy parameters are obtained by back-propagating through the integrated system dynam-ics using either the backpropagation through time algo-rithm (Puskorius and Feldkamp, 1994) or the adjoint sen-sitivity method (Griewank and Walther, 2008). The dif-ferentiability of the discretization layer and the numerical integrator ensures that the gradient signals are transmit-ted continuously through closed-loop trajectories. These gradients are then used to adjust the policy parameters in the direction of decreasing loss. Consequently, the policy parameters are iteratively updated. The high-dimensional and non-convex nature of the underlying parameter space necessitates the use of stochastic gradient descent (SGD), for which global optimality cannot be guaranteed. 4. NUMERICAL EXPERIMENTS In this section, we present and discuss the results of a nu-merical study in which we test the three control strategies. The control strategies are tested for systems comprising different numbers of chillers and various prediction horizon lengths. Each system consists of identical chiller units with parameters listed in Tab. 1. 
+
+4.1 Experimental Setup 
+
+Throughout the study, the system dynamics were sim-ulated using a constant time step length of ∆ t = 180 s and a finite impulse response filter with coefficients 
+
+hl = [0 .45 , 0.2, 0.15 , 0.1, 0.05 , 0.05]. The load signal for each experiment was algorithmically generated to emulate daily variations in server load. Specifically, the nighttime load amplitude was sampled from a uniform distribution 
+
+U (100kW , 350kW), while the daytime amplitude was sam-pled from U(300kW , 0.75 P 
+
+> i
+
+Q(i)max ) with additive white noise and a transition period of 4 h. The system states were uniformly initialized within their respective operating ranges Tr ∼ U  T min r , T max r
+
+ and Ts ∼ U  T min s , T max s
+
+. Each neural control policy module employed an identical archi-tecture, consisting of three hidden layers of size 200 with ReLU activations and [0 , 1] normalization on the input layer. The control loss weights were manually finetuned to Λ = 200, λx, λ u = 10, λW = 0 .001, R = 20. It is important to emphasize that the magnitude of Λ critically influences the behavior of the proposed framework. Specifically, lower values of Λ led to instances of high-frequency switch-ing, whereas excessively large values resulted in training instability. Furthermore, the hyperparameters were also manually adjusted a learning rate of 0 .006, a batch size of 10 000, with training and development dataset sizes of 30 000 and 10 000, respectively. The learning rate was selected to ensure stable optimization, while the relatively large batch size was chosen to provide reliable gradient es-timates. To further mitigate the risk of gradient explosion during optimization, the gradient norms were clipped with a maximum allowed norm of 100, such that all gradients 
+
+{gi} were uniformly rescaled to satisfy ∥g∥2 ≤ 100. The sigmoid slope coefficient was kept at the default value 
+
+μ = 1, as with scaling values, an excessively conservative binary behavior was exhibited, thereby limiting actuation flexibility and reducing potential energy savings. In infer-ence the continuous control inputs of MI-DPC policies Table 1. Chiller system parameters.                                                             
+
+> Symbol Description Value Unit
+> cpSpecific heat of water 4.184 kJ /kg ◦C
+> CThermal capacitance 14 644 kJ /◦C
+> CrThermal capacitance 29 288 kJ /◦C
+> ρBase chiller power 10 kW
+> Qmax Maximum rated cooling 500 kW
+> a0Efficiency coefficient 1−
+> a1Efficiency coefficient 19 .33 −
+> a2Efficiency coefficient −18 .33 −
+> ηsHeat exchanger efficiency 0.7−
+> ηrHeat exchanger efficiency 0.75 −
+> γPump power coefficient 9.62e-4 kWs 3/kg 3
+> ˙mmin Minimum mass flow rate 5kg /s˙mmax Maximum mass flow rate 20 kg /s
+> Tmin s, T min e, T min rMinimal temperatures 8◦C
+> Tmax s, T max eMaximal temperatures 12 ◦C
+> Tmax rMaximal return temp. 40 ◦C
+
+were projected onto their feasible sets via elementwise clipping. The numerical experiments were conducted using the Neu-roMANCER v1.5.6 library (Drgona et al., 2023) run-ning with PyTorch v2.8.0 and CUDA 12.8 with MI-DPC. The MI-MPC formulation was implemented in Pyomo v6.9.4 (Bynum et al., 2021) and solved using Gurobi v12.0.3 (Gurobi Optimization, LLC, 2024). Similarly to (Pan and Li, 2024), the nonconvexity arising from bilinear coupling between continuous and binary decision variables within the heat-transfer equations, the problem was refor-mulated using McCormick envelope relaxations—resulting in a mixed-integer quadratic programming approximation solvable by Gurobi. In addition, higher-order nonlineari-ties, such as cubic term in (3c), were similarly reformulated using slack variables and McCormick relaxation. Never-theless, the MI-MPC formulation remains computationally intractable for real-time applications, as discussed in the following Section. The closed-loop simulation of MI-DPC, implemented in a receding-horizon manner, is shown in Figure 6. The observed increase in chiller power consumption between 80h and 90h is attributed to the PLR-COP characteristic. During this interval, the chiller’s operating point shifts toward a less efficient PLR range, resulting in a lower COP and, consequently, increased power consumption despite comparable thermal load values. In addition, the controller shows a tendency to activate an additional chiller within this time interval, as reflected by the rising value of the relaxed integer variable ˜δ. However, ˜δ remains below the rounding threshold, as activating an additional unit would likely increase the load-tracking error, thereby outweighing the potential improvement of energy efficiency within the objective function. 
+
+4.2 Computational Scalability 
+
+Table 2 summarizes the simulation results obtained with the RBC and MI-DPC policies obtained from a simulation length of 7 days. Note that we do not include MI-MPC results due to computational intractability; instead, we report the mean inference time, with the maximum solver time limited to 180 s—a practically tractable upper bound for real-time implementation, equivalent to the control sampling period. This highlights the notorious scalability limitations of hard mixed-integer problems. In contrast, the MI-DPC approach alleviates computational scalability issues in both offline and online stages. As shown in Fig. 4, the mean inference time remains nearly constant even as the prediction horizon increases, since the same network architecture is used across all scenarios. The number of trainable parameters increases only with the input dimension, which grows with the prediction horizon to accommodate the longer preview of the load variable. When it comes to the training time (TT), scalability with respect to the prediction horizon length exhibits an approximately linear trend. As evidenced by the simulation results, the principal advantage of MI-DPC lies in its computational efficiency during both the controller synthesis phase and inference. The method achieves inference times several orders of magnitude faster than the implicit MI-MPC formulation,                
+
+> 100
+> 150
+> 200
+> TT [s]  M= 2
+> M= 3
+> M= 4
+> M= 5
+> 510 15 20 30 40 50 60 70 80 90 100
+
+Prediction horizon length — N
+
+> 1.8
+> 1.9
+> 2.0
+> MIT [s]
+> ×10 −4
+
+Fig. 4. Computational scalability of MI-DPC across differ-ent number of chillers ( M ) and horizon lengths ( N ). The top panel illustrates the total training time (TT), while the bottom panel reports the mean inference time (MIT). thereby potentially enabling solving the mixed-integer nonlinear optimal control problems on computationally constrained edge devices in real time—a capability not attainable with conventional approaches. 
+
+4.3 Performance Comparison 
+
+In comparison to the RBC, the proposed MI-DPC frame-work achieved up to 11 .17 % energy savings. These savings resulted primarily from more adaptive and frequent chiller staging—albeit at the expense of a bigger relative load tracking error, as well as from reduced water pump power consumption. With MI-DPC we are able to simultane-Table 2. Summary of seven-day simulation re-sults for the RBC, MI-DPC, and MI-MPC im-plementations for different numbers of chillers (M ) and prediction horizon lengths ( N ).                                                                                                               
+
+> Method Metric M= 2 M= 3
+> N= 5 N= 10 N= 15 N= 5 N= 10 N= 15 RBC EC [MWh] 13.52 --17.53 --EC Chillers [MWh] 13.23 --17.14 --EC Pumps [MWh] 0.28 --0.39 --COP [-] 4.08 --3.88 --Num. of switches [-] 9--22 --Mean RCE [%] 5.38 --5.90 --MIDPC EC [MWh] 12.39 12.16 12.24 15.96 15.64 15.57 Savings [%] 8.38 10.01 9.45 8.95 10.79 11.17 EC Chillers [MWh] 12.34 12.13 12.20 15.87 15.55 15.52 EC Pumps [MWh] 0.04 0.04 0.04 0.09 0.08 0.05 COP [-] 4.44 4.54 4.51 4.26 4.37 4.38 Num. of switches [-] 15 14 12 30 30 28 Mean RCE [%] 7.21 8.49 8.83 7.39 7.72 9.31 MIT [s] 1.9e-04 1.9e-04 1.9e-04 1.9e-04 1.9e-04 1.9e-04 TT [s] 117.36 115.53 121.47 108.46 113.10 117.40 NTP [-] 248205 251205 254205 249408 252408 255408 MIMPC Inference Time 157.44 181.33 181.70 182.77 181.74 180.98 Used acronyms: EC—Energy Consumption, EC-COP—Effective Chiller Coefficient of Performance, MIT—Mean Inference Time, NTP—Number of Trainable Parameters, TT—Training Time, RCE— Relative Control Error.
+> 1Measured using a single thread of Intel i9-14900KF.
+> 2Trained using an NVIDIA GeForce RTX 5090.
+> 3Solved with the gurobi solver.
+
+ously schedule chiller activation and adjust the continuous control variables in an adaptive manner. The RBC was implemented with staging thresholds of t = 0 .15, t = 0 .6and constant mass flows and evaporation temperatures of ˙m = 10 kg /s and Te = 10 ◦C, respectively. In Table 2, the Effective Chiller COP (EC-COP) is com-puted as EC-COP = 
+
+PNs
+
+> k=0
+
+PMi=1 Q(i)
+
+> k
+
+PNs
+
+> k=0
+
+PMi=1 P (i)chiller,k 
+
+,
+
+where Ns is the length of simulation. The Relative Control Error (RCE) is computed as RCE k = |Qload, k − PMi=1 Qik|
+
+Qload ,k 
+
+· 100% .
+
+The significance of the predictive capability of MI-DPC became evident through extensive numerical experiments. In addition to energy savings, the MI-DPC framework out-performed the RBC in terms of process constraints. Specif-ically, when considering cooling ramp-rate constraints, i.e., ˙Qmin ≤ ˙Q ≤ ˙Qmax , which have been observed in real chiller plant operations and reported in (Shan et al., 2021); the RBC may fail to activate chillers in time when en-countering a steep increase in cooling demand. As illus-trated in Figure 5, the RBC stages chillers solely based on the staging threshold. However, due to the cooling ramp limitation, the return temperature can exceed the process safety bounds. In contrast, the MI-DPC frame-work anticipates future load changes and stages chillers proactively based on the known future cooling demand. In the experiment, during the time interval from 3h to 7h, the results demonstrate that MI-DPC effectively adapts to abrupt changes in the cooling load profile, even when such changes were not represented in the training dataset.          
+
+> 0
+> 1000
+> 2000
+> Q, Q load  [kW]  Qload
+> RBC
+> MI-DPC
+> 0
+> 50
+> Tr [°C]  Tmin r, T max rbounds
+> 0510 15 20 25
+
+Time [h] 
+
+> 1
+> 2
+> 3
+> s [-]
+
+Fig. 5. Closed-loop simulation results of a chiller plant (M = 3, Qmax = 1 MW) with MI-DPC and RBC policies, highlighting the importance of predictive action for stable operation, when considering cooling ramp-rate constraints. Moreover, extensive simulation experiments indicate that extending the prediction horizon beyond N = 15 does not provide additional energy savings for the considered system. This behavior can be attributed primarily to the relatively fast thermal dynamics of the modeled chiller plant, which allows for effective control within relatively shorter horizon lengths. Extending the prediction horizon length may be advantageous for systems with slower dy-namics, such as those including thermal storage tanks or larger thermal masses. From a computational standpoint, the MI-DPC framework maintains scalability even as the prediction horizon length increases, as illustrated in Fig-ure 4. 
+
+4.4 Practical Challenges and Limitations 
+
+In this study, we assume a fully white-box, deterministic system model for policy synthesis and testing, providing a controlled setting to evaluate and benchmark the MI-DPC framework. In practical applications, model parameters must be identified from real plant data and model fidelity validated to ensure robustness and generalizability. This can be addressed through grey-box parameter estimation, where the system parameters are estimated using, for instance, a nonlinear least-squares, or physics-informed modeling strategies (Rackauckas et al., 2021; Koch et al., 2025). However, practical MPC deployments are further challenged by model–plant mismatch, unmodeled dynam-ics, sensor and actuator noise, and actuator delays, which may degrade closed-loop performance and compromise constraint satisfaction if not explicitly accounted for. Cur-rent MPC frameworks address these issues through dis-turbance modeling, state estimation, uncertainty propaga-tion, and constraint tightening strategies (Qin and Badg-well, 2003; Bemporad and Morari, 2007). It is further recognized that the problem is solved approx-imately, without a guaranteed global optimum. Moreover, while integrality and input constraints satisfaction are en-forced through projection-based methods, strict feasibility for state constraints is not guaranteed. These aspects will be addressed in future work. 5. CONCLUSIONS We presented a mixed-integer nonlinear Differentiable Pre-dictive Control (MI-DPC) framework for real-time op-timization of multi-chiller plants, unifying discrete stag-ing and continuous setpoint control within a single dif-ferentiable program. The approach leverages (i) differen-tiable rounding with straight-through estimator gradients to handle binary decisions, (ii) binary-variance regulariza-tion to suppress chattering, (iii) a nonlinear chiller plant dynamics solver with a differentiable ODE solver, and (iv) a model-predictive loss evaluated over rollout trajectories, yielding an explicit neural policy with constant-time in-ference. In simulations on multi-chiller systems, MI-DPC achieved up to 11% energy savings relative to an indus-trial RBC baseline while preserving process constraints, and delivered orders-of-magnitude faster inference than MI-MPC, indicating strong potential for a practical and scalable deployment on large-scale HVAC operations. 0                   
+
+> 500
+> Q [kW]  Qload Q
+> 0
+> 50
+> 100
+> P (i)chiller  [kW]  i= 1 i= 2
+> 20
+> 40
+> Tr, T (i)s [°C]  Tri= 1 i= 2
+> 0.0
+> 0.5
+> 1.0
+> ˜δ, δ(i) [-]  i= 1 i= 2 ˜δ
+> 025 50 75 100 125 150 175
+
+Time [h]           
+
+> 0
+> 10
+> 20
+> δ(i) ˙m(i) [kg/s]
+> i= 1 i= 2
+> 025 50 75 100 125 150 175
+
+Time [h] 
+
+> 0
+> 2
+> 4
+> COP [-]
+
+Fig. 6. Closed-loop seven-day simulation results of a two-chiller system obtained with MI-DPC for a prediction horizon of N = 15. Building on the findings of this study, several extensions are envisioned. The chiller plant model is to be extended to include cooling towers, allowing for further energy savings potential through optimization of condenser-water loop setpoints (Huang et al., 2017; Wang et al., 2019). The integration of water-side economizers can also be explored, as these have been shown to reduce energy through free-cooling (Faulkner et al., 2025) and introduce additional discrete control variables for economizer activation. Future work will also incorporate probabilistic cooling-load fore-casting to more accurately capture real-world uncertainty. Finally, the framework may be adopted for experimental validation in real-world chiller plants. DECLARATION OF GENERATIVE AI AND AI-ASSISTED TECHNOLOGIES IN THE WRITING PROCESS No generative AI and AI-assisted technologies were used in the writing process. REFERENCES Aljbour, J., Wilson, T., and Patel, P. (2024). Powering intelligence: Analyzing artificial intelligence and data center energy consumption. EPRI White Paper no. 3002028905 .Bemporad, A. and Morari, M. (2007). Robust model pre-dictive control: A survey. In Robustness in identification and control , 207–226. Springer. Bengio, Y., L´ eonard, N., and Courville, A. (2013). Es-timating or propagating gradients through stochastic neurons for conditional computation. arXiv preprint arXiv:1308.3432 .Bertsimas, D. and Stellato, B. (2022). Online mixed-integer optimization in milliseconds. INFORMS Journal on Computing , 34(4), 2229–2248. Boldock´ y, J., Javan, S.D., Gulan, M., M¨ onnigmann, M., and Drgoˇ na, J. (2025). Learning to solve parametric mixed-integer optimal control problems via differentiable predictive control. arXiv preprint arXiv:2506.19646 .Bynum, M.L., Hackebeil, G.A., Hart, W.E., Laird, C.D., Nicholson, B.L., Siirola, J.D., Watson, J.P., and Woodruff, D.L. (2021). Pyomo–optimization modeling in python , volume 67. Springer Science & Business Media, third edition. Cauligi, A., Culbertson, P., Stellato, B., Bertsimas, D., Schwager, M., and Pavone, M. (2020). Learning mixed-integer convex optimization strategies for robot plan-ning and control. In 59th IEEE Conference on Decision and Control , 1698–1705. Chan, K., Wong, V.T., Yow, A.K., Yuen, P., and Chao, C.Y. (2022). Development and performance evaluation of a chiller plant predictive operational control strategy by artificial intelligence. Energy and Buildings , 262. Deng, K., Sun, Y., Li, S., Lu, Y., Brouwer, J., Mehta, P.G., Zhou, M., and Chakraborty, A. (2015). Model predictive control of central chiller plant with thermal energy storage via dynamic programming and mixed-integer linear programming. IEEE Transactions on Automation Science and Engineering , 12(2), 565–579. doi:10.1109/TASE.2014.2352280. Domahidi, A., Ullmann, F., Morari, M., and Jones, C.N. (2014). Learning decision rules for energy efficient building control. Journal of Process Control , 24(6), 763– 772. Energy Efficient Buildings Special Issue. Drgoˇ na, J., Kiˇ s, K., Tuor, A., Vrabie, D., and Klauˇ co, M. (2022). Differentiable predictive control: Deep learning alternative to explicit model predictive control for un-known nonlinear systems. Journal of Process Control ,116, 80–92. Drgona, J., Tuor, A., Koch, J., Shapiro, M., Jacob, B., and Vrabie, D. (2023). NeuroMANCER: Neural Modules with Adaptive Nonlinear Constraints and Ef-ficient Regularizations. URL https://github.com/ pnnl/neuromancer .Drgoˇ na, J., Tuor, A., and Vrabie, D. (2024). Learning constrained parametric differentiable predictive control policies with guarantees. IEEE Transactions on Sys-tems, Man, and Cybernetics: Systems , 54(6), 3596–3607. Dua, V., Bozinis, N.A., and Pistikopoulos, E.N. (2002). A multiparametric programming approach for mixed-integer quadratic engineering problems. Computers & Chemical Engineering , 26(4), 715–733. Fan, C. and Zhou, X. (2023). Model-based predictive control optimization of chiller plants with water-side economizer system. Energy and Buildings , 278, 112633. Faulkner, C.A., Ho, J., Shi, C., Fan, C., Ildiri, N., and Zuo, W. (2025). Development of near-optimal advanced control sequences for chiller plants with water-side econ-omizers in US climates (ashrae rp-1661). Science and Technology for the Built Environment , 31(1), 18–35. Griewank, A. and Walther, A. (2008). Evaluating Deriva-tives . Society for Industrial and Applied Mathematics. Gurobi Optimization, LLC (2024). Gurobi Optimizer Reference Manual. URL https://www.gurobi.com .He, H., Daume III, H., and Eisner, J.M. (2014). Learning to search in branch and bound algorithms. Advances in neural information processing systems , 27. He, K., Fu, Q., Lu, Y., Wang, Y., Luo, J., Wu, H., and Chen, J. (2023). Predictive control optimization of chiller plants based on deep reinforcement learning. 
+
+Journal of Building Engineering , 76, 107158. Huang, S., Zuo, W., and Sohn, M.D. (2016). Amelioration of the cooling load based chiller sequencing control. 
+
+Applied Energy , 168, 204–215. Huang, S., Zuo, W., and Sohn, M.D. (2017). Improved cooling tower control of legacy chiller plants by opti-mizing the condenser water set point. Building and Environment , 111, 33–46. Karg, B. and Lucia, S. (2018). Deep learning-based embedded mixed-integer model predictive control. In 
+
+2018 European Control Conference , 2075–2080. Kirches, C. (2011). Fast Numerical Methods for Mixed-Integer Nonlinear Model-Predictive Control . Vieweg. Koch, J., Shapiro, M., Sharma, H., Vrabie, D., and Drgona, J. (2025). Learning neural differential algebraic equa-tions via operator splitting. In Conference on Decision and Control (CDC) .Liu, Z., Tan, H., Luo, D., Yu, G., Li, J., and Li, Z. (2017). Optimal chiller sequencing control in an office building considering the variation of chiller maximum cooling capacity. Energy and Buildings , 140, 430–442. Ma, Z. and Wang, S. (2011). Supervisory and optimal control of central chiller plants using simplified adaptive models and genetic algorithm. Applied Energy , 88(1), 198–211. Marcucci, T. and Tedrake, R. (2021). Warm start of mixed-integer programs for model predictive control of hybrid systems. IEEE Transactions on Automatic Control , 66(6), 2433–2448. Masti, D. and Bemporad, A. (2019). Learning bi-nary warm starts for multiparametric mixed-integer quadratic programming. In 18th European Control Con-ference , 1494–1499. McAllister, R.D. and Rawlings, J.B. (2022). Advances in mixed-integer model predictive control. In 2022 American Control Conference , 364–369. Pan, C. and Li, Y. (2024). Nonlinear model predictive control of chiller plant demand response with koopman bilinear model and krylov-subspace model reduction. 
+
+Control Engineering Practice , 147, 105936. Puskorius, G. and Feldkamp, L. (1994). Truncated back-propagation through time and Kalman filter training for neurocontrol. In 1994 International Conference on Neural Networks , volume 4, 2488–2493. Qin, S.J. and Badgwell, T.A. (2003). A survey of industrial model predictive control technology. Control engineer-ing practice , 11(7), 733–764. Rackauckas, C., Ma, Y., Martensen, J., Warner, C., Zubov, K., Supekar, R., Skinner, D., Ramadhan, A., and Edel-man, A. (2021). Universal differential equations for scientific machine learning. URL https://arxiv.org/ abs/2001.04385 .Reiter, R., Quirynen, R., Diehl, M., and Di Cairano, S. (2024). Equivariant deep learning of mixed-integer optimal control solutions for vehicle decision making and motion planning. IEEE Transactions on Control Systems Technology .Richards, A. and How, J. (2005). Mixed-integer program-ming for control. In 2005 American Control Conference ,2676–2683. Sala-Cardoso, E., Delgado-Prieto, M., Kampouropoulos, K., and Romeral, L. (2020). Predictive chiller operation: A data-driven loading and scheduling approach. Energy and Buildings , 208, 109639. Shan, K., Wang, S., and Zhuang, C. (2021). Controlling a large constant speed centrifugal chiller to provide grid frequency regulation: A validation based on onsite tests. 
+
+Applied Energy , 300, 117359. Takapoui, R., Moehle, N., Boyd, S., and Bemporad, A. (2020). A simple effective heuristic for embedded mixed-integer quadratic programming. International Journal of Control , 93(1), 2–12. Tang, B., Khalil, E.B., and Drgoˇ na, J. (2025). Learning to optimize for mixed-integer non-linear programming. URL https://arxiv.org/abs/2410.11061 .Terzi, E., Bonetti, T., Saccani, D., Farina, M., Fagiano, L., and Scattolini, R. (2020). Learning-based predictive control of the cooling system of a large business centre. 
+
+Control Engineering Practice , 97, 104348. Wang, L., Lee, E.W.M., Yuen, R.K., and Feng, W. (2019). Cooling load forecasting-based predictive optimisation for chiller plants. Energy and Buildings , 198, 261–274. Zarpellon, G., Jo, J., Lodi, A., and Bengio, Y. (2021). Parameterizing branch-and-bound search trees to learn branching policies. In 35th AAAI Conference on Artifi-cial Intelligence .
