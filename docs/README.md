@@ -6,72 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-04-07
-- 运行时间：2026-04-07 20:05:21 UTC
+- 最新运行日期：2026-04-09
+- 运行时间：2026-04-09 20:47:58 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日聚焦人形机器人全身舞蹈与移动操作效率，深度解读 17 篇机器人控制与规划前沿进展。
-重点推荐基于
-- 详情：[/202604/07/README](/202604/07/README)
+今日聚焦 17 篇机器人前沿进展，重点突破了移动操作的可靠性瓶颈与工业去毛刺中的高精度力反馈控制。
+研究揭示了通过学习引导的 MPC 协同优化，可显著提升机器人在复杂避障与连续作业中的任务成功率。
+推荐深入探索学习算法与经典控制理论的融合，这是实现具身智能从实验室走向工业实战的核心路径。
+- 详情：[/202604/09/README](/202604/09/README)
 
 ### 精读区论文标签
-1. [Dynamic Whole-Body Dancing with Humanoid Robots -- A Model-Based Control Approach](/202604/07/2604.03999v1-dynamic-whole-body-dancing-with-humanoid-robots----a-model-based-control-approach)  
-   标签：评分：9.0/10、query:q8
-   evidence：用于实时运动执行的轨迹优化和模型预测控制
-2. [Primitive-based Truncated Diffusion for Efficient Trajectory Generation of Differential Drive Mobile Manipulators](/202604/07/2604.04166v1-primitive-based-truncated-diffusion-for-efficient-trajectory-generation-of-differential-drive-mobile-manipulators)  
+1. [Synergizing Efficiency and Reliability for Continuous Mobile Manipulation](/202604/09/2604.05430v1-synergizing-efficiency-and-reliability-for-continuous-mobile-manipulation)  
    标签：评分：9.0/10、query:profile-1
-   evidence：移动机械臂的轨迹优化，采用高效的扩散生成模型
-3. [Smooth and Exact Parameterization of Continuous-time Signal Temporal Logic Specifications for Trajectory Optimization](/202604/07/2604.04245v1-smooth-and-exact-parameterization-of-continuous-time-signal-temporal-logic-specifications-for-trajectory-optimization)  
-   标签：评分：9.0/10、query:q3
-   evidence：使用信号时序逻辑进行避障的轨迹优化
-4. [Risk-Constrained Belief-Space Optimization for Safe Control under Latent Uncertainty](/202604/07/2604.03868v1-risk-constrained-belief-space-optimization-for-safe-control-under-latent-uncertainty)  
-   标签：评分：8.0/10、query:q2
-   evidence：用于安全控制的风险敏感信念空间模型预测路径积分控制
-5. [VA-FastNavi-MARL: Real-Time Robot Control with Multimedia-Driven Meta-Reinforcement Learning](/202604/07/2604.03998v1-va-fastnavi-marl-real-time-robot-control-with-multimedia-driven-meta-reinforcement-learning)  
+   evidence：连续移动操作的可靠性感知轨迹规划器
+2. [Learning-Guided Force-Feedback Model Predictive Control with Obstacle Avoidance for Robotic Deburring](/202604/09/2604.06133v1-learning-guided-force-feedback-model-predictive-control-with-obstacle-avoidance-for-robotic-deburring)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：具有避障功能的机器人操作力反馈MPC
+3. [Differentiable SpaTiaL: Symbolic Learning and Reasoning with Geometric Temporal Logic for Manipulation Tasks](/202604/09/2604.02643v2-differentiable-spatial-symbolic-learning-and-reasoning-with-geometric-temporal-logic-for-manipulation-tasks)  
    标签：评分：8.0/10、query:profile-1
-   evidence：多臂工作空间中的实时机器人控制
-6. [frax: Fast Robot Kinematics and Dynamics in JAX](/202604/07/2604.04310v1-frax-fast-robot-kinematics-and-dynamics-in-jax)  
+   evidence：复杂环境下操作任务的梯度优化
+4. [Distributed Covariance Steering via Non-Convex ADMM for Large-Scale Multi-Agent Systems](/202604/09/2604.04499v1-distributed-covariance-steering-via-non-convex-admm-for-large-scale-multi-agent-systems)  
+   标签：评分：8.0/10、query:q1
+   evidence：多智能体系统中的概率避障约束
+5. [Towards Multi-Object Nonprehensile Transportation via Shared Teleoperation: A Framework Based on Virtual Object Model Predictive Control](/202604/09/2604.06932v1-towards-multi-object-nonprehensile-transportation-via-shared-teleoperation-a-framework-based-on-virtual-object-model-predictive-control)  
    标签：评分：8.0/10、query:profile-1
-   evidence：用于优化方法的快速机器人运动学与动力学库
+   evidence：基于MPC的机械臂操作实时约束轨迹平滑
+6. [Differentiable Environment-Trajectory Co-Optimization for Safe Multi-Agent Navigation](/202604/09/2604.06972v1-differentiable-environment-trajectory-co-optimization-for-safe-multi-agent-navigation)  
+   标签：评分：8.0/10、query:q1
+   evidence：用于安全导航和轨迹协同优化的微分优化
 
 ### 速读区论文标签
-1. [Optimization-Free Constrained Control with Guaranteed Recursive Feasibility: A CBF-Based Reference Governor Approach](/202604/07/2604.04001v1-optimization-free-constrained-control-with-guaranteed-recursive-feasibility-a-cbf-based-reference-governor-approach)  
+1. [RK-MPC: Residual Koopman Model Predictive Control for Quadruped Locomotion in Offroad Environments](/202604/09/2604.04221v1-rk-mpc-residual-koopman-model-predictive-control-for-quadruped-locomotion-in-offroad-environments)  
    标签：评分：8.0/10、query:q2
-   evidence：带有安全屏障函数的约束控制框架
-2. [Adapting Neural Robot Dynamics on the Fly for Predictive Control](/202604/07/2604.04039v1-adapting-neural-robot-dynamics-on-the-fly-for-predictive-control)  
-   标签：评分：8.0/10、query:q2
-   evidence：用于预测控制的神经动力学快速自适应
-3. [Learning Dexterous Grasping from Sparse Taxonomy Guidance](/202604/07/2604.04138v1-learning-dexterous-grasping-from-sparse-taxonomy-guidance)  
+   evidence：用于实时控制的凸二次规划MPC公式
+2. [Receding-Horizon Control via Drifting Models](/202604/09/2604.04528v1-receding-horizon-control-via-drifting-models)  
+   标签：评分：8.0/10、query:q3
+   evidence：具有收缩时域规划的轨迹优化框架
+3. [Referring-Aware Visuomotor Policy Learning for Closed-Loop Manipulation](/202604/09/2604.05544v1-referring-aware-visuomotor-policy-learning-for-closed-loop-manipulation)  
    标签：评分：8.0/10、query:q6
-   evidence：灵巧操作与多指控制
-4. [Real-Time Projected Adaptive Control for Closed-Chain Co-Manipulative Continuum Robots](/202604/07/2604.04286v1-real-time-projected-adaptive-control-for-closed-chain-co-manipulative-continuum-robots)  
-   标签：评分：8.0/10、query:q5
-   evidence：协作连续体机器人的实时自适应控制
-5. [Steering with Contingencies: Combinatorial Stabilization and Reach-Avoid Filters](/202604/07/2604.03405v1-steering-with-contingencies-combinatorial-stabilization-and-reach-avoid-filters)  
+   evidence：用于闭环机器人操作的视觉运动策略学习
+4. [Flow Motion Policy: Manipulator Motion Planning with Flow Matching Models](/202604/09/2604.07084v1-flow-motion-policy-manipulator-motion-planning-with-flow-matching-models)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：机械臂端到端神经运动规划器，支持推理时优化
+5. [Drift-Based Policy Optimization: Native One-Step Policy Learning for Online Robot Control](/202604/09/2604.03540v1-drift-based-policy-optimization-native-one-step-policy-learning-for-online-robot-control)  
+   标签：评分：7.0/10、query:q5
+   evidence：用于高频闭环机器人控制的一步生成策略
+6. [RK-MPC: Residual Koopman Model Predictive Control for Quadruped Locomotion in Offroad Environments](/202604/09/2604.04221v2-rk-mpc-residual-koopman-model-predictive-control-for-quadruped-locomotion-in-offroad-environments)  
    标签：评分：7.0/10、query:q2
-   evidence：使用控制Lyapunov函数进行稳定和安全保障的优化滤波器
-6. [Build on Priors: Vision--Language--Guided Neuro-Symbolic Imitation Learning for Data-Efficient Real-World Robot Manipulation](/202604/07/2604.03759v1-build-on-priors-vision--language--guided-neuro-symbolic-imitation-learning-for-data-efficient-real-world-robot-manipulation)  
+   evidence：用于实时机器人控制的凸二次规划MPC
+7. [ExpressMM: Expressive Mobile Manipulation Behaviors in Human-Robot Interactions](/202604/09/2604.05320v1-expressmm-expressive-mobile-manipulation-behaviors-in-human-robot-interactions)  
+   标签：评分：7.0/10、query:profile-1
+   evidence：移动操作行为与语言引导规划器
+8. [GraspSense: Physically Grounded Grasp and Grip Planning for a Dexterous Robotic Hand via Language-Guided Perception and Force Maps](/202604/09/2604.05697v1-graspsense-physically-grounded-grasp-and-grip-planning-for-a-dexterous-robotic-hand-via-language-guided-perception-and-force-maps)  
    标签：评分：7.0/10、query:q6
-   evidence：用于机器人操纵的神经符号模仿学习
-7. [Learning from Imperfect Demonstrations via Temporal Behavior Tree-Guided Trajectory Repair](/202604/07/2604.04225v1-learning-from-imperfect-demonstrations-via-temporal-behavior-tree-guided-trajectory-repair)  
-   标签：评分：7.0/10、query:q3
-   evidence：机器人控制的轨迹修复与形式化约束
-8. [Veo-Act: How Far Can Frontier Video Models Advance Generalizable Robot Manipulation?](/202604/07/2604.04502v1-veo-act-how-far-can-frontier-video-models-advance-generalizable-robot-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：利用视频模型实现通用的机器人操作
-9. [Learning Certified Neural Network Controllers Using Contraction and Interval Analysis](/202604/07/2603.28011v1-learning-certified-neural-network-controllers-using-contraction-and-interval-analysis)  
-   标签：评分：6.0/10、query:q5
-   evidence：实时认证的神经网络控制器
-10. [Temporal Logic Control of Nonlinear Stochastic Systems with Online Performance Optimization](/202604/07/2604.01372v1-temporal-logic-control-of-nonlinear-stochastic-systems-with-online-performance-optimization)  
+   evidence：灵巧机械手的抓取和握持规划
+9. [Temporal Logic Control of Nonlinear Stochastic Systems with Online Performance Optimization](/202604/09/2604.01372v2-temporal-logic-control-of-nonlinear-stochastic-systems-with-online-performance-optimization)  
    标签：评分：6.0/10、query:q2
-   evidence：非线性系统的在线性能优化
-11. [A Flow Matching Framework for Soft-Robot Inverse Dynamics](/202604/07/2604.03006v1-a-flow-matching-framework-for-soft-robot-inverse-dynamics)  
-   标签：评分：6.0/10、query:q2
-   evidence：使用流匹配的软体机器人逆动力学控制
+   evidence：非线性随机系统的在线性能优化
+10. [From Video to Control: A Survey of Learning Manipulation Interfaces from Temporal Visual Data](/202604/09/2604.04974v1-from-video-to-control-a-survey-of-learning-manipulation-interfaces-from-temporal-visual-data)  
+   标签：评分：6.0/10、query:q6
+   evidence：机器人控制学习操作接口综述
+11. [Differentiable Invariant Sets for Hybrid Limit Cycles with Application to Legged Robots](/202604/09/2604.05108v1-differentiable-invariant-sets-for-hybrid-limit-cycles-with-application-to-legged-robots)  
+   标签：评分：6.0/10、query:q4
+   evidence：足式机器人运动标称轨迹周围的不变集
 
 
 <div class="dpr-home-promo-card">
