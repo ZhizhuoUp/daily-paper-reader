@@ -6,73 +6,64 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-04-09
-- 运行时间：2026-04-09 20:47:58 UTC
+- 最新运行日期：2026-04-10
+- 运行时间：2026-04-10 19:43:53 UTC
 - 运行状态：成功
-- 本次总论文数：17
-- 精读区：6
+- 本次总论文数：14
+- 精读区：3
 - 速读区：11
 
 ### 今日简报（AI）
-今日聚焦 17 篇机器人前沿进展，重点突破了移动操作的可靠性瓶颈与工业去毛刺中的高精度力反馈控制。
-研究揭示了通过学习引导的 MPC 协同优化，可显著提升机器人在复杂避障与连续作业中的任务成功率。
-推荐深入探索学习算法与经典控制理论的融合，这是实现具身智能从实验室走向工业实战的核心路径。
-- 详情：[/202604/09/README](/202604/09/README)
+今日精选 14 篇前沿论文，重点攻克毫秒级大规模非线性 MPC 控制与救援机器人移动操作的稳定性难题。
+核心突破在于利用 GPU 加速实现鲁棒系统合成，以及通过 EMMa 框架显著提升履带机器人在复杂环境下的作业精度。
+建议关注高性能计算与实时控制的深度融合，并探索多智能体协作及视觉导航的最新算法趋势。
+- 详情：[/202604/10/README](/202604/10/README)
 
 ### 精读区论文标签
-1. [Synergizing Efficiency and Reliability for Continuous Mobile Manipulation](/202604/09/2604.05430v1-synergizing-efficiency-and-reliability-for-continuous-mobile-manipulation)  
+1. [Safe Large-Scale Robust Nonlinear MPC in Milliseconds via Reachability-Constrained System Level Synthesis on the GPU](/202604/10/2604.07644v1-safe-large-scale-robust-nonlinear-mpc-in-milliseconds-via-reachability-constrained-system-level-synthesis-on-the-gpu)  
    标签：评分：9.0/10、query:profile-1
-   evidence：连续移动操作的可靠性感知轨迹规划器
-2. [Learning-Guided Force-Feedback Model Predictive Control with Obstacle Avoidance for Robotic Deburring](/202604/09/2604.06133v1-learning-guided-force-feedback-model-predictive-control-with-obstacle-avoidance-for-robotic-deburring)  
+   evidence：高维机器人系统的实时安全鲁棒非线性MPC
+2. [EMMa: End-Effector Stability-Oriented Mobile Manipulation for Tracked Rescue Robots](/202604/10/2604.08292v1-emma-end-effector-stability-oriented-mobile-manipulation-for-tracked-rescue-robots)  
    标签：评分：9.0/10、query:profile-1
-   evidence：具有避障功能的机器人操作力反馈MPC
-3. [Differentiable SpaTiaL: Symbolic Learning and Reasoning with Geometric Temporal Logic for Manipulation Tasks](/202604/09/2604.02643v2-differentiable-spatial-symbolic-learning-and-reasoning-with-geometric-temporal-logic-for-manipulation-tasks)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：复杂环境下操作任务的梯度优化
-4. [Distributed Covariance Steering via Non-Convex ADMM for Large-Scale Multi-Agent Systems](/202604/09/2604.04499v1-distributed-covariance-steering-via-non-convex-admm-for-large-scale-multi-agent-systems)  
+   evidence：降低复杂度的移动操作机协调路径优化
+3. [SANDO: Safe Autonomous Trajectory Planning for Dynamic Unknown Environments](/202604/10/2604.07599v1-sando-safe-autonomous-trajectory-planning-for-dynamic-unknown-environments)  
    标签：评分：8.0/10、query:q1
-   evidence：多智能体系统中的概率避障约束
-5. [Towards Multi-Object Nonprehensile Transportation via Shared Teleoperation: A Framework Based on Virtual Object Model Predictive Control](/202604/09/2604.06932v1-towards-multi-object-nonprehensile-transportation-via-shared-teleoperation-a-framework-based-on-virtual-object-model-predictive-control)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：基于MPC的机械臂操作实时约束轨迹平滑
-6. [Differentiable Environment-Trajectory Co-Optimization for Safe Multi-Agent Navigation](/202604/09/2604.06972v1-differentiable-environment-trajectory-co-optimization-for-safe-multi-agent-navigation)  
-   标签：评分：8.0/10、query:q1
-   evidence：用于安全导航和轨迹协同优化的微分优化
+   evidence：3D动态未知环境下的安全轨迹规划
 
 ### 速读区论文标签
-1. [RK-MPC: Residual Koopman Model Predictive Control for Quadruped Locomotion in Offroad Environments](/202604/09/2604.04221v1-rk-mpc-residual-koopman-model-predictive-control-for-quadruped-locomotion-in-offroad-environments)  
-   标签：评分：8.0/10、query:q2
-   evidence：用于实时控制的凸二次规划MPC公式
-2. [Receding-Horizon Control via Drifting Models](/202604/09/2604.04528v1-receding-horizon-control-via-drifting-models)  
-   标签：评分：8.0/10、query:q3
-   evidence：具有收缩时域规划的轨迹优化框架
-3. [Referring-Aware Visuomotor Policy Learning for Closed-Loop Manipulation](/202604/09/2604.05544v1-referring-aware-visuomotor-policy-learning-for-closed-loop-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：用于闭环机器人操作的视觉运动策略学习
-4. [Flow Motion Policy: Manipulator Motion Planning with Flow Matching Models](/202604/09/2604.07084v1-flow-motion-policy-manipulator-motion-planning-with-flow-matching-models)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：机械臂端到端神经运动规划器，支持推理时优化
-5. [Drift-Based Policy Optimization: Native One-Step Policy Learning for Online Robot Control](/202604/09/2604.03540v1-drift-based-policy-optimization-native-one-step-policy-learning-for-online-robot-control)  
+1. [Drift-Based Policy Optimization: Native One-Step Policy Learning for Online Robot Control](/202604/10/2604.03540v2-drift-based-policy-optimization-native-one-step-policy-learning-for-online-robot-control)  
    标签：评分：7.0/10、query:q5
-   evidence：用于高频闭环机器人控制的一步生成策略
-6. [RK-MPC: Residual Koopman Model Predictive Control for Quadruped Locomotion in Offroad Environments](/202604/09/2604.04221v2-rk-mpc-residual-koopman-model-predictive-control-for-quadruped-locomotion-in-offroad-environments)  
-   标签：评分：7.0/10、query:q2
-   evidence：用于实时机器人控制的凸二次规划MPC
-7. [ExpressMM: Expressive Mobile Manipulation Behaviors in Human-Robot Interactions](/202604/09/2604.05320v1-expressmm-expressive-mobile-manipulation-behaviors-in-human-robot-interactions)  
-   标签：评分：7.0/10、query:profile-1
-   evidence：移动操作行为与语言引导规划器
-8. [GraspSense: Physically Grounded Grasp and Grip Planning for a Dexterous Robotic Hand via Language-Guided Perception and Force Maps](/202604/09/2604.05697v1-graspsense-physically-grounded-grasp-and-grip-planning-for-a-dexterous-robotic-hand-via-language-guided-perception-and-force-maps)  
+   evidence：用于高频闭环控制的一步生成策略
+2. [CoEnv: Driving Embodied Multi-Agent Collaboration via Compositional Environment](/202604/10/2604.05484v1-coenv-driving-embodied-multi-agent-collaboration-via-compositional-environment)  
    标签：评分：7.0/10、query:q6
-   evidence：灵巧机械手的抓取和握持规划
-9. [Temporal Logic Control of Nonlinear Stochastic Systems with Online Performance Optimization](/202604/09/2604.01372v2-temporal-logic-control-of-nonlinear-stochastic-systems-with-online-performance-optimization)  
-   标签：评分：6.0/10、query:q2
-   evidence：非线性随机系统的在线性能优化
-10. [From Video to Control: A Survey of Learning Manipulation Interfaces from Temporal Visual Data](/202604/09/2604.04974v1-from-video-to-control-a-survey-of-learning-manipulation-interfaces-from-temporal-visual-data)  
+   evidence：协作操作与空间协调
+3. [Rectified Schrödinger Bridge Matching for Few-Step Visual Navigation](/202604/10/2604.05673v1-rectified-schrdinger-bridge-matching-for-few-step-visual-navigation)  
+   标签：评分：7.0/10、query:q5
+   evidence：视觉导航的实时机器人控制
+4. [From Points to Sets: Set-Based Safety Verification in the Latent Space](/202604/10/2604.05799v1-from-points-to-sets-set-based-safety-verification-in-the-latent-space)  
+   标签：评分：7.0/10、query:q1
+   evidence：用于无碰撞导航的安全控制设计和障碍函数
+5. [BiDexGrasp: Coordinated Bimanual Dexterous Grasps across Object Geometries and Sizes](/202604/10/2604.06589v1-bidexgrasp-coordinated-bimanual-dexterous-grasps-across-object-geometries-and-sizes)  
+   标签：评分：7.0/10、query:q6
+   evidence：机器人操作与抓取优化
+6. [Train-Small Deploy-Large: Leveraging Diffusion-Based Multi-Robot Planning](/202604/10/2604.06598v1-train-small-deploy-large-leveraging-diffusion-based-multi-robot-planning)  
+   标签：评分：7.0/10、query:q1
+   evidence：基于扩散模型的多机器人路径规划
+7. [FlashSAC: Fast and Stable Off-Policy Reinforcement Learning for High-Dimensional Robot Control](/202604/10/2604.04539v1-flashsac-fast-and-stable-off-policy-reinforcement-learning-for-high-dimensional-robot-control)  
+   标签：评分：6.0/10、query:q5
+   evidence：用于高维机器人控制的离策强化学习
+8. [Simulation-Driven Evolutionary Motion Parameterization for Contact-Rich Granular Scooping with a Soft Conical Robotic Hand](/202604/10/2604.05531v1-simulation-driven-evolutionary-motion-parameterization-for-contact-rich-granular-scooping-with-a-soft-conical-robotic-hand)  
    标签：评分：6.0/10、query:q6
-   evidence：机器人控制学习操作接口综述
-11. [Differentiable Invariant Sets for Hybrid Limit Cycles with Application to Legged Robots](/202604/09/2604.05108v1-differentiable-invariant-sets-for-hybrid-limit-cycles-with-application-to-legged-robots)  
-   标签：评分：6.0/10、query:q4
-   evidence：足式机器人运动标称轨迹周围的不变集
+   evidence：机器人手部操作的运动参数化
+9. [Augmented Graphs of Convex Sets and the Traveling Salesman Problem](/202604/10/2604.06406v1-augmented-graphs-of-convex-sets-and-the-traveling-salesman-problem)  
+   标签：评分：6.0/10、query:q3
+   evidence：凸集图上的轨迹优化算法
+10. [A Trajectory-based Approach to the Computation of Controlled Invariants with application to MPC](/202604/10/2604.07225v1-a-trajectory-based-approach-to-the-computation-of-controlled-invariants-with-application-to-mpc)  
+   标签：评分：6.0/10、query:q3
+   evidence：基于轨迹的MPC控制不变集计算方法
+11. [A Unified Multi-Layer Framework for Skill Acquisition from Imperfect Human Demonstrations](/202604/10/2604.08341v1-a-unified-multi-layer-framework-for-skill-acquisition-from-imperfect-human-demonstrations)  
+   标签：评分：6.0/10、query:q6
+   evidence：用于操作的实时轨迹学习和机器人柔顺性
 
 
 <div class="dpr-home-promo-card">
