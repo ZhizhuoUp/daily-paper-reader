@@ -1,0 +1,923 @@
+Title: Multi-Agent Pathfinding with Non-Unit Integer Edge Costs via Enhanced Conflict-Based Search and Graph Discretization
+
+URL Source: https://arxiv.org/pdf/2604.05416v1
+
+Published Time: Wed, 08 Apr 2026 00:35:39 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# Multi-Agent Pathfinding with Non-Unit Integer Edge Costs via Enhanced Conflict-Based Search and Graph Discretization 
+
+Hongkai Fan, Qinjing Xie, Bo Ouyang, Yaonan Wang, Zhi Yan, Jiawen He and Zheng Fang 
+
+Abstract—Multi-Agent Pathfinding (MAPF) plays a critical role in various domains. Traditional MAPF methods typically assume unit edge costs and single-timestep actions, which limit their applicability to real-world scenarios. To address this, MAPF R extends the MAPF to handle non-unit costs, thereby introducing more realistic modeling through real-valued edge costs and continuous-time actions. However, since most MAPF R formulations adopt a geometric collision model that allows conflicts to occur at any point along an edge, the resulting state space becomes unbounded, which significantly compromises the efficiency of existing solvers. In this paper, we propose MAPF Z , a novel MAPF variant on graphs with non-unit integer costs. MAPF Z supports agents operating on flexible graphs without involving continuous time, thus preserving a finite state space while offering improved realism over classical MAPF. To efficiently solve MAPF Z , we de-velop CBS-NIC, an enhanced Conflict-Based Search framework that incorporates time-interval-based conflict detection and constraints addition at the high level and an improved Safe Interval Path Planning (SIPP) algorithm at the low level. Additionally, we propose Bayesian Optimization for Graph Design (BOGD), a discretization method for non-unit edge costs that balances efficiency and accuracy, along with a sub-linear regret bound that ensures performance improves over time. Extensive experiments demonstrate that our approach outperforms state-of-the-art methods in runtime and success rate across diverse benchmark scenarios. 
+
+Keywords: Multi-agent pathfinding, Non-unit integer costs, Conflict-based search. I. INTRODUCTION Multi-agent systems are widely applied in various do-mains such as smart factories, drone swarm coordination, and operations at ports and terminals [1]. A key challenge in these systems is multi-agent pathfinding (MAPF), an NP-hard problem [2] that focuses on planning collision-free paths for multiple agents to reach their respective goals from given start positions in a shared environment, while minimizing the makespan. In a classical MAPF problem, the goal is to coordinate a set of agents operating on a graph with unit edge costs (see Fig. 1(a)). However, many existing MAPF solvers rely on overly simplified and sometimes unrealistic assumptions that limit their practical applicability. For instance, these solvers often assume that all edges in the graph have the same length and that all agents move synchronously, with each move action taking one time step. This assumption implies either that all agents must travel at the same speed             
+
+> Hongkai Fan, Qinjing Xie, Bo Ouyang, Yaonan Wang, Zhi Yan and Jiawen He are affiliated with the College of Electrical and Information Engineering at Hunan University. Zheng Fang is associ-ated with China Mobile Group Hunan Company Limited, Changsha 410082, China (email: fanhk, xieqinjing, ouyangbo, yaonan, yanzhi, hjwdaxia@hnu.edu.cn, fangzheng@hn.chinamobile.com).
+> (a) (b) (c)
+
+Fig. 1: Examples of graphs with different edge costs. (a) Unit cost graph. (b) Non-unit cost graph. (c) Non-unit integer cost graph. or that they must adjust their velocity and acceleration profiles so that each move fits precisely into a single time step, ensuring all agents start and finish their movements simultaneously. To overcome the unrealistic assumptions in the tra-ditional MAPF formulation, several variants have been introduced, among which MAPF R [3] is a representative extension. This variant enhances the realism of MAPF by incorporating features such as asynchronous agent actions and weighted cost graphs. In MAPF R, each vertex v ∈ V
+
+is assigned a positive traversal cost w(v) ∈ R>0 (see Fig. 1(b)), allowing the system to model agents operating in continuous metric spaces with heterogeneous movement costs. While these extensions significantly improve the applicability of MAPF in real-world scenarios, they also introduce additional computational challenges. In partic-ular, many MAPF R formulations adopt a geometric colli-sion model, where agents may collide at any point along edges in continuous time. This type of collision modeling leads to an unbounded state space, which severely ham-pers search efficiency and degrades solver performance. For instance, Continuous-time Conflict-Based Search (CCBS) [4] extends the classical CBS algorithm to support contin-uous time and variable-duration actions. Although CCBS guarantees optimality, its scalability is limited, typically handling only about 20 agents within a few minutes of runtime. To address asynchronous actions without relying heavily on geometric collision checking, the Loosely Synchronized Search (LSS) method [5] adopts a duration-based conflict model. While this formulation ensures a bounded state space, scalability remains constrained; as reported in [5], the success rate decreases sharply with increasing agent numbers and approaches zero around 20 agents on most benchmark maps. To further enhance scalability, the Loosely Synchronized Rule-based Planning (LSRP) algorithm [6] introduces a caching mechanism that loosely synchronizes temporally close actions with 
+
+> arXiv:2604.05416v1 [cs.AI] 7 Apr 2026
+
+different start times. Experiments show that LSRP can scale to an order of magnitude more agents than CCBS with substantially reduced runtimes. However, this gain comes at the cost of an average makespan increase of about 25%. Its extension, LSRP* [7], improves solution quality through iterative anytime refinement, partially mitigating this drawback. Overall, these methods still struggle to balance scalability and solution quality, and tend to perform better in relatively simple scenarios. In this paper, we address the limitations of single-timestep actions and unit costs in the classical MAPF problem, as well as the low efficiency in solving the MAPF R variant. To this end, we introduce a new problem formulation, MAPF Z , which extends MAPF to non-unit integer cost graphs (see Fig. 1(c)). This formulation provides a better balance between solution efficiency and adaptability to real-world environments. To address the challenges posed by non-unit integer costs in MAPF Z , we propose CBS-NIC, a novel variant of CBS algorithm tai-lored for this setting. The key difficulty lies in transforming the original non-unit cost graphs into a suitable form with discrete integer edge costs. To this end, we introduce a discretization strategy guided by our proposed Bayesian Optimization for Graph Design (BOGD) method. BOGD is formulated as a bi-level optimization framework: the upper-level problem adopts Multi-Objective Bayesian Op-timization (MOBO) to explore the space of candidate graph structures, while the lower-level problem evaluates each candidate by solving the MAPF Z instance using CBS-NIC. This design enables the generation of dis-cretized graphs that strike a balance between fidelity to the original cost structure and compatibility with efficient pathfinding. The main contributions of this work can be itemized as follows:  
+
+> •
+
+We introduce MAPF Z , a novel MAPF variant that supports non-unit integer edge costs. It effectively bridges the gap between the idealized assumptions of traditional MAPF and the high computational com-plexity of weighted-cost graphs, offering a practical trade-off between modeling realism and efficiency.  
+
+> •
+
+We propose CBS-NIC, an enhanced CBS variant de-signed for MAPF Z with non-unit integer edge costs. CBS-NIC introduces time-interval-based conflict de-tection, constraint definition, and an upgraded SIPP algorithm. It also incorporates improved heuristics, including enhanced versions of prioritizing conflicts (PC) and disjoint splitting (DS), to enhance planning efficiency.  
+
+> •
+
+To discretize edge lengths in non-unit cost graphs, we propose BOGD, which balances solution efficiency and discretization error. Furthermore, we establish a sub-linear regret bound with respect to the number of iterations, demonstrating that the method becomes increasingly efficient and effective over time in mini-mizing cumulative regret. The remainder of the paper is organized as follows: Section II reviews related work on MAPF. Section III for-mally defines the MAPF Z problem and revisits CBS along with relevant heuristic techniques. Section IV details the implementation of CBS-NIC and the overall framework of BOGD. Section V presents the experimental results, and Section VI concludes the paper with a summary and future directions. II. RELATED WORK Path planning problem has been a popular study in the field of robotics for decades [8]. In this section, we review the most relevant work from three complementary perspectives, covering MAPF with unit costs, MAPF with non-unit costs and continuous time, as well as graph design methods. For MAPF with unit costs, solvers can be categorized into optimal, bounded sub-optimal, and unbounded sub-optimal solvers. Optimal solvers guarantee sum of cost (SOC) optimality and the most commonly used optimal MAPF solver is CBS [9]. CBS operates with a binary tree search at the high level, based on path conflicts, and uses A* at the low level to plan paths under conflict con-straints. Variants of CBS include CBSH [10], and CBSH2 [11], which enhance heuristics using conflict and depen-dency graphs. [12] use constraints to reduce conflict tree nodes. Enhanced Partial Expansion A* (EPEA*) [13] is a heuristic-driven A* variant that selectively expands only minimal nodes using domain-specific knowledge, achieving improved efficiency in time-sensitive search across diverse benchmark domains. Although optimal solvers ensure the minimum makespan, they often require significant compu-tation time, especially in complex environments and with many agents. Bounded sub-optimal solvers provide solu-tions within a factor of (1+ ϵ) of the optimal cost, balancing solution quality and speed. Enhanced CBS (ECBS) [14] accelerates CBS by using focal search at both levels, while Explicit Estimation CBS (EECBS) [15] enhances this with explicit estimation search at the high level. The quality of solutions depends on ϵ, with larger values resulting in lower quality. Unbounded sub-optimal solvers prioritize speed, though they may compromise solution quality. For instance, Priority Inheritance with Backtracking (PIBT) [16] plans in one-timestep increments, assigning unique priorities to agents at each step. These solvers generally focus on speed over solution quality. For MAPF with non-unit costs, Walker et al. [17] introduced the MAPF R formulation and extended the Increasing cost tree search (ICTS) algorithm by construct-ing modified MDDs with cost intervals and reformulating the high-level search accordingly. Improved CBS with Helpful Bypass (ICBS-HB) [3] enhances the standard CBS framework by introducing a conflict bypassing strategy during path planning. ECBS with continuous time (ECBS-CT) [18] adapted the CBS framework to continuous time, and developed a bounded sub-optimal extension of SIPP to manage discrete time steps and rectilinear movements between neighboring vertices. Walker et al. [19] introduced CBS with constraint layering (CBS-CL), an extension of CBS that deals with non-unit edge costs and hierarchical movement abstractions. Although CBS-CL is complete in its solutions, it does not account for continuous time and does not ensure optimality. CCBS [4] builds on CBS by integrating an adapted version of SIPP for low-level search and introduces new conflict types and constraints at the high level, effectively addressing continuous time and geometric constraints. Graph design plays a critical role in MAPF, as it directly affects the efficiency of planning algorithms. One of the most widely used approaches is the probabilistic roadmap (PRM) [20], which constructs a graph by sam-pling collision-free configurations in the continuous space and connecting nearby nodes via a local planner to form feasible edges. The resulting roadmap captures the connec-tivity of the environment and enables efficient path search between start and goal configurations. Building upon PRM, a large body of work has explored more advanced roadmap construction methods for multi-agent settings. For example, Cooperative Timed Roadmaps (CTRMs) [21] incorporate both spatial and temporal information to better coordinate agents and reduce conflicts. MRPT [22] extends PRM to distributed multi-robot systems, enabling decentralized coordination with reduced communication overhead. Other approaches focus on optimizing roadmap structures, such as ODRM [23], which learns directed graphs with collision-avoidance patterns. Additionally, topology aware roadmap generation methods [24] and Voronoi-based heuristics [25] exploit geometric properties of the environment to improve planning efficiency. Despite these advances, most existing graph design methods are not jointly optimized with the underlying MAPF problem. They either rely on continuous representations with high computational overhead or construct graph structures without explicitly accounting for the interplay between temporal discretization and conflict resolution. As a result, the resulting representations are not well aligned with the requirements of efficient multi-agent planning, leading to limited scalability in dense, large-scale scenarios. III. Problem definition In this section, we first present MAPF Z , a new vari-ant tailored for scenarios with non-unit costs, and then review the CBS algorithm along with relevant heuristic techniques. A. Definition of MAPF Z with non-unit integer costs The MAPF Z problem is a variant of the classical MAPF problem, introduced to model more realistic tem-poral behaviors by incorporating non-unit, positive integer edge costs. Formally, MAPF Z is defined on a positively weighted graph G = ( V, E, W ), where V is the set of vertices, E is the set of edges, and W : E → Z>0 assigns a positive integer cost to each edge e ∈ E. These edge costs represent the durations required for agents to traverse the corresponding edges, thereby introducing variable action durations into the planning model. This contrasts with the classical MAPF formulation, which assumes unit edge costs and actions that complete in a single timestep. While the classical MAPF formulation simplifies computation, it often fails to capture the variability in edge lengths found in real-world environments. In MAPF Z , although time remains discretized, agents may spend multiple timesteps on a single edge, introducing more complex temporal interactions. Let A denote the set of agents, where |A| < |V |,ensuring that each agent is assigned a unique start and goal location. The initial and goal positions are specified by two injective mappings S, T : A → V , where Si = S(ai)
+
+and Ti = T (ai) denote the start and goal vertices of agent ai, respectively. The injectivity of these mappings ensures that no two agents share the same start or goal location. A plan for agent i is represented as a sequence 
+
+πi = {⟨ v1 
+
+> i
+
+, t 1 
+
+> i
+
+⟩, . . . , ⟨vTi 
+
+> i
+
+, t Ti 
+
+> i
+
+⟩} , where vτi ∈ V indicates the vertex reached at time tτi ≥ 0. The same vertex may appear in consecutive elements of the sequence, i.e., 
+
+vτi = vτ −1 
+
+> i
+
+, which represents a wait action at that vertex. The plan πi is considered feasible if it satisfies the following conditions: (1) the vertex sequence [v1 
+
+> i
+
+, . . . , v Ti 
+
+> i
+
+] forms a valid path from the start vertex Si to the goal vertex Ti
+
+in graph G; (2) for all j ∈ { 2, . . . , T i}, the timing constraint 
+
+tji ≥ tj−1 
+
+> i
+
++ W (vj−1 
+
+> i
+
+, v ji ) holds, meaning the agent cannot arrive at a new vertex before completing the traversal of the previous edge. The ultimate objective is to compute a conflict-free solution that minimizes the makespan, defined as max ki=1 c(πi), where c(πi) denotes the cost of the path 
+
+πi for agent i and k is the number of agents. B. Review of CBS and heuristic techniques 1) Conflict-based search for MAPF: CBS is a two-level optimal algorithm for solving the MAPF problem. At the low level, CBS performs a best-first search for each agent to find a shortest path that satisfies the current set of constraints. At the high level, it conducts a best-first search over a binary Constraint Tree (CT), where each CT node contains a set of constraints used to avoid conflicts, along with a corresponding plan consisting of individual paths for all agents that respect these constraints. The cost of a CT node is defined as the sum of the costs of all paths in its plan. CBS operates by checking for conflicts in the current CT node’s plan; if the plan is conflict-free, the algorithm terminates with an optimal solution. Otherwise, CBS selects one of the detected conflicts and resolves it by splitting the current CT node into two child nodes. In each child node, a negative constraint of the form ⟨i, v, t ⟩ is added to prevent one of the conflicting agents from occupying the contested vertex v at time 
+
+t. Consequently, this agent’s path must be replanned using the low-level search, while the paths of other agents remain unchanged. By generating two child CT nodes per conflict and exploring both resolutions, CBS guarantees completeness and optimality. 2) Prioritizing conflicts: PC heuristic [26] guides the selection of which conflict to resolve when expanding a CT node. Since different selection strategies can result in CT of varying sizes, the choice of heuristic significantly affects both the runtime and success rate of the algorithm. Conflicts in the PC heuristic are classified into three types: cardinal, semi-cardinal, and non-cardinal. A conflict is cardinal if splitting a CT node over it increases the costs of both child nodes, semi-cardinal if only one child’s cost increases, and non-cardinal if neither child’s cost increases. The PC strategy prioritizes resolving cardinal conflicts, followed by semi-cardinal and non-cardinal conflicts, sig-nificantly reducing the number of expanded CT nodes and enhancing algorithm efficiency. 3) Disjoint splitting: The standard conflict splitting strategy is non-disjoint, i.e., when it splits a problem into two subproblems, some solutions are shared by both subproblems, which can create duplication of search effort. To address this issue, DS strategy [27] introduces positive and negative constraints to handle vertex conflicts. A negative constraint ⟨i, v, t ⟩ means agent i must not be at v at time t, while a positive constraint ⟨i, v, t ⟩ means agent i must be at v at time t. When splitting a CT node over a conflict, it selects one of the conflicting agents and generates two child nodes: one with a negative constraint and the other with a positive constraint. This DS strategy preserves the theoretical properties of CBS while reducing redundant search efforts, and it can also improve the success rate in solving instances. IV. Method This section presents the implementation of CBS-NIC, which incorporates time-interval-based conflict detection and constraint definition tailored to MAPF Z at the high level, and integrates an enhanced SIPP algorithm at the low level. In addition, we introduce a novel framework BOGD, and provide a theoretical analysis of its perfor-mance, with a particular focus on the asymptotic regret bound. A. CBS-NIC solver 1) Time-interval-based conflict detection: CBS-NIC is designed for MAPF Z , where each action has an integer duration, i.e., the execution time of an action is an integer multiple of a unit time step. Under this setting, the execution of an action naturally induces a time interval during which an agent occupies a vertex or an edge. Let eti 
+
+> i
+
+= ( vti 
+
+> i
+
+, v tei 
+
+> i
+
+) ∈ E denote the edge traversed by agent i, where ti and tei are the start and end time steps of the traversal, respectively, with duration tei − ti ∈ N.The traversal induces a spatio-temporal occupancy over the half-open time interval [ti, t ei ). Specifically, agent i
+
+occupies the start vertex vti 
+
+> i
+
+at time step ti, and for any time step t ∈ (ti, t ei ), it is considered to be traversing and thus occupying edge ei = ( vti 
+
+> i
+
+, v tei 
+
+> i
+
+). At time step tei , the agent reaches the target vertex vtei 
+
+> i
+
+, which is treated as the start of its subsequent occupancy. The formal definitions of conflicts are given as follows: Definition 1 (Vertex Conflict): A vertex conflict occurs when two agents i and j occupy the same vertex v ∈ V
+
+at the same time step t ∈ N. Formally, a vertex conflict is defined as: 
+
+∃v ∈ V, t ∈ N, s.t. vti = vtj = v, 
+
+where vti and vtj represent the positions of agents i and 
+
+j at time step t. Such a conflict is denoted by the tuple 
+
+⟨i, j, v, t ⟩.Definition 2 (Edge Conflict): An edge conflict occurs when two agents i and j traverse the same edge in opposite directions during overlapping time intervals. Formally, an edge conflict is defined as: 
+
+∃eti 
+
+> i
+
+, e tj 
+
+> j
+
+∈ E, s.t. vtei 
+
+> i
+
+= vtj 
+
+> j
+
+and vtej 
+
+> j
+
+= vti 
+
+> i
+
+,
+
+where eti 
+
+> i
+
+= ( vti 
+
+> i
+
+, v tei 
+
+> i
+
+) and etj 
+
+> j
+
+= ( vtj 
+
+> j
+
+, v tej 
+
+> j
+
+) represent the edges traversed by agents i and j, starting at time steps 
+
+ti and tj and ending at time steps tei and tej , respectively. The time intervals are considered overlapping if: 
+
+ti < t ej ≤ tei or ti ≤ tj < t ei .
+
+Such an edge conflict is denoted by the tuple ⟨i, j, e ti 
+
+> i
+
+, e tj 
+
+> j
+
+⟩.Fig. 2(a) illustrates a 4-agents MAPF Z instance. The dashed borders indicate each agent’s start location, and the same-color borders mark their destinations. For agents 
+
+i and j, an edge conflict occurs on edge L-M. Fig. 2(b) shows the unsafe interval of edge conflict between agents 
+
+i and j. The time interval for agent i to cross edge eti 
+
+> i
+
+=(vti 
+
+> i
+
+, v tei 
+
+> i
+
+) is (ti, t ei ), and for agent j to cross edge etj 
+
+> j
+
+=(vtj 
+
+> j
+
+, v tej 
+
+> j
+
+) is (tj , t ej ). The unsafe interval is when the agents simultaneously traverse the edge. This occurs in two cases: 1) Agent j starts before agent i finishes, i.e., ti < t ej ≤ tei .2) Agent j starts after agent i has already started, i.e., 
+
+ti ≤ tj < t ei . If tej = tei or ti = tj , it indicates that both agents traverse the edge simultaneously. If ti = tej or tj =
+
+tei , it implies a vertex conflict at either L or M. 2) Time-interval-based constraints definition: In CBS-NIC, the high-level search selects the minimum cost leaf node N and performs conflict detection on its solution 
+
+N. Π. If no conflicts are found, N is the valid solution, and the search halts. Otherwise, the high-level search expands N to resolve the conflict by generating two new CT nodes, Ni and Nj . To compute the constraints to add to Ni and Nj , CBS-NIC determines the unsafe intervals for each vertex or edge. The specific constraints are defined as follows: For a vertex conflict ⟨i, j, v, t ⟩, the added constraints are designed to prevent agent i from being at vertex v at time step t, or to prevent agent j
+
+from being at vertex v at time t. As a result, the unsafe time for vertex v is time step t. This can be mathematically expressed as ⟨i, v, t ⟩ and ⟨j, v, t ⟩. For an edge conflict 
+
+⟨i, j, e ti 
+
+> i
+
+, e tj 
+
+> j
+
+⟩, the added constraints are to prevent agent i
+
+from occupying edge eti 
+
+> i
+
+during the time interval (tj , t ej ), or to prevent agent j from occupying edge etj 
+
+> j
+
+during the time interval (ti, t ei ). This can be mathematically expressed as: 
+
+⟨i, e ti 
+
+> i
+
+, (tj , t ej )⟩ and ⟨j, e tj 
+
+> j
+
+, (ti, t ei )⟩.Fig. 2: Conflict detection and constraint addition of CBS-NIC framework. 3) Disjoint splitting for CBS-NIC: To reduce the expan-sion of CT nodes, we introduce the DS technique, which incorporates both positive and negative constraints. For a conflict ⟨i, j, v, t ⟩, CBS-NIC-DS generates two child CT nodes and adds a negative constraint ⟨i, v, t ⟩ to one and a positive constraint ⟨i, v, t ⟩ to the other. Negative con-straints ⟨i, v, t ⟩ indicate that agent i cannot occupy vertex 
+
+v at time step t (all previously introduced constraints are negative constraints). On the other hand, positive constraints ⟨i, v, t ⟩ specify that agent i must occupy vertex 
+
+v at time step t. Positive constraints are composed of multiple negative constraints: for agent i, it cannot reach any vertices other than v at time t, and for other agents (∀j ∈ A, j ̸ = i), they cannot reach vertex v at time step 
+
+t. The definition of a positive constraint is as follows: Definition 3 (Positive Constraint): For the positive constraint ⟨i, v, t ⟩, it is equivalent to the union of two sets of negative constraints. The first set of negative constraints 
+
+Ci ensures that agent i cannot occupy any vertex other than v at time t, which is mathematically represented as: 
+
+Ci = {⟨ i, v ′, t ⟩ | v′̸ = v, v ′ ∈ V }.
+
+The second set of negative constraints C¬i ensures that no other agent can occupy vertex v at time t, which is represented as: 
+
+C¬i = {⟨ j, v, t ⟩ | j̸ = i, j ∈ A}.
+
+The positive constraint for agent i to occupy vertex v at time t is the union of these two sets: 
+
+Cp = Ci ∪ C¬i.
+
+In Fig. 2(a), for agents k and l, a vertex conflict arises at one of the vertices G, H, or I. In Fig. 2(c), CBS-NIC with non-disjoint splitting resolves conflicts by generating multiple CT nodes for each conflict, resulting in redundant nodes and higher computational costs. In contrast, Fig. 2(d) demonstrates CBS-NIC-DS with disjoint splitting, which prunes infeasible nodes and reduces the number of CT nodes, achieving the same solution with fewer leaf nodes and improved efficiency. 4) SIPP for the low-level of CBS-NIC: The low-level solver of CBS-NIC is built on constrained Safe Interval Path Planning (SIPP) [28]. SIPP computes a set of safe intervals for each location v ∈ V , where a safe interval is defined as the maximal contiguous time interval during which an agent can occupy or arrive at v without colliding with moving obstacles. Unlike the original SIPP, which minimizes the total duration of action sequences in a continuous-time domain, the enhanced SIPP operates in a discrete-time domain and directly incorporates integer edge weights. This adaptation ensures compatibility with MAPF Z , where edge traversal costs are explicitly defined as integers. To adapt SIPP as the low-level solver for CBS-NIC, it is modified to prohibit actions that violate the given con-straints, ensuring compliance with the conflict resolution process. For a vertex conflict constraint ⟨i, v, t ⟩, the agent is prohibited from occupying vertex v at time step t. This is achieved by splitting the safe intervals of v accordingly. For instance, if v initially has a single safe interval [0 , ∞),it is split into two intervals: [0 , t ) and (t, ∞), ensuring the agent cannot occupy v during the restricted time step. For an edge conflict constraint ⟨i, e ti 
+
+> i
+
+, (tj , t ej )⟩, agent i is forbidden from traversing edge eti 
+
+> i
+
+= ( vti 
+
+> i
+
+, v tei 
+
+> i
+
+) during the time interval (tj , t ej ). If the planned traversal by agent 
+
+i overlaps with this interval, i.e., the agent attempts to move from vti 
+
+> i
+
+to vtei 
+
+> i
+
+starting at any time t ∈ (tj , t ej ),the action is considered invalid. To enforce this, the safe intervals of edge eti 
+
+> i
+
+are adjusted by removing the interval 
+
+(tj , t ej ), which represents the conflict period. To satisfy the constraint, the agent must wait at vti 
+
+> i
+
+until the start of the next safe interval, i.e., until t ≥ tej , before performing the traversal. 5) CBS-NIC pseudo-code: The pseudo code for the CBS-NIC algorithm is shown in Algorithm 1. Initially, the algorithm starts by constructing an initial path set 
+
+Π. For each agent i, it computes the initial path πi using the SIPP algorithm and adds it to the path set Π. The input of SIPP includes the graph G, start location Si,goal location Gi, and the constraint set ∅ (lines 1-4). Next, conflict nodes, which contain all conflicts, their corresponding constraints, and the paths under those constraints, are generated using getP Cnodes (Algorithm 2). The initial conflict tree (CT) node is created, including the constraint set ∅, conflict nodes, the path set Π, and the cost of path. This initial CT node is then added to the OPEN list for further processing (lines 5-7). The main loop continues until the OPEN list is empty. At each iteration, the node N with the minimal cost is extracted from the OPEN list. If no conflict nodes are found in node N , the algorithm returns the current Algorithm 1: CBS-NIC pseudo code. Input: A tuple ⟨G , S, G ⟩
+
+Output: The conflict-free solution.  
+
+> 1
+
+Initialize path set Π ← ∅ ; 
+
+> 2
+
+foreach agent i do  
+
+> 3
+
+πi ← SIP P (G, S i, G i, ∅); 
+
+> 4
+
+Append πi to Π ; 
+
+> 5
+
+conflictNodes ← getP Cnodes (Π , ∅); 
+
+> 6
+
+start ← (∅, conflictNodes, Π, cost( Π));  
+
+> 7
+
+Create OPEN and add start to OPEN;  
+
+> 8
+
+while OPEN is not empty do  
+
+> 9
+
+N ← OPEN. pop () ; 
+
+> 10
+
+if N.conf lictN odes is empty then  
+
+> 11
+
+return N. Π 
+
+> 12
+
+c ← getHighestP Cnode (N.conflictNodes);  
+
+> 13
+
+for n in c.nodes do  
+
+> 14
+
+Create leaf node newNode of root N ; 
+
+> 15
+
+newNode. cp ← n.constraints;  
+
+> 16
+
+newNode. Π ← n. Π; 
+
+> 17
+
+newNode.cost ← cost(n. Π);  
+
+> 18
+
+newNode.conflictNodes 
+
+← getP Cnodes (newNode. Π, newNode. cp);  
+
+> 19
+
+OPEN.push(newNode);  
+
+> 20
+
+return False set of paths N. Π (lines 8-11). Otherwise, the algorithm selects a conflict node c using getHighestP Cnode , which prioritizes cardinal conflicts over semi-cardinal conflicts, and semi-cardinal conflicts over non-cardinal conflicts. It then iterates through the nodes in c. nodes involved in the conflict, creating a leaf node newN ode under the root CT node N . The constraint cp of newN ode is set to 
+
+n. constraint, the path Π of newN ode is n. Π, and the cost of newN ode is cost (n. Π) . The conflict nodes of newN ode 
+
+are generated using Algorithm 2, with the input being the path and constraint of newN ode . The newN ode is then added to the OPEN list. If no solution is found, the algorithm returns False (lines 12-19). The pseudo-code for obtaining the priority conflict node is outlined in Algorithm 2. The algorithm takes as input a tuple ⟨G , S, G ⟩, representing the graph, start, and goal locations for the agents, along with the global constraint set Call and the current paths Π. An empty list is initialized to store detected conflicts and their associated nodes. The algorithm iterates over all agent pairs i, j and examines their paths at each timestep up to Tmax . For each pair of agents, the algorithm first computes the start timestep ti, t j and end timestep tei , t ej
+
+of the agent i and j crossing the edge e at time step t
+
+according to their paths πi, π j (lines 1-4). It then first checks for a vertex conflict as defined in Definition 1. If a vertex conflict exists, the corresponding constraint set Cp = {〈i, v ti 
+
+> i
+
+, t 〉 , 〈i, v ti 
+
+> i
+
+, t 〉} is added. Otherwise, it checks for an edge conflict as defined in Definition 2. If Algorithm 2: Get priority conflict node pseudo code. Input: A tuple ⟨G , S, G ⟩, constraints Call , paths Π.Output: The set of conflict nodes conflictNodes.  
+
+> 1
+
+conflictNodes = {};  
+
+> 2
+
+for i ← 1, j ← i + 1 to k do  
+
+> 3
+
+for t ← 1 to Tmax do  
+
+> 4
+
+Get ti, t ei , t j , t ej according to πi, π j ; 
+
+> 5
+
+// Vertex conflict;  
+
+> 6
+
+if vti 
+
+> i
+
+= vtj 
+
+> j
+
+then  
+
+> 7
+
+conflict = 〈i, j, v ti 
+
+> i
+
+, t 〉; 
+
+> 8
+
+Cp = {〈i, v ti 
+
+> i
+
+, t 〉 , 〈i, v ti 
+
+> i
+
+, t 〉}; 
+
+> 9
+
+break;  
+
+> 10
+
+// Edge conflict;  
+
+> 11
+
+else if ( vti 
+
+> i
+
+= vtej 
+
+> j
+
+and vtei 
+
+> i
+
+= vtj 
+
+> j
+
+) and (ti < t ej ≤ tei or ti ≤ tj < t ei ) then  
+
+> 12
+
+conflict = ⟨i, j, e ti 
+
+> i
+
+, e tj 
+
+> j
+
+⟩; 
+
+> 13
+
+Cp = {⟨ i, e ti 
+
+> i
+
+, (tj , t ej )⟩, ⟨j, e tj 
+
+> j
+
+, (ti, t ei )⟩} ; 
+
+> 14
+
+break;  
+
+> 15
+
+if conflict is empty then  
+
+> 16
+
+continue;  
+
+> 17
+
+conflictNode.conflict = conflict;  
+
+> 18
+
+for cp in Cp do  
+
+> 19
+
+n.constraints = cp ∪ Call ; 
+
+> 20
+
+n. Π = SIPP( G, S, G, n.constraints );  
+
+> 21
+
+conflictNode.nodes. push (n);  
+
+> 22
+
+conflictNodes. push (conflictNode);  
+
+> 23
+
+Use PC strategy to prioritize nodes in conflictNodes;  
+
+> 24
+
+return conflictNodes an edge conflict is found, the corresponding constraint set Cp = {⟨ i, e ti 
+
+> i
+
+, (tj , t ej )⟩, ⟨j, e tj 
+
+> j
+
+, (ti, t ei )⟩} is added (lines 6-14). After detecting a conflict, the algorithm creates a conflict node, associates it with the constraints Cp and 
+
+Call , computes the updated path Π for the node using SIPP, and adds the node to the list of conflict nodes. The conflicts are categorized as cardinal, semi-cardinal, and non-cardinal to prioritize resolution. Finally, the algorithm returns conflictNodes(lines 15-24) B. Bayesian Optimization for Graph Design 1) The framework of bayesian optimization: The graph discretization problem is formulated as a multi-objective optimization task that seeks to balance computational ef-ficiency with discretization accuracy. Let s denote the dis-cretization parameter. The first objective is the algorithm runtime T (s), modeled as an expensive black-box function. The second objective is the discretization error, defined as 
+
+C(s) = ∑ki=1 
+
+∑
+
+> e∈πi
+
+∣∣we − round ( we
+
+> s
+
+) · s∣∣, where we is the original edge weight, πi is the path of agent i, and k is the total number of agents. The error measures the cumulative Fig. 3: The framework of BOGD. deviation between original and discretized weights along the paths of all agents. To tackle this problem, the BOGD framework, illus-trated in Fig. 3, adopts a two-level hierarchical structure. At the lower level, for any candidate discretization pa-rameter s, the original real-valued edge weights wi ∈ R>0
+
+are transformed into integer weights by computing w′ 
+
+> i
+
+=round( wi/s ). This transformation enables the application of CBS-NIC, which operates on integer-weighted graphs, while implicitly maintaining an approximation to the original costs with a bounded discretization error. At the upper level, BOGD searches for the optimal discretization parameter s. A surrogate model M is built to approximate the unknown runtime function T (s) based on historical observations. The error function C(s), being deterministic and known, is incorporated directly. A multi-objective optimization (MO) problem is then formulated using the acquisition function (AF) derived from the surrogate model and the known error function. To initialize the optimization process, a biased initial population is generated for a genetic algorithm. This population is evaluated using the score function ˜F (s) = 
+
+AF (M, s ) + C(s), which favors candidates with both high potential and high uncertainty, the latter being captured by the AF. NSGA-II [28], a widely adopted multi-objective genetic algorithm, is employed to evolve the population. The algorithm ranks solutions via fast non-dominated sorting and applies crossover and mutation operations to efficiently explore the search space. After obtaining a Pareto front from the surrogate multi-objective problem, BOGD selects a candidate s that minimizes ˜F (s) from the front to be evaluated by the true black-box function. This strategy promotes exploration by prioritizing solutions with high uncertainty, thereby improving model accuracy and facilitating convergence toward the true Pareto front. The acquisition function used in this framework follows the Lower Confidence Bound (LCB) principle: 
+
+LCB (s) = μ∗(s) −
+
+√
+
+2 log (td/ 2+2 π2/3δ) · σ∗(s),
+
+where μ∗(s) and σ∗(s) denote the posterior mean and standard deviation from the surrogate model, t is the current iteration, d is the dimensionality of the design space (here, d = 1), and δ ∈ (0 , 1) determines the confidence level [29]. This acquisition function facilitates the trade-off between exploitation and exploration. 2) Regret bound: In the MAPF problem, the objective is to optimize the discretization parameter s ∈ [smin , s max ]
+
+to balance the algorithm runtime T (s), and the dis-cretization error C(s). The BOGD framework addresses this multi-objective optimization problem by iteratively selecting st at each iteration t. This subsection derives a sublinear regret bound for the cumulative regret R(s∗), en-suring the theoretical guarantees of the BOGD approach. Theorem 1: Let s∗ ∈ S∗ be a solution in the Pareto optimal set, and st ∈ St be the solution obtained by BOGD at iteration t. Define the total regret as 
+
+R(s∗) = ∥RT (s∗), R C (s∗)∥ using the maximum norm, where RT (s∗) = ∑tm
+
+> t=1
+
+(T (st) − T (s∗)) and RC (s∗) =∑tm
+
+> t=1
+
+(C(st)−C(s∗)) . Then, with probability at least 1−δ,the regret is bounded as: 
+
+R(s∗) ≤ √dt mβtm γtm + W D √tm,
+
+where d = 1 since s is one-dimensional, βtm = 2 log 
+
+( π2t2
+
+> m
+> 6δ
+
+)
+
+with δ ∈ (0 , 1] as the confidence parameter, γtm is the maximum information gain of T (s) after tm iterations, 
+
+D = smax − smin is the diameter of the decision space, 
+
+tm is the maximum number of iterations, and W =∑ki=1 
+
+∑ 
+
+> e∈πi
+> we
+> smin
+
+.Proof 4.1: The regret bound is derived by separately bounding RT (s∗) and RC (s∗), then combining them to obtain the total regret under the maximum norm. Step 1: Bounding RT (s∗). The runtime objective T (s)
+
+is modeled as a Gaussian process (GP). We use the lower confidence bound (LCB) acquisition function: 
+
+LCB t(s) = μt−1(s) − √2 log Kt · σt−1(s),
+
+where μt−1(s) and σt−1(s) denote the posterior mean and standard deviation of the GP at iteration t − 1, and Kt = 
+
+> π2t2
+> 6δ
+
+. According to [29], with probability at least 1 − δ:
+
+|T (s) − μt−1(s)| ≤ √2 log Kt · σt−1(s).
+
+Assuming st is selected to minimize LCB t(s) within the Pareto set St, either LCB t(st) ≤ LCB t(s∗) or st = s∗. By [30], this implies: LCB t(st) ≤ LCB t(s∗) ≤ T (s∗). Thus: 
+
+T (st) − T (s∗) ≤ T (st) − LCB t(st)
+
+≤ T (st) − μt−1(st) + √2 log Ktσt−1(st),
+
+≤ 2√2 log Ktσt−1(st),
+
+Summing over tm iterations and applying results from [29], the cumulative regret for T (s) is: RT (s∗) ≤√C1dt mβtm γtm , where d = 1, C1 = 8/log (1 + σ−2),
+
+βtm = 2 log 
+
+( π2t2
+
+> m
+> 6δ
+
+)
+
+, and γtm is the maximum information gain. Step 2: Bounding RC (s∗). The error objective C(s) = ∑ki=1 
+
+∑
+
+> e∈πi
+
+∣∣we − round ( we
+
+> s
+
+) · s∣∣ is deterministic. We establish its Lipschitz continuity. For a single term ce(s) = ∣∣we − round ( we
+
+> s
+
+) · s∣∣, within an interval where 
+
+round ( we
+
+> s
+
+) = m, we have: ce(s) = |we − m · s| . The derivative is ±m, and since m ≤ we 
+
+> s
+
+, for s ≥ smin , the slope is bounded by we 
+
+> smin
+
+. The Lipschitz constant for C(s)
+
+over all edges is: L ≤ ∑ki=1 
+
+∑ 
+
+> e∈πi
+> we
+> smin
+
+. The cumulative regret for C(s) is: 
+
+RC (s∗) = 
+
+> tm
+
+∑
+
+> t=1
+
+(C(st) − C(s∗)) 
+
+≤
+
+> tm
+
+∑
+
+> t=1
+
+|C(st) − C(s∗)|≤ L ·
+
+> tm
+
+∑
+
+> t=1
+
+|st − s∗|.
+
+Since st, s ∗ ∈ [smin , s max ], |st −s∗| ≤ D, where D = smax −
+
+smin . In Bayesian optimization, the sum of distances grows sublinearly: ∑tm 
+
+> t=1
+
+|st − s∗| ≤ D√tm [31]. Thus: 
+
+RC (s∗) ≤
+
+( k∑
+
+> i=1
+
+∑
+
+> e∈πi
+
+we
+
+smin 
+
+)
+
+D√tm.
+
+Step 3: Total Regret Bound. The total regret R(s∗) = 
+
+∥[RT (s∗), R C (s∗)] ∥∞ is bounded by: 
+
+R(s∗) ≤ max 
+
+(√ dt mβtm γtm , W D √tm
+
+)
+
+.
+
+A conservative bound is: 
+
+R(s∗) ≤ √dt mβtm γtm + W D √tm.
+
+Both terms scale as O(√tm log tm), ensuring sublinear regret. Theorem 1 guarantees that as the number of iterations increases, the regret converges to zero at a sublinear rate. This property is critical for optimization problems, as it indicates that BOGD becomes increasingly efficient and effective over time [32]. In graph design applications, where numerous evaluations may be required to optimize edge weights, the sublinear regret bound highlights the scalability and robustness of BOGD, making it a valuable tool for real-world graph optimization scenarios [33]. C. Theoretical Analysis of CBS-NIC We analyze the optimality and completeness of CBS-NIC for solving the MAPF Z problem on a weighted graph 
+
+G = ( V, E, W ) with positive integer edge weights. Time is discretized into integer timesteps. The objective is to minimize the makespan cost (Π) = max i c(πi), where c(πi)
+
+is the arrival time of agent i at its goal. The low-level planner SIPP is complete and optimal under a given set of constraints [28]. Theorem 2 (Optimality and Completeness of CBS-NIC): If a conflict-free solution exists, CBS-NIC will find one and it will be a minimum-makespan solution. Proof 4.2: Optimality: Let Π∗ be an optimal solution with makespan M ∗. Conflicts are detected and resolved by branching with interval-based constraints that forbid one conflicting action. As a result, there exists a branch of the conflict tree whose accumulated constraints are consistent with Π∗. Since the low-level SIPP planner com-putes shortest paths under the imposed constraints, the corresponding CT node N ∗ reconstructs Π∗ and satisfies 
+
+cost (N ∗) = M ∗. The high-level search expands CT nodes in non-decreasing order of cost (N ) using best-first search. This implies that all nodes with a cost less than or equal to M ∗ will be expanded before any node with cost greater than M ∗. Furthermore, adding constraints cannot decrease the makespan, because the constrained agent’s feasible path set is reduced, and SIPP always returns the shortest feasible path. Therefore, cost (N ′) ≥ cost (N ) for every child node N ′ of N . Now suppose the algorithm returns a conflict-free solution with cost M > M ∗. In this case, the node N ∗ with cost M ∗ must either still be in OPEN or have been expanded earlier. Since M ∗ < M ,best-first search would have expanded N ∗ before any node of cost M , leading to a contradiction. Thus, CBS-NIC will first expand the optimal conflict-free node N ∗ with makespan M ∗, ensuring that it is optimal with respect to makespan. Completeness: CBS-NIC is complete because it system-atically explores the CT using best-first search and re-solves conflicts with sound pairwise branching constraints. When two agents conflict at a vertex (or edge) during a specific time interval, the algorithm branches by adding mutually exclusive constraints: one forbidding the first agent from using the resource in that interval, and the other forbidding the second agent. This branching is sound because, in any valid conflict-free solution, at least one agent must avoid the resource during the conflicting time interval. Thus, each valid solution is preserved in at least one of the child nodes and never eliminated from both branches. Since the graph, the number of agents, and the discrete time horizon up to M ∗ are finite, the total number of possible interval-based constraints is also finite. This implies that the portion of the CT with nodes having cost ≤ M ∗ is finite. The high-level search expands nodes in non-decreasing cost order, ensuring that every branch that could contain a valid solution is preserved due to the soundness of the branching constraints. If a conflict-free solution exists, a CT node that satisfies the constraints of that solution, with individual paths (computed by SIPP) realizing it without conflicts, will eventually be expanded. When this node is conflict-free, it is returned as a valid solution. Therefore, CBS-NIC is guaranteed to find a valid solution whenever one exists. V. Experiments In this section, we designed evaluation experiments to assess the effectiveness of the proposed algorithm in different scenarios. The simulator was developed in C++, and the experiments were run on a laptop with Intel Core i7 2.10 GHz CPU and 16GB RAM. A. Experimental setup In our experiments, we utilized graphs from the re-cently introduced MAPF benchmark suite, available in Fig. 4: The roadmap visualization includes varying num-bers of vertices and edges. the Moving AI repository [34]. This benchmark includes two types of graphs: 2k-neighborhood grids and roadmap-based graphs. These graphs cover a wide range of scenar-ios, including video game maps (e.g., den520d), warehouse logistics (warehouse-20-40-10-2-2), randomly generated environments (random-64-64-10), field robotics (empty-16-16), and urban maps (Berlin-1-256, Boston-0-256). To evaluate performance on graphs with non-unit edge costs, we applied the following procedure: For each grid map, we created a corresponding graph where each vertex represents a grid cell, and edges were added between each cell and its 2k nearest neighbors, with k ranging from 3 to 5. For the roadmap-based environments, we employ Constrained Delaunay Triangulation (CDT) [35] to construct roadmaps in three representative map envi-ronments: Berlin-1-256, random-64-64-10, and den520d. As shown in Fig. 4, each roadmap differs in terms of the number of nodes and edges, reflecting the diversity of spatial layouts and obstacle distributions across the selected maps. By generating roadmaps using CDT with integrated obstacle constraints and inflation techniques, we construct consistent yet topologically diverse testing environments. This enables a comprehensive evaluation of the scalability and adaptability of our approach across varying levels of environmental complexity. For each graph, 25 scenario files were used, each containing ran-domly selected, non-overlapping start-goal pairs sampled from the graph vertices. To ensure a fair and consistent comparison, all evaluated methods are tested on the identical set of task instances for each scenario. We evaluate and compare the proposed CBS-NIC against several closely related algorithms, including CCBS [4], CBS-NIC with BOGD strategy (CBS-NIC-B), Baeline, Meta-agent CBS (MA-CBS) [36] and Enhanced Partial Expansion A* (EPEA) along with its restart variant EPEA-restart [13]. The parameters c3, c4, and c5 denote the number of neighbors used in the 2k-neighborhood grids, corresponding to k = 3, 4, 5, respectively. For the other algorithms, we report results only for c5 to avoid redundancy, as it serves as a representative case that sufficiently reflects relative performance differences across methods. It is worth noting that MA-CBS and EPEA (including EPEA-restart) are designed specifi-cally for grid-based MAPF and operate under different neighborhood structures.Therefore, their implementations 0 20 40 60 80 100 120 140 160 020 40 60 80 100                                                
+
+> Success Rates/%
+> Number of agent
+> 020 40 60 80 100 120 140 160 020 40 60 80 100
+> Success Rates/%
+> Number of agent
+> 020 40 60 80 100 120 140 160 020 40 60 80 100
+> Success Rates/%
+> Number of agent
+> 020 40 60 80 100 120 140 160 180 020 40 60 80 100
+> Success Rates/%
+> Number of agent
+> 050 100 150 200 250 300 020 40 60 80 100
+> Success Rates/%
+> Number of agent
+> 020 40 60 80 100 120 140 160 020 40 60 80 100
+> Success Rates/%
+> Number of agent
+> CBS-NIC-c3 CBS-NIC-c4 CBS-NIC-c5 CBS-NIC-B CCBS-c3
+> CCBS-c4 CCBS-c5 MA-CBS EPEA EPEA-restart
+
+Fig. 5: The success rate for different algorithms and their variants on gridmaps. are limited to different grid neighborhoods rather than roadmap environments. In CCBS and its variants, agents are represented as disks with a radius of 0.5. The Baseline method adopts a simplified graph construction strategy, where continuous edge costs are directly discretized via integer rounding. B. Results 1) Success rate results: We evaluated the success rates of various algorithms within a 30-second time limit, considering different numbers of agents across various graphs. Fig. 5 illustrates the success rate on gridmaps. Across all tested graphs, CBS-NIC-B consistently achieves a higher success rate than other baseline algorithms. This improvement is attributed to the proposed BOGD strategy for graph discretization, which enables the se-lection of a more effective discretization parameter s,thereby enhancing solution efficiency. In contrast, CCBS suffers from low solution efficiency due to its unbounded continuous state space, limiting its scalability to scenarios with only 10 − 30 agents. Our proposed method, however, successfully scales to over 100 agents while maintaining a 100% success rate. The CBS-NIC variant without the BOGD strategy demonstrates comparable performance to existing methods such as MA-CBS and EPEA. These baselines exhibit limitations: EPEA’s partial expansion 10 20 30 40 50                        
+
+> 100 200 300 400
+> CBS-NIC CBS-NIC-B MA-CBS CCBS
+> makespan
+> number of agent
+> 10 20 30 40 50
+> 150 200 250 300 350
+> makespan
+> number of agent
+> 10 20 30 40 50
+> 150 200 250 300 350
+> makespan
+> number of agent
+> 10 20 30 40 50
+> 20 40 60 80
+> makespan
+> number of agent
+> 10 20 30 40 50
+> 210 280 350 420 490
+> makespan
+> number of agent
+> 10 20 30 40 50
+> 40 60 80 100
+> makespan
+> number of agent
+
+Fig. 6: The makespan for different algorithms on gridmaps. strategy offers limited benefits in densely constrained environments and may incur overhead that diminishes its scalability; MA-CBS introduces significant computational overhead due to the exponential growth of the joint search space when agents are merged into meta-agents. These factors collectively limit their effectiveness in large-scale or highly constrained scenarios. In the warehouse map, CBS-NIC-B shows limited improvement compared to other maps. This is because the many narrow aisles cause numerous neighbor nodes to be blocked by obstacles, reducing the effectiveness of the BOGD strategy. 2) Solution cost results: Fig. 6 presents box plots comparing the makespan of different algorithms on various grid maps. Since MA-CBS, EPEA, and its variant EPEA-restart yield nearly identical makespan results, we use MA-CBS as a representative in the figure. Similarly, CBS-NIC and MA-CBS show comparable performance, as both aim to minimize makespan by finding conflict-free paths using an optimal search strategy. In contrast, CBS-NIC-B typically results in a higher makespan than CBS-NIC, primarily due to the discretization of the graph. CCBS operates in continuous space and accounts for agent size, which also leads to a larger makespan compared to discrete-space methods. Notably, on the warehouse map, CBS-NIC-B exhibits a significantly higher makespan than other algorithms. This is attributed to the structural char-acteristics of the map, specifically the dense distribution of aisles, which imposes stricter constraints on discretized path planning. Overall, although CBS-NIC-B incurs a slight sacrifice in makespan optimality, it significantly improves the success rate of solving MAPF Z instances. For instance, on the Berlin gridmap with 50 agents, an increase of 5.83% in makespan leads to a substantial 68% improvement in the success rate. 3) The runtime results: Fig. 7 illustrates the runtime performance of different algorithms using both line graphs and scatter plots. The line graph represents the average runtime across multiple instances, while the scatter plot 10 20 30 40 50 60 70                                   
+
+> Number of agents
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> Runtime (s)
+> 10 20 30 40 50 60 70
+> Number of agents
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> Runtime (s)
+> 10 20 30 40 50 60 70
+> Number of agents
+> 0
+> 10
+> 20
+> 30
+> Runtime (s)
+> 20 40 60 80 100 120
+> Number of agents
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> Runtime (s)
+> 25 50 75 100 125 150 175
+> Number of agents
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> Runtime (s)
+> 10 20 30 40 50 60 70
+> Number of agents
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> Runtime (s)
+> CBS-NIC-B CBS-NIC CCBS MA-CBS EPEA-restart EPEA
+
+Fig. 7: The runtime for different algorithms on gridmaps. shows the distribution and variability of individual run-times. A maximum runtime threshold of 30 seconds was set for all algorithms. When CCBS consistently reaches this upper limit, it indicates that the algorithm failed to find a conflict-free solution within the allotted time. From the figure, it is evident that the proposed CBS-NIC-B achieves the lowest runtime among all evaluated methods. Even as the number of agents exceeds 100, CBS-NIC-B is able to maintain execution times within approximately one second, demonstrating excellent scalability and efficiency. MA-CBS and EPEA follow in terms of performance, with moderate runtimes that grow with problem complexity. In contrast, CCBS incurs the highest runtime, which is primarily due to its operation in an unbounded, contin-uous state space and the additional overhead introduced by considering agent sizes and continuous-time collision checking. These results highlight the advantages of CBS-NIC-B in terms of both speed and robustness, especially in large-scale multi-agent scenarios. 4) Performance on roadmaps: The roadmap evaluation results are presented in Table I, which reports both the success rate and runtime performance. Since other baseline algorithms cannot be directly applied to roadmap-based planning, we compare our approach with two variants of CCBS: CCBS with DS and PC (denoted as CCBS+DP), and a suboptimal version with a suboptimality bound of w = 1 .3 (denoted as CCBS+DP-1.3). From the re-sults, it is evident that our proposed CBS-NIC and its variant CBS-NIC-B exhibit significantly better scalability compared to CCBS. On the random roadmap, CBS-NIC-B maintains a 100% success rate even when the number of agents reaches 100, whereas CCBS fails to TABLE I: Performance comparison of different methods across three map types and varying numbers of agents.                                                                                                  
+
+> Map #Agents Succ. Rate (%) / Runtime (s) Baseline CBS-NIC-B CCBS+DP CCBS+DP-1.3 den520d 10 100 / 0.698 100 / 0.004 72 / 3.165 72 / 0.011 20 100 / 1.588 100 / 0.007 4 / 19.885 20 / 0.023 30 72 / 7.865 100 / 0.025 0 / – 0 / – 40 28 / 7.749 100 / 0.087 0 / – 0 / – 50 4 / 10.125 100 / 0.088 0 / – 0 / – 70 0 / – 88 / 2.893 0 / – 0 / – 90 0 / – 52 / 2.494 0 / – 0 / – 110 0 / – 28 / 6.737 0 / – 0 / – Berlin 10 100 / 0.011 100 / 0.008 100 / 0.036 100 / 0.053 20 100 / 0.115 100 / 0.013 92 / 5.450 88 / 2.494 30 100 / 3.338 100 / 0.045 32 / 8.052 56 / 0.664 40 76 / 6.954 100 / 0.117 0 / – 0 / 0.630 50 36 / 14.678 100 / 0.316 0 / – 0 / 0.238 70 0 / – 96 / 2.104 0 / – 0 / – 90 0 / – 52 / 7.375 0 / – 0 / – random 10 100 / 0.002 100 / 0.002 92 / 0.025 84 / 0.020 20 100 / 0.006 100 / 0.003 68 / 2.266 56 / 0.579 30 100 / 0.054 100 / 0.006 12 / 5.760 16 / 3.911 40 100 / 0.357 100 / 0.014 0 / – 4 / 1.545 70 64 / 2.699 100 / 0.064 0 / – 0 / – 100 0 / 1.097 100 / 0.097 0 / – 0 / – 130 0 / 1.321 88 / 1.321 0 / – 0 / – 170 0 / 3.328 36 / 3.328 0 / – 0 / – Each cell reports the success rate (%) and average runtime (s), computed over successful instances only. “–” indicates failure in all cases.
+
+produce any valid solution beyond 40 agents. Similarly, the runtime of CCBS is several orders of magnitude higher than that of our methods. The suboptimal version of CCBS (CCBS+DP-1.3) achieves improved performance over its optimal counterpart, which can be attributed to its trade-off between solution optimality and computational efficiency. By relaxing the optimality requirement, it gains in runtime and success rate at the cost of solution quality. These findings confirm that CBS-NIC-B is highly scalable and efficient even in roadmap-based planning scenarios. 5) Ablation Study on BOGD: To evaluate the effec-tiveness of BOGD, we conduct an ablation study by comparing it with a Baseline graph construction strategy, as summarized in Table II. Overall, incorporating BOGD consistently improves robustness and computational ef-ficiency across different problem scales. From a success rate perspective, CBS-NIC-B maintains near-perfect per-formance in most settings and remains effective as the number of agents increases, whereas the Baseline degrades significantly and often fails in high-density scenarios. In terms of runtime, CBS-NIC-B consistently achieves significant speedups, often reducing computation time by one to two orders of magnitude, especially in large-scale instances. This suggests that BOGD significantly enhances the solvability of the problem in high-density scenarios. VI. CONCLUSIONS In this paper, we introduced MAPF Z , a novel variant of the multi-agent pathfinding problem that accommodates non-unit integer costs, thereby providing a more realistic modeling framework for scenarios with heterogeneous edge weights. To solve MAPF Z efficiently, we proposed CBS-NIC-B, which achieves notable performance gains by TABLE II: Ablation study of BOGD: comparison between baseline and CBS-NIC-B 
+
+Map #Agents Baseline CBS-NIC-B Succ.(%) Runtime(s) Succ.(%) Runtime(s) berlin 20 100 0.242 100 0.011 50 92 3.62 100 0.07 80 64 5.5 100 0.21 110 20 5.06 96 1.18 140 0 – 92 2.08 boston 20 100 0.36 100 0.011 50 96 1.78 100 0.12 80 84 5.01 100 0.32 110 52 9.6 96 0.74 140 32 23.08 92 2.32 den520d 20 96 1.17 100 0.014 30 84 3.05 100 0.054 40 60 6.57 100 0.084 50 56 9.44 100 0.16 60 24 13.46 100 0.33 empty 40 100 0.039 100 0.0063 80 96 0.25 100 0.046 120 80 1.48 100 0.57 150 68 3.74 88 1.83 180 20 11.04 64 1.91 random 20 100 0.008 100 0.003 50 100 0.094 100 0.017 80 68 0.81 100 0.11 110 32 1.18 96 1.62 140 0 – 48 6.3 
+
+integrating time-interval-based conflict detection, refined constraint formulation, an enhanced SIPP algorithm, and the BOGD framework. Experimental results demonstrate that CBS-NIC-B significantly improves success rates while maintaining competitive solution quality. In future work, we plan to extend our algorithm to more challenging scenarios, such as large-scale environments. Furthermore, we aim to incorporate spatio-temporal planning consid-erations to better reflect real-time execution constraints and enhance the practical applicability of our approach. ACKNOWLEDGMENT This work was supported by the National Natural Science Foundation of China under Grant No. 62373139, Young Talents sponsorship Project of Hunan under Grant No.2023RC3121, Hunan University-China Mobile Com-munications Group Co.,Ltd. Industrial Intelligent Joint Institute, and China Mobile Limited. References 
+
+[1] H. Cao, H. Xiong, W. Zeng, H. Jiang, Z. Cai, L. Hu, L. Zhang, and W. Lu, “Safe reinforcement learning-based motion planning for functional mobile robots suffering uncontrollable mobile robots,” IEEE Transactions on Intelligent Transportation Sys-tems, vol. 25, no. 5, pp. 4346–4363, 2024. [2] J. Yu and S. LaValle, “Structure and intractability of optimal multi-robot path planning on graphs,” in Proceedings of the AAAI Conference on Artificial Intelligence, vol. 27, no. 1, 2013, pp. 1443–1449. [3] B. Ai, J. Jiang, S. Yu, and Y. Jiang, “Multi-agent path finding with heterogeneous edges and roundtrips,” Knowledge-Based Systems, vol. 234, p. 107554, 2021. [4] A. Andreychuk, K. Yakovlev, P. Surynek, D. Atzmon, and R. Stern, “Multi-agent pathfinding with continuous time,” Artificial Intelligence, vol. 305, p. 103662, 2022. [5] Z. Ren, S. Rathinam, and H. Choset, “Loosely synchronized search for multi-agent path finding with asynchronous actions,” in 2021 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). IEEE, 2021, pp. 9714–9719. [6] S. Zhou, S. Zhao, and Z. Ren, “Loosely synchronized rule-based planning for multi-agent path finding with asynchronous actions,” in Proceedings of the AAAI Conference on Artificial Intelligence, vol. 39, no. 14, 2025, pp. 14 763–14 770. [7] ——, “Lsrp*: Scalable and anytime planning for multi-agent path finding with asynchronous actions,” in Proceedings of the International Symposium on Combinatorial Search, vol. 18, 2025, pp. 275–276. [8] J. Chen, Y. Zhang, L. Wu, T. You, and X. Ning, “An adap-tive clustering-based algorithm for automatic path planning of heterogeneous uavs,” IEEE Transactions on Intelligent Trans-portation Systems, vol. 23, no. 9, pp. 16 842–16 853, 2022. [9] G. Sharon, R. Stern, A. Felner, and N. R. Sturtevant, “Conflict-based search for optimal multi-agent pathfinding,” Artificial intelligence, vol. 219, pp. 40–66, 2015. [10] A. Felner, J. Li, E. Boyarski, H. Ma, L. Cohen, T. S. Kumar, and S. Koenig, “Adding heuristics to conflict-based search for multi-agent path finding,” in Proceedings of the International Conference on Automated Planning and Scheduling, vol. 28, 2018, pp. 83–87. [11] J. Li, A. Felner, E. Boyarski, H. Ma, and S. Koenig, “Im-proved heuristics for multi-agent path finding with conflict-based search.” in IJCAI, vol. 2019, 2019, pp. 442–449. [12] J. Li, G. Gange, D. Harabor, P. J. Stuckey, H. Ma, and S. Koenig, “New techniques for pairwise symmetry breaking in multi-agent path finding,” in Proceedings of the International Conference on Automated Planning and Scheduling, vol. 30, 2020, pp. 193–201. [13] M. Goldenberg, A. Felner, R. Stern, G. Sharon, N. Sturtevant, R. C. Holte, and J. Schaeffer, “Enhanced partial expansion a,” Journal of Artificial Intelligence Research, vol. 50, pp. 141–187, 2014. [14] M. Barer, G. Sharon, R. Stern, and A. Felner, “Suboptimal variants of the conflict-based search algorithm for the multi-agent pathfinding problem,” in Proceedings of the international symposium on combinatorial Search, vol. 5, no. 1, 2014, pp. 19–27. [15] J. Li, W. Ruml, and S. Koenig, “Eecbs: A bounded-suboptimal search for multi-agent path finding,” in Proceedings of the AAAI conference on artificial intelligence, vol. 35, no. 14, 2021, pp. 12 353–12 362. [16] K. Okumura, M. Machida, X. Défago, and Y. Tamura, “Priority inheritance with backtracking for iterative multi-agent path finding,” Artificial Intelligence, vol. 310, p. 103752, 2022. [17] T. T. Walker, N. R. Sturtevant, and A. Felner, “Extended increasing cost tree search for non-unit cost domains.” in IJCAI, 2018, pp. 534–540. [18] L. Cohen, T. Uras, T. Kumar, and S. Koenig, “Optimal and bounded-suboptimal multi-agent motion planning,” in Proceed-ings of the International Symposium on Combinatorial Search, vol. 10, no. 1, 2019, pp. 44–51. [19] T. Walker, D. Chan, and N. Sturtevant, “Using hierarchical constraints to avoid conflicts in multi-agent pathfinding,” in Proceedings of the International Conference on Automated Planning and Scheduling, vol. 27, 2017, pp. 316–324. [20] R. Geraerts and M. H. Overmars, “A comparative study of probabilistic roadmap planners,” in Algorithmic foundations of robotics V. Springer, 2004, pp. 43–57. [21] K. Okumura, R. Yonetani, M. Nishimura, and A. Kanezaki, “Ctrms: Learning to construct cooperative timed roadmaps for multi-agent path planning in continuous spaces,” arXiv preprint arXiv:2201.09467, 2022. [22] A. A. Neto, D. G. Macharet, and M. F. M. Campos, “Multi-agent rapidly-exploring pseudo-random tree,” Journal of Intel-ligent & Robotic Systems, vol. 89, no. 1, pp. 69–85, 2018. [23] C. Henkel and M. Toussaint, “Optimized directed roadmap graph for multi-agent path finding using stochastic gradient descent,” in Proceedings of the 35th Annual ACM Symposium on Applied Computing, 2020, pp. 776–783. [24] J. Stenzel and L. Schmitz, “Automated roadmap graph creation and mapf benchmarking for large agv fleets,” in 2022 8th Inter-national Conference on Automation, Robotics and Applications (ICARA). IEEE, 2022, pp. 146–153. [25] Q. Wang, M. Wulfmeier, and B. Wagner, “Voronoi-based heuris-tic for nonholonomic search-based path planning,” in Intelligent Autonomous Systems 13: Proceedings of the 13th International Conference IAS-13. Springer, 2015, pp. 445–458. [26] E. Boyarski, A. Felner, R. Stern, G. Sharon, O. Betzalel, D. Tolpin, and E. Shimony, “Icbs: The improved conflict-based search algorithm for multi-agent pathfinding,” in Proceedings of the International Symposium on Combinatorial Search, vol. 6, no. 1, 2015, pp. 223–225. [27] J. Li, D. Harabor, P. J. Stuckey, A. Felner, H. Ma, and S. Koenig, “Disjoint splitting for multi-agent path finding with conflict-based search,” in Proceedings of the international conference on automated planning and scheduling, vol. 29, 2019, pp. 279– 283. [28] K. Deb, A. Pratap, S. Agarwal, and T. Meyarivan, “A fast and elitist multiobjective genetic algorithm: Nsga-ii,” IEEE transactions on evolutionary computation, vol. 6, no. 2, pp. 182–197, 2002. [29] N. Srinivas, A. Krause, S. M. Kakade, and M. Seeger, “Gaussian process optimization in the bandit setting: No regret and experimental design,” arXiv preprint arXiv:0912.3995, 2009. [30] S. Belakaria, A. Deshwal, N. K. Jayakodi, and J. R. Doppa, “Uncertainty-aware search framework for multi-objective bayesian optimization,” in Proceedings of the AAAI Conference on Artificial Intelligence, vol. 34, no. 06, 2020, pp. 10 044–10 052. [31] S. Bubeck, “Convex optimization: Algorithms and complexity,” Foundations and trends in Machine Learning, vol. 8, no. 3-4, pp. 231–357, 2015. [32] N. Srinivas, A. Krause, S. M. Kakade, and M. W. Seeger, “Information-theoretic regret bounds for gaussian process op-timization in the bandit setting,” IEEE transactions on infor-mation theory, vol. 58, no. 5, pp. 3250–3265, 2012. [33] B. Shahriari, K. Swersky, Z. Wang, R. P. Adams, and N. De Fre-itas, “Taking the human out of the loop: A review of bayesian optimization,” Proceedings of the IEEE, vol. 104, no. 1, pp. 148–175, 2015. [34] N. R. Sturtevant, “Benchmarks for grid-based pathfinding,” IEEE Transactions on Computational Intelligence and AI in Games, vol. 4, no. 2, pp. 144–148, 2012. [35] L. P. Chew, “Constrained delaunay triangulations,” in Pro-ceedings of the third annual symposium on Computational geometry, 1987, pp. 215–222. [36] G. Sharon, R. Stern, A. Felner, and N. Sturtevant, “Meta-agent conflict-based search for optimal multi-agent path finding,” in Proceedings of the International Symposium on Combinatorial Search, vol. 3, no. 1, 2012, pp. 97–104. 
+
+Hongkai Fan received the B.S. degree in infor-mation engineering from the Hunan University of Technology, Zhuzhou, China, in 2021. He is currently pursuing the Ph.D. degree in electronic and information engineering with the College of Electrical and Information Engi-neering, Hunan University,Changsha, China. His research interests include the multi-agent systems and industrial manufacturing. 
+
+Qinjing Xie received her B.S. degree from Xi-angtan University, Xiangtan, China, in 2023. She is currently pursuing her M.S. degree in Electronic and Information Engineering at the College of Electrical and Information Engi-neering, Hunan University, Changsha, China. Her research interests include multi-robot path graph optimization and layout optimiza-tion. 
+
+Bo Ouyang received the B.Eng. degree in electronic and information engineering from Zhejiang University China, in 2009 and the Ph.D. degree in circuits and systems from Zhejiang University, China in 2014. He is now an Associate Professor with the School of Electrical and Information Engineering, Hu-nan University, Changsha, China. His research interest includes the multi-agent system and complex networks. Yaonan Wang received the B.S. degree in computer engineering from East China Science and Technology University, Fuzhou, China, in 1981, and the M.S. and Ph.D. degrees in electrical engineering from Hunan University, Changsha, China, in 1990 and 1994, respec-tively. Since 1995, he has been a Professor with Hunan University. His research interests include robotics, intelligent perception and control, and computer vision for industrial applications. Prof. Wang is an Academician of the Chinese Academy of Engineering. 
+
+Zhi Yan received the B. Eng. degree in me-chanical mechanical engineering and automa-tion and the Ph.D. degree in communica-tion and information system from Beijing University of Posts and Telecommunications (BUPT), Beijing, China, in 2007 and 2012, respectively. From August 2012 to March 2014, he was a researcher with the Network Technology Research Center, China Unicom Research Institute. He is currently an Asso-ciate Professor with the School of Electrical and Information Engineering, Hunan University, Changsha, China. His current research interests are cooperative communication, cellular network analysis and modeling. 
+
+Jiawen He received the B.Eng. degree in mechanical design, manufacturing, and au-tomation from Nanjing Agricultural Univer-sity China, in 2019 and the M.S. degree in mechanical engineering from Central South University, Changsha, China, in 2022. He is currently working toward the Ph.D. degree in control science and engineering with Hu-nan University, Changsha, China. His current research interests include robotic control and industrial manufacturing. 
+
+Zheng Fang received the B.S. degree from Central South university, Changsha, China in 2018, and the Ph.D. degrees in physical elec-tronics from Peking University, Beijing, China in 2023. Since 2023, he has been a researcher in China Mobile Group Hunan Company Lim-ited, Changsha, China. His research interests include robotics and electronics for industrial applications.

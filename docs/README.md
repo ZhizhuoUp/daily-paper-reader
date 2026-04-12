@@ -6,61 +6,58 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-04-11
-- 运行时间：2026-04-11 19:55:06 UTC
+- 最新运行日期：2026-04-12
+- 运行时间：2026-04-12 19:47:19 UTC
 - 运行状态：成功
-- 本次总论文数：13
-- 精读区：2
+- 本次总论文数：12
+- 精读区：1
 - 速读区：11
 
 ### 今日简报（AI）
-今日聚焦机器人操作与全身控制，深度解析了 RichMap 精度平衡与 CMP 鲁棒追踪两项核心突破。
-重点关注 RichMap 在复杂任务中的灵活性提升，以及 CMP 如何通过流形投影优化移动操作的稳定性。
-建议开发者关注这些算法在多智能体协作及边缘智能场景下的跨领域应用潜力。
-- 详情：[/202604/11/README](/202604/11/README)
+今日精选 12 篇前沿论文，深度聚焦神经屏障学习与多智能体安全规划的融合突破。
+重点推荐 FORMULA 框架，其通过神经 MPC 显著提升了编队安全性，同时关注未知水下空间导航与风险优先的博弈规划。
+建议从 FORMULA 的安全保障机制入手，探索深度学习如何赋能传统控制算法以应对复杂动态环境。
+- 详情：[/202604/12/README](/202604/12/README)
 
 ### 精读区论文标签
-1. [RichMap: A Reachability Map Balancing Precision, Efficiency, and Flexibility for Rich Robot Manipulation Tasks](/202604/11/2604.06778v1-richmap-a-reachability-map-balancing-precision-efficiency-and-flexibility-for-rich-robot-manipulation-tasks)  
-   标签：评分：8.0/10、query:q6
-   evidence：用于机器人操作任务的高效可达性地图，支持快速查询
-2. [CMP: Robust Whole-Body Tracking for Loco-Manipulation via Competence Manifold Projection](/202604/11/2604.07457v1-cmp-robust-whole-body-tracking-for-loco-manipulation-via-competence-manifold-projection)  
-   标签：评分：8.0/10、query:q6
-   evidence：具有安全约束的移动操作全身跟踪
+1. [FORMULA: FORmation MPC with neUral barrier Learning for safety Assurance](/202604/12/2604.04409v1-formula-formation-mpc-with-neural-barrier-learning-for-safety-assurance)  
+   标签：评分：8.0/10、query:q1
+   evidence：结合神经屏障学习的MPC用于安全与避障
 
 ### 速读区论文标签
-1. [Towards Edge Intelligence via Autonomous Navigation: A Robot-Assisted Data Collection Approach](/202604/11/2604.03623v1-towards-edge-intelligence-via-autonomous-navigation-a-robot-assisted-data-collection-approach)  
-   标签：评分：7.0/10、query:q4
-   evidence：自主导航与导航性能优化
-2. [ROSClaw: A Hierarchical Semantic-Physical Framework for Heterogeneous Multi-Agent Collaboration](/202604/11/2604.04664v1-rosclaw-a-hierarchical-semantic-physical-framework-for-heterogeneous-multi-agent-collaboration)  
-   标签：评分：7.0/10、query:q6
-   evidence：机器人操作与导航任务框架
-3. [Optimality Robustness in Koopman-Based Control](/202604/11/2604.05633v1-optimality-robustness-in-koopman-based-control)  
-   标签：评分：7.0/10、query:q2
-   evidence：基于Koopman算子的数据驱动最优控制与最优性鲁棒性分析
-4. [BiCoord: A Bimanual Manipulation Benchmark towards Long-Horizon Spatial-Temporal Coordination](/202604/11/2604.05831v1-bicoord-a-bimanual-manipulation-benchmark-towards-long-horizon-spatial-temporal-coordination)  
-   标签：评分：7.0/10、query:q6
-   evidence：双臂机器人操作基准测试
-5. [Learning-Based Strategy for Composite Robot Assembly Skill Adaptation](/202604/11/2604.06949v1-learning-based-strategy-for-composite-robot-assembly-skill-adaptation)  
-   标签：评分：7.0/10、query:q6
-   evidence：装配任务中位置控制机械臂的技能自适应
-6. [Karma Mechanisms for Decentralised, Cooperative Multi Agent Path Finding](/202604/11/2604.07970v1-karma-mechanisms-for-decentralised-cooperative-multi-agent-path-finding)  
+1. [Instantaneous Planning, Control and Safety for Navigation in Unknown Underwater Spaces](/202604/12/2604.05310v1-instantaneous-planning-control-and-safety-for-navigation-in-unknown-underwater-spaces)  
    标签：评分：7.0/10、query:q1
-   evidence：用于无冲突轨迹的分散式多智能体路径规划
-7. [Vision-Based End-to-End Learning for UAV Traversal of Irregular Gaps via Differentiable Simulation](/202604/11/2604.02779v2-vision-based-end-to-end-learning-for-uav-traversal-of-irregular-gaps-via-differentiable-simulation)  
-   标签：评分：6.0/10、query:q1
-   evidence：基于视觉的无人机穿越导航与控制
-8. [CRAFT: Video Diffusion for Bimanual Robot Data Generation](/202604/11/2604.03552v1-craft-video-diffusion-for-bimanual-robot-data-generation)  
+   evidence：导航中的实时规划与避障
+2. [Multi-Agent Pathfinding with Non-Unit Integer Edge Costs via Enhanced Conflict-Based Search and Graph Discretization](/202604/12/2604.05416v1-multi-agent-pathfinding-with-non-unit-integer-edge-costs-via-enhanced-conflict-based-search-and-graph-discretization)  
+   标签：评分：7.0/10、query:q1
+   evidence：具有碰撞模型和图搜索的多智能体路径规划
+3. [Not All Agents Matter: From Global Attention Dilution to Risk-Prioritized Game Planning](/202604/12/2604.05449v1-not-all-agents-matter-from-global-attention-dilution-to-risk-prioritized-game-planning)  
+   标签：评分：7.0/10、query:q1
+   evidence：用于避障的风险优先级博弈规划
+4. [HiPolicy: Hierarchical Multi-Frequency Action Chunking for Policy Learning](/202604/12/2604.06067v1-hipolicy-hierarchical-multi-frequency-action-chunking-for-policy-learning)  
+   标签：评分：7.0/10、query:q6
+   evidence：用于机械臂操作中细粒度闭环控制的分层动作分块
+5. [Controller Design for Structured State-space Models via Contraction Theory](/202604/12/2604.07069v1-controller-design-for-structured-state-space-models-via-contraction-theory)  
+   标签：评分：7.0/10、query:q2
+   evidence：通过收缩理论进行非线性系统控制器设计
+6. [Learning over Forward-Invariant Policy Classes: Reinforcement Learning without Safety Concerns](/202604/12/2604.07875v1-learning-over-forward-invariant-policy-classes-reinforcement-learning-without-safety-concerns)  
+   标签：评分：7.0/10、query:q2
+   evidence：基于前向不变性的安全强化学习控制
+7. [Periodic Event-Triggered Explicit Reference Governor for Constrained Attitude Control on SO(3)](/202604/12/2604.04041v1-periodic-event-triggered-explicit-reference-governor-for-constrained-attitude-control-on-so3)  
+   标签：评分：6.0/10、query:q2
+   evidence：无需在线优化的受限姿态控制
+8. [AnyUser: Translating Sketched User Intent into Domestic Robots](/202604/12/2604.04811v1-anyuser-translating-sketched-user-intent-into-domestic-robots)  
    标签：评分：6.0/10、query:q6
-   evidence：双臂机器人数据生成与轨迹合成
-9. [Scalar Federated Learning for Linear Quadratic Regulator](/202604/11/2604.05088v1-scalar-federated-learning-for-linear-quadratic-regulator)  
-   标签：评分：6.0/10、query:q2
-   evidence：用于线性二次调节器控制的联邦学习
-10. [A flatness proof of the exponential turnpike phenomenon for linear-quadratic optimal control problems](/202604/11/2604.05511v1-a-flatness-proof-of-the-exponential-turnpike-phenomenon-for-linear-quadratic-optimal-control-problems)  
-   标签：评分：6.0/10、query:q2
-   evidence：线性二次最优控制与轨迹参数化
-11. [Feedback control of Lagrange multipliers for non-smooth constrained optimization](/202604/11/2604.06511v1-feedback-control-of-lagrange-multipliers-for-non-smooth-constrained-optimization)  
-   标签：评分：6.0/10、query:q2
-   evidence：约束优化问题的控制理论框架
+   evidence：7自由度辅助机械臂的动作生成
+9. [PHAROS: Pipelined Heterogeneous Accelerators for Real-time Safety-critical Systems With Deadline Compliance](/202604/12/2604.05308v1-pharos-pipelined-heterogeneous-accelerators-for-real-time-safety-critical-systems-with-deadline-compliance)  
+   标签：评分：6.0/10、query:q5
+   evidence：用于实时安全关键系统的硬件加速器
+10. [Precise Aggressive Aerial Maneuvers with Sensorimotor Policies](/202604/12/2604.05828v1-precise-aggressive-aerial-maneuvers-with-sensorimotor-policies)  
+   标签：评分：6.0/10、query:q1
+   evidence：利用感觉运动策略通过狭窄缝隙实现避障
+11. [Precise Aggressive Aerial Maneuvers with Sensorimotor Policies](/202604/12/2604.05828v2-precise-aggressive-aerial-maneuvers-with-sensorimotor-policies)  
+   标签：评分：6.0/10、query:q4
+   evidence：穿过狭窄开口的激进空中机动运动规划与控制
 
 
 <div class="dpr-home-promo-card">
