@@ -6,58 +6,61 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-04-12
-- 运行时间：2026-04-12 19:47:19 UTC
+- 最新运行日期：2026-04-13
+- 运行时间：2026-04-13 20:06:38 UTC
 - 运行状态：成功
-- 本次总论文数：12
-- 精读区：1
+- 本次总论文数：13
+- 精读区：2
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 12 篇前沿论文，深度聚焦神经屏障学习与多智能体安全规划的融合突破。
-重点推荐 FORMULA 框架，其通过神经 MPC 显著提升了编队安全性，同时关注未知水下空间导航与风险优先的博弈规划。
-建议从 FORMULA 的安全保障机制入手，探索深度学习如何赋能传统控制算法以应对复杂动态环境。
-- 详情：[/202604/12/README](/202604/12/README)
+探索机器人统一运动规划与自动驾驶的智能调度，今日深度解析 2 篇高分前沿成果。
+重点关注多机械臂通用的实时底层规划接口，以及大模型驱动的自动驾驶多规划器调度方案。
+建议关注具身智能在 3D 场景中的灵巧操作及人形机器人全身控制的跨领域应用。
+- 详情：[/202604/13/README](/202604/13/README)
 
 ### 精读区论文标签
-1. [FORMULA: FORmation MPC with neUral barrier Learning for safety Assurance](/202604/12/2604.04409v1-formula-formation-mpc-with-neural-barrier-learning-for-safety-assurance)  
-   标签：评分：8.0/10、query:q1
-   evidence：结合神经屏障学习的MPC用于安全与避障
+1. [One Interface, Many Robots: Unified Real-Time Low-Level Motion Planning for Collaborative Arms](/202604/13/2604.08787v1-one-interface-many-robots-unified-real-time-low-level-motion-planning-for-collaborative-arms)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：基于二次规划的协作机械臂实时底层运动规划
+2. [Open-Ended Instruction Realization with LLM-Enabled Multi-Planner Scheduling in Autonomous Vehicles](/202604/13/2604.08031v1-open-ended-instruction-realization-with-llm-enabled-multi-planner-scheduling-in-autonomous-vehicles)  
+   标签：评分：8.0/10、query:q2
+   evidence：基于MPC的运动规划器和实时反馈控制
 
 ### 速读区论文标签
-1. [Instantaneous Planning, Control and Safety for Navigation in Unknown Underwater Spaces](/202604/12/2604.05310v1-instantaneous-planning-control-and-safety-for-navigation-in-unknown-underwater-spaces)  
-   标签：评分：7.0/10、query:q1
-   evidence：导航中的实时规划与避障
-2. [Multi-Agent Pathfinding with Non-Unit Integer Edge Costs via Enhanced Conflict-Based Search and Graph Discretization](/202604/12/2604.05416v1-multi-agent-pathfinding-with-non-unit-integer-edge-costs-via-enhanced-conflict-based-search-and-graph-discretization)  
-   标签：评分：7.0/10、query:q1
-   evidence：具有碰撞模型和图搜索的多智能体路径规划
-3. [Not All Agents Matter: From Global Attention Dilution to Risk-Prioritized Game Planning](/202604/12/2604.05449v1-not-all-agents-matter-from-global-attention-dilution-to-risk-prioritized-game-planning)  
-   标签：评分：7.0/10、query:q1
-   evidence：用于避障的风险优先级博弈规划
-4. [HiPolicy: Hierarchical Multi-Frequency Action Chunking for Policy Learning](/202604/12/2604.06067v1-hipolicy-hierarchical-multi-frequency-action-chunking-for-policy-learning)  
+1. [HEX: Humanoid-Aligned Experts for Cross-Embodiment Whole-Body Manipulation](/202604/13/2604.07993v1-hex-humanoid-aligned-experts-for-cross-embodiment-whole-body-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：用于机械臂操作中细粒度闭环控制的分层动作分块
-5. [Controller Design for Structured State-space Models via Contraction Theory](/202604/12/2604.07069v1-controller-design-for-structured-state-space-models-via-contraction-theory)  
-   标签：评分：7.0/10、query:q2
-   evidence：通过收缩理论进行非线性系统控制器设计
-6. [Learning over Forward-Invariant Policy Classes: Reinforcement Learning without Safety Concerns](/202604/12/2604.07875v1-learning-over-forward-invariant-policy-classes-reinforcement-learning-without-safety-concerns)  
-   标签：评分：7.0/10、query:q2
-   evidence：基于前向不变性的安全强化学习控制
-7. [Periodic Event-Triggered Explicit Reference Governor for Constrained Attitude Control on SO(3)](/202604/12/2604.04041v1-periodic-event-triggered-explicit-reference-governor-for-constrained-attitude-control-on-so3)  
-   标签：评分：6.0/10、query:q2
-   evidence：无需在线优化的受限姿态控制
-8. [AnyUser: Translating Sketched User Intent into Domestic Robots](/202604/12/2604.04811v1-anyuser-translating-sketched-user-intent-into-domestic-robots)  
-   标签：评分：6.0/10、query:q6
-   evidence：7自由度辅助机械臂的动作生成
-9. [PHAROS: Pipelined Heterogeneous Accelerators for Real-time Safety-critical Systems With Deadline Compliance](/202604/12/2604.05308v1-pharos-pipelined-heterogeneous-accelerators-for-real-time-safety-critical-systems-with-deadline-compliance)  
-   标签：评分：6.0/10、query:q5
-   evidence：用于实时安全关键系统的硬件加速器
-10. [Precise Aggressive Aerial Maneuvers with Sensorimotor Policies](/202604/12/2604.05828v1-precise-aggressive-aerial-maneuvers-with-sensorimotor-policies)  
-   标签：评分：6.0/10、query:q1
-   evidence：利用感觉运动策略通过狭窄缝隙实现避障
-11. [Precise Aggressive Aerial Maneuvers with Sensorimotor Policies](/202604/12/2604.05828v2-precise-aggressive-aerial-maneuvers-with-sensorimotor-policies)  
+   evidence：全身操作与时间运动动力学
+2. [BLaDA: Bridging Language to Functional Dexterous Actions within 3DGS Fields](/202604/13/2604.08410v1-blada-bridging-language-to-functional-dexterous-actions-within-3dgs-fields)  
+   标签：评分：7.0/10、query:q6
+   evidence：功能性灵巧操作与控制约束
+3. [Physics-Informed Reinforcement Learning of Spatial Density Velocity Potentials for Map-Free Racing](/202604/13/2604.09499v1-physics-informed-reinforcement-learning-of-spatial-density-velocity-potentials-for-map-free-racing)  
+   标签：评分：7.0/10、query:q1
+   evidence：无预建地图的动力学规划与无碰撞赛车
+4. [Efficient Multi-Objective Planning with Weighted Maximization Using Large Neighbourhood Search](/202604/13/2604.04826v1-efficient-multi-objective-planning-with-weighted-maximization-using-large-neighbourhood-search)  
+   标签：评分：6.0/10、query:q3
+   evidence：自主导航的多目标规划与优化
+5. [Pre-Execution Safety Gate & Task Safety Contracts for LLM-Controlled Robot Systems](/202604/13/2604.05427v1-pre-execution-safety-gate--task-safety-contracts-for-llm-controlled-robot-systems)  
    标签：评分：6.0/10、query:q4
-   evidence：穿过狭窄开口的激进空中机动运动规划与控制
+   evidence：机器人执行和约束监控的安全架构
+6. [JailWAM: Jailbreaking World Action Models in Robot Control](/202604/13/2604.05498v1-jailwam-jailbreaking-world-action-models-in-robot-control)  
+   标签：评分：6.0/10、query:q4
+   evidence：机械臂运动的安全分类框架
+7. [Force Polytope-Based Cant-Angle Selection for Tilting Hexarotor UAVs](/202604/13/2604.05998v1-force-polytope-based-cant-angle-selection-for-tilting-hexarotor-uavs)  
+   标签：评分：6.0/10、query:q2
+   evidence：基于优化的无人机交互任务控制
+8. [A Physical Agentic Loop for Language-Guided Grasping with Execution-State Monitoring](/202604/13/2604.07395v1-a-physical-agentic-loop-for-language-guided-grasping-with-execution-state-monitoring)  
+   标签：评分：6.0/10、query:q6
+   evidence：机器人操作与执行监控
+9. [On-Policy Distillation of Language Models for Autonomous Vehicle Motion Planning](/202604/13/2604.07944v1-on-policy-distillation-of-language-models-for-autonomous-vehicle-motion-planning)  
+   标签：评分：6.0/10、query:q4
+   evidence：使用大语言模型的自动驾驶运动规划
+10. [ViVa: A Video-Generative Value Model for Robot Reinforcement Learning](/202604/13/2604.08168v1-viva-a-video-generative-value-model-for-robot-reinforcement-learning)  
+   标签：评分：6.0/10、query:q6
+   evidence：机器人操作强化学习
+11. [Robust Adaptive Backstepping Impedance Control of Robots in Unknown Environments](/202604/13/2604.09323v1-robust-adaptive-backstepping-impedance-control-of-robots-in-unknown-environments)  
+   标签：评分：6.0/10、query:q5
+   evidence：未知环境下机器人的鲁棒自适应反步阻抗控制
 
 
 <div class="dpr-home-promo-card">

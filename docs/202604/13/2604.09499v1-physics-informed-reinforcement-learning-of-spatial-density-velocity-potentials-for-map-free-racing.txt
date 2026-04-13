@@ -1,0 +1,641 @@
+Title: Physics-Informed Reinforcement Learning of Spatial Density Velocity Potentials for Map-Free Racing
+
+URL Source: https://arxiv.org/pdf/2604.09499v1
+
+Published Time: Mon, 13 Apr 2026 01:16:56 GMT
+
+Number of Pages: 18
+
+Markdown Content:
+> 1
+
+# Physics-Informed Reinforcement Learning of Spatial Density Velocity Potentials for Map-Free Racing 
+
+Shathushan Sivashangaran, Apoorva Khairnar, Sepideh Gohari, Vihaan Dutta and Azim Eskandarian 
+
+Abstract —Autonomous racing without prebuilt maps is a grand challenge for embedded robotics that requires kinodynamic planning from instantaneous sensor data at the acceleration and tire friction limits. Out-Of-Distribution (OOD) generalization to various racetrack configurations utilizes Machine Learning (ML) to encode the mathematical relation between sensor data and vehicle actuation for end-to-end control, with implicit localization. These comprise Behavioral Cloning (BC) that is capped to human reaction times and Deep Reinforcement Learning (DRL) which requires large-scale collisions for comprehensive training that can be infeasible without simulation but is arduous to transfer to reality, thus exhibiting greater performance than BC in simulation, but actuation instability on hardware. This paper presents a DRL method that parameterizes nonlinear vehicle dynamics from the spectral distribution of depth mea-surements with a non-geometric, physics-informed reward, to infer vehicle time-optimal and overtaking racing controls with an Artificial Neural Network (ANN) that utilizes less than 1% of the computation of BC and model-based DRL. Slaloming from simulation to reality transfer and variance-induced conservatism are eliminated with the combination of a physics engine exploit-aware reward and the replacement of an explicit collision penalty with an implicit truncation of the value horizon. The policy outperforms human demonstrations by 12% in OOD tracks on proportionally scaled hardware, by maximizing the friction circle with tire dynamics that resemble an empirical Pacejka tire model. System identification illuminates a functional bifurcation where the first layer compresses spatial observations to extract digitized track features with higher resolution in corner apexes, and the second encodes nonlinear dynamics. 
+
+Index Terms —Autonomous Racing, Kinodynamic Planning, Reinforcement Learning, Simulation Training, System Identifi-cation 
+
+I. I NTRODUCTION 
+
+# AUtonomous racing entails perception, planning, and con-trol systems that operate at the boundaries of vehi-cle handling at high speeds. Conventional approaches rely predominantly on detailed prebuilt maps, global reference trajectories, and computationally expensive optimal solvers [1]. While effective with exact states, these map dependent architectures are fundamentally brittle in the real world, where localization errors cascade into the state vector, inhibiting performance. Moreover, this intrinsic dependence on prior map 
+
+Corresponding author: Shathushan Sivashangaran 
+
+Shathushan Sivashangaran, Sepideh Gohari and Azim Eskandarian are with the Autonomous Robots and Vehicles Laboratory, College of Engineering, Virginia Commonwealth University, Richmond, VA 23284, USA. (email: sivashangars@vcu.edu; goharis@vcu.edu; eskandariana@vcu.edu). Apoorva Khairnar is with the Department of Mechanical Engineering, Virginia Tech, Blacksburg, VA 24061, USA. (email: apoorvak@vt.edu). Vihaan Dutta is with the Robotics Department, University of Michigan, Ann Arbor, MI 48109, USA. (email: vihdutta@umich.edu). 
+
+and trajectory knowledge inherently prevents effective Out-Of-Distribution (OOD) generalization, as the control policies are inextricably tied to the specific mathematically optimized geometries. Machine Learning (ML) circumvents this by computing the mathematical relation between sensor observations and nonlin-ear vehicle actuation, facilitating end-to-end control with im-plicit localization to minimize error propagation, conditioned over a large number of training data samples. End-to-end architectures utilizing Behavioral Cloning (BC) successfully deploy on hardware and generalize to different track layouts by training directly on human demonstrations [2]. Although these BC models demonstrate high sample efficiency, training on around ten thousand real world demonstration samples, compared to the millions of simulation steps required by recent Deep Reinforcement Learning (DRL) works [3]–[5], the reliance on human datasets enforces a strict performance ceiling. DRL models, unbounded by human reaction times, are capable of lapping more than twice as fast as BC in simulation [4], [6], and achieve superhuman performance in driving video games [7]. The scale of DRL training data, and the trial-and-error experience rollout that necessitates collisions, without a safety supervisor, to parameterize time-optimal kinodynamic plan-ning [8], render real world training arduous. While these poli-cies demonstrate success in simulation, the methods collapse upon physical deployment, resulting in actuation instability and rapid slaloming [4], [5]. To overcome the simulation to reality (sim-to-real) gap, contemporary DRL techniques utilize trajectory tracking hybrid residual architectures [3] that correct geometric tracking errors of a baseline controller such as Pure Pursuit (PP), requiring prebuilt maps and a precomputed optimized racing line. Precomputed mathematically optimal reference trajectories [9], [10], such as those generated with classical minimum curvature solvers, are commonly used in the DRL reward for-mulation. While these serve as rigorous benchmarks for cross comparison, utilizing these geometries as explicit training targets inherently restricts the learning process, as the agent is compelled into a regime of pure geometric path following that prevents the encoding of fundamental relations between spatial observations and nonlinear vehicle dynamics. Evaluations of DRL methods that comprise full planning, trajectory tracking, and end-to-end techniques corroborate this limitation [4]. The latter, unlike the others, does not require track information that necessitates a prebuilt map, thus, while it does not achieve the fastest lap time in the training track, generalizes to new tracks with the most favorable sim-to-real transfer. Among 
+
+> arXiv:2604.09499v1 [cs.RO] 10 Apr 2026 2
+
+the methods that utilize track information, full planning uses the centerline points whereas trajectory tracking minimizes deviation from an optimal reference trajectory, hence the latter is fastest in the training track but generalizes the worst. The catalyst for the reality gap is the reliance on low-fidelity, open-source simulation tools. Development of DRL racing architectures predominantly utilize the F1TENTH sim-ulator [11], [12], which expedited racing ML research. This comprises a 2D kinematics and dynamics solver that does not simulate 3D rigid body interactions, thus policies overfit to a simplified mathematical ideal. Furthermore, utilizing 3D physics engines does not guarantee sim-to-real performance [5]. This dichotomy illustrates the severity of the sim-to-real gap. While autonomous DRL agents [4]–[6] achieve lap times significantly faster than State-Of-The-Art (SOTA) end-to-end BC models [2], the policies lose performance when transferred to reality. This paper resolves these bottlenecks by formulating a physics-informed reward within an analytically accurate physics engine to parameterize nonlinear dynamics from spec-tral spatial density velocity potentials, rather than geomet-ric occupancy, interpreted from an instantaneous array of depth measurements, in an efficient Artificial Neural Network (ANN) with a map-and-model-free DRL policy, that requires less than 1% of the compute of BC and model-based DRL. By explicitly encoding nonlinear dynamics with a low-speed training environment, our approach achieves the stabilizing benefits of curriculum training, without the requirement for intermediate speed scheduling, enabling zero-shot transfer of encoded physics to high-speed domains. To bridge the sim-to-real gap without inducing actuation instability which is the primary performance inhibitor in sim-to-real works, we introduce an auxiliary physics engine exploit-aware reward that eliminates slaloming by addressing a root instability of discrete-time physics engines, which may mathematically permit instantaneous transitions between extreme actuator limits [5]. Furthermore, we treat collisions as an implicit value truncation without an explicit penalty. This subtle shift removes the mathematical prioritization of crash minimization, encouraging thorough exploration of the friction circle and improved generalization to new track layouts, assessed via reward ablations. The success of this framework is predicated on an expansion of environmental interaction scale. By extending training to 20,000,000 steps, the agent experiences a manifold of 15,747 edge case collisions. Notably, despite not utilizing an optimal reference trajectory to guide training, our Proximal Policy Op-timization (PPO) [13] agent achieves a mean lateral deviation of 0.08% from the optimal minimum curvature path [9] in the training environment. Furthermore, this geometry indepen-dent encoding transfers zero-shot to OOD tracks, maintaining collision-free laps and exhibiting sophisticated racing line anticipation, with an average deviation of 14 .60% from the mathematical optimum. Moreover, the policy transfers zero-shot to proportionally scaled hardware [14] to lap 26% faster than a Nonlinear Predictive Geometric Proportional-Integral-Derivative (PID) controller that was the fastest method to qualify with 10 collision-free laps at the 2023 IEEE Intelligent Vehicles Symposium, and 12% faster than a human demon-stration, that represents a best case BC performance, in OOD tracks. To further demonstrate the efficacy of the spectral velocity potential encoding for dynamics-optimized kinodynamic plan-ning, we apply the same formula to parameterize overtake maneuvers. Without altering the core Reinforcement Learning (RL) formulation, the policy infers optimized high-momentum overtake trajectories around dynamic obstacle vehicles, with post-training in a multi-agent environment, without special-ized multi-agent formulations and reference trajectories [15]. Moreover, we conduct system identification on the spatial-kinodynamic inference by dissecting the ANN’s internal ac-tivations to elucidate the internal mechanisms driving this end-to-end framework. By systematically mapping inter-layer correlations, a distinct functional bifurcation is identified, where the initial layer operates as a feature extractor that compresses observations to digitized track features with higher resolution in paramount corner apexes, while the subsequent layer encodes nonlinear dynamics to handle the vehicle at the boundary of the tire friction circle, that better fits a nonlinear empirical Pacejka tire model [16] than a linear kinematic model [17]. In summary, the contributions of this paper are as follows.  
+
+> •
+
+Spectral Kinodynamic Encoding of Spatial Density Ve-locity Potentials with a Physics-Informed Reward: The interpretation of instantaneous depth measurements as spectral signals, mapping spatial variance to velocity po-tentials and dynamic limits via a self-supervised physics-informed throttle-maximization objective, with the sta-bilizing benefits of a curriculum without intermediate scheduling, to organically teach the agent momentum-conserving, physically viable controls without prescrip-tive geometric mimicry, sequential temporal data or ex-plicit velocity inputs. The independence of reference trajectories in the reward enables encoding dynamics-optimized overtaking with the same RL formulation.  
+
+> •
+
+Auxiliary Reward for Sim-to-Real Transfer and Collision Value Truncation: The combination of an auxiliary oscil-lation reward that penalizes exploitation of discrete-time simulator permitted steering reversals, with an implicit value truncation for collisions that zeroes future expected returns instead of applying a traditional collision termina-tion penalty, to eliminate both sim-to-real slaloming and variance-induced conservatism, ensuring OOD general-ization and smooth controls on hardware.  
+
+> •
+
+Large-Scale Environmental Interaction: A training paradigm reflecting ANN scaling laws, expanding the environmental interaction to 20,000,000 simulation steps. This order-of-magnitude increase in scale, compared to geometry guided DRL architectures that comprise residual techniques trained in 2,000,000 training steps [3], and model-free that is inadequate with 8,000,000 necessitating model-based trained in 2,000,000 [5], allows the agent to experience over 15,747 edge-case collisions, successfully surmounting local optima, converging to the global optimum, and condensing the relations between depth observations and nonlinear 3
+
+rigid-body dynamics into an efficient 2-layer Multilayer Perceptron (MLP) that operates with less than 1% of the computational footprint of SOTA BC [2] and model-based DRL [5].  
+
+> •
+
+Neural Network Interpretation and System Identification: Analysis of the hidden network layers to establish vehicle dynamics models from a functional bifurcation where the first layer extracts discrete spatial states from the high-dimensional observation manifold that are subsequently utilized by the second layer to compute nonlinear ve-hicle dynamics considerate continuous controls through inhibitory and excitatory pathways. The policy implicitly learns a quasi empirical Pacejka tire model to apply steering commands that push the vehicle into nonlinear saturation by maintaining the slip angle at the boundary of the tire friction circle. II. R ELATED WORK 
+
+Autonomous racing is a subject of extensive research in-vestigations as it serves as a rigorous testbed for autonomy algorithms, at the limits of vehicle capabilities. Existing ap-proaches can be broadly categorized into hierarchical motion planning of precomputed reference paths via classical, ML or hybrid techniques, which rely on prebuilt maps [3], [18], and end-to-end kinodynamic ML models which simultane-ously solve path and motion planning from onboard sensor observations with generalization to new track configurations [2], [19]. The majority of racing research is dedicated to solving the trajectory tracking problem, where a global map and a precomputed optimal reference path [9], [10] are utilized. This is the predominant method in full-size autonomous rac-ing, which is at its infancy, hence requires tried-and-tested safety critical techniques. In full-scale competitions such as the Indy Autonomous Challenge (IAC) and Formula Student Driverless, vehicles commonly utilize hierarchical, modular perception and planning stacks [20], [21]. These frameworks utilize optimization algorithms such as Model Predictive Con-trol (MPC) and derivatives that comprise Learning Model Predictive Control (LMPC) [22], [23], and Nonlinear Model Predictive Control (NMPC) [24], [25], to maintain vehicles within track boundaries while maximizing tire forces. Al-though mathematically optimal in controlled settings, these systems are intrinsically brittle, with success predicated on a high-frequency continuous localization pipeline and the availability of detailed maps. Consequently, these do not adapt to navigate OOD dynamic, unmapped environments. Driven by the advancement of superhuman Artificial Intel-ligence (AI) in driving video games [7] and physical drone racing [26], several works investigate DRL, by adapting it as a motion planner to learn to track a time-optimal refer-ence trajectory. These match MPC’s performance with precise external motion capture systems and finetuning on physical hardware, following simulation pretraining [27]. Motivated by solving the more complex fully-onboard robotics prob-lem, hybrid residual architectures [3] represent the SOTA in sim-to-real reference tracking DRL, but do not yet match MPC, with noisy localization and state estimation. These frameworks mitigate the high-frequency slaloming of pure neural controllers by restricting the DRL policy to output minor corrections atop a classical tracking controller, such as Pure Pursuit (PP). Although trajectory tracking DRL agents achieve near optimal performance in the training track con-figuration, these do not generalize OOD as well as end-to-end agents that use onboard depth measurements and function independent of a precomputed trajectory and prebuilt map [4]. The parameterized kinodynamics remain tethered to the mathematical assumptions of the baseline tracker, rendering robust mapless OOD generalization ineffective without track-specific retraining. Consequently, full planning agents that use a prebuilt map, but utilize track centerline points and depth measurements instead of a reference trajectory, generalize OOD better than trajectory tracking agents. Achieving true mapless navigation, where the policy infers feasible trajectories and nonlinear dynamics solely from in-stantaneous sensor data, remains a grand challenge, that is only partially solved in simulation. The methods fail upon physical deployment primarily due to the reliance on low-fidelity simulation tools [11]. The F1TENTH organization, recently renamed RoboRacer, has since introduced an updated 3D simulator based on the Unity engine [28]. Although its rendering pipeline is exceptional for bridging the visual sim-to-real gap in camera-based applications, Unity was funda-mentally built as a game engine, hence its underlying physics systems are optimized for visual plausibility and real-time gaming performance rather than analytical accuracy. Game physics engines utilize mathematical approximations that fre-quently cause control models to fail when deployed to real hardware, due to a lack of continuous-time contact mechanics and actuator dynamics. Furthermore, running parallelized DRL environments within a game engine is computationally less efficient than in GPU-optimized robotics simulators. Conse-quently, SOTA sim-to-real DRL robotics policies for tasks ranging from humanoid whole body control, dexterous ma-nipulation and agile locomotion [29]–[32] utilize dedicated physics engines such as Bullet, MuJoCo, and Isaac Sim, developed specifically to close the physics reality gap. Among the end-to-end DRL methods that generalize to new track layouts, ranked in order of speed in simulation, prior works utilize continuous model-free off-policy algorithms such as Twin-Delayed Deep Deterministic Policy Gradient (TD3) and Soft Actor-Critic (SAC) [33] trained with prescriptive ref-erence trajectory aided rewards [4], discrete action algorithms such as Deep Q-Network (DQN) that output discretized left, right, or slowdown commands [6], and model-based methods such as Dreamer [5] trained in the Bullet physics engine to circumvent sim-to-real inaccuracies unlike the former two which used the F!TENTH simulator. Although Dreamer was the slowest, it was the only method to successfully deploy on non-simplified physical track configurations. However it did not solve high-frequency actuation instability, mirroring the physical deployment of policies trained in the F1TENTH simulator. Moreover, on the simplest simulation track that a model-free off-policy algorithm that Dreamer was compared to, was successful, it outperformed the model-based DRL 4
+
+policy. Furthermore, on-policy algorithms such as PPO, which is the standard for performance in AI applications such as Large Language Model (LLM) post-training and humanoid whole body control, are reported to fail. This is predominantly due to geometric tracking rewards that explicitly penalize the mathematical deviation from precomputed steering ac-tions or spatial references, negative collision penalties that enforce conservative behavior, especially pronounced in on-policy algorithms that do not utilize a replay buffer of expe-rience rollouts to sample-efficiently converge to the optimal reference in the reward formulation, immediate accumulation of failed samples in the rollout at high speeds that provide no actionable learning signal, and insufficient training scale. These formulations converge the neural network into a regime of pure geometric path-following, denying the opportunity to encode rigid-body dynamics, which PPO excels in for complex robotics tasks such as agile humanoid whole body control [30]. To attain mapless end-to-end control bypassing the sim-to-real gap, recent approaches utilize BC [2]. ML architec-tures utilizing Convolutional Neural Networks (CNNs) trained directly on real world human demonstrations, successfully deploy on hardware without prior maps. While these BC models demonstrate sample efficiency, requiring as few as 10,478 training samples compared to the millions required by DRL, the reliance on human sourced data enforces a perfor-mance threshold. As these networks mimic the operator, the theoretical maximum performance is intrinsically bottlenecked by human reaction times, preventing dynamics encoding at the limits of the lateral friction circle. Thus, in simulated envi-ronments, BC is a fraction of DRL’s performance, however, since DRL requires a significantly larger scale of training data and collisions at the limit, for parameterization of the best policy that are infeasible without simulation training, BC represents the SOTA for end-to-end ML, due to the sim-to-real inaccuracies. III. P HYSICS -I NFORMED REINFORCEMENT LEARNING OF 
+
+SPATIAL DENSITY VELOCITY POTENTIALS 
+
+Fundamental to the versatility and zero-shot sim-to-real attributes of the policy are the unified parameterization of spectral spatial density to vehicle dynamics with a physics-informed physics engine exploit-aware reward structure. By interpreting instantaneous range observations as a spectral signal rather than geometric occupancy, we project the un-bounded geometric potential directly onto the feasible vehicle dynamics manifold, directing the ANN, a 2-hidden layer MLP with 64 nodes in each layer and tanh activation, to shift its optimization objective from prescriptive geometric mimicry to autonomous kinodynamic exploration. Consequently, the agent learns an implicit inverse dynamics model, encoding track features in the first hidden layer, and the nonlinear correlations between spatial variance and permissible actuation in the second, to maximize momentum within the limits of the friction circle. To facilitate this encoding without policy col-lapse, the framework utilizes a low-speed training environment that implicitly serves as a kinodynamic scaffold, providing the stabilizing benefits of curriculum training without intermediate scheduling. We trained the policy in a Bullet physics engine based simulator [34], and physically validated it with a pro-portionally scaled car [14]. 
+
+A. Spatial Spectral Dynamics Parameterization 
+
+The explicit absence of trajectory or spatial references in the reward formulation fundamentally alters ANN parameteri-zation. To evaluate the interaction with the spectral observation space, we parameterized this spatial-kinodynamic inference utilizing two distinct continuous-control model-free actor-critic algorithms. 
+
+PPO (On-Policy). The policy is optimized with the objec-tive function LP P O defined as follows, where t is a discrete time step, ˆEt denotes the empirical average over a batch of samples, rt is the probability ratio between the new and old policies π(at|st) 
+
+> πold (at|st)
+
+, at is the executed action at observed state st, ˆAt is the Generalized Advantage Estimation (GAE) computed over tGAE time steps with discount factor γ, and 
+
+ϵ is a clipping hyperparameter that constrains the update magnitude to ensure stable learning. 
+
+LP P O = ˆEt[min (rt ˆAt, clip (rt, 1 − ϵ, 1 + ϵ) ˆAt)] (1) The policy update is driven by the GAE, while the critic network V (st) predicts the velocity potential field. By op-erating within the curriculum kinodynamic scaffold, the agent experiences the survival horizon necessary to discover and map features without immediate episode truncation. Furthermore, instead of trivially mapping high-frequency spatial constraints to low values, it learns to assign high values to specific high-frequency spectral features, such as corner apexes, that correspond to local maxima in the permissible dynamics manifold. This distinction differentiates between obstacles to be avoided and geometric limits to be exploited for momentum conservation. The network thus creates a deterministic gradient of velocity potential ∂π ∂∫ that guides the trajectory to maximize these constraints. As PPO’s on-policy optimization does not prioritize entropy maximization, the network converges to a low-entropy policy that precisely rides the edge of the friction circle, fully utilizing the track limits. 
+
+SAC (Off-Policy). An entropy objective is maximized, to balance exploration and exploitation using a stochastic actor updated by minimizing the objective function LSAC , where 
+
+M is the mini-batch size, Qtk are multiple k target critics, and h is the entropy temperature parameter. 
+
+LSAC = 1
+
+M
+
+> M
+
+X
+
+> t=1
+
+
+
+h ln π(at|st) − min  
+
+> k
+
+Qtk (st, a t)
+
+
+
+(2) The equivalent to the advantage function is derived from the Soft Q-function and the entropy-augmented target value 
+
+yt, calculated as the sum of the minimum discounted future reward Rt, discounted by γ, and the weighted entropy. 
+
+yt = Rt+γ
+
+
+
+min  
+
+> k
+
+Qtk (st+1 , a t+1 ) − h ln π(at+1 |st+1 )
+
+
+
+(3) 5
+
+The entropy regularization h ln π acts as a repulsive field against the high-frequency boundaries of the observation space, and prioritizes a broader distribution of actions, thus it intrinsically maps high spatial frequency to uncertainty, with-out reference trajectory aided rewards, yielding a conservative safety buffer that does not maximize track limits. 
+
+B. Observation Space 
+
+Depth measurements obtainable from LiDAR or camera RGB-D point clouds comprise the observation space. The number of rays nr has a bearing on successful policy learning. Prior model-free algorithms trained in the F1TENTH simulator use 20 rays, and report that an increase does not improve performance [4], [6], whereas 1080 rays were used in the Bullet physics engine, which did not yield adequate model-free policies, necessitating model-based DRL [5]. Utilizing Bullet, our observation space O comprises 170 rays spanning a 120 ◦
+
+frontal Field of View (FoV), defined as follows, where di is the depth measurement at each angle increment. 
+
+O = [ di]1×170 (4) 
+
+O is interpreted not merely as geometric occupancy, but as a spectral signal, that is, high-velocity corridors are charac-terized by low spectral density where the spatial frequency variance |∇O| ≈ 0, while constraints manifest as high-frequency discontinuities. The neural policy maps these spec-tral densities directly to permissible velocity potentials using the non-geometric mimicry, physics-informed reward. 20 rays were insufficient, whereas rays in excess of 300 did not improve performance, hence we chose 170 empirically for the Pareto optimization of training time, computation efficiency and performance. 
+
+Depth Ray Modeling in Simulation. The start (xRF ,yRF , z RF ) and end (xRT , y RT , z RT ) coordinates of depth rays were used as inputs to the physics engine’s ray tracing function to obtain the object hit position of each ray (xHP , y HP ) using which the Euclidean distance from the depth sensor’s position to detected obstacles do was determined as follows. Figure 1 illustrates the rays detecting simulated track boundaries. 
+
+do = p(xHP − xRF )2 + ( yHP − yRF )2 (5) 
+
+Fig. 1: Track boundary detection with simulated spectral depth rays. 
+
+(xRF , y RF , z RF ) were computed as follows where xL,A ,
+
+yL,A and zL,A are coordinates of the depth sensor with respect to the body frame of the Autonomous Ground Vehicle (AGV), 
+
+xA, yA and zA represent the position of the AGV in the global coordinate frame, and ψA is the AGV’s yaw. 
+
+xRF = xL,A cos (ψA) + xA (6) 
+
+yRF = yL,A sin (ψA) + yA (7) 
+
+zRF = zL,A + zA (8) 
+
+(xRT , y RT , z RT ) of nr rays each with a maximum length of dmax were computed as follows where ( π 
+
+> 4
+
+− ψA) is the LiDAR’s orientation, and θ( 1: nn ) segments the FoV θ into nr
+
+equally spaced rays. 
+
+xRT = dmax sin 
+
+
+
+( π
+
+4 − ψA) + θ( 1 : nr
+
+nr
+
+)
+
+
+
+(9) 
+
+yRT = dmax cos 
+
+
+
+( π
+
+4 − ψA) + θ( 1 : nr
+
+nr
+
+)
+
+
+
+(10) 
+
+zRT = zL,A (11) 
+
+Physical Depth Sensor Pre-Processing. Depth measure-ments for O can be inferred from LiDAR or cameras such as stereo and infrared. We tested two 360 ◦ 2D LiDARs, the YDLIDAR G2 and RPLIDAR S2, and the Intel RealSense D435i infrared camera. Each was pre-processed to filter out-liers, and spatially shaped to fit O. Among these, RPLIDAR S2 yielded the best performance as it provides seven times the data density of YDLIDAR G2, and is faster with a wider horizontal FoV than the Intel RealSense D435i. The raw 360 ◦ data was processed as follows. Once null values and other outliers are filtered, these entries are estimated by interpolating from the nearest non-zero observations that precede and follow. Next, the subset of observations within a 120 ◦ FoV directly in front of the AGV are extracted symmetrically, within the range of −60 ◦ to +60 ◦ degrees for a default 0◦ forward direction. This high resolution data is uniformly downsampled to nr .
+
+C. Action Space 
+
+The policy’s actions comprise the controls for a car, throttle 
+
+T ∈ [0 1] and steering angle δ ∈ [δmin δmax ]. Notably, braking is omitted to mimic the controls of the scaled car used for validation in contemporary research. The normalized continuous action vector a = ( aT , a δ ); 
+
+aT , a δ ∈ [−1, 1] computed by the policy was converted to T
+
+and δ as follows, where δmin and δmax are −0.36 c and 0.36 c.
+
+T = min (max (aT , 0) , 1) (12) 
+
+δ = max (min (aδ , δ max ), δ min ) (13) 
+
+Friction Modeling in Simulation. To encode nonlinear dy-namics and traction management, necessary for time-optimal racing, we used the following model to compute the target motor velocity from T . The use of T with this friction model, 6
+
+Algorithm 1 Depth Sensor Processing  
+
+> 1:
+
+Input: Os ← Raw RPLiDAR S2 observations (360° FoV)  
+
+> 2:
+
+Output: O ← Processed observations  
+
+> 3:
+
+Step 1: Outlier Handling  
+
+> 4:
+
+for i ← 1 to length (Os) do  
+
+> 5:
+
+if Os[i] is missing then  
+
+> 6:
+
+Os[i] ← 0 
+
+> 7:
+
+end if  
+
+> 8:
+
+end for  
+
+> 9:
+
+Step 2: Interpolation of Missing Values  
+
+> 10:
+
+for i ← 1 to length (Os) do  
+
+> 11:
+
+if Os[i] = 0 then  
+
+> 12:
+
+prev ← max (Os[1 : i − 1] where Os̸ = 0)  
+
+> 13:
+
+next ← min (Os[i + 1 : end ] where Os̸ = 0)  
+
+> 14:
+
+Os[i] ← prev +next  
+
+> 2
+> 15:
+
+end if  
+
+> 16:
+
+end for  
+
+> 17:
+
+Step 3: Field of View Selection  
+
+> 18:
+
+Os,f ov ← Os[θstart : θend ] where θstart = −60 ◦, θend =+60 ◦ 
+
+> 19:
+
+Step 4: Downsampling  
+
+> 20:
+
+nr ← 170  
+
+> 21:
+
+step size ← length (Os,f ov ) 
+
+> nr
+> 22:
+
+for i ← 1 to nr do  
+
+> 23:
+
+idx ← round (i × step size ) 
+
+> 24:
+
+O[i] ← Os,f ov [idx ] 
+
+> 25:
+
+end for  
+
+> 26:
+
+Return: O
+
+instead of a simplified motor force command [5] grounds the learned policy in realistic vehicle dynamics, requiring the agent to navigate the nonlinear boundaries of tire adhesion rather than relying on a frictionless acceleration proxy. The resistive force f was computed as follows where Cd and 
+
+Cr are the drag and rolling resistance constants, and vm,t −1
+
+is the target motor velocity in the prior time step. 
+
+f = vm,t −1(vm,t −1Cd + Cr ) (14) The motor acceleration for the current time step ˙vm,t was computed from the throttle input T , throttle constant CT and resistive force f as follows. 
+
+˙vm,t = CT T − f (15) The target motor velocity for the current time step vm,t to be applied, was computed as follows, where ts is the sampling time. 
+
+vm,t = vm,t −1 + ts ˙vm,t (16) Constants CT , Cd and Cr are variable parameters set to 20, 0.01 and 0.2, used to tune rate of acceleration and resistance. 
+
+CT was empirically determined for training convergence. For post-training evaluation at the physical car’s limits, we increased CT to 120. 
+
+vm,t was applied to the simulated AGV via the PyBullet motor control function with a motor force of 1.2N , and is proportional to the AGV’s velocity v. This nonlinear coupling between T and v is critical for the reward formulation. 
+
+D. Physics-Informed Simulator-Exploit Aware Reward 
+
+Reward objectives are minimally prescriptive and comprise two explicit formulas and an implicit component. In con-trast to prior works, we do not use precomputed reference trajectories or track progress, and instead derive a sparse formulation that couples the reward directly to the vehicle’s equilibrium dynamics. This necessitates the elimination of an explicit penalty after episode termination upon contact with the track boundary, without which the ANN parameterizes conservative boundary avoidance, without geometric targets. Instead, collisions are penalized by an implicit truncation of the value function, which can be visualized as the lost opportunity cost. Furthermore, high-frequency actuation in-stability is an inhibitor of sim-to-real transfer in continuous control autonomous racing, diagnosed as a classical time-optimal control artifact [5]. To resolve this sim-to-real gap, we identify the instantaneous transitions between actuator limits, perceived as a mathematically costless kinodynamic action due to physics engine inaccuracies, and apply an oscillation penalty to prune the non-physical physics engine exploit. 
+
+Self-Supervised Velocity Potential. The primary learning signal is a physics-informed sparse throttle reward, RT = T 2
+
+that organically solves the optimization problem to maximize the velocity potential Φ( v) ∝ v4 without prescriptive geo-metric mimicry inferred by evaluating the steady-state limit at 
+
+˙v = 0 , Tss as follows. 
+
+Tss = Cdv2 + Cr vCT
+
+=⇒ RT ∝ v4 (17) This projects the unbounded geometric potential onto the feasible vehicle dynamics manifold, encouraging the agent to seek a maximum Φ( v) action at subject to the physical constraint where the centripetal force required for the turn, defined by vehicle mass m, velocity v, and track curvature κ
+
+estimated from observations, does not exceed the available tire friction force μF z where μ is the coefficient of friction and 
+
+Fz is the normal force. 
+
+at s.t. mv 2
+
+κ ≤ μF z (18) A scalor multiplier of five, determined empirically, is ap-plied to RT to balance the weight of the auxiliary penalty. 
+
+Implicit Collision Value Truncation. Explicit collision penalties mathematically prioritize crash minimization over optimal speed, injecting variance-induced conservatism that manifests as timid driving and excessive wall avoidance, particularly pronounced with RT . To discourage collisions, but maximize the friction circle, we treat collisions as an implicit truncation of the value horizon V (Ot). Upon episode termination, V (Ot) = 0 instead of V (Ot) ≈ P∞ 
+
+> k=0
+
+γkT 2,transforming the penalty from an arbitrary negative scalar into a dynamic lost opportunity cost. Thus, the mathematical cost of a collision converges to approximately 11−γ . Consequently, the agent is incentivized to avoid track boundaries not out of 7
+
+programmed repulsion, but to continue accumulating maxi-mum positive velocity rewards. 
+
+Simulator Exploit Pruning. To prevent steering instability that limits real world policy transfer, we introduce a targeted kinodynamic constraint. In prior work, this phenomenon was interpreted as an artifact of classical time-optimal control and classified as bang-bang steering [5], thus was attempted to be resolved by continuous action smoothing with L2 regulariza-tion penalties to both the magnitude and rate of steering. Although this improved sim-to-real transfer, it did not mitigate it. Our analysis indicates that this behavior is a di-rect exploitation of discrete-time simulation mechanics which mathematically permit instantaneous transitions between actu-ator limits due to inaccurately modeled physical factors such as servomotor delay, chassis load transfer and tire scrubbing resistance that would naturally destabilize the car upon full-lock-to-full-lock steering reversal. Consequently, the agent learns to perceive high-frequency oscillation as a mathematically costless action. Evidence from both the prior correction architecture and our framework corroborate that introducing a specific oscillation penalty yields no alteration to simulation performance or convergence efficiency, but exclusively improves sim-to-real transfer via-bility. If slaloming was a requisite for time-optimal control, mathematically penalizing it would inherently alter the agent’s lap times within the simulation. As the theoretical optimum in simulation remains unchanged but real world performance im-proves, we posit bang-bang steering is analytically a simulator loophole rather than a theoretical optimization flaw. To resolve this sim-to-real gap we use a precise oscillation penalty RStR to prune the identified non-physical physics engine exploit as follows, where aδ,t and aδ,t −1 are the normalized steering angles at the current and previous time steps. 
+
+RStR = −2.0 if aδ,t · aδ,t −1 = −1 (19) This formulation explicitly isolates the specific min-max full-lock-to-full-lock steering reversal. By pruning this exact non-physical physics engine exploit, rather than broadly penal-izing the steering rate, the policy maintains optimal cornering performance while completely eliminating slaloming on phys-ical hardware. 
+
+Reward Ablations. To validate the reward formulation 
+
+R = 5 RT +RStR , ablation studies were conducted, comparing reward elements for convergence speed and performance. The ablations are listed in Table I where dmin is the minimum depth measurement in O and dcoll is the distance at which collision occurs. RStR was added to each ablation formula. TABLE I: Reward Ablation Experiments                  
+
+> Ablation Description Formula
+> RSquared throttle, T25T2
+> Rab 1Unsquared throttle, T5TRab 2Collision penalty, −15T2& -1 if dmin < d coll
+
+E. Simulation Training & Physical Deployment 
+
+An Intel Core i9 13900KF CPU and an NVIDIA GeForce RTX 4090 GPU were used for training, conducted over 20,000,000 time steps, encompassing 15,747 collisions, in 48 wall clock hours. This scale is infeasible in the real world. By allowing catastrophic failures in simulation, the agent fully explores the state-action space boundaries, encoding the complex correlation between spatial features and vehicle dynamics. The training hyperparameters are summarized in Table II. TABLE II: Training Hyperparameters       
+
+> Hyperparameter Value
+> Discount Factor ( γ)0.99 Learning Rate 0.0003 Rollout Buffer Size 2048 Batch Size 64 Number of Epochs 10
+
+The comparison policies which comprise SAC and the reward ablations were trained with the same parameters for up to 50,000,000 time steps, with model checkpoints saved every 5,000,000. The best performer in each was used for validation. 
+
+Simulation Infrastructure. Due to the lack of simulation assets in analytically accurate physics engines, we developed multiple track and multi-agent environments, illustrated in Figures 2 and 3 for DRL in the open-source AutoVRL simulator [34], built on the Bullet physics engine [35]. The tracks were modeled with Onshape, and imported to Bullet in Unified Robot Description Format (URDF). This necessitated segmentation of the straights and corners with explicit specifi-cation of concave triangle collision meshes for accurate inner and outer track boundary collision boxes.  
+
+> (a)
+> (b) (c)
+
+Fig. 2: Simulated track layouts. (a) Training Track. (b) OOD Track 1. (c) OOD Track 2. 8 
+
+> (a) (b)
+
+Fig. 3: Multi-agent overtake environment in OOD Track 2. (a) Obstacle cars lapping with the pretained DRL policy. (b) Ego car trained to overtake in black. The track in Figure 2a which occupies 760 m2 with 4 straights and 4 corners in each direction was used for training, and the tracks in Figures 2b, which occupies 375 m2 with 2 straights, 5 left corners and 3 right corners and 2c which occupies 210 m2 with no straights and 4 corners in each direction were used for OOD validation. The latter was con-figured to a multi-agent environment for overtake validation, with 15 obstacle cars and the ego car, as shown in Figure 3a. The obstacle cars, in blue, use the pretrained DRL policy for inference, and the ego car, in black, was trained to overtake with double the CT , as depicted in Figure 3b. 
+
+Policy Transfer to Hardware. The trained model was transferred zero-shot to hardware [14], depicted in Figure 4, by replacing the physics engine’s simulated observations and actions with those processed in the scaled car, interfaced with the Robot Operating System (ROS). The physical test tracks occupied 25 m2 comprising 3 layouts each with a different combination of straights and corner directions. These configurations require throttle modulation to minimize lap time, thus to validate smooth hardware transfer at high speeds, a 90 ◦ corner, an angle not in the training track, was utilized for controlled tests at constant 1, 3 and 5 m/s .
+
+Fig. 4: Proportionally 1/10th scaled hardware platform [14]. IV. N EURAL NETWORK INTERPRETATION 
+
+Racing is a singular optimization problem where at the limit of handling, the vehicle’s trajectory is bound by the holonomic constraint of the friction circle, where the lateral force cannot exceed the tire friction force, Flat ≤ μF z , thus the optimal velocity vopt = pμgR (ρ) is encoded in the curvature of the wall currently perceived R(ρ), where g is the gravitational acceleration, and is independent of a measured velocity, on the manifold of optimality. As such, the policy learns to solve the control problem at every instant mapping geometry to energy, ensuring the vehicle state remains continuously synchronized with the physical limits of the environment. To analyze how the model computes nonlinear kinodynamic controls from instantaneous spatial measurements, without temporal memory, we dissected the internal activations of the ANN and mapped the resulting control policy to establish vehicle dynamics models. 
+
+Inter-Layer Correlation Analysis. To systematically de-code the neural architecture, we applied the Pearson product-moment correlation coefficient r defined as follows, across the telemetry sequence in the training track, to cross-correlate the first and second hidden layers to each other and to the output layer. This metric quantifies the linear dependence between the hidden activations and the vehicle’s kinodynamic state, to locate localized, specialized linear pathways. Here ns is the total number of discrete time steps in the telemetry sample, 
+
+xt and yt are the instantaneous values of the two variables X
+
+and Y from different network layers being compared such as a neuron’s activation state in the first layer and the steering command in the output layer, and ¯x and ¯y are the mean across the dataset. 
+
+r =
+
+Pns
+
+> t=1
+
+(xt − ¯x)( yt − ¯y)
+
+pP ns
+
+> t=1
+
+(xt − ¯x)2pP ns
+
+> t=1
+
+(yt − ¯y)2 (20) 
+
+System Identification of Tire Dynamics. To model tire physics, we reverse-engineered the spatial inputs and corre-sponding actions into proxies of standard vehicle dynamics parameters, lateral acceleration alat,p and slip angle αp.
+
+alat,p was computed using the instantaneous track curvature 
+
+κ derived from the center ray of the spatial scan dctr , the throttle command aT as a proxy for velocity, the sign of the steering command aδ to infer the vector direction as follows. 
+
+κ = sgn (aδ ) · 1
+
+dctr 
+
+(21) 
+
+alat,p = κ · aT (22) 
+
+αp is the deviation between the policy’s steering command 
+
+δ and the kinematic steering angle δk required for a rigid body. Using the vehicle’s fixed physical wheelbase lwb = 0 .3m and Ackermann geometry, this is computed as follows where δo
+
+is a constant offset in straights estimated to be 0.08 via linear regression on low-velocity samples. 
+
+δk = lwb · κ + δo (23) 
+
+αp = δ − δk (24) To derive the empirical friction curve, we extracted the 95 th 
+
+percentile of alat,p in uniformly segmented αp, and fitted two curves. The first is a linear kinematic model defined as follows where Cα is the linear stiffness. 
+
+alat,p = Cα · αp (25) 9
+
+This simple model restricts optimal control solvers to con-servative boundary avoidance, hence classical methods utilize the Pacejka tire model, defined as follows where B is the stiffness factor, C is the shape factor and D is the peak adhesion limit. 
+
+alat,p = D · sin( C · arctan( B · αp)) (26) To quantitatively assess how accurately the linear kinematic and nonlinear Pacejka models represent the policy’s learned driving behavior, we computed the Coefficient of Determina-tion R2 
+
+> CoD
+
+to evaluate the proportion of the variance in the empirical boundary data that is predictable from the theoretical equations as follows, where nt is the number of discrete αp
+
+segments, ¯alat is the mean of the empirical lateral acceleration and ˆalat is the theoretical lateral acceleration derived from either the linear kinematic or nonlinear Pacejka formulations. 
+
+R2 
+
+> CoD
+
+= 1 −
+
+Pnt
+
+> i=1
+
+(alat,i − ˆalat,i )2
+
+Pnt
+
+> i=1
+
+(alat,i − ¯alat )2 (27) V. R ESULTS AND DISCUSSION 
+
+This section systematically evaluates the proposed method across simulated and physical domains. First, we analyze the training algorithms and reward ablations by comparing lap times and theoretical racing line deviations within the training and two OOD tracks at the curriculum speed. The highest-performing policy is scaled to the maximum physical velocity and evaluated across all simulated tracks, followed by zero-shot physical transfer validation on a proportionally scaled vehicle. The network’s computational complexity and inference efficiency are assessed against comparative baseline architectures to quantify edge hardware deployment viability, and the adaptability of the framework’s physics-informed dynamics encoding is demonstrated through overtaking ma-neuvers in a dynamic multi-agent environment. Finally, an examination of the internal neural mechanisms and system identification detail the implicit parameterization of nonlinear vehicle dynamics. 
+
+A. Simulation Training & OOD Transfer: Training Algorithm, Reward Ablation & Velocity Scaling 
+
+The performance of policies trained with PPO and SAC are quantified through lap completion times and the deviation from the theoretical minimum curvature racing line computed with [9], in the training and OOD tracks. The best perform-ing algorithm is utilized for subsequent reward ablation and velocity scaling analyses. 
+
+Training Algorithm. PPO attained a greater reward than SAC, with lower stochasticity. Both learned the best policy at 
+
+Fig. 5: Learning Curve: Moving average of order 100,000 reward at each training step. 20,000,000 steps out of the 50,000,000 tested. The learning curves for each are depicted in Figure 5 which plots the moving average of order 100,000 reward against the training step. PPO attained the maximum average reward of 5 at the curriculum speed, successfully applying the throttle at 100% in every part of the track, by learning the optimal steering to maximize tire friction. Comparatively, SAC achieved 4.68, thus lifted off the throttle to avoid collisions due to suboptimal steering learned to maximize entropy in addition to the reward. Furthermore, PPO corrected the physics engine exploit within the first 50,000 training steps while SAC took just under 6,000,000 to eradicate the penalty. The raw data illustrates greater structure in PPO due to the policy’s lower entropy. The dips in the reward, that last for several million steps until 15,000,000 training steps indicate the continued improved parameterization past prior conver-gence to the maximum reward. After 10,000,000 training steps, the PPO policy was able to time-optimally navigate the training track, but collided after 3 laps. Continued training fundamentally altered the latent parameters, as evidenced by the drop around 13,500,000 steps. Drops of lower magnitude persist past 15,000,000 steps, hence the best policy with 5,000,000 training step increments was obtained at 20,000,000. Over a 10-lap evaluation at the curriculum speed which topped out at 1.89 m/s with the cT at 20, PPO demonstrated a clear advantage in both kinodynamic speed and trajectory consistency. As summarized in Table III, PPO posted a 9.00% faster minimum lap tmin , a 16.88% faster maximum lap tmax ,and a 12.16% faster average time ¯t compared to SAC on the training track, while concurrently reducing the standard deviation of lap times σt by 98.01%. This performance delta translated effectively to unseen environments without track-specific retraining. In OOD Track TABLE III: DRL Training Algorithm Lap Times ( s)                                      
+
+> Algorithm Training Track OOD Track 1 OOD Track 2
+> tmin tmax ¯tσttmin tmax ¯tσttmin tmax ¯tσt
+> PPO 52.27 52.37 52.33 0.034 33.40 33.63 33.53 0.073 20.03 24.93 23.61 1.86 SAC 57.43 63.00 59.58 1.71 37.73 39.57 38.88 0.608 28.00 4†29.80 4†29.01 4†0.683 4†10
+
+TABLE IV: DRL Training Algorithm Deviation from Theoretical Baseline ( m)                                      
+
+> Algorithm Training Track OOD Track 1 OOD Track 2
+> dmin dmax ¯dσddmin dmax ¯dσddmin dmax ¯dσd
+> PPO 0.0000 0.0283 0.0020 0.0023 0.0003 0.7930 0.3843 0.2252 0.0007 0.9691 0.3384 0.2857
+> SAC 0.0002 1.1637 0.4531 0.3252 0.0030 1.8188 0.7702 0.5459 0.0030 4†1.2688 4†0.5447 4†0.3542 4†
+
+Fig. 6: Trajectories in the simulated tracks. 1, PPO outpaced SAC with an 11.48% faster tmin , a 15.00% faster tmax , and a 13.74% faster ¯t, reducing variance by 87.99%. The generalization drift of off-policy algorithms be-came evident on OOD Track 2, a more technical configuration than the training track, where SAC failed to reliably generalize and completed only 4 of the 10 laps. PPO successfully finished all 10 laps, achieving a 28.45% faster tmin , a 16.33% faster 
+
+tmax and an 18.61% faster ¯t with 171.51% increased variance compared to SAC’s partial run. Across all environments, PPO demonstrated significantly tighter adherence to the theoretical baseline with lower mini-mum dmin , maximum dmax and average ¯d lateral deviations 11 
+
+TABLE V: Reward Ablation Lap Times ( s)
+
+Reward Function Training Track OOD Track 1 OOD Track 2 
+
+tmin tmax ¯t σt tmin tmax ¯t σt tmin tmax ¯t σt
+
+R 52.27 52.37 52.33 0.034 33.40 33.63 33.53 0.073 20.03 24.93 23.61 1.86 
+
+Rab 1 52.70 53.27 52.90 0.16 34.30 35.03 34.67 0.238 22.67 26.3 25.11 1.18 
+
+Rab 2 53.33 53.90 53.63 0.214 37 .53 1† 37 .53 1† 37 .53 1† NA NA NA NA NA 
+
+TABLE VI: Reward Ablation Deviation from Theoretical Baseline ( m)                                                  
+
+> Algorithm Training Track OOD Track 1 OOD Track 2
+> dmin dmax ¯dσddmin dmax ¯dσddmin dmax ¯dσd
+> R0.0000 0.0283 0.0020 0.0023 0.0003 0.7930 0.3843 0.2252 0.0007 0.9691 0.3384 0.2857
+> Rab 10.0000 0.4960 0.1713 0.1394 0.0006 1.4076 0.6159 0.4185 0.0034 2.7788 1.7650 0.7954
+> Rab 20.0002 0.6317 0.2174 0.1514 0.0003 1†1.9393 1†0.5031 1†0.3422 1†NA NA NA NA
+
+that varied less in 10 laps. The trajectories are illustrated in Figure 6 and the lateral deviations are summarized in Table IV. On the training track, PPO effectively mirrors the ideal trajectory with a ¯d of 0.0020 m, corresponding to a 0.08% deviation from the mathematical optimum. In contrast, SAC averaged a 0.4531 m error, representing an 18.31% track width deviation. When evaluated on OOD Track 1, PPO maintained a 15.53% ¯d compared to SAC’s 31.12%. On OOD Track 2, SAC’s partial run deviated by 22.01% on average, whereas PPO deviated by 13.67%. This divergence is rooted in the fundamental optimiza-tion objectives. High spatial frequency at corner apexes is intrinsically mapped to uncertainty when unconditioned on a geometric reference trajectory, resulting in a conservative safety buffer that repels track boundaries. PPO converges to a deterministic, low-entropy policy to maximize the friction circle for the highest reward, learning to risk near-collisions at the apex, whereas SAC balances entropy maximization, hence the highest reward is not the sole priority, thus collision avoid-ance to maximize the value horizon converges the objective function. 
+
+Reward Ablation. To validate the necessity of the proposed reward formulation R, ablation studies were conducted against an unsquared throttle Rab 1 and a collision penalty Rab 2 at the curriculum speed, evaluated over 10 laps. R parameterized the best policy within 20,000,000 time steps, while the ablated rewards plateaued by 10,000,000. As detailed in Tables V and VI, R held an advantage over the ablations in lap times and deviations from the racing line across all tracks. In the training track R lapped 1.07% faster on average than 
+
+Rab 1 and tightened lap consistency by 78.93%. Introducing a collision penalty with Rab 2 injected conservatism, decreasing performance across all time metrics by up to 2.84% and increased variance by 84.11%. Furthermore, Rab 2 failed to generalize, managing only a single lap on OOD Track 1 and failed on the technical OOD Track 2. On the other hand, R
+
+lapped 3.29% faster on average than Rab 1 in OOD Track 1 with 69.33% lower variance, and posted tmin 11.01% faster than the sole lap by Rab 2. In OOD Track 2, R had 56.83% more variance than Rab 1 due to an 11.62% faster tmin that was substantially faster than the ¯t and tmax reductions of 5.97% and 5.20%. Analyzing the trajectory precision further corroborates the importance of promoting T nonlinearly by squaring it, and eliminating an explicit collision penalty. While R mirrored the minimum curvature racing line with a 0.08% average deviation in the training track, Rab 1 and Rab 2 deviated 6.92% and 8.78% on average. In OOD Tracks 1 and 2, Rab 1 deviated by 24.89% and 71.32% on average, substantially deviating in the latter that was most out of the training distribution, whereas R
+
+deviated by 15.53% and 13.67%. The sole lap with Rab 2 in OOD Track 1 deviated by 20.33%, 4.80% more than R on average. R completed the laps with the least lateral deviation variance in all tracks. 
+
+Velocity Scaling. PPO trained with R at the curriculum ve-locity with CT = 20 was deployed zero-shot at the maximum hardware velocity with CT = 120 to evaluate the policy’s capacity to extrapolate encoded dynamics for kinodynamic stability at unconstrained physical limits. This resulted in substantially faster lap completion times and velocities over 10 laps, summarized in Tables VII and VIII. On the training track, the unconstrained velocity yielded a 51.79% faster tmin , a 49.78% faster tmax , and a 51.02% faster 
+
+¯t. Concurrently, the standard deviation of lap times increased by 950.00%, managing variance within four tenths of a second. The average velocity ¯v increased by 107.92%, the maximum velocity vmax by 155.93%, and the minimum velocity vmin 
+
+by 3.37%. This performance delta translated effectively to unseen environments without track-specific retraining. In OOD Track TABLE VII: Lap Times at the Curriculum and Unconstrained Velocities ( s)                                     
+
+> Training Track OOD Track 1 OOD Track 2
+> tmin tmax ¯tσttmin tmax ¯tσttmin tmax ¯tσt
+> Curriculum Velocity 52.27 52.37 52.33 0.034 33.40 33.63 33.53 0.073 20.03 24.93 23.61 1.86 Unconstrained Velocity 25.20 26.30 25.63 0.357 17.63 18.80 18.10 0.327 15.17 15.73 15.44 0.169 12
+
+TABLE VIII: Velocities at the Curriculum and Unconstrained Velocities ( m/s )
+
+Training Track OOD Track 1 OOD Track 2 
+
+vmin vmax ¯v vmin vmax ¯v vmin vmax ¯v
+
+Curriculum Velocity 1.571 1.888 1.806 1.583 1.880 1.789 1.496 1.889 1.757 Unconstrained Velocity 1.624 4.832 3.755 1.3858 4.8650 3.4594 1.2183 4.5675 3.0137 
+
+Fig. 7: Telemetry at the curriculum and unconstrained velocities. 1, the policy utilized the uncapped velocity to outpace the curriculum restriction with a 47.21% faster tmin , a 44.10% faster tmax , and a 46.01% faster ¯t with an increase in variance of 348.40%. In the technical OOD Track 2, it produced more 13 
+
+consistent laps than at the curriculum speed, with a variance reduction of 90.89% while posting a 24.29% faster tmin , a 36.90% faster tmax and a 34.60% faster ¯t. In OOD Track 1, 
+
+vmax increased by 158.78% and ¯v by 93.37%. In contrast to the training track, the vmin decreased by 12.46%. This divergence in vmin is mirrored in OOD Track 2, where vmax 
+
+increased by 141.79% and ¯v by 71.53%, but vmin dropped by 18.56%. The reduction in vmin at the unconstrained speed reflects the necessity to manage higher entry momentum. At the cur-riculum speed, this is capped, enabling a higher speed through corners without exceeding the limits of the tire friction circle. When unconstrained, these geometric features are approached at higher velocities, thus to navigate the apex, the policy drops the throttle to trail-brake. This maintains the vehicle state within permissible dynamic boundaries, resulting in a lower instantaneous minimum velocity mid-corner but with a higher momentum profile than at the curriculum speed. The controls and velocity of the policy at the curriculum and unconstrained speeds in each track are shown in Figure 7. In all tracks, the policy navigates with 100% throttle at the curriculum speed with a stable velocity profile, and modulates substantially at the unconstrained speed, dropping from 100% to 0% to maximize momentum with fluctuating velocities. The steering controls are more similar, adhering to the optimum path, with the inputs at a greater amplitude on average at the unconstrained speed to handle the increased momentum. 
+
+B. Zero-Shot Physical Transfer 
+
+Zero-shot sim-to-real transfer capabilities were evaluated on a 1/10th proportionally scaled vehicle [14] across unseen tracks, as illustrated in Figure 8. A Nonlinear Predictive Geometric PID, that we used in the 2023 IEEE Intelligent Vehicles Symposium F1TENTH Competition, and a human demonstration that represents a best case BC performance were utilized as benchmarks. The competition controller is a baseline reference that was the sole method to complete 10 collision-free laps during qual-ifying and outperforms the standard Follow-the-Gap (FTG) algorithm. While FTG is reactive when a spatial gap physically appears in the depth scan, often resulting in late apexing, this map independent autonomous baseline utilizes geometric projected look-ahead and wall angle parameters to predict and plan in advance, for higher entry momentum. Moreover, it implements bilateral constraint switching, dynamically anchor-ing its tracking reference to the nearest track boundary rather than averaging free space, and solves slaloming, common in reactive planners, utilizing gain scheduling with hysteresis. This nonlinear control law dampens oscillations on straights with low gains while quadrupling stiffness during sustained cornering, eliminating the decision-flickering characteristic of FTG. The average lap times with each method over 10 laps are summarized in Table IX. BC represents the SOTA for mapless end-to-end ML navi-gation, with a theoretical maximum performance bounded by the human demonstrator, which the DRL policy outperforms by 12%. The gap is more than double that to the classical geo-metric controller, with a 26% faster lap time. The faster times 
+
+> (a)
+> (b)
+> (c)
+
+Fig. 8: Zero-shot trajectories in OOD physical track configurations. A video can be viewed at https://www.youtube.com/watch?v=DVxlOARi4aY. TABLE IX: Physical Track Lap Times (s)             
+
+> Method Track(a) Track(b) Track(c)
+> Human Demonstration 10.84 10.54 10.30 Nonlinear Predictive Geometric PID 12.84 12.56 12.38
+> Sim-to-Real DRL 9.56 9.16 9.10
+
+and OOD generalization are attributed to the rate of corrections during every segment of the track, some of which occur mid-corner, that are arduous with human reaction times and require dense track-specific tuning with classical controllers. While trajectory-tracking DRL methods achieve zero-shot sim-to-real transfer, these require prebuilt maps and precomputed reference trajectories, whereas our method adapts to each OOD track, requiring only instantaneous spatial measurements. The top speed in these tracks is 2 m/s , with throttle control to maximize momentum without collision. To validate sim-to-real transfer without slaloming at high-speeds, we tested navigation around a 90 ◦ corner at constant 1, 3 and 5 m/s .The trajectories are illustrated in Figure 9. At all velocities, the scaled car navigates the corner, that has an angle not in the training track, smoothly, without actuation instability. The trajectories at 1 and 3 m/s are near identical, minimizing distance traveled by turning into the corner apex and utilizing the track width on the exit to carry momentum. At 3 m/s , the trajectory is wider than at 1 m/s due to the greater tire friction. The lateral momentum exceeds the tire 14 
+
+Fig. 9: Trajectories on hardware at different constant velocities. friction limit at 5 m/s resulting in understeer that misses the apex, and carries maximum momentum toward the outside of the track. The velocity and time to navigate the corner show anonlinear relationship with diminishing returns. Increasing the vehicle’s velocity from 1 to 3 m/s resulted in a 63.77% reduction in lap time, from 6.9 s to 2.5 s. Conversely, further acceleration to 5 m/s yielded an improvement of 0.5 s, a 20.00% decrease. At lower velocities, the proportion of time spent traversing the straights is high, enabling longitudinal speed increases to significantly impact overall performance. As peak velocity rises, the duration in the straights becomes negligible compared to deceleration, apex navigation, and exit acceleration due to the physical constraints of the track geometry and the dynamic limits of the vehicle. Consequently, the overall track performance becomes fundamentally limited by the maximum lateral grip of the tires. Although past the limits of optimal grip at 5 m/s , the RL policy completes the turn and resumes stable straight-line navigation without oscillating. 
+
+C. Computational Complexity and Inference Efficiency 
+
+To quantify the compute efficiency, we evaluate the Multiply-Accumulate operations (MACs) per inference step for the proposed framework against SOTA model-based and BC architectures. A MAC operation consists of computing the product of two numbers and adding that result to an accumu-lator, serving as a fundamental metric for evaluating neural network computational complexity and hardware latency. A summary of the computational requirements is tabulated in Table X. Model-based DRL agents have a larger computational foot-print than model-free, due to latent state-space processing [5], [36]. In Dreamer, the active inference policy is a recurrent pipeline comprising a 400-node representation model, a 400-TABLE X: Comparison of ML Model Multiply-Accumulate Operations         
+
+> Method Architecture MACs
+> Model-Based DRL [5] RNN & MLP 1,615,200 BC [2] 1D CNN 240,752 - 1,546,960
+> Model-Free DRL MLP 15,104
+
+unit Gated Recurrent Unit (GRU) transition model, and a 4-layer actor network with 400 neurons per layer. Execut-ing this continuous architecture necessitates approximately 1.62 million MACs per step, during which the representation model compresses a high-dimensional 2D LiDAR scan into a 30-dimensional stochastic latent state, following which the GRU updates its 400-dimensional hidden state using a 32-dimensional concatenated vector, yielding a 430-dimensional combined latent state that drives the actor network. BC architectures, such as TinyLidarNet [2], utilize 1D CNNs to extract spatial features, where the computational cost scales directly with the input resolution and filter depth. The full model processes the complete range of depth sensor measurements, resulting in 1,546,960 MACs. By reducing the network depth and filter dimensions, the small variant trims this requirement to 240,752 MACs, compromising track performance for feasibility in a range of embedded systems. Model-free DRL architectures that downsample depth mea-surements to 20 rays require significantly fewer MACs and outperform model-based and BC in simulation, but consis-tently exhibit high-frequency actuation instability during sim-to-real transfer. These comprise CNNs [6] which require 51,520 MACs and MLPs [4] that require 14,300. By solv-ing sim-to-real slaloming, we encode the nonlinear vehicle dynamics with a spatial resolution of 170 using large-scale simulation accelerated training, in a MLP with 2 hidden layers of 64 nodes each, and an output layer of 2 continuous actions, that requires 15,104 MACs. This formulation maintains a computational overhead comparable to the downsampled and unstable model-free baselines, and requires less than 1% of the footprint of SOTA model-based and BC architectures. 
+
+D. Dynamic Multi-Agent Overtaking 
+
+The adaptability of the physics-informed dynamics encod-ing facilitates overtaking without specialized multi-agent algo-rithmic formulations and precomputed reference trajectories. The policy was deployed in a dynamic multi-agent environ-ment configured within OOD Track 2 which comprises fifteen obstacle vehicles navigating the track utilizing the pretrained DRL policy. To facilitate overtaking, the ego vehicle was assigned a CT doubled in magnitude, providing a kinodynamic acceleration advantage. The ego agent inferred optimized overtaking trajectories against the dynamic obstacle vehicles, illustrated by the tra-jectory plots of the overtaking and obstacle cars in Figure 10 and a motion sequence in Figure 11, with the same core DRL formulation, with 40,000,000 samples of post-training in the multi-agent environment. 15 
+
+Fig. 10: Examples of overtaking trajectories. The positions of the overtaking and obstacle cars are causally color coded. 16   
+
+> (a) (b)
+> (c) (d)
+
+Fig. 11: Example of an overtake motion sequence. (a) The overtaking car switches lane to traverse side-by-side. (b) Ahead before the corner apex on the outside. (c) The obstacle car is cleared and the overtaking car navigates back to the racing line. (d) The overtake is complete. 
+
+E. Neural Mechanisms and System Identification 
+
+To elucidate the underlying mechanisms of the end-to-end framework, a comprehensive dissection of the ANN was conducted to map the continuous vehicle controls and evaluate dynamics at the physical handling limits. The hidden layers delineate spatial feature extraction, which compresses the observations to an information-dense vector, and nonlinear kinodynamic execution, with efficient functional bifurcation. Furthermore, system identification validates that the policy maximizes the friction circle by implicitly parameterizing a nonlinear quasi Pacejka tire model. 
+
+Internal Neural Mechanisms and Control Mapping: The first hidden layer, Layer 1 transforms the high-dimensional observation manifold into a discretized state space. Across the trajectory, this layer operates primarily in a saturated regime, driving tanh activations to the asymptotes to quantize contin-uous range data and identify track segments such as straights and corner entries, apexes and exits. Conversely, the second hidden layer, Layer 2 maintains an unsaturated balanced distri-bution across all driving stages, translating Layer 1’s discrete spatial states into nonlinear vehicle dynamics considerate continuous controls. We inferred this by analyzing the layer activations segmented into saturation percentage brackets, summarized in Table XI, and correlating track features, layer outputs and computed controls. The hidden layer activations at different track segments are illustrated in Figure 12. In the straight and corner exit, Layer 1 is polarized, with 
+
+100 .0% of neurons operating in the highest 75% to 100% sat-uration bracket, serving as a robust reflex mode. As the vehicle approaches the inner wall during corner entry, preliminary de-saturation begins, to prepare the network for precise rotational control, evidenced by 1.6% of activations dropping between 
+
+0% and 25% . At the corner apex, saturation collapses with 64.1% of activations distributing into the lower tier brackets, transitioning from a binary output to a high resolution mode, necessary for high-risk maneuvers close to the track boundary, before resaturating at the exit. As the signal propagates to the subsequent hidden layer, the network abstracts these spatial features into definitive physical commands representing steer-ing direction, magnitude, and throttle modulation. Unlike the initial extraction layer, this second layer maintains a balanced, unsaturated distribution across all driving stages. Specific nodes correspond to distinct physical phenomenon, such as coupled throttle and steering control. Cross-correlation analysis between the hidden layers reveals a dedicated connec-tivity matrix that implements specific control laws with distinct neural mechanisms. Neurons 19 and 43 in Layer 1, L1-n19 and L1-n43, correlate +0.942 and -0.774 to steering, with the former specializing in left turns, and the latter in right. Each correlates to the specific neurons 36 and 13 in Layer 2, L2-n36 and L2-n13. L1-n19 and L2-n36 have an inverse correlation of -0.996, and L1-n43 and L2-n13 correlate by +0.847. L2-n36 correlates -0.945 to steering magnitude, functioning as a steering lock in straights for stable, momentum conserving trajectories. Its activation governs both steering direction and magnitude, where a large positive value induces a hard right turn and vice versa. L2-n13 correlates 0.993 to steering direction, with similar activations, passing a discrete directional boundary to the output layer. Each modulates throttle for stable application of steering with the exception of L2-n13, with L1-n19 correlating by -0.907, L1-n43 by +0.902 and L2-n36 by +0.909. When L2-n36 drops to a negative state to execute a turn for instance, the throttle inherently decreases to trail-brake. Moreover, L2-n14 exhibits a correlation of +0.825 to the throttle, stiffening the steering response as the vehicle accelerates with learned gain scheduling to ensure asymptotic stability at high speeds while retaining agility at low velocities. Neurons in Layer 2 L2-n6, L2-n33 and L2-n57 manage precise rotation at the apex. As the car enters a corner and Layer 1 desaturates, the steering lock disengages as its absolute activation drops to 0.84 . Simultaneously, L2-n6, L2-n33 and L2-n57, which remain dormant on straights, exhibit over a 1000% surge in activity, taking over primary control. 
+
+Nonlinear Tire Dynamics. By extracting the 95th per-centile limit of adhesion envelope, we evaluated the tire dynamics by fitting standard linear kinematic and empirical Pacejka tire models. The plot of the lateral acceleration proxy against the slip angle proxy is shown in Figure 13. The linear kinematic model fit the adhesion envelope with a coefficient of determination, R2 
+
+> CoD
+
+≈ 0.485 . In contrast, the nonlinear Pacejka model yields a greater R2 
+
+> CoD
+
+≈ 0.648 . The former does not capture the policy’s behavior at the friction limit, whereas the latter better models the tire dynamics with a steep shape factor C = 3 .00 and a flattened saturation plateau corresponding to a peak adhesion limit of D ≈ 2.79 g. Rather than adhering to kinematic predictions, the policy applies over-drive steering commands by holding the slip angle at the boundary of the tire friction circle, to handle the vehicle in the nonlinear saturation region and continuously maximize the grip capacity. 17 
+
+Fig. 12: ANN hidden layer activations. TABLE XI: Neural Activation Saturation Rates by Driving Stage                                                 
+
+> Layer Stage Low Med-Low Med-High Saturated
+> 0−25% 25 −50% 50 −75% 75 −100%
+> 1Straight 0.0% 0.0% 0.0% 100.0%
+> Corner Entry 1.6% 0.0% 0.0% 98.4% Corner Apex 3.1% 32.8% 28.1% 35.9% Corner Exit 0.0% 0.0% 0.0% 100.0%
+> 2Straight 43.8% 4.7% 3.1% 48.4% Corner Entry 32.8% 10.9% 4.7% 51.6%
+> Corner Apex 39.1% 12.5% 3.1% 45.3% Corner Exit 43.8% 3.1% 4.7% 48.4%
+
+Fig. 13: Tire dynamics: Lateral acceleration across the slip angle range. VI. C ONCLUSIONS 
+
+This paper presented a DRL method for map-free au-tonomous racing, trained with a non-geometric mimicry, physics-informed reward in simulation over 48 wall clock hours, with zero-shot transfer to hardware, outperforming hu-man demonstrations by 12% in OOD tracks. The independence of trajectory aided learning enables parameterizing dynamics-optimized overtaking with the same RL formulation, in a multi-agent environment. The policy maximizes the velocity potential of the track geometry from spectral spatial densities, executing nonlinear dynamics considerate continuous controls to maximize the friction circle and carry high momentum. The replacement of an explicit collision penalty with an implicit truncation of the value horizon and the pruning of a non-physical simulator exploit ensured greater OOD generalization and stable transfer to hardware. Nonlinear dynamics were en-coded at a low curriculum speed, for policy convergence, and transferred to high-speed domains without intermediate speed scheduling over 15,747 collisions to condense the relations between spatial observations and rigid body dynamics into an efficient MLP with less than 1% of the computational footprint 18 
+
+of SOTA BC and model-based DRL. Through ANN inter-layer correlation analysis, a distinct functional bifurcation was identified, where the first layer compresses observations to extract digitized track features with higher resolution in corner apexes, and the second computes continuous controls from these discrete states with inhibitory and excitatory pathways. Furthermore, system identification of tire dynamics corrob-orates that the policy implicitly encodes a quasi nonlinear Pacejka tire model to handle the vehicle at the boundary of the tire friction circle to maximize grip and acceleration. ACKNOWLEDGMENTS 
+
+This work was funded in part by The Commonwealth Cyber Initiative (CCI). REFERENCES [1] J. Betz, H. Zheng, A. Liniger, U. Rosolia, P. Karle, M. Behl, V. Krovi, and R. Mangharam, “Autonomous vehicles on the edge: A survey on autonomous vehicle racing,” IEEE Open Journal of Intelligent Trans-portation Systems , vol. 3, pp. 458–488, 2022. [2] M. M. Zarrar, Q. Weng, B. Yerjan, A. Soyyigit, and H. Yun, “Tinyl-idarnet: 2d lidar-based end-to-end deep learning model for f1tenth autonomous racing,” in 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2024, pp. 2878–2884. [3] E. Ghignone et al. , “Rlpp: Reinforcement learning-based path planning for autonomous racing,” IEEE International Conference on Robotics and Automation (ICRA) , 2025, arXiv:2501.17311. [4] B. D. Evans, H. W. Jordaan, and H. A. Engelbrecht, “Comparing deep reinforcement learning architectures for autonomous racing,” Machine Learning with Applications , p. 100496, 2023. [5] A. Brunnbauer, L. Berducci, A. Brandst´ atter, M. Lechner, R. Hasani, D. Rus, and R. Grosu, “Latent imagination facilitates zero-shot transfer in autonomous racing,” in 2022 International Conference on Robotics and Automation (ICRA) . IEEE, 2022, pp. 7513–7520. [6] M. Bosello, R. Tse, and G. Pau, “Train in Austria, race in Montecarlo: Generalized RL for cross-track F1 tenth lidar-based races,” in 2022 IEEE 19th Annual Consumer Communications & Networking Conference (CCNC) . IEEE, 2022, pp. 290–298. [7] F. Fuchs, Y. Song, E. Kaufmann, D. Scaramuzza, and P. D¨ urr, “Super-human performance in gran turismo sport using deep reinforcement learning,” IEEE Robotics and Automation Letters , vol. 6, no. 3, pp. 4257–4264, 2021. [8] B. Evans, J. Betz, H. Zheng, H. A. Engelbrecht, R. Mangharam, and H. W. Jordaan, “Accelerating online reinforcement learning via supervisory safety systems,” arXiv preprint arXiv:2209.11082 , 2022. [9] A. Heilmeier, A. Wischnewski, L. Hermansdorfer, J. Betz, M. Lienkamp, and B. Lohmann, “Minimum curvature trajectory planning and control for an autonomous race car,” Vehicle System Dynamics , 2020. [10] S. Sivashangaran, D. Patel, and A. Eskandarian, “Nonlinear model predictive control for optimal motion planning in autonomous race cars,” 
+
+IFAC-PapersOnLine , vol. 55, no. 37, pp. 645–650, 2022. [11] M. O’Kelly, H. Zheng, D. Karthik, and R. Mangharam, “F1tenth: An open-source evaluation environment for continuous control and reinforcement learning,” Proceedings of Machine Learning Research ,vol. 123, 2020. [12] I. Charles, H. Maghsoumi, and Y. Fallah, “Advancing autonomous racing: A comprehensive survey of the roboracer (f1tenth) platform,” in 
+
+2025 6th International Conference on Artificial Intelligence, Robotics and Control (AIRC) . IEEE, 2025, pp. 207–213. [13] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Prox-imal policy optimization algorithms,” arXiv preprint arXiv:1707.06347 ,2017. [14] S. Sivashangaran and A. Eskandarian, “Xtenth-car: A proportionally scaled experimental vehicle platform for connected autonomy and all-terrain research,” in ASME International Mechanical Engineering Congress and Exposition , vol. 87639. American Society of Mechanical Engineers, 2023, p. V006T07A068. [15] R. Trumpp, E. Javanmardi, J. Nakazato, M. Tsukada, and M. Caccamo, “Racemop: Mapless online path planning for multi-agent autonomous racing using residual policy learning,” in 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2024, pp. 8449–8456. [16] E. Bakker, L. Nyborg, and H. B. Pacejka, “Tyre modelling for use in vehicle dynamics studies,” SAE transactions , pp. 190–204, 1987. [17] P. Polack, F. Altch´ e, B. d’Andr´ ea Novel, and A. de La Fortelle, “The kinematic bicycle model: A consistent model for planning feasible trajectories for autonomous vehicles?” in 2017 IEEE intelligent vehicles symposium (IV) . IEEE, 2017, pp. 812–818. [18] A. Liniger, A. Domahidi, and M. Morari, “Optimization-based au-tonomous racing of 1: 43 scale rc cars,” Optimal Control Applications and Methods , vol. 36, no. 5, pp. 628–647, 2015. [19] B. D. Evans, H. A. Engelbrecht, and H. W. Jordaan, “High-speed autonomous racing using trajectory-aided deep reinforcement learning,” 
+
+IEEE Robotics and Automation Letters , vol. 8, no. 9, pp. 5353–5359, 2023. [20] J. Betz, T. Betz, F. Fent, M. Geisslinger, A. Heilmeier, L. Hermansdorfer, T. Herrmann, S. Huch, P. Karle, M. Lienkamp et al. , “Tum autonomous motorsport: An autonomous racing software for the indy autonomous challenge,” Journal of Field Robotics , vol. 40, no. 4, pp. 783–809, 2023. [21] J. Pinho, G. Costa, P. U. Lima, and M. A. Botto, “Learning-based model predictive control for autonomous racing,” World Electric Vehicle Journal , 2023. [22] E. Joa, C. Kim, D. Shin, and S.-M. Woo, “Piecewise affine relaxation of discrete value functions in learning model predictive control with application to autonomous racing,” IEEE Control Systems Letters , vol. 8, pp. 2187–2192, 2024. [23] G. Costa, J. Pinho, M. A. Botto, and P. U. Lima, “Online learning of mpc for autonomous racing,” Robotics and Autonomous Systems , vol. 167, p. 104469, 2023. [24] J. L. V´ azquez, M. Br¨ uhlmeier, A. Liniger, A. Rupenyan, and J. Lygeros, “Optimization-based hierarchical motion planning for autonomous rac-ing,” in 2020 IEEE/RSJ international conference on intelligent robots and systems (IROS) . IEEE, 2020, pp. 2397–2403. [25] V. Cataffo, G. Silano, L. Iannelli, V. Puig, and L. Glielmo, “A nonlinear model predictive control strategy for autonomous racing of scale ve-hicles,” in 2022 IEEE International Conference on Systems, Man, and Cybernetics (SMC) . IEEE, 2022, pp. 100–105. [26] E. Kaufmann, L. Bauersfeld, A. Loquercio, M. M¨ uller, V. Koltun, and D. Scaramuzza, “Champion-level drone racing using deep reinforcement learning,” Nature , vol. 620, no. 7976, pp. 982–987, 2023. [27] E. Chisari, A. Liniger, A. Rupenyan, L. Van Gool, and J. Lygeros, “Learning from simulation, racing in reality,” in 2021 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2021, pp. 8046–8052. [28] T. V. Samak, C. V. Samak, and M. Xie, “Autodrive simulator: A simulator for scaled autonomous vehicle research and education,” in 2021 2nd International Conference on Control, Robotics and Intelligent System , ser. CCRIS’21. New York, NY, USA: Association for Computing Machinery, 2021, pp. 1–5. [Online]. Available: https://doi.org/10.1145/3483845.3483846 [29] L. Yang, X. Huang, Z. Wu, A. Kanazawa, P. Abbeel, C. Sferrazza, C. K. Liu, R. Duan, and G. Shi, “Omniretarget: Interaction-preserving data generation for humanoid whole-body loco-manipulation and scene interaction,” arXiv preprint arXiv:2509.26633 , 2025. [30] Q. Liao, T. E. Truong, X. Huang, Y. Gao, G. Tevet, K. Sreenath, and C. K. Liu, “Beyondmimic: From motion tracking to versatile humanoid control via guided diffusion,” arXiv preprint arXiv:2508.08241 , 2025. [31] T. He, Z. Wang, H. Xue, Q. Ben, Z. Luo, W. Xiao, Y. Yuan, X. Da, F. Casta˜ neda, S. Sastry et al. , “Viral: Visual sim-to-real at scale for humanoid loco-manipulation,” arXiv preprint arXiv:2511.15200 , 2025. [32] C. Zhang, V. Klemm, F. Yang, and M. Hutter, “Ame-2: Agile and gen-eralized legged locomotion via attention-based neural map encoding,” 
+
+arXiv preprint arXiv:2601.08485 , 2026. [33] T. Haarnoja, A. Zhou, K. Hartikainen, G. Tucker, S. Ha, J. Tan, V. Ku-mar, H. Zhu, A. Gupta, P. Abbeel et al. , “Soft actor-critic algorithms and applications,” arXiv preprint arXiv:1812.05905 , 2018. [34] S. Sivashangaran, A. Khairnar, and A. Eskandarian, “Autovrl: A high fidelity autonomous ground vehicle simulator for sim-to-real deep rein-forcement learning,” IFAC-PapersOnLine , vol. 56, no. 3, pp. 475–480, 2023. [35] E. Coumans and Y. Bai, “Pybullet, a python module for physics simulation for games, robotics and machine learning,” http://pybullet.org, 2016–2021. [36] D. Hafner, T. Lillicrap, J. Ba, and M. Norouzi, “Dream to control: Learning behaviors by latent imagination,” in International Conference on Learning Representations , 2020. [Online]. Available: https://openreview.net/forum?id=S1lOTC4tDS
