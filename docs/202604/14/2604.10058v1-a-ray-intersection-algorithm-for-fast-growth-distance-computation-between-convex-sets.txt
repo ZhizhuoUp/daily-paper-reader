@@ -1,0 +1,1466 @@
+Title: A Ray Intersection Algorithm for Fast Growth Distance Computation Between Convex Sets
+
+URL Source: https://arxiv.org/pdf/2604.10058v1
+
+Published Time: Tue, 14 Apr 2026 00:33:58 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+# A Ray Intersection Algorithm for Fast Growth Distance Computation Between Convex Sets 
+
+Akshay Thirugnanam and Koushil Sreenath 
+
+Abstract — In this paper, we discuss an efficient algorithm for computing the growth distance between two compact convex sets with representable support functions. The growth distance between two sets is the minimum scaling factor such that the sets intersect when scaled about some center points. Unlike the minimum distance between sets, the growth distance provides a unified measure for set intersection and separation. We first reduce the growth distance problem to an equivalent ray intersection problem on the Minkowski difference set. Then, we propose an algorithm to solve the ray intersection problem by iteratively constructing inner and outer polyhedral approximations of the Minkowski difference set. We show that our algorithm satisfies several key properties, such as primal and dual feasibility and monotone convergence. We provide extensive benchmark results for our algorithm and show that our open-source implementation achieves state-of-the-art performance across a wide variety of convex sets. Finally, we demonstrate robotics applications of our algorithm in motion planning and rigid-body simulation. 
+
+I. I NTRODUCTION 
+
+Collision detection and distance computation between sets are essential problems with applications in collision avoidance for robot safety [1]–[4], computer graphics [5], and physics simulators [6]. Collision detection in real-world applications is a challenging problem because the number of possible collisions scales quadratically with the number of sets, and the sets can be nonconvex. Many existing collision detection pipelines speed up computation by eliminating pairs of sets that are far apart in the broadphase step [7] and by hierarchically decomposing nonconvex sets into convex ones [8]. The final step, called the narrowphase , involves distance computation between convex sets, which is a convex optimization problem. The Gilbert, Johnson, and Keerthi (GJK) algorithm [9] is a popular algorithm for computing the minimum distance between convex sets using their support functions. Many improvements to the GJK algorithm have been discussed in the literature, including the enhanced-GJK algorithm [10], [11], robust distance subproblem computation [12], and Nesterov and Polyak accelerated GJK [13]. A drawback of the minimum distance function for convex sets is that, when the sets intersect, it provides no information about the extent of penetration. Algorithms such as the Expanding Polytope Algorithm (EPA) [14] compute the penetration depth between intersecting convex sets, but are often slower              
+
+> This work was supported in part by the David and Patricia Bogy Fellow-ship within the Department of Mechanical Engineering at UC Berkeley. The authors are with the Department of Mechanical Engineering, UC Berkeley, CA 94720, USA.
+
+{akshay t, koushils }@berkeley.edu 
+
+because they solve a nonconvex optimization problem. By combining the GJK algorithm and EPA, the signed distance between convex sets can be computed as the difference between the minimum distance and the penetration depth. The growth distance function, introduced in [15], provides an alternative measure of convex set separation and intersec-tion. The growth distance between two sets is defined as the minimum scaling factor α∗ such that the sets intersect when scaled about some given center points. A key property of the growth distance function is that it provides a unified measure for convex set intersection ( α∗ ≤ 1) and separation (α∗ > 1). Furthermore, the growth distance between convex sets can be computed as the solution to a convex optimiza-tion problem (see Sec. II), unlike the penetration depth, which requires a nonconvex optimization problem. Thus, for robotics applications where general distance measures between convex sets can be used, such as motion planning and trajectory optimization, computing the growth distance can be more advantageous than the signed distance. In this paper, we propose an algorithm similar to the GJK algorithm to compute the growth distance between convex sets. 
+
+A. Related Works 
+
+The growth distance problem for compact convex sets was introduced in [15], which used a Linear Program (LP) solver to compute the growth distance between polytopes. Subse-quent works accelerated the LP solver by considering adja-cency information between the facets of the polytopes [18], [20]. The Incremental ( Inc ) algorithm was also proposed in [18] to warm-start the computation of growth distance for polytopes. The growth distance problem between convex sets is known to be equivalent to a ray intersection problem for the Minkowski difference of the two convex sets, see [21]. Subsequently, ray intersection algorithms have also been used to compute the growth distance between convex sets. A GJK-based ray intersection algorithm was proposed in [22], based on which [23] used a conic projection subproblem to solve the ray intersection problem. The Internal Expanding (IE ) algorithm was discussed in [16], and later combined with the projection method in [23] to form the hybrid ZC-IE 
+
+algorithm in [21]. Previous works have also considered optimization-based methods for computing the growth distance. The DCol 
+
+algorithm [19] uses a conic solver to compute the growth distance between small convex primitives. Likewise, the Dif-ferentiable Contact Features ( DCF ) method [17] computes the growth distance between Differentiable Support Function                  
+
+> arXiv:2604.10058v1 [cs.RO] 11 Apr 2026 TABLE I COMPARISON OF GROWTH DISTANCE METHODS
+> Property Internal Expanding procedure ( IE ), [16] Differentiable Contact Features ( DCF ), [17] Incremental algorithm ( Inc ), [18] Differentiable Collisions (DCol ), [19]
+> Our method
+> Types of convex sets Convex primitives 1,vertex meshes, DSFs Differentiable Support Functions (DSFs) Facet meshes Convex primitives Convex primitives, vertex meshes, DSFs Algorithm outputs Primal and dual optimal solutions Primal and dual optimal solutions Primal and dual optimal solutions Primal optimal solution Primal and dual optimal solutions Solution guarantees Primal and dual feasibility Dual feasibility Primal feasibility, compl. slackness Dual feasibility Primal and dual feasibility Termination criterion Primal-dual gap Dual optimality error (gradient norm) Dual infeasibility error KKT error Primal-dual gap Warm start support No No Yes No Yes
+
+(DSF) sets, which are convex sets with twice continuously differentiable support functions, using a hybrid IE -based Newton solver. 
+
+B. Contributions 
+
+In this paper, we address the growth distance problem by solving the equivalent ray intersection problem. The contributions of our paper are as follows: (i) We propose an LP-based inner-outer polyhedral approx-imation method for solving the ray intersection problem, in contrast to the IE algorithm, which maintains and updates a list of facets. We provide guarantees on primal and dual feasibility, as well as on the monotonicity of the primal-dual gap for our proposed growth distance algorithm. Addi-tionally, we describe extensions to our algorithm that enable warm-starting and collision detection. (ii) We provide thorough benchmarks comparing our al-gorithm to existing open-source methods and optimized implementations of closed-source methods. We show that our algorithm outperforms all existing methods for 2D and 3D convex primitives and mesh sets (except the DCF method for DSF sets), achieving computation times on the order of one microsecond. Consequently, our algorithm allows speeding up robotic applications that rely on distance computation and collision detection. We note that, to limit the scope of this paper, we do not compare the IE algorithm to our algorithm for dimensions greater than three. A comparison of the existing methods for growth distance computation is shown in Tab. I. (iii) We provide an open-source C ++ implementation of our algorithm with warm start and collision detection functional-ity. We demonstrate the applicability of our implementation in two robotics applications: motion planning and rigid-body simulation. Finally, we highlight the advantages and disadvantages of the growth distance in comparison to the signed distance. 
+
+C. Notations 
+
+R, R+, and R++ are the sets of real, nonnegative real, and positive real numbers, respectively. int C, cl C, and bd C are the interior, closure, and boundary of the set C, respectively. 
+
+dom f is the domain of the function f . Throughout the paper, we will work with the Euclidean vector space Rn. 1n ∈ Rn
+
+and 0n ∈ Rn are the vectors with all components as one and zero, respectively. Dimensions are omitted when they can be contextually inferred. ⟨· , ·⟩ denotes an inner product on Rn, and ∥·∥ is the corresponding norm. For x ∈ Rn,
+
+Br (x) = {y : ∥y − x∥ ≤ r}, and Sn−1 = bd( B1(0n)) .
+
+GL (n), SO (n), and SE (n) are the general linear, special or-thogonal, and special Euclidean groups, respectively. conv S
+
+and cone S represent the convex hull and (convex) conic hull of S ⊂ Rn.II. B ACKGROUND 
+
+In this section, we define proper convex sets, which constitute the inputs for the growth distance algorithm in Sec. III, the support function of a convex set, and some algebraic operations on convex sets. We also state the growth distance problem and its equivalence to a ray intersection problem, which will be the starting point for the growth distance algorithm in Sec. III. 
+
+A. Convex Set Definitions 
+
+In this paper, we will primarily focus on the growth distance between proper convex sets, which are compact convex sets with nonzero volume and comprise a large class of objects considered in robotics applications. 
+
+Definition 1. (Proper convex set) A convex set C ⊂ Rl is called a proper convex (PC) set if it is compact and solid, i.e., C is closed, bounded, and has a nonempty interior. 
+
+A proper convex (PC) set C is also a regular set (i.e., 
+
+cl(int C) = C), which is a common topological assumption used in path planning problems [24]. The significance of PC sets for the growth distance problem will be elaborated upon in Sec. II-D. Next, we define the inradius of a compact convex set C at a point p ∈ C .
+
+Definition 2. (Inradius) Let C̸ = ∅ be a compact convex set and p ∈ C . Then, the inradius r(C, p ) of C at p is given by 
+
+r(C, p ) := max {r ≥ 0 : Br (p) ⊂ C} . (1) 2Note that for a compact convex set C ∋ p, r(C, p ) ≥ 0,and if C is a PC set and p ∈ int C, then r(C, p ) > 0.
+
+B. Support Function of a Convex Set 
+
+For a nonempty compact convex set C ⊂ Rl, the support function sv [C] : Rl → R and support patch map Sp[C] : 
+
+Rl ⇒ Rl are defined as (see [25, Sec. 13]) 
+
+sv [C]( λ) = max  
+
+> z∈C
+
+⟨λ, z ⟩, (2a) 
+
+Sp[C]( λ) = argmax 
+
+> z∈C
+
+⟨λ, z ⟩. (2b) The subscripts ‘ v’ and ‘ p’ in sv [C] and Sp[C] stand for ‘value’ and ‘patch’. The vector λ ∈ Rl is the direction along which the support function is computed. Since C is compact, 
+
+dom( sv [C]) = dom( Sp[C]) = Rl, sv [C] is positively homo-geneous [25, Cor. 13.2.2], and Sp[C] is pointwise compact. We can define a support point function sp[C] : Rl → Rl
+
+(here ‘ p’ stands for ‘point’), using a selection function that selects an element from the set Sp[C] for each λ, as follows: 
+
+sp[C]( λ) ∈ Sp[C]( λ). (3) Note, from (2), that for all λ ∈ Rl,
+
+sv [C]( λ) = ⟨λ, s p[C]( λ)⟩.
+
+We do not make any assumptions about the selection, and our algorithm remains valid even if the support points are randomly or nondeterministically selected. The compact convex set C ⊂ Rl is completely defined by its support function sv [C] as (see [25, Sec. 13]) 
+
+C = {z : ⟨λ, z ⟩ ≤ sv [C]( λ), ∀λ ∈ Rl}. (4) For example, if the convex set C is a polytope defined as 
+
+conv {zi : i ∈ { 1, ..., N v }} , the support and support point functions can be computed as 
+
+sv [C]( λ) = max   
+
+> i∈{ 1,...,N v}
+
+⟨λ, z i⟩,sp[C]( λ) = zi∗ , i∗ ∈ argmax  
+
+> i∈{ 1,...,N v}
+
+⟨λ, z i⟩.
+
+We will use the equivalent support function representation of compact convex sets for the growth distance algorithm in Sec. III, since the support function for many commonly used shapes in robotics, such as convex primitives 1, meshes, and point clouds can be easily computed. 
+
+C. Affine Transformation and Minkowski Sum 
+
+In this subsection, we describe two operations on convex sets and the corresponding support function transformations.   
+
+> 1Convex primitive sets include, among others, ‘small’ polytopes (with ⪅
+> 50 vertices), cones, frustums, capsules, spheres, ellipsoids, and cylinders. We distinguish between small polytopes and large polytopes (termed meshes) as the support function computation for large polytopes can benefit from the hill-climbing algorithm [5] (see Sec. IV).
+
+1) Affine Transformation: Let g = ( b, A ) ∈ Rl × GL (l)
+
+correspond to the (invertible) affine transformation Tg : z 7 →
+
+Az + b. The action of g on a set C ⊂ Rl results in the set 
+
+Tg (C) given by 
+
+Tg (C) = {Az + b : z ∈ C} , (5a) 
+
+T −1 
+
+> g
+
+(C) = {A−1(z − b) : z ∈ C} . (5b) For a nonempty compact convex set C ⊂ Rl, the support function and support patch map of Tg (C) are given by [25, Cor. 16.3.1] as 
+
+sv [Tg (C)]( λ) = sv [C]( A⊤λ) + ⟨λ, b ⟩, (6a) 
+
+Sp[Tg (C)]( λ) = Tg (Sp[C]( A⊤λ)) . (6b) Notable examples of affine transformations include: 
+
+z 7 → Rz + p, (Rigid body transformation )
+
+z 7 → sz, (Scaling transformation )
+
+z 7 → (I − 2aa ⊤)z, (Reflection transformation )where (p, R ) ∈ SE (l) is a rigid body transform, s ∈ R++ is a scaling factor, and a ∈ Sl−1 is a reflection axis. 
+
+2) Minkowski Sum: The Minkowski sum of two nonempty compact convex sets C1 and C2 is defined as 
+
+C1 + C2 = {z1 + z2 : z1 ∈ C 1, z 2 ∈ C 2}, (7) with the support function and support patch map given by [25, Sec. 13] as 
+
+sv [C1 + C2]( λ) = sv [C1]( λ) + sv [C2]( λ), (8a) 
+
+Sp[C1 + C2]( λ) = Sp[C1]( λ) + Sp[C2]( λ). (8b) We will also define the Minkowski difference between C1
+
+and C2 as C1 − C 2 := {z1 − z2 : z1 ∈ C 1, z 2 ∈ C 2}.Finally, we show that the set of PC sets is closed under affine transformations and the Minkowski sum. 
+
+Lemma 1. Let C1 be a PC set, C2̸ = ∅ be a compact convex set, and g ∈ Rl × GL (l) be an affine transformation. Then, 
+
+Tg (C1) and C1 + C2 are PC sets. Proof. Since Tg is a (continuous) invertible affine transfor-mation, it preserves compact sets, open sets, and convex sets. Thus, the transformed set Tg (C1) is also a PC set. The set C1 × C 2 is compact and convex, and so its image under the (continuous) linear map A : ( z1, z 2) 7 → z1 + z2,given by C1 +C2, is compact and convex. Additionally, since 
+
+int( C1 +C2) ⊃ int( C1)+ C2̸ = ∅, the Minkowski sum C1 +C2
+
+is a PC set. 
+
+D. Growth Distance between Convex Sets 
+
+In this subsection, we state the growth distance problem and discuss its equivalence to a ray intersection problem. For the discussion in the rest of the paper, all sets are assumed to be subsets of Rl, unless specified otherwise. 
+
+Definition 3. (Growth distance) Let C1 be a PC set and 
+
+C2̸ = ∅ be a compact convex set with p1 ∈ int( C1) and p2 ∈
+
+3C2. Then, the growth distance α∗ between C1 and C2 (w.r.t. 
+
+p1 and p2) is the optimal value of the following problem: 
+
+α∗ = min  
+
+> α≥0,z 1,z 2
+
+α, (9a) 
+
+s.t. z1 ∈ C 1, z 2 ∈ C 2, (9b) 
+
+α(z1 − p1) + p1 = α(z2 − p2) + p2. (9c) We call the point p1 about which the set C1 is scaled as the center point of C1. For i ∈ { 1, 2}, when Ci is scaled by the factor α about the center point pi, zi ∈ C i is mapped to α(zi − pi) + pi. Thus, the constraint (9c) requires that 
+
+C1 and C2 have a nonempty intersection when scaled by the factor α about their center points. An example of the computation of the growth distance for two PC sets is shown in Fig. 1a. Under the assumptions of Def. 3, the growth distance satisfies α∗ > 0 and provides a unified measure for object separation and collision, corresponding to α∗ > 1 and 
+
+α∗ ≤ 1, respectively. 
+
+Remark 1. (Existence of optimal solutions) In Def. 3, if C1
+
+and C2 are general nonempty closed convex sets, then (9) 
+
+can be infeasible. Even when the infimum of (9) exists, it is possible that an optimal solution to (9) does not exist, since the feasible set may be noncompact. Under the assumptions of Def. 3, (9) has a continuous cost function and a compact feasible set that is nonempty (since C1 is a PC set); thus, an optimal solution to (9) always exists. We note that the assumptions of Def. 3 only require both convex sets to be compact and at least one convex set to be solid. Thus, in most robotics applications, with the appropriate modeling of convex geometries and selection of center points, the growth distance problem (9) is well-defined. 
+
+The growth distance problem (9) is equivalent to a ray in-tersection problem for the Minkowski difference set C1 − C 2,as stated in the following result (the proof follows directly from the transformation stated in the result). 
+
+Proposition 1. (Ray intersection problem) [21, Sec. V.A] Let the assumptions of Def 3 hold and let p2̸ = p1. Consider the following convex optimization problem: 
+
+β∗ = max  
+
+> β,z
+
+β, (10a) 
+
+s.t. z ∈ C , z = βp, (10b) 
+
+where p := p2−p1, and C := C1−C 2+{p}. Then, β∗ > 0 and there is a unique optimal solution (β∗, z ∗) to (10) . Further, for β > 0, (β, z ) is feasible (optimal) for (10) if and only if 
+
+(1 /β, z 1, z 2) is feasible (optimal) for (9) for some z1 ∈ C 1
+
+and z2 ∈ C 2, with z = z1 − z2 + p.
+
+For the growth distance example in Fig. 1a, Fig. 1b shows the equivalent ray intersection problem. Under the assumptions of Def. 3, C is a PC set, and we can write the support function and support patch map of C using (5) and (8) as 
+
+sv [C]( λ) = sv [C1]( λ) + sv [C2]( −λ) + ⟨λ, p ⟩, (11a) 
+
+Sp[C]( λ) = Sp[C1]( λ) − Sp[C2]( −λ) + {p}. (11b)                                              
+
+> (a) The growth distance problem, (9), for two PC sets C1and C2(in dark gray). The growth distance α∗is the minimum scaling factor αsuch that the sets C1and C2, when scaled about the center positions p1and p2
+> by α, intersect. The scaled sets are depicted in light gray. The two points
+> z1∗∈ C 1and z2∗∈ C 2(in red) comprise the optimal solution for the growth distance problem.
+> (b) The ray intersection problem, (10), corresponding to the growth distance problem depicted in Fig. 1a. The Minkowski difference set C(in light gray) is given by C1− C 2+{p}, where p=p2−p1is the relative center position. The ray intersection point z∗(in red) is the point at which the ray ⃗
+> 0pintersects with the set boundary bd C. The intersection point is unique because Cis a PC set and 0∈int C.Fig. 1. Example of growth distance computation using (9) (in Fig. 1a) and ray intersection computation using (10) (in Fig. 1b). By Prop. 1, the two problems are equivalent.
+
+Next, we define ϵ-optimal solutions for (9) and (10), which comprise the outputs of the growth distance algorithm. 
+
+Definition 4. (ϵ-optimal solution) Under the assumptions of Def. 3, a feasible solution (α, z 1, z 2) for (9) is ϵ-optimal (for some ϵ > 0) if α/α ∗ − 1 ≤ ϵ. Likewise, for (10) , a feasible solution (β, z ) with β > 0 is ϵ-optimal if β∗/β − 1 ≤ ϵ.
+
+Note, from (10), that the ratio β∗/β is independent of the distance between the center points ∥p∥. Thus, the ϵ-optimal solution definition in Def. 4 allows for a larger absolute error 
+
+β∗ − β when the two sets are farther apart, and is a more intrinsic metric for convergence. We can now state the growth distance problem, which will be the focus of Sec. III. 
+
+Problem 1. (Growth distance problem) Let C1 be a PC set and C2̸ = ∅ be a compact convex set with p1 ∈ int( C1) and 
+
+p2 ∈ C 2. Let the support functions sv [Ci] and support point functions sp[Ci] be known for i ∈ { 1, 2}. Then, compute an 
+
+ϵtol -optimal solution to (9) for some ϵtol > 0.
+
+In the next section, we will describe an algorithm to solve the ray intersection problem (10). Additionally, we will extract an ϵtol -optimal solution to the growth distance problem (9) using an ϵtol -optimal solution to (10). 4TABLE II GROWTH DISTANCE ALGORITHM NOTATION                                                                        
+
+> Notation Reference Definition
+> C,pProp. 1 Minkowski difference set, C=C1− C 2+{p2−p1}, and center point difference, p=p2−p1.
+> sv[C],sp[C](2a), (3) Support function and support point function, with sv[C]( λ) = ⟨λ, s p[C]( λ)⟩.
+> α∗,β∗(9), (10) Growth distance and ray intersection value, β∗= 1 /α ∗.
+> λk,vk,zkSec. III-A Normal vector, support function value ( vk=sv[C]( λk−1)), and support point ( zk=sp[C]( λk−1)) at iteration k.
+> Pik,Pok(12) Inner and outer polyhedral approximations of Cat iteration k.
+> Mik,Mok(12) Iteration index sets for the inner and outer polyhedral approximations at iteration k.
+> βlk,βuk(14), (13) Lower and upper ray intersection bounds for β∗at iteration k.
+> Mi∗
+> k,(ν∗
+> m)m∈Mik
+> (15) Optimal Simplex basis and conic combination coefficients for the inner approximation Pikat iteration k.
+
+III. G ROWTH DISTANCE ALGORITHM 
+
+We now discuss a growth distance algorithm to solve Problem 1, by computing an ϵtol -optimal solution of (10). We assume that the conditions of Problem 1 hold, and that 
+
+p1̸ = p2 (since if p1 = p2, α∗ = 0 ). We start by discussing the algorithm’s idea. The main notations used in this section are tabulated in Tab. II. 
+
+A. Inner and Outer Polyhedral Approximations 
+
+The algorithm proposed in this paper is based on the following observation: Let Ci ⊂ C ⊂ C o be closed convex sets, where Ci and Co are inner and outer approximations of C. Also, let βl, β∗, and βu be the optimal values of the ray intersection problem (10) (for a fixed value of p) for 
+
+Ci, C, and Co, respectively 2. Then, βl ≤ β∗ ≤ βu, i.e., 
+
+βl and βu provide lower and upper bounds for the optimal value β∗. Thus, by appropriately choosing the inner and outer approximations Ci and Co, we can closely approximate β∗.At any iteration k ≥ 0 of the algorithm, we use polyhedral inner and outer approximations, denoted by Pik and Pok ,respectively. In particular, Pik is represented in vertex form and Pok in halfspace form. To construct Pik and Pok , we first note that for any nonzero normal vector λ, we have that ⟨λ, z ⟩ ≤ sv [C]( λ) ∀z ∈ C (by (2a)). Then, at each iteration k ≥ 1 of the algorithm, we use the nonzero normal vector λk−1 from the previous iteration to compute the support function value vk := sv [C]( λk−1) >
+
+0 and support point zk := sp[C]( λk−1) ∈ C using (11). The polyhedral approximations Pik and Pok at iteration k are then constructed as follows: 
+
+Pik = conv {zm : m ∈ M ik}, (12a) 
+
+Pok = {z : ⟨λm−1, z ⟩ ≤ vm, ∀m ∈ M ok }, (12b) where M ik ⊂ {− l + 1 , ..., k } and M ok ⊂ { 1, ..., k } are the subsets of iteration indices chosen for the construction of the approximations (the initialization of the index sets will be discussed in the following subsection). Subsequently, the lower and upper bounds βlk and βuk (the optimal values of (10) for Pik and Pok , respectively) are computed to check         
+
+> 2If (10) is infeasible for Ci, then βl=−∞ . Likewise, if (10) is unbounded for Co, then βu=∞.
+
+convergence. Finally, the normal vector λk is computed for the next iteration. Thus, it follows that Pik ⊂ C ⊂ P ok , and therefore βlk ≤
+
+β∗ ≤ βuk for all iterations k ≥ 1 (and by construction at 
+
+k = 0 ). βuk can be computed using (10) and (12b) as 
+
+βuk = max  
+
+> β,z
+
+β, (13a) s.t. ⟨λm−1, z ⟩ ≤ vm, ∀m ∈ M ok , (13b) 
+
+z = βp. (13c) 
+
+= min  
+
+> m∈Mok
+> ⟨λm−1,p ⟩>0
+
+vm
+
+⟨λm−1, p ⟩ . (13d) The above equation suggests we can simplify the outer approximation Pok by choosing M ok as a singleton set. Computing βlk requires the solution of the following linear program (LP), obtained from (10) and (12a): 
+
+βlk = max  
+
+> β, (μm)m∈M ik
+> ≥0
+
+β, (14a) s.t. P 
+
+> m∈Mik
+
+μm
+
+hzm
+
+1
+
+i
+
+=
+
+hβp 
+
+1
+
+i
+
+, (14b) where the variables (μm)m∈M ik are the convex combination coefficients for the vertices of Pik. For all iterations k ≥
+
+0, we will ensure that (14) is feasible and βlk > 0. Then, substituting νm = μm/β in (14) (this can be done because 
+
+βlk > 0), we obtain the following equivalent LP: 
+
+(βlk)−1 = min 
+
+> (νm)m∈M ik
+> ≥0
+
+P 
+
+> m∈Mik
+
+νm, (15a) s.t. P 
+
+> m∈Mik
+
+νmzm = p, (15b) where the variables (νm)m∈M ik are the conic combination coefficients for the vertices of Pik. The LP (15) is in standard form, and can be solved using the Simplex method [26, Ch. 4]. The Simplex method returns an optimal basis M i∗ 
+
+> k
+
+⊂
+
+M ik with |M i∗ 
+
+> k
+
+| ≤ l such that the corresponding optimal solu-tion (ν∗
+
+> m
+
+)m∈M ik to (15) satisfies ν∗ 
+
+> m
+
+= 0 ∀m ∈ M ik \M i∗ 
+
+> k
+
+(the existence of such a basis also follows from the Caratheodory Theorem [26, Thm. 2.4] applied to (14)). Fig. 2a depicts an example of the algorithm state at the end of iteration k.5(a) The algorithm state at the end of iteration k. The polyhedra Pik (in dark gray) and Pok (in light gray) approximate the convex set C (in blue). For this example, the index sets used to construct Pik and Pok are given by 
+
+M ik = {m1, m 2, m 3} and M ok = {m2}. The bounds βlk and βuk on the optimal value β∗ are computed using the intersection points of the ray ⃗ 0p
+
+(in red) with Pik and Pok , respectively. The normal vector λm2−1 achieves the value βuk for (13), while the optimal basis for the LP (15) that achieves the value βlk is M i∗ 
+
+> k
+
+= {m1, m 2}.
+
+(b) The algorithm during iteration k + 1 , after the outer approximation update step from Fig. 2a. The index set M ok+1 , corresponding to the outer approximation Pok+1 , is set to {k + 1 } according to (22). We can see that 
+
+βlk ≤ β∗ ≤ βuk+1 ≤ βuk .
+
+(c) The algorithm at the end of iteration k+1 , after the inner approximation update step from Fig. 2b. The support point zk+1 , obtained using λk , is added to the set of inner approximation vertices. The lower bound βlk+1 
+
+and optimal basis M i∗ 
+
+> k+1
+
+= {m2, k + 1 } are computed using the Simplex method (see Sec. III-C.2). By (24), λk+1 is orthogonal to the unique affine space containing {zm : m ∈ M i∗
+
+> k+1
+
+} with ⟨λk+1 , p ⟩ > 0. We can see that 
+
+βlk ≤ βlk+1 ≤ β∗ ≤ βuk+1 . A pruning step is used to reduce the number of inner approximation vertices (see Rem. 2). Fig. 2. Examples of the growth distance algorithm state at the end of iteration k, and after the inner and outer approximation update steps. The inner and outer approximations Pik and Pok are updated to better approximate the ray intersection point β∗p and obtain an ϵtol -optimal solution to the ray intersection problem (10). Lastly, an ϵtol -optimal solution to the growth distance problem (9) is retrieved from the ϵtol -optimal solution to the ray intersection problem (see Prop. 1). Note that p is constant during the algorithm execution. 
+
+Next, we will discuss the initialization and update steps for the polyhedral approximations Pik and Pok , the index sets 
+
+M ik and M ok , and the normal vector λk.
+
+Algorithm 1 Initialization 
+
+Require: p, r ▷ Relative center position and inradius lower bound, r = r1 + r2
+
+1: Function Initialize (): 
+
+2: (M o 
+
+> 0
+
+, β u 
+
+> 0
+
+) ← (∅, ∞)
+
+3: M i 
+
+> 0
+
+← {− l + 1 , ..., 0}
+
+4: (zm)m∈M i 
+
+> 0
+
+← computed using (17) 
+
+5: (M i∗ 
+
+> 0
+
+, β l
+
+> 0
+
+) ← (M i
+
+> 0
+
+, ϵ/ ∥p∥)
+
+6: λ0 ← p/ ∥p∥∞
+
+7: return (M o 
+
+> 0
+
+, β u 
+
+> 0
+
+), (M i
+
+> 0
+
+, M i∗ 
+
+> 0
+
+, β l
+
+> 0
+
+), λ 0
+
+8: End Function 
+
+B. Initialization 1) Outer Approximation Initialization: At iteration k = 0 ,we choose the index set M o 
+
+> 0
+
+:= ∅. Using (12b) and (13), we get that the outer approximation Po 
+
+> 0
+
+= Rl and the ray intersection upper bound βu 
+
+> 0
+
+= ∞.
+
+2) Inner Approximation Initialization: To initialize the inner approximation Pi 
+
+> 0
+
+⊂ C , we choose l points zm ∈ C 
+
+for m ∈ M i 
+
+> 0
+
+:= {− l + 1 , ..., 0} such that 
+
+{zm}m∈M i 
+
+> 0
+
+⊂ C is a linearly independent set ,p ∈ cone {zm : m ∈ M i
+
+> 0
+
+}. (16) Before elaborating on the rationale, we first show how to select such points. Let, for i ∈ { 1, 2}, the inradius of the set 
+
+Ci at the center point pi, ri = r(Ci, p i), be known. So, we have that Br (0) ⊂ C = C1 −C 2 +{p}, where r = r1 +r2 > 0.Then, the points (zm)m∈M i 
+
+> 0
+
+can be chosen by first computing 
+
+l − 1 unit vectors (p⊥
+
+> m
+
+)m∈{− l+1 ,..., −1} that are independent and orthogonal to p, and setting 
+
+zm = Kp ⊥ 
+
+> m
+
++ ϵp/ ∥p∥, ∀m ∈ {− l + 1 , ..., −1}, (17a) 
+
+z0 = lϵp/ ∥p∥ − −1P
+
+> m=−l+1
+
+zm, (17b) where ϵ > 0 is a small constant and K > 0 is such that 
+
+∥zm∥ ≤ r for all m ∈ M i
+
+> 0
+
+. Note that P 
+
+> m∈Mi
+> 0
+
+zm = lϵp/ ∥p∥,and thus (zm)m∈M i 
+
+> 0
+
+satisfy (16). Such a choice of Pi 
+
+> 0
+
+is made to satisfy two key properties. First, we want to ensure primal feasibility at k = 0 , i.e., there should exist (νm)m∈M ik ≥ 0 such that (15b) holds. Then, we can see that (β, z ), where 
+
+β =
+
+ P 
+
+> m∈Mik
+
+νm
+
+−1
+
+, z = P 
+
+> m∈Mik
+
+βν mzm, (18) is feasible for (10). Second, we want the linear independence 
+
+of the optimal points {zm}m∈M i∗ 
+
+> k
+
+at k = 0 , to initialize the Simplex method for (15) at iteration k +1 . Since {zm}m∈M i
+
+> 0
+
+is a linearly independent set and M i∗ 
+
+> 0
+
+= M i
+
+> 0
+
+, the linear independence property is satisfied at k = 0 .Finally, the normal vector λk at k = 0 is chosen to be orthogonal to the affine space containing {zm}m∈M i∗ 
+
+> k
+
+with 
+
+⟨λk, p ⟩ > 0. Following the construction in (17), we can choose the normal vector λ0 = p/ ∥p∥∞. The initialization subroutine for the algorithm is outlined in Alg. 1. 6Next, we discuss the update step for the inner and outer approximations, ensuring that the primal feasibility and linear independence properties of the inner approximation are satisfied at each iteration k ≥ 1. The importance of the primal feasibility property comes from the fact that the algorithm always maintains a feasible solution (β, z )
+
+to (10). Thus, when the algorithm optimally terminates, we can compute an ϵtol -optimal solution to (10) using (18). The linear independence property is crucial because it allows us to initialize the Simplex method for the LP (15) at the next iteration, as emphasized in the following subsection. 
+
+C. Polyhedral Approximation Update 
+
+At the start of iteration k ≥ 1, the normal vector λk−1
+
+from the previous iteration is used to compute the support function value vk = sv [C]( λk−1) > 0 and support point 
+
+zk = sp[C]( λk−1) ∈ C using (11). We assume that the primal feasibility and linear independence properties are satisfied at the end of iteration k − 1, i.e., the optimal basis M i∗ 
+
+> k−1
+
+⊂
+
+M ik−1 is such that |M i∗
+
+> k−1
+
+| = l and 
+
+{zm}m∈M i∗ 
+
+> k−1
+
+⊂ C is a linearly independent set ,p ∈ cone {zm : m ∈ M i∗
+
+> k−1
+
+}. (19) Additionally, we assume that |M ok−1| = 1 for k ≥ 2 and the normal vector λk−1 satisfies 
+
+⟨λk−1, z m1 ⟩ = ⟨λk−1, z m2 ⟩, ∀m1, m 2 ∈ M i∗
+
+> k−1
+
+,
+
+⟨λk−1, p ⟩ > 0. (20) The first condition in (20) implies that λk−1 is orthogonal to the unique affine space containing {zm}m∈M i∗ 
+
+> k−1
+
+. From the construction in Sec. III-B, (19) and (20) are satisfied at the start of iteration k = 1 . Assuming (19) and (20) hold at the start of iteration k, we will show in Sec. III-C.2 that they also hold at the end of iteration k, thus showing that (19) and (20) are algorithmic invariants. We also note that a normal vector λk−1 satisfying the first condition in (20) can be obtained by solving the set of equations ⟨λk−1, z m⟩ = 1 
+
+for all m ∈ M i∗
+
+> k−1
+
+, which results in 
+
+λk−1 = zm1 · · · zml
+
+−⊤ 1, (21) where {m1, ..., m l} = M i∗
+
+> k−1
+
+. Note the matrix in (21) is nonsingular, since {zm}m∈M i∗ 
+
+> k−1
+
+is a linearly independent set (see (19)). Additionally, the value of λk−1 in (21) satisfies the second condition in (20) since ⟨λk−1, p ⟩ = ( βlk−1)−1 > 0
+
+(by (15)). We now detail how vk and zk are used to update the polyhedral approximations Pik and Pok .
+
+1) Outer Approximation Update: By assumption, M ok−1
+
+is the empty set at k = 1 and a singleton set for k ≥ 2.Since we want to find the best upper bound βuk at iteration 
+
+k, we compute βuk and M ok using (13) as follows: 
+
+M ok = {m∗}, m∗ ∈ argmin  
+
+> m∈Mok−1∪{ k}
+
+vm
+
+⟨λm−1, p ⟩ , (22a) 
+
+βuk = vm∗
+
+⟨λm∗−1, p ⟩ = min 
+
+
+
+βuk−1, vk
+
+⟨λk−1, p ⟩
+
+
+
+. (22b) In other words, βuk keeps track of the minimum value of 
+
+vk/⟨λk−1, p ⟩, and M ok keeps track of the index that achieves the minimum value. Note that the constraint ⟨λm−1, p ⟩ > 0
+
+in (13) is not required since it is always satisfied by (20). For the algorithm state at iteration k in Fig. 2a, Fig. 2b depicts how the outer approximation is updated. 
+
+2) Inner Approximation Update: The inner approximation 
+
+Pik and lower bound βlk are updated by solving the LP subproblem (15) with the new point zk. In particular, we set 
+
+M ik = M ik−1 ∪ { k} and solve the LP (15) using the Simplex method [26, Ch. 4] with the initial basis as the optimal basis 
+
+M i∗ 
+
+> k−1
+
+from the previous iteration. An added benefit of using the Simplex method is that the normal vector λk can be computed together with the LP solution. Next, we elaborate on the computations involved in one iteration of the Simplex method . Our goal is not to describe the Simplex method in its entirety, but to highlight that both (19) and (20) hold when the Simplex method for the LP (15) terminates. The Simplex method (for solving a standard form LP) iteratively chooses basic variables to reduce the LP cost, while maintaining primal feasibility. For the standard form LP (15) at iteration k with initial basis M i∗ 
+
+> k
+
+, the nonbasic variables are the variables (νm) for m ∈ M ik \ M i∗ 
+
+> k
+
+which are set to zero. The values of the basic variables (νm) for 
+
+m ∈ M i∗ 
+
+> k
+
+are computed to be nonnegative and satisfy (15b). Then, the Simplex method updates the basis M i∗ 
+
+> k
+
+to reduce the cost associated with the basic variables. So, the Simplex method iteratively computes primal feasible solutions to the LP (15) with monotonically decreasing cost. Conceptually, the Simplex algorithm is represented by a 
+
+tableau . We start with the initial basis M i∗ 
+
+> k
+
+= M i∗
+
+> k−1
+
+, which is guaranteed to be feasible at iteration k, and represent the Simplex method state with the following tableau [26, Ch. 4]: 
+
+1⊤ 1⊤ 1 0
+
+zm1 · · · zml · · · zk p (23) where {m1, ..., m l} = M i∗ 
+
+> k
+
+is the current basis. Each col-umn, except the rightmost one, corresponds to a nonnegative variable νm in the LP (15), the top row corresponds to the cost coefficients in (15a), and the remaining rows correspond to the equality constraint (15b). Similar to (21), the normal vector λk is computed using the current basis M i∗ 
+
+> k
+
+as 
+
+λk = Z−⊤ 1, Z = zm1 · · · zml
+
+. (24) Then, the tableau in (23) is pre-multiplied by the matrix 
+
+1 −λ⊤
+
+> k
+
+0 Z−1
+
+
+
+,
+
+which results in the following reduced tableau: 
+
+0⊤ d⊤ ˜d −(βlk)−1
+
+I · · · (˜ νm)m∈M i∗ 
+
+> k
+
+(ν∗
+
+> m
+
+)m∈M i∗
+
+> k
+
+(25) where the terms −(βlk)−1 and (ν∗
+
+> m
+
+)m∈M i∗ 
+
+> k
+
+≥ 0 in the rightmost column are the negative cost and basic variable values associated with the current basis M i∗ 
+
+> k
+
+. Likewise, the 7term (˜ νm)m∈M i∗ 
+
+> k
+
+is the coordinate of zk with respect to the current basis vectors (zm)m∈M i∗ 
+
+> k
+
+.The Simplex method proceeds by replacing one index (the outgoing index) in the current basis M i∗ 
+
+> k
+
+by an index in 
+
+M ik \ M i∗ 
+
+> k
+
+(the incoming index). The incoming index min ∈
+
+M ik \M i∗ 
+
+> k
+
+is chosen as the index with the most negative value in the top row of the reduced tableau (25); if all values in the top row are nonnegative, then the Simplex method reaches optimality. For the first iteration of the Simplex method , the vector d in (25) is nonnegative (since M i∗ 
+
+> k
+
+= M i∗ 
+
+> k−1
+
+is the optimal basis at iteration k − 1) and ˜d ≤ 0 since 
+
+˜d = 1 − ⟨ λk, z k⟩ = 1 − ⟨ λk−1, z k⟩ = 1 − sv [C]( λk−1),
+
+≤ 1 − ⟨ λk−1, z m1 ⟩ = 0 .
+
+So, if ˜d = 0 , the Simplex method at iteration k reaches op-timality (in fact, the growth distance algorithm also reaches optimality, i.e., βuk = βlk). If ˜d < 0, the incoming index at the first Simplex iteration is min = k. The outgoing index 
+
+mout ∈ M i∗ 
+
+> k
+
+is determined as follows (see [26, Ch. 4.3.1]): 
+
+mout = argmin   
+
+> m∈Mi∗
+> k,˜νm>0
+
+ν∗
+
+> m
+
+˜νm
+
+. (26) At least one m ∈ M i∗ 
+
+> k
+
+such that ˜νm ≥ 1/l > 0 exists since 
+
+P 
+
+> m∈Mi∗
+> k
+
+˜νm = 1 − ˜d ≥ 1.
+
+After the incoming and outgoing indices are determined, the current basis is updated as M i∗ 
+
+> k
+
+← (M i∗ 
+
+> k
+
+∪ { min }) \ { mout },and the Simplex method continues from the updated tableau, similar to (23). Finally, the Simplex method optimally ter-minates in a finite number of iterations (Bland’s rule can be applied to prevent cycling [26, Ch. 4.3.3]). We highlight a key property of the Simplex method applied to (15) at iteration k ≥ 1. The Simplex method ensures the basis M i∗ 
+
+> k
+
+maintains primal feasibility and linear indepen-dence (as specified in (19)) throughout its execution and at optimality [26, Ch. 4.3.1]. Similarly, the normal vector λk
+
+(computed per (24)) satisfies (20) for its corresponding basis throughout the Simplex iterations, including at optimality. Therefore, both (19) and (20) hold at the start of all iterations 
+
+k ≥ 0, and are algorithmic invariants. For the algorithm state at iteration k in Fig. 2a, Fig. 2c depicts how the inner approximation is updated. The update subroutine for the algorithm is outlined in Alg. 2. An additional step to reduce the size of M ik, and thus the size of the LP (15), is used for the inner approximation update (see Alg. 2, line 6), as discussed in the following remark. 
+
+Remark 2. (Index set pruning for the inner approximation) At each iteration k ≥ 1 of the algorithm, the index k is added to the inner approximation index set M ik. To reduce the size of the LP (15) , we can prune the index set M ik while ensuring that M i∗ 
+
+> k
+
+⊂ M ik. One heuristic for pruning M ik is to maintain 
+
+|M ik| ≤ M imax , where M imax ≥ l, by removing the smallest indices in M ik \ M i∗ 
+
+> k
+
+. For two and three-dimensional convex sets, i.e., l = 2 and 3, we can remove all nonoptimal indices from M ik. In other words, we use Prune (M ik, M i∗ 
+
+> k
+
+) = M i∗
+
+> k
+
+Algorithm 2 Polyhedral Approximation Update 
+
+Require: p, sv [C], sp[C] ▷ Relative center position and support functions  
+
+> 1:
+
+Function Update (M ok−1, (M ik−1, M i∗
+
+> k−1
+
+), λ k−1): 
+
+> 2:
+
+(vk, z k) ← (sv [C]( λk−1), s p[C]( λk−1)) ▷ see (11)  
+
+> 3:
+
+(M ok , β uk ) ← computed using (22)  
+
+> 4:
+
+(M ik, M i∗ 
+
+> k
+
+) ← (M ik−1 ∪ { k}, M i∗
+
+> k−1
+
+) 
+
+> 5:
+
+(M i∗ 
+
+> k
+
+, β lk) ← computed using the Simplex method (see Sec. III-C.2)  
+
+> 6:
+
+M ik ← Prune (M ik, M i∗ 
+
+> k
+
+) ▷ see Rem. 2  
+
+> 7:
+
+λk ← computed using (24)  
+
+> 8:
+
+return (M ok , β uk ), (M ik, M i∗ 
+
+> k
+
+, β lk), λ k 
+
+> 9:
+
+End Function 
+
+in Alg. 2, line 6. The theoretical framework for index set pruning is outside the scope of this paper. D. Termination Criteria 
+
+The growth distance algorithm always maintains an upper bound βu and a lower bound βl > 0 for β∗, and thus convergence can be determined by the relative gap βu/β l −
+
+1 ≥ β∗/β l − 1. The growth algorithm is terminated when the relative gap is not greater than ϵtol or if the number of iterations exceeds an algorithm parameter Kmax > 0.
+
+E. Growth Distance Algorithm 
+
+Combining the initialization and update subroutines pre-sented in the previous subsections, we can solve the ray in-tersection problem (10) iteratively. Upon optimal termination of the growth distance algorithm at iteration k∗ ≤ Kmax , we obtain, from (18), an ϵtol -optimal solution (β∗ 
+
+> ϵ
+
+, z ∗ 
+
+> ϵ
+
+) to the ray intersection problem (10), where 
+
+β∗ 
+
+> ϵ
+
+= βlk∗ , z∗ 
+
+> ϵ
+
+= P 
+
+> m∈Mi∗
+> k∗
+
+β∗ 
+
+> ϵ
+
+ν∗
+
+> m
+
+zm. (27) We can then retrieve an ϵtol -optimal solution (α∗ 
+
+> ϵ
+
+, z 1∗ 
+
+> ϵ
+
+, z 2∗ 
+
+> ϵ
+
+)
+
+for the growth distance problem (9) using Prop. 1 as follows: 
+
+α∗ 
+
+> ϵ
+
+= 1 /β ∗ 
+
+> ϵ
+
+, zi∗ 
+
+> ϵ
+
+= P 
+
+> m∈Mi∗
+> k∗
+
+β∗ 
+
+> ϵ
+
+ν∗
+
+> m
+
+zim, i ∈ { 1, 2}, (28) where z1 
+
+> m
+
+and z2 
+
+> m
+
+are the support points of C1 and C2
+
+used to compute zm = z1 
+
+> m
+
+− z2 
+
+> m
+
++ p (see (11)) for all iterations m. Note that when the algorithm terminates due to exceeding Kmax iterations, (β∗ 
+
+> ϵ
+
+, z ∗ 
+
+> ϵ
+
+) and (α∗ 
+
+> ϵ
+
+, z 1∗ 
+
+> ϵ
+
+, z 2∗ 
+
+> ϵ
+
+)
+
+are (βuKmax /β lKmax −1) -optimal. We can also compute the 
+
+ϵtol -optimal normal vector, which achieves the upper bound 
+
+βuk∗ , as λmo , where M ok∗ = {mo}. The complete growth distance algorithm is stated in Alg. 3. The normal vector 
+
+λk is normalized after each update step (see Alg. 3, line 9) to address accuracy issues during the support function com-putation. Recall that, in iteration k + 1 , λk is only used to compute zk+1 , which is invariant to positive scaling of λk,and vk, which is 1st-order homogeneous with respect to λk.Thus, (22), and consequently the algorithm, is not affected by the normalization of the normal vector λk.8Algorithm 3 Growth Distance Algorithm 
+
+Require: p, r, sv [C], sp[C], ϵtol , Kmax  
+
+> 1:
+
+Function GrowthDistance ():  
+
+> 2:
+
+if ∥p∥ = 0 then  
+
+> 3:
+
+(α∗ 
+
+> ϵ
+
+, z 1∗ 
+
+> ϵ
+
+, z 2∗ 
+
+> ϵ
+
+) ← (0 , p 1, p 2) 
+
+> 4:
+
+return α∗ 
+
+> ϵ
+
+, (z1∗ 
+
+> ϵ
+
+, z 2∗ 
+
+> ϵ
+
+) 
+
+> 5:
+
+end if  
+
+> 6:
+
+(( M o 
+
+> 0
+
+, β u 
+
+> 0
+
+), (M i
+
+> 0
+
+, M i∗ 
+
+> 0
+
+, β l
+
+> 0
+
+), λ 0) ← Initialize ()  
+
+> 7:
+
+for k = 1 to Kmax do  
+
+> 8:
+
+(( M ok , β uk ), (M ik, M i∗ 
+
+> k
+
+, β lk), λ k) ←
+
+Update (M ok−1, (M ik−1, M i∗
+
+> k−1
+
+), λ k−1) 
+
+> 9:
+
+λk ← λk/∥λk∥∞ 
+
+> 10:
+
+if (βuk /β lk − 1 < ϵ tol ) then  
+
+> 11:
+
+break  
+
+> 12:
+
+end if  
+
+> 13:
+
+end for  
+
+> 14:
+
+(k∗, λ ∗ 
+
+> ϵ
+
+) ← (k, λ mo ), where M ok = {mo} 
+
+> 15:
+
+(α∗ 
+
+> ϵ
+
+, z 1∗ 
+
+> ϵ
+
+, z 2∗ 
+
+> ϵ
+
+) ← computed using (27), (28)  
+
+> 16:
+
+return α∗ 
+
+> ϵ
+
+, (z1∗ 
+
+> ϵ
+
+, z 2∗ 
+
+> ϵ
+
+), λ ∗ 
+
+> ϵ
+> 17:
+
+End Function 
+
+F. Algorithm Properties and Extensions 
+
+In this subsection, we briefly discuss the properties and extensions of the growth distance algorithm. 
+
+1) Growth Distance Algorithm Properties: We first sum-marize the invariance and monotone convergence properties of the growth distance algorithm, Alg. 3. 
+
+Theorem 1. (Growth distance algorithm invariants) The following properties hold for the growth distance algorithm Alg. 3 for all iterations k ≥ 0, under the assumptions of Problem 1: (i) (Primal feasibility) (β, z ) and (α, z 1, z 2), where 
+
+β = βlk, z = P 
+
+> m∈Mi∗
+> k
+
+βν ∗
+
+> m
+
+zm, (29a) 
+
+α = 1 /β, zi = P 
+
+> m∈Mi∗
+> k
+
+βν ∗
+
+> m
+
+zim, i ∈ { 1, 2}, (29b) 
+
+are feasible for the ray intersection (10) and growth distance (9) problems, respectively. Moreover, β, α > 0.(ii) (Dual feasibility) λk satisfies the following properties: 
+
+⟨λk, z m1 ⟩ = ⟨λk, z m2 ⟩, ∀m1, m 2 ∈ M i∗ 
+
+> k
+
+,
+
+⟨λk−1, p ⟩ > 0. (30) 
+
+(iii) (Simplex property) {zm}m∈M i∗ 
+
+> k
+
+⊂ C is a linearly independent set. Proof. The proof follows from the exposition in Secs. III-A to III-C. In particular, primal feasibility follows from the invariance of (19), (18), and Prop. 1. Dual feasibility follows from the invariance of (20), and the Simplex property follows from the invariance of the second condition in (19). While a discussion of the asymptotic convergence proper-ties of the growth distance algorithm is outside the scope of this paper, we can state the following monotone convergence result, the proof of which follows from the discussion in Secs. III-A to III-C. Note that monotone convergence does not imply asymptotic convergence to the optimal solution. 
+
+Theorem 2. (Monotone convergence) For the growth dis-tance algorithm Alg. 3, under the assumptions of Problem 1, the relative gap βuk /β lk − 1 is monotonically decreasing. 2) Numerical Robustness: A few computational steps in the growth distance algorithm, Alg. 3, require careful attention to avoid numerical issues arising from floating-point errors. In particular, we describe a robust method for the inner approximation update step (see Sec. III-C.2). Each iteration of the Simplex method requires the com-putation of the conic coefficients (˜ νm)m∈M i∗ 
+
+> k
+
+= Z−1zk and 
+
+(ν∗
+
+> m
+
+)m∈M i∗ 
+
+> k
+
+= Z−1p, where Z is defined in (24), to compute the outgoing index in (26). When the algorithm is executed with a small tolerance value, ϵtol , the matrix Z can become ill-conditioned, thereby affecting solution accuracy. Instead of directly evaluating the conic coefficients, we project zk,
+
+p, and the columns of Z onto the subspace orthogonal to p
+
+and compute the barycentric coordinates for use in (26). In other words, we compute the barycentric coordinates 
+
+˜μm = ˜νm
+
+P 
+
+> n∈Mi∗
+> k
+
+˜νn
+
+, μ∗ 
+
+> m
+
+= ν∗
+
+> m
+
+P 
+
+> n∈Mi∗
+> k
+
+ν∗
+
+> n
+
+,
+
+for m ∈ M i∗ 
+
+> k
+
+. Note that scaling (˜ νm)m∈M i∗ 
+
+> k
+
+and (ν∗
+
+> m
+
+)m∈M i∗
+
+> k
+
+does not affect the computation of the outgoing index in (26). Then, the barycentric coordinates are robustly computed using a signed-volume method, as described in [12]. 
+
+3) Warm Start: When the convex sets C1 and C2 are in motion, the algorithm state from a previous growth distance evaluation can be used to warm start the algorithm. Let Tg (C1) represent C1 after a small displacement, where 
+
+g = ( δp, δR ) ∈ SE (3) , and let, without loss of generality, 
+
+C2 be stationary. Let {z1
+
+> m
+
+}m∈M i ⊂ C 1 and {z2
+
+> m
+
+}m∈M i ⊂ C 2
+
+be the support points corresponding to the optimal inner approximation from the previous growth distance evaluation (see (28)). Then, we can define the inner polyhedral approx-imation after the small displacement g = ( δp, δR ) as 
+
+Piws := {δRz 1 
+
+> m
+
++ δp − z2
+
+> m
+
+}M i ⊂ Tg (C1) − C 2. (31) So, Piws can be used to determine an inner approximation for the Minkowski difference set after the displacement g
+
+(without using the support functions). To warm start the algorithm, we use the points in Piws to update the initial inner approximation Pi
+
+> 0
+
+. This step, carried out after Alg. 3, line 6, updates the inner approximation Pi 
+
+> 0
+
+using the points in Piws instead of computing the support points of Tg (C1)
+
+and C2, using the same update method described in Sec. III-C.2. The algorithm is then continued using the updated inner approximation Pi
+
+> 0
+
+. Since the iterative update steps for warm start are the same as those for cold start, the convergence results in Sec. III-F.1 still hold. 
+
+4) Boolean Collision Detection: Since the growth dis-tance algorithm maintains upper and lower bounds βu and 
+
+βl for β∗, we can terminate the algorithm early when only 9collision detection is needed. If βlk ≥ 1 at iteration k, then we know that α∗ = 1 /β ∗ ≤ 1/β lk ≤ 1. In this case, the convex sets are in collision. Likewise, the convex sets are separated if βuk < 1 at iteration k. A crucial advantage of our method is that, since the normal vector achieving the upper bound βuk is continually tracked, we can compute a separating hyperplane between the convex sets when they are separated. Similarly, when the convex sets are in collision, a point in their intersection can be computed. Additionally, the algorithm state after a collision detection evaluation can be used for growth distance warm start, and vice versa. IV. R ESULTS 
+
+In this section, we present benchmark results for the growth distance algorithm and compare them with other growth distance methods. Finally, we illustrate robotics ap-plications of our method. 
+
+A. Benchmark Setup 
+
+The growth distance algorithm, Alg. 3, and the warm start and collision detection functionalities described in Sec. III-F are implemented in C ++ using the Eigen3 library [27] and compiled using the -O3 flag. The benchmarks are run on a laptop using Ubuntu 20.04 with an Intel Core i7-10870H 
+
+CPU ( 2.20 GHz ). We set the maximum number of iterations 
+
+Kmax = 100 and the tolerance ϵtol ≈ 1.49 × 10 −8 (square root of the machine epsilon) for the algorithm. The growth distance library and the benchmark code can be found in the repositories 3.Our algorithm supports all convex sets (that satisfy the assumptions of Problem 1) with a support function im-plementation, including convex primitives, mesh sets, and DSFs (see Tab. I). Sets with curved surfaces often require more iterations for convergence, and so we provide separate benchmarks for curved convex primitives and for meshes. The geometric parameters of all primitive sets are varied over two orders of magnitude (for example, for a cylinder, the radius is varied from 0.25 × 10 −2 m to 0.25 m ). So, our benchmark results include highly skewed objects such as needles and sheets. For the mesh benchmark, we use 
+
+27 different objects from the YCB dataset [28]. The mesh vertices are convexified using Qhull [29], and the number of mesh convex hull vertices ranges from 241 to 4516 . The mesh support functions are computed using the hill-climbing algorithm [5]. We chose 1000 random pairs of convex sets (with random geometric parameters) for each benchmark case, and for each pair we sample 100 random poses. For a given pair of convex sets and poses, the computation times are averaged over 100 
+
+function calls. Thus, the statistics for each benchmark case (corresponding to one bar graph in Fig. 3) are computed over 
+
+10 7 function calls. Note that, unlike for minimum distance            
+
+> 3Growth distance library: https://github.com/HybridRobot ics/differentiable-growth-distance
+> Benchmark code: https://github.com/AkshayThiru/dgd-ben chmark
+> (a) Growth distance benchmark results for curved primitives and mesh sets.
+> (b) Growth distance benchmark results for DSFs in cold start. Fig. 3. Growth distance benchmark results for various types of convex sets, with cold and warm starts, across different methods. For each bar plot, the bars correspond to the 25 -th, 50 -th, and 75 -th percentile values, and the whiskers show the 0.01 and 99 .99 percentile values. The outliers are shown as dots. Our algorithm achieves state-of-the-art solution times for curved primitives and mesh sets (in cold start) across all existing methods. For DSFs, the hybrid Newton solver DCF proposed in [17] outperforms our algorithm. This is primarily because the DCF method requires fewer iterations to converge.
+
+algorithms such as GJK (see [13]), the growth distance com-putation accuracy does not depend on the minimum distance between the convex sets. For the warm start benchmarks, we randomly displace the convex sets so that the translation and rotation approximately correspond to 1% of each set’s size. We compare our method with the Inc , IE , DCol , and 
+
+DCF algorithms (see Tab. I). We implemented optimized versions of the Incremental ( Inc ) algorithm [18] and the Internal Expanding ( IE ) algorithm [16] in C ++ . For a fair comparison, most of the optimizations used in the original C implementation of Inc were preserved, except for the memory-intensive ones. Similarly, our IE algorithm imple-mentation uses the same optimizations and convergence criteria as our method. We note that not all methods work for all convex set types and that not all methods have warm-start functionality (see Tab. I). 
+
+B. Benchmark Results 
+
+The benchmark results for curved primitive sets and meshes are shown in Fig. 3a, and for DSFs in Fig. 3b. The median and 99 .99 -th percentile values of the solution times are tabulated in Tab. III. We observe that across all convex sets (except DSFs), our algorithm outperforms all other methods in cold-start initialization. For mesh sets in 10 TABLE III SOLUTION TIMES FOR GROWTH DISTANCE COMPUTATION                                                    
+
+> Benchmark case Solution times: (median, 99 .99 -th percentile) in microseconds (‘ −’ means unsupported) (cs: cold start, ws: warm start) IE [16] DCF [17] Inc [18] DCol [19] Our method
+> Curved primitives cs (2 .83 ,6.86) −−(7 .61 ,21 .4) (1 .86 ,4.60)
+> ws −−−−(2 .01 ,4.52)
+> Meshes cs (1 .79 ,6.15) −(3 .93 ,22 .4) −(1 .33 ,4.70)
+> ws −−(0 .60 ,2.14) −(0 .69 ,3.57)
+> DSFs [17] cs (165 ,1390) (94 .4,848) −−(156 ,1300)
+
+warm-start initialization, our algorithm achieves performance comparable to the Inc algorithm. Compared to the DCol algo-rithm, the per-iteration computation time compensates for the larger number of iterations. The performance advantage over the IE algorithm is more significant for primitive sets than for meshes and DSFs. This observation can be explained by our algorithm’s use of a more computationally efficient Simplex update step. The DCF algorithm uses a hybrid Newton method, resulting in convergence in fewer iterations and, thus, faster solution times. However, approximating meshes using DSFs (as is done in some DCF applications, see [17]) results in solution times roughly two orders of magnitude larger. Thus, the DCF algorithm is more feasible for sets that can be directly represented as DSFs. For curved primitive sets, warm-start initialization pro-vides negligible performance benefits over cold-start initial-ization. This is because, for curved primitive sets, the support function computations are inexpensive and the transformed inner approximation vertices obtained using warm start (see (31)) generally don’t lie on the Minkowski difference set boundary. On the other hand, significant benefits are obtained for meshes due to the flat nature of the boundary of the Minkowski difference set. We note that the primal warm start technique described in Sec. III-F.3 is only for the inner polyhedral approximation. A similar dual warm start technique for the outer polyhedral approximation yielded results comparable to the primal warm start (results for the dual warm start are omitted). Fig. 4 compares the solution time of our method (with and without the hill-climbing algorithm [5]) with the optimization-based method DCol for computing the growth distance between polytopic sets. We observe that the compu-tation time for DCol increases much faster with the number of vertices. This is because optimization-based methods require solving KKT systems, which grow linearly with the number of constraints and thus result in polynomial com-putational complexity. On the other hand, support function-based methods (such as our method and IE ) yield linear computational growth. Furthermore, accelerating the support function computation using hill-climbing results in faster computation times. We also show the convergence rate (the log of the relative gap βuk /β lk −1 versus the iteration k) for the growth distance algorithm, Alg. 3, in Fig. 5. Empirically, we observe that the            
+
+> Fig. 4. Solution times for growth distance computation using the interior-point method DCol [19] and our method, for polytopes with different numbers of vertices. For a given number of polytope vertices, the vertices are randomly generated from an ellipsoid surface with an aspect ratio equal to 10 . The lines show the median solution times, and the shaded regions cor-respond to the minimum and maximum values. As the number of polytope vertices increases, the solution time for DCol (in blue) increases drastically. On the other hand, our method demonstrates (roughly) linear growth in solution time (in orange). When using the hill-climbing algorithm [5] to accelerate support function computation, we achieve sublinear growth in solution time (in green).
+> (a) Convergence rate for curved primitive sets.
+> (b) Convergence rate for mesh sets. Fig. 5. Convergence rate results for the growth distance algorithm, Alg. 3, for 10 7function calls. The geometric parameters for the primitive sets are varied over two orders of magnitude. The mesh sets are generated identically to the method described in Fig. 4. Our method achieves a linear worst-case convergence rate for primitive sets and finite convergence for mesh sets.
+
+11 Fig. 6. Multi-rigid-body simulation of 50 randomly generated polytopes falling on the ground, with our growth distance implementation used as the collision detection and contact frame computation backend in the Bullet Physics SDK. The polytopes with larger speeds are depicted in red, and the stationary polytopes in blue. The total kinetic energy of the system reaches zero at the end of 10 s . The maximum penetration depth across all collisions is 1.39 cm , which is similar to the maximum penetration depth achieved using the default signed distance-based collision detector. 
+
+algorithm converges linearly for primitive sets and converges in a finite number of iterations for mesh sets. Finally, we summarize some other statistics for our al-gorithm. For two-dimensional sets, our algorithm achieves, on average, a solution time of 0.478 μs with 9.67 iterations. Across all growth distance computations for our algorithm in the benchmark (roughly 10 9 function calls including multiple reruns of the benchmarks), optimality is achieved in all of them and the maximum primal infeasibility error (the error in satisfying the constraint (9c)) is 6.12 × 10 −10 m for curved primitive sets and 1.97 × 10 −12 m for meshes. For the IE algorithm, the maximum primal infeasibility error is 
+
+5.95 × 10 −7 m for curved primitive sets and 1.89 × 10 −11 m
+
+for meshes, indicating that our algorithm yields smaller primal infeasibility errors. Our algorithm achieves a smaller primal infeasibility error compared to the IE algorithm due to the numerically robust barycentric coordinate computation method described in Sec. III-F.2. 
+
+C. Applications 
+
+In this subsection, we briefly describe some robotics applications of the growth distance algorithm and discuss its advantages and disadvantages compared to signed distance methods. We note that the goal of this subsection is to demonstrate the suitability of our method for a range of robotics applications. An in-depth exploration of the merits of the growth distance relative to the signed distance is left for future work. 
+
+1) Rigid Body Simulation (Fig. 6): In multi-rigid-body simulations, computing contact impulses requires detecting collisions between rigid bodies and computing the contact points and normals. We consider an example of simulating 
+
+50 polytopes falling to the ground. We use the Bullet Physics SDK [30] (the C ++ engine) and replace the built-in signed distance-based collision detector with our growth distance implementation. Following the Bullet recommendations, we set the polytope diameters to roughly 1 m , with 8-20 vertices per polytope. We set the collision margins of the polytopes to 
+
+4 cm (the default value) and ensure their inertias are roughly equal to prevent excessive penetration. We run the simulation at 240 Hz for 10 s .Snapshots of the simulation state are depicted in Fig. 6. The total kinetic energy of the system reaches 0.00 J by 10 s ,with 90 .19% of the total initial potential energy dissipated. The growth distance function is called 7.87 × 10 5 times during the 10 s duration. We note that simulating polytopic collisions with the Bullet Physics SDK often results in a positive penetration depth during contact. The default signed distance-based collision detector and our growth distance im-plementation result in similar maximum penetration depths of 1.50 cm and 1.39 cm , respectively, across all the collisions (polytope-polytope and polytope-ground). A disadvantage of using the growth distance for rigid-body simulations is that, unlike the signed distance, the growth distance depends on the center points of the convex sets. Thus, when the convex sets are strictly penetrating or strictly separated, the contact points and normals differ between the two methods, resulting in different final simulation states. However, when in contact (i.e., when the growth distance equals one), the contact points and normals for both methods match. In such cases, minimum distance algorithms such as GJK can suffer from numerical accuracy issues [13], whereas the numerical accuracy of our growth distance algorithm is contact-invariant. Therefore, the growth distance algorithm can potentially be more numerically stable for rigid-body simulations. 
+
+2) Motion Planning (Fig. 7): The collision detection functionality described in Sec. III-F.4 can be used for motion planning applications, where it is sufficient to determine whether a given robot state is safe. We consider motion planning for a UR5e manipulator robot using the RRT im-plementation in the Open Motion Planning Library (OMPL) [31]. We use the MuJoCo simulator [6] for impedance control of the manipulator joint positions, the UR5e model from MuJoCo Menagerie [32], and the Pinocchio library [33] for forward kinematics. The motion planning task is to reach a goal state from an initial state within a workspace with tightly-placed obstacles. We set the state space resolution for checking state validity to 0.1% .The resulting robot trajectory is shown in Fig. 7. The 12 Fig. 7. Motion planning for a manipulator robot in a workspace with five tightly-placed obstacles. The red dots indicate the end-effector position. The robot’s state validity during motion planning is verified using our growth distance implementation. 
+
+motion planning problem is solved in 0.107 s , with 6.03 ×10 5
+
+collision detection function calls, and the resulting joint position trajectory is tracked by the position controller in 
+
+23 s . We note the advantage of using early termination in the growth distance algorithm, which allows us to detect upwards of 5.64 × 10 6 collisions per second with cold start. In robotics applications, there is often significant pen-etration between geometries during the motion planning and trajectory optimization solution process. A substantial advantage of using the growth distance for such applications is that it provides a unified measure of set separation and intersection. This is unlike the signed distance, which is obtained as the solution to a nonconvex optimization problem in the case of set intersection. Additionally, the computability of the growth distance using a convex optimization problem enables differentiability analysis, a topic that will be explored in depth in future works. V. C ONCLUSIONS 
+
+In this paper, we presented an algorithm to compute the growth distance between convex sets. We defined the growth distance problem for proper convex sets and stated its equivalent ray intersection problem. Our algorithm computes the ray intersection solution by maintaining inner and outer polyhedral approximations of the Minkowski difference set. The inner approximation is updated by incrementally adding support points and using the Simplex method to compute primal feasible solutions. We also proposed warm start and collision detection functionalities for our algorithm. Benchmark results show that our algorithm achieves state-of-the-art performance for primitive sets and meshes in cold start, while maintaining low primal infeasibility error. The improved performance in computing growth distance ob-tained with our algorithm translates into faster, more accurate collision detection in robotics applications. Future work on our algorithm will focus on convergence results, algorithmic details for dimensions greater than three, and second-order methods. Additionally, the differentiability properties of the optimal value and the optimal solution to the growth distance problem will be considered. ACKNOWLEDGMENT The authors thank Prof. Ong Chong Jin at the National University of Singapore and Jeongmin Lee at Seoul National University for the implementations of the Incremental and the DCF algorithms, respectively. REFERENCES [1] E. Gilbert and D. Johnson, “Distance functions and their application to robot path planning in the presence of obstacles,” IEEE Journal on Robotics and Automation , vol. 1, no. 1, pp. 21–30, 2003. [2] O. Stasse, A. Escande, N. Mansard, S. Miossec, P. Evrard, and A. Kheddar, “Real-time (self)-collision avoidance task on a hrp-2 humanoid robot,” in 2008 ieee international conference on robotics and automation . IEEE, 2008, pp. 3200–3205. [3] J. Schulman, Y. Duan, J. Ho, A. Lee, I. Awwal, H. Bradlow, J. Pan, S. Patil, K. Goldberg, and P. Abbeel, “Motion planning with sequential convex optimization and convex collision checking,” The International Journal of Robotics Research , vol. 33, no. 9, pp. 1251–1270, 2014. [4] J. Mirabel, S. Tonneau, P. Fernbach, A.-K. Sepp¨ al¨ a, M. Campana, N. Mansard, and F. Lamiraux, “Hpp: A new software for constrained motion planning,” in 2016 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2016, pp. 383–389. [5] G. Van Den Bergen, Collision detection in interactive 3D environ-ments . CRC Press, 2003. [6] E. Todorov, T. Erez, and Y. Tassa, “Mujoco: A physics engine for model-based control,” in 2012 IEEE/RSJ international conference on intelligent robots and systems . IEEE, 2012, pp. 5026–5033. [7] C. Ericson, Real-time collision detection . Crc Press, 2004. [8] X. Wei, M. Liu, Z. Ling, and H. Su, “Approximate convex decompo-sition for 3d meshes with collision-aware concavity and tree search,” 
+
+ACM Transactions on Graphics (TOG) , vol. 41, no. 4, pp. 1–18, 2022. [9] E. Gilbert, D. Johnson, and S. Keerthi, “A fast procedure for computing the distance between complex objects in three space,” in Proceedings. 1987 IEEE International Conference on Robotics and Automation ,vol. 4. IEEE, 1987, pp. 1883–1889. [10] S. Cameron, “Enhancing gjk: Computing minimum and penetration distances between convex polyhedra,” in Proceedings of international conference on robotics and automation , vol. 4. IEEE, 1997, pp. 3112–3117. [11] E. G. Gilbert, D. W. Johnson, and S. S. Keerthi, “A fast procedure for computing the distance between complex objects in three-dimensional space,” IEEE Journal on Robotics and Automation , vol. 4, no. 2, pp. 193–203, 2002. [12] M. Montanari, N. Petrinic, and E. Barbieri, “Improving the gjk algorithm for faster and more reliable distance queries between convex objects,” ACM Transactions on Graphics (TOG) , vol. 36, no. 3, pp. 1–17, 2017. [13] L. Montaut, Q. Le Lidec, V. Petrik, J. Sivic, and J. Carpentier, “Gjk++: Leveraging acceleration methods for faster collision detection,” IEEE Transactions on Robotics , 2024. [14] G. Van Den Bergen, “Proximity queries and penetration depth compu-tation on 3d game objects,” in Game developers conference , vol. 170, 2001, p. 209. 
+
+13 [15] C. J. Ong and E. G. Gilbert, “Growth distances: New measures for object separation and penetration,” IEEE Transactions on Robotics and Automation , vol. 12, no. 6, pp. 888–903, 1996. [16] Y. Zheng, M. C. Lin, and D. Manocha, “A fast n-dimensional ray-shooting algorithm for grasping force optimization,” in 2010 IEEE International Conference on Robotics and Automation , 2010, pp. 1300–1305. [17] D. Lee, J. Lee, and M. Lee, “Uncertain Pose Estimation during Contact Tasks using Differentiable Contact Features,” in Proceedings of Robotics: Science and Systems , Daegu, Republic of Korea, July 2023. [18] C.-J. Ong, E. Huang, and S.-M. Hong, “A fast growth distance algorithm for incremental motions,” IEEE Transactions on Robotics and Automation , vol. 16, no. 6, pp. 880–890, 2000. [19] K. Tracy, T. A. Howell, and Z. Manchester, “Differentiable collision detection for a set of convex primitives,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2023, pp. 3663–3670. [20] S.-M. Hong, J.-H. Yeo, and H.-W. Park, “A fast procedure for computing incremental growth distances,” Robotica , vol. 18, no. 4, pp. 429–441, 2000. [21] Y. Zheng and K. Yamane, “Ray-shooting algorithms for robotics,” 
+
+IEEE Transactions on Automation Science and Engineering , vol. 10, no. 4, pp. 862–874, 2013. [22] G. A. B. Van and D. Bergen, “Ray casting against general convex objects with application to continuous collision detection,” in Playlogic Game Factory , 2004. [Online]. Available: https: //api.semanticscholar.org/CorpusID:13230913 [23] Y. Zheng and C.-M. Chew, “A numerical solution to the ray-shooting problem and its applications in robotic grasping,” in 2009 IEEE International Conference on Robotics and Automation , 2009, pp. 2080–2085. [24] A. Rodriguez and M. T. Mason, “Path connectivity of the free space,” 
+
+IEEE Transactions on Robotics , vol. 28, no. 5, pp. 1177–1180, 2012. [25] R. T. Rockafellar, Convex analysis . Princeton university press, 1997, vol. 11. [26] A. Nemirovski, Introduction to linear optimization . World Scientific, 2024. [27] G. Guennebaud, B. Jacob, et al. , “Eigen v3,” http://eigen.tuxfamily.org, 2010. [28] B. Calli, A. Singh, J. Bruce, A. Walsman, K. Konolige, S. Srini-vasa, P. Abbeel, and A. M. Dollar, “Yale-cmu-berkeley dataset for robotic manipulation research,” The International Journal of Robotics Research , vol. 36, no. 3, pp. 261–268, 2017. [29] C. B. Barber, D. P. Dobkin, and H. Huhdanpaa, “The quickhull algorithm for convex hulls,” ACM Transactions on Mathematical Software (TOMS) , vol. 22, no. 4, pp. 469–483, 1996. [30] E. Coumans, “Bullet physics simulation,” in ACM SIGGRAPH 2015 Courses , ser. SIGGRAPH ’15. New York, NY, USA: Association for Computing Machinery, 2015. [Online]. Available: https://doi.org/10.1145/2776880.2792704 [31] I. A. S ¸ ucan, M. Moll, and L. E. Kavraki, “The Open Motion Planning Library,” IEEE Robotics & Automation Magazine , vol. 19, no. 4, pp. 72–82, December 2012, https://ompl.kavrakilab.org. [32] K. Zakka, Y. Tassa, and MuJoCo Menagerie Contributors, “MuJoCo Menagerie: A collection of high-quality simulation models for Mu-JoCo,” http://github.com/google-deepmind/mujoco menagerie, 2022. [33] J. Carpentier, G. Saurel, G. Buondonno, J. Mirabel, F. Lamiraux, O. Stasse, and N. Mansard, “The Pinocchio C++ library – A fast and flexible implementation of rigid body dynamics algorithms and their analytical derivatives,” in International Symposium on System Integration (SII) , 2019. 
+
+14

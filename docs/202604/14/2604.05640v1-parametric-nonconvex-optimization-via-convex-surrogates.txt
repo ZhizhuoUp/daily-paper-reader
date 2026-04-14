@@ -1,0 +1,589 @@
+Title: Parametric Nonconvex Optimization via Convex Surrogates
+
+URL Source: https://arxiv.org/pdf/2604.05640v1
+
+Published Time: Wed, 08 Apr 2026 00:50:08 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Parametric Nonconvex Optimization via Convex Surrogates 
+
+Renzi Wang, Panagiotis Patrinos, and Alberto Bemporad 
+
+Abstract — This paper presents a novel learning-based ap-proach to construct a surrogate problem that approximates a given parametric nonconvex optimization problem. The surro-gate function is designed to be the minimum of a finite set of functions, given by the composition of convex and monotonic terms, so that the surrogate problem can be solved directly through parallel convex optimization. As a proof of concept, numerical experiments on a nonconvex path tracking problem confirm the approximation quality of the proposed method. 
+
+I. I NTRODUCTION 
+
+Optimization problems are common in many areas of control systems, such as robotic motion planning and au-tonomous driving, as well as in different other engineer-ing fields. However, due to the inherent complexity of the problem structure, the optimization problem is often nonconvex, posing significant challenges to solve it effi-ciently. In practice, these optimization problems are often solved repeatedly with varying problem parameters, such as different environment configurations or, in the case of problems arising from optimal control formulations, different initial conditions. This characteristic gives rise to parametric optimization problems , denoting a family of similar opti-mization problems that differ only in (some of) the problem parameters. Most of the parametric optimization literature has focused on studying the properties of convex parametric optimization problems [1], [2], and explicit solutions have been derived for special classes of problems, such as multiparametric lin-ear [3], [4] and (piecewise) quadratic programs [5], [6], [7], [8], [9], to simplify solving different problem instances at run time. However, solving nonconvex parametric optimization instances repeatedly, often under real-time constraints, ob-taining fast, accurate, and possibly global solutions remains a crucial challenge in applications, the computational cost per solve often being a critical bottleneck. This opens the door to data-driven approaches, which can exploit the shared structure across problem instances to accelerate solving. Data-driven methods to approach parametric optimization problems are broadly referred to as learning to optimize [10],                                                             
+
+> This work was funded by the European Union (ERC Advanced Research Grant COMPACT, No. 101141351), KU Leuven internal funding C14/24/103, FWO project G033822N. Views and opinions expressed are however those of the authors only and do not necessarily reflect those of the European Union or the European Research Council. Neither the European Union nor the granting authority can be held responsible for them. R. Wang and A. Bemporad are with the IMT School for Advanced Studies, Lucca, Italy. Email:
+
+<renzi.wang>,<alberto.bemporad>@imtlucca.it             
+
+> P. Patrinos is with Department of Electrical Engineering
+> ESAT -STADIUS ,KU Leuven, Leuven, Belgium. Email:
+
+panos.patrinos@kuleuven.be 
+
+and amortized optimization [11]. A major category of data-driven approaches is to learn a solution mapping that directly maps the problem parameters to the optimal solution. Such a method is often referred to as a fully-amortized approach [11, Definition 2]. A natural training objective for learning the solution mapping is to minimize the mean squared error be-tween the learned solution and the optimal solution obtained by a solver. This requires calling a solver offline to generate the training data, which can be computationally expensive, especially for nonconvex optimization problems with several parameters. In addition, due to the approximation error of the learned model, the learned solution mapping may not satisfy the constraints of the original problem, leading to infeasible or suboptimal solutions, unless specific model structures and/or training objectives are designed to ensure, or at least promote, feasibility. To address the feasibility concern, two main approaches have been proposed in the literature. The first approach is to use the learned solution as a warm start for a solver, which then safeguards feasibility while reducing the number of iterations required [12]. However, this approach still requires expensive data collection to train the solution mapping. The second approach is to learn a solution mapping that explicitly incorporates the constraints by design, ensuring feasibility of the learned solution [13], [14], [15]. However, these ap-proaches typically train the solution mapping by minimizing the original problem loss over the network parameters via first-order optimization methods, which effectively reduces to solving the original problem through a reparameterization. This training procedure may not fully exploit the structure of the original problem or the efficiency of dedicated solvers. A related but distinct direction places the solver itself at the center, aiming to learn the algorithmic behavior of the solver rather than the solution mapping. This line of research is achieved by learning the hyperparameters of the solver, such as through reinforcement learning [16] or by unrolling the algorithm with a feedforward network [17]. Although most of the works under this category focus on convex optimization problems, the outcome can be used as a submodule within a nonconvex optimization scheme [17]. Nevertheless, algorithm unrolling methods still require a solver to generate training data, leaving the computational burden of data collection unresolved. Instead of learning the solution mapping or the algorith-mic behavior of the solver, another approach is to learn a surrogate problem that approximates the original problem. A classical way is to construct such an approximation through analytical methods [18]. Recently, data-driven approaches have been proposed to learn a surrogate problem directly 
+
+> arXiv:2604.05640v1 [math.OC] 7 Apr 2026
+
+from data. One direction is to learn part of the solution mapping to reduce the original problem to a simpler one over the remaining variables [19], though this still requires access-ing the solver to generate training data. Another direction is to learn a low-dimensional representation of the original problem through a linear change of variables [20]. However, a linear mapping preserves the nonconvex structure of the problem, leaving the computational difficulty fundamentally unchanged. A further direction seeks to learn a coordinate transformation that convexifies the original problem, such as through a Koopman operator [21], [22], but these methods do not account for the parametric nature of the problem. The surrogate-based approach also connects to meta-learning, where the goal is to learn a model that can be quickly adapted to new tasks [23], [24]. 
+
+Contribution : The proposed surrogate formulation ad-dresses several limitations identified above. First, unlike solution mapping and algorithm unrolling approaches, our method does not require a large corpus of solver-generated (and, possibly, global) solutions as a training prerequisite. Such data can be optionally incorporated as regularization to improve approximation quality, but is not a necessity. Second, by introducing a finite set of convex functions among the components of the surrogate problem, our ap-proach can exploit the efficiency of dedicated convex solvers, overcoming the limitation of constrained neural network approaches that rely on general first-order methods. To summarize, our contribution is twofold: i) We propose a novel learning-based approach that parametrizes the surro-gate problem for parametric nonconvex optimization with quasiconvex components, given by the composition of con-vex and monotonic functions. The surrogate structure enables us to leverage the powerful tools in convex optimization for solving the surrogate problem in parallel. ii ) As a proof of concept, numerical experiments on a nonconvex path tracking problem demonstrate the approximation quality of the proposed method. The surrogate solution used as an initial guess for original nonconvex problem leads to faster convergence. II. P ROBLEM FORMULATION 
+
+Consider a parametric optimization problem of the form 
+
+minimize  
+
+> x∈X
+
+f (x, p )subject to g(x, p ) ≤ 0 (1) where x ∈ IR nx is the decision vector, and p ∈ IR np
+
+is the vector of problem parameters. The function f :IR nx × IR np → IR is the nonconvex loss function, and 
+
+g : IR nx ×IR np → IR m is the constraint function, with g(·, p )
+
+elementwise convex for any fixed p. The domain X ⊂ IR nx
+
+is a convex and compact set. Since f is nonconvex, solving the problem (1) for a given parameter p is challenging in general. We therefore propose to learn a surrogate function ˆf that approximates f
+
+and admits a structure that allows for efficient optimization. Specifically, we parameterize ˆf in the form 
+
+ˆf (x, p ) = min  
+
+> i=1 ,...,K
+
+hi
+
+  ¯fi(x, p ) (2) where ¯fi : IR nx × IR np → IR is a convex function in x
+
+for any fixed p for all i = 1 , . . . , K , and hi : IR → IR is a monotonically increasing function for all i = 1 , . . . , K .This parameterization offers two expressiveness properties. First, by the composition rule of quasiconvex functions [25, §3.4.4], each function x 7 → hi( ¯fi(x, p )) belongs to the strictly broader class of quasiconvex functions in x
+
+for any fixed p. Because hi need not be convex, hi ◦ ¯fi
+
+is not necessarily convex. Second, the pointwise minimum of K quasiconvex functions can represent multimodal loss landscapes that no quasiconvex function can capture. The form (2) admits a decomposition that reduces mini-mizing ˆf over the constraints into two stages: i) Solving K
+
+convex optimization problems in parallel by minimizing ¯fi
+
+over the constraints, then ii ) Selecting the optimal solution among the K resulting optimal values of hi ◦ ¯fi. Note that by minimizing ¯fi we attain the global minimum of each subproblem. Concretely, let 
+
+¯Fi(p) = inf 
+
+> x∈X
+
+ ¯fi(x, p ) | g(x, p ) ≤ 0 for i = 1 , . . . , K, i⋆(p) ∈ argmin 
+
+> i=1 ,...,K
+
+hi
+
+  ¯Fi(p),x⋆ ∈ argmin 
+
+> x∈X
+
+ ¯fi⋆(p)(x, p ) | g(x, p ) ≤ 0 .
+
+(3) Then x⋆ ∈ argmin x∈X ,g (x,p )≤0 ˆf (x, p ).
+
+A. Choice of the function 
+
+Each monotonically increasing function hi : IR → IR can be obtained by using a feedforward neural network with L
+
+layers, with nonnegative weights Wℓ and arbitrary biases 
+
+bℓ, and monotonic activation functions σℓ such as ReLU, softplus, and sigmoid for each layer ℓ = 1 , . . . , L − 1, and a linear activation function for the last layer L. Alternatively, one can use monotonic rational-quadratic splines proposed in [26]. Each convex function ¯fi belongs to a chosen parametric family whose coefficients are mappings of p. We collect the parameters of these mappings and the network parameters of hi into the parameter vector Θ. Below we list some candidate parametric families for ¯fi, where we omit the index 
+
+i for notational simplicity. In all examples, the coefficient functions are neural networks in p, so Θ collects their weights and fully determines ˆfΘ. Any combination of the following families are also a valid choice. 
+
+Example II.1 (Parametric quadratic function). 
+
+¯f (x, p ) = α ∥x∥22 + ∥L(p)x∥22 + c(p)⊤x + d(p)
+
+where α ≥ 0 is a user-specified hyperparameter, L(p)
+
+is a learned lower-triangular matrix, and c(p), d(p) are learned vector and scalar functions of p, respectively. The lower-triangular structure of L(p) characterizes the positive semidefinite matrix L⊤(p)L(p) with nx(nx+1) /2 learnable pa-rameters, avoiding the n2 
+
+> x
+
+parameters required by a general full matrix while retaining full rank. The hyperparameter term α ∥x∥22 is kept separate from L(p) to distinguish the fixed regularization α from the learnable component L(p).Setting α > 0 guarantees strong convexity, ensuring a unique minimizer when the learned problem is solved. 
+
+Example II.2 (Max-affine function). 
+
+¯f (x, p ) = max 
+
+> t=1 ,...,L
+
+(At(p)x + bt(p)) 
+
+where At(p), bt(p) are matrix and vector functions of p,respectively. 
+
+Example II.3 (Max-squared function). 
+
+¯f (x, p ) = 
+
+> L
+
+X
+
+> t=1
+
+max( At(p)x − bt(p), 0) 2
+
+where At(p), bt(p) are vector and scalar functions of p,respectively. 
+
+Example II.4 (Input-convex neural network (ICNN) [27]). 
+
+To incorporate the parameters, we specifically consider the convex function is of the form 
+
+¯f (x, p ) = ℓ(x, φ (p)) ,
+
+where ℓ : IR nx × IR nq → IR is an input-convex neural network that is convex in x for any fixed φ(p), and φ :IR np → IR nq is a neural network that maps the problem parameter p to the function parameter φ(p), as proposed in [28]. B. Smoothed minimum 
+
+When the true function f is differentiable, it would be desirable to ensure that the surrogate function ˆf is also differentiable, so that its gradient can be matched to the true gradient of f . To this end, during training only , we consider representing the exact minimum in (2) with a smoothed minimum: 
+
+ˆf (x, p ) = −γlse 
+
+
+
+− 1 
+
+> γ
+
+F  x, p 
+
+(4) where the mapping F (x, p ) = ( ¯f1(x, p ), . . . , ¯fK (x, p )) The function lse : IR K → IR is the log-sum-exponential function defined as lse( z) = log   P Ki=1 exp( zi). Since −lse( −z) is a smooth approximation of min( z), the surrogate (4) con-verges to (2) as γ → 0, and the hyperparameter γ > 0 trades off approximation quality against numerical conditioning. After training, i.e., at solve time, one recovers the exact decomposition (3) and solves the K convex subproblems in parallel. III. L EARNING THE SURROGATE PROBLEM 
+
+As mentioned above, many learning-based approaches to parametric nonconvex optimization focus on learning a surrogate for the solution x⋆(p), which needs a solver to produce optimal solutions as supervised training targets. Such setup introduces a potentially expensive data collection process. In contrast, in this work we propose to learn the 
+
+loss landscape f (x, p ) via a regression problem, which only requires evaluations of f at arbitrary (x, p ) pair, and only optionally optimal solutions to improve the quality of the surrogate around minima. Such data is far cheaper to obtain and does not presuppose access to a solver. We describe the surrogate learning problem in detail below. Given the dataset D = {xk, f k, p k}Nk=1 , where fk =
+
+f (xk, p k) denotes the true loss evaluated at the data point 
+
+xk with problem parameter pk, we aim to fit the surrogate 
+
+ˆfΘ by minimizing the composite loss: 
+
+minimize  
+
+> Θ
+
+Ltotal (Θ) := L(Θ) + R(Θ) (5) where each term is described next. 
+
+A. Data fitting loss 
+
+The primary objective is to minimize the mean squared error between the true loss and the approximated loss: 
+
+L(Θ) = 1
+
+N
+
+> N
+
+X
+
+> k=1
+
+ fk − ˆfΘ(xk, p k)2. (6) 
+
+B. Regularization a) Optimality regularization (optional): Let D⋆ =
+
+{x⋆i , f ⋆i , p ⋆i , λ ⋆i }M1 
+
+> i=1
+
+⊆ D be the subset of the training data at which x⋆i is the optimal solution of the optimization problem (1) with parameter p⋆i , where we additionally assume access to the dual variables λ⋆i ∈ IR m associated with the constraints 
+
+g(x, p ) ≤ 0. This are often immediately available when the data is collected from a numerical solver. At the optimal solution x⋆i , the stationarity condition of the Lagrangian function requires 
+
+∇xf (x⋆i , p ⋆i ) + ∇xg(x⋆i , p ⋆i )λ⋆i = 0 . (7) To encourage the surrogate function to respect the optimality condition at these points, we consider the following regular-ization term: 
+
+R1(Θ) = w1
+
+M1
+
+> M1
+
+X
+
+> i=1
+
+∇x ˆfΘ(x⋆i , p ⋆i ) + ∇xg(x⋆i , p ⋆i )λ⋆i
+
+> 22
+
+(8) where w1 > 0 is a hyperparameter that controls the weight of such a regularization term. Importantly, we remark that points where the solver con-verged only within a loose numerical tolerance are still valuable information for training the surrogate function and can still be included in D \ D ⋆.
+
+b) Gradient matching regularization: Let D† =
+
+{xi, f i, p i}M2 
+
+> i=1
+
+⊆ D be the subset of the training data at which the true gradient ∇xfi := ∇xf (xi, p i) is directly ac-cessible. In this case, one can match the surrogate gradient to the true gradient by considering the following regularization term: 
+
+R2(Θ) = w2
+
+M2
+
+> M2
+
+X
+
+> i=1
+
+∇x ˆfΘ(xi, p i) − ∇ xfi
+
+> 22
+
+(9) where w2 > 0 is a hyperparameter that controls the weight of the regularization term. Unlike (8), this regularization is applicable at any point where the gradient is available. Clearly, if D⋆ = D† and the Karush-Kuhn-Tucker (KKT) optimality conditions hold exactly at the optimal points, i.e., 
+
+∇xf ⋆i + ∇xg(x⋆i , p ⋆i )λ⋆i = 0 
+
+the regularization term (8) is equivalent to the regularization term (9). 
+
+C. Projected sampling 
+
+A natural approach to construct the dataset D is to sample the data points {xk}Nk=1 uniformly from the domain X .However, uniform sampling tends to under-represent the boundary of X , which is critical for capturing the behavior of the loss function near the boundary and ensuring the surrogate function is accurate in these regions. To ensure adequate coverage of the boundary of the domain, we employ a projected sampling strategy: 
+
+i) Construct an enlarged domain ˜X such that X ⊆ ˜X .
+
+ii ) Sample the data points {xk}Nk=1 uniformly from the enlarged domain ˜X .
+
+iii ) Project the sampled data points onto the original domain 
+
+X by solving a projection problem: 
+
+xproj  
+
+> k
+
+= arg min  
+
+> x∈X
+
+∥x − xk∥22 . (10) The projection is the identity for points already inside X
+
+and maps boundary-violating samples to the nearest feasible point, thereby enriching the dataset near the boundary. No-tably, the projection enforces only X and deliberately does not enforce the constraints g(x, p ) ≤ 0. This is because f
+
+is well-defined over the entire domain X , and the feasible set Xpi := {x ∈ X | g(x, p i) ≤ 0} ⊆ X varies with the parameter p. By sampling from the larger set X , the dataset provides the coverage of the full operational feasible region across all parameter values, yielding a surrogate capturing the global structure of the loss landscape. Samples restricted to Xpi only provide local and parameter-specific information, making the surrogate difficult to generalize well beyond 
+
+Xpi . Empirically, restricting samples to Xpi degrades the performance, which is consistent with the intuition above. For parameters pk, two approaches can be considered. The first approach is to sample pk uniformly from a predefined parameter set P ⊆ IR np . The second is applicable when prior solution data is readily available, such as from amodel predictive controller that has been deployed on a system, producing a dataset (x⋆i , p i)Mi=1 . In this case, the parameter values can be directly inherited from this dataset. The projected sampling strategy is then applied to augment the coverage of the dataset in the x-space, i.e., for each fixed parameter value pi, additional samples (xproj  
+
+> j
+
+) are generated and paired with pi to enrich the dataset. The true loss 
+
+fk = f (xproj  
+
+> k
+
+, p k) is then evaluated at the projected points, which form the final dataset D.IV. N UMERICAL EXPERIMENTS 
+
+A. Static function approximation 
+
+We use the six-hump camel back function [29] as a test function to illustrate that a nonconvex function can be −2.0 −1.5 −1.0 −0.5 0.0 0.5 1.0 1.5 2.0
+
+> −1.00
+> −0.75
+> −0.50
+> −0.25
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+
+(a) Ground truth −2.0 −1.5 −1.0 −0.5 0.0 0.5 1.0 1.5 2.0 
+
+> −1.00
+> −0.75
+> −0.50
+> −0.25
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+
+(b) K = 1 −2.0 −1.5 −1.0 −0.5 0.0 0.5 1.0 1.5 2.0
+
+> −1.00
+> −0.75
+> −0.50
+> −0.25
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+
+(c) K = 2 −2.0 −1.5 −1.0 −0.5 0.0 0.5 1.0 1.5 2.0 
+
+> −1.00
+> −0.75
+> −0.50
+> −0.25
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+
+(d) K = 5 
+
+Fig. 1: Level sets of the ground truth function and the surrogate functions with different numbers of components 
+
+K, where the dark color indicates the low function value and the yellow stars indicate the global minima. effectively approximated by the proposed formulation (2). The function is defined as 
+
+f (x1, x 2) = (4 − 2.1x21 + x41
+
+3 )x21 + x1x2 + (4 x22 − 4) x22.
+
+This function has two global minima equal to f (x) =
+
+−1.0316 , located at (x1, x 2) = 0.0898 −0.7126  and 
+
+(x1, x 2) = −0.0898 0.7126 . We sample N = 1000 
+
+samples uniformly in the domain x1 ∈ [−2, 2] and x2 ∈
+
+[−1, 1] . The monotonic function hi is parameterized as a two-layer neural network with 5 and 3 neurons, respectively. Each layer is activated by the tanh function. To simplify the training, we enforce that hi are shared across the K
+
+components of the surrogate function. The convex functions are parameterized with the max-squared form presented in Theorem II.3. Particularly, we set L = 10 . As this function has no parameter p, the matrices At and the vectors bt
+
+are directly learned as free parameters, without any depen-dence on p. The surrogate function is implemented through 
+
+jax-sysid [30]. The model is trained for 1000 epochs using Adam [31] with a learning rate of 10 −3, followed by 5000 epochs of fine-tuning with L-BFGS [32]. Fig. 1 illustrates the level sets of the ground truth function and the surrogate functions with different component number K.As demonstrated in Fig. 1, increasing the number of components K improves approximation quality. With K =2 components, the surrogate function already captures the region with two global minima. By further increasing K to 5, the surrogate function more closely approximates the overall landscape of the true function. To further evaluate the quality of the surrogate function, we optimize the surrogate function using the procedure described in (3) with K = 5 . As a baseline, we also solve the original optimization problem using L-BFGS with 100 −2.0 −1.5 −1.0 −0.5 0.0 0.5 1.0 1.5 2.0
+
+> x1
+> −1.00
+> −0.75
+> −0.50
+> −0.25
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> x2
+> true function
+> solution surrogate true solution solutions L-BFGS
+
+Fig. 2: Solutions obtained by minimizing the surrogate directly and by running L-BFGS from 100 random initial-izations on the original function random initializations. In particular, 64 out of 100 random initializations of L-BFGS converge to the global minima, while the remaining 36 converge to local stationary points, as illustrated in Fig. 2. In contrast, the surrogate solution 
+
+x⋆ = 0.092 −0.724  is close to a global minimizer. When L-BFGS is initialized at x⋆, it converged to the global minimum at 0.0898 −0.7126  with 5 iterations. The result demonstrates that learning a surrogate approximating the original function effectively captures the global landscape of the original function, such that optimizing the surrogate function directly yields a solution close to a global minimum. 
+
+B. Optimal control problem approximation 
+
+We consider the following simple unicycle model for a mobile robot 
+
+˙px
+
+˙py
+
+˙ψ
+
+ =
+
+
+
+v cos ψv sin ψω
+
+ (11) where (px, p y ) ∈ IR 2 is the Cartesian coordinate of the robot and ψ ∈ (−π, π ] is the orientation in the global frame. The control input u = (v, ω ) ∈ IR 2 is the longitudinal velocity and the angular velocity of the robot, respectively, with physical constraints v ∈ [−vmax , v max ] and ω ∈
+
+[−ωmax , ω max ]. Specifically, we let vmax = 1 .2 m s −1 and 
+
+ωmax = π/3 rad s −1. The objective is to track a Lissajous curve while maintaining a lateral deviation within half the track width, i.e., d ≤ ¯d/ 2 = 0 .3 m , where d is the lateral deviation from the track centerline, defined in the Frenet frame presented below. The Lissajous curve is defined as: 
+
+px =A sin( at + δ)
+
+py =B sin( bt )
+
+with A = 1 .5, B = 2 , a = 3 , b = 2 , and δ = π 
+
+> 2
+
+. We generate the reference trajectory by sampling the Lissajous curve with a reference velocity of 0.72 m s −1, and the sampling time is 
+
+dt = 0 .1 s .px
+
+> py
+> v
+> ψ
+> ¯t
+> ¯n
+> d
+> θ
+> s
+> Global Cartesian frame Local Frenet frame Road Centerline
+
+Fig. 3: Illustration of the Frenet frame. To reduce the dimension of the problem parameter, we convert the system state from the Cartesian coordinate to the Frenet frame [33]. Frenet coordinates describe the robot pose w.r.t. the centerline of the road, which is illustrated in Fig. 3. The Frenet coordinate system consists of the arc length s, which represents the travel distance along the road; the lateral offset d, and the heading error θ between the vehicle yaw angle and the heading of the road. We denote the system state in the Frenet frame as x = ( s, d, θ ) ∈ IR 3,where we normalize the longitudinal displacement so that 
+
+s ∈ [0 , 1] . Because the unicycle model is input-affine, we write the discrete time dynamics as 
+
+xk+1 = f (xk, u k) := A(xk) + B(xk)uk (12) where A : IR 3 → IR 3 and B : IR 3 → IR 3×2 are the state-dependent drift and control matrices, respectively. Since the reference trajectory is the center line of the track with forward velocity 0.72 m s −1, the reference longitudinal displacement and the lateral displacement are always fixed among different problems. The only difference is the curva-ture of the reference trajectory at different time steps, which is determined by the curvature of the Lissajous curve. We apply a model predictive control (MPC) approach to solve the tracking problem. We set the prediction horizon 
+
+Np = 10 and consider a move blocking strategy with the move blocking horizon Nb = 4 . The optimal control problem is defined as: 
+
+min 
+
+> u0,...,u Np −1
+> Np−1
+
+P
+
+> k=0
+
+xk−xref  
+
+> k
+> 2
+> Q
+
++ ∥uk∥2 
+
+> R
+
++ xNp −xref 
+
+> Np
+> 2
+> QN
+
+(13a) s.t. x0 = xt (13b) 
+
+xk+1 = f (xk, u k), ∀k ∈ [0 , N p−1] (13c) 
+
+uk ∈ U, ∀k ∈ [0 , N p−1] (13d) 
+
+uk = uNb ∀k ≥ Nb, (13e) 
+
+A(x0) + B(x0)u0 ∈ X, (13f) where U := [0 , v max ] × [−ωmax , ω max ], and X := {x ∈ IR 3 |
+
+d ∈ [− ¯d 
+
+> 2
+
+, ¯d 
+
+> 2
+
+]}. Here the velocity is constrained to be non-negative since the robot is expected to only move forward along the track, and the track boundary constraint is only applied to the first time step to simplify the problem. The weights of the cost function are set as Q = diag(5 L, 3, 0.1) ,
+
+R = 0 .01 I, QN = diag(100 L, 15 , 0.5) , with L = 25 .68 the total length of the track. The system state at time step t is de-noted as xt, and xref  
+
+> k
+
+is the reference state at time step k. As noted above, the reference in the local Frenet frame is fixed among all problems. And we give p = ( xt, (∆ ψref  
+
+> k
+
+)Np
+
+> k=0
+
+) for our learning problem, where ∆ψref  
+
+> k
+
+= ψref  
+
+> k
+
+− ψref 0 is the reference centerline heading angle difference at time step k.
+
+1) Training data collection: We sample 1000 problems from the Lissajous path tracking problem (13) over 100 simulated laps, with 10 problems sampled per lap. In each lap, the robot is randomly initialized on the Lissajous track with its lateral displacement uniformly sampled from 
+
+[− ¯d/ 2 + 0 .1, ¯d/ 2 − 0.1] and its heading angle uniformly sampled from [−π/ 6, π/ 6] . To ensure diversity across the 1000 sampled problems, a small perturbation is applied to the robot state at each time step during data collection, with lateral displacement perturbed by d ∈ [−0.02 , 0.02] m and heading angle perturbed by θ ∈ [−π/ 36 , π/ 36] rad . For problem k with parameter pk = ( xt, (∆ ψref  
+
+> i
+
+)Np
+
+> i=0
+
+), (13) is solved to collect the optimal solution u = ( u0, . . . , u Np−1).The gradient of the loss function at this point is also recorded to apply the gradient-matching regularization (9) during training. We denote by u = ( −vmax , −ωmax ) and 
+
+u = (vmax , ω max ) the lower and upper bounds of the control input, respectively. We apply the projected sampling strategy described in Section III-C with the enlarged domain 
+
+[u − ∆u, u + ∆ u]Nb , where ∆u = 0 .5( u − u), to sample additional data points for training the surrogate function. For each problem, we generate 300 additional data points. We instantiate the surrogate (4) with K = 2 convex functions, each parameterized by an ICNN presented in Theorem II.4 with 2 hidden layers of 5 units each. The hidden layers apply the softplus function as the acti-vation function and the output layer is a linear layer. The 
+
+softplus activation is preferred over ReLU owing to its smoothness, which is required for the gradient-matching regularization (9). To ensure nonnegativity of the ICNN weights, a softplus function is applied to the latent weight variables. The parameter encoder φ : IR np → IR nq is implemented as a separate multi-layer perceptron (MLP) for each layer of the ICNN with 2 hidden layers. The layer width is dynamically determined by np+nq/2. softplus 
+
+activations on the hidden layers, and a tanh output activation. The monotonic function hi is simply an identity function in this experiment. The full network leads to a learnable parameter Θ ∈ IR 28128 .The training is implemented through jax-sysid [30]. The parameters are optimized by minimizing the composite loss (5) for 1000 epochs with the Adam [31], followed by 2000 iterations with the L-BFGS [32]. Training is repeated with 4 independent random initializations, and the model achieving the highest R2 score on the training set is retained. 
+
+2) Evaluation: We evaluate the proposed method as a primal initialization strategy for solving problem (13), where the surrogate solution is used as the initial guess of the primal variable for sqpmethod in CasADi [34] with the quadratic programming (QP) solver qpOASES [35]. The sequential quadratic programming (SQP) solver then refines −1        
+
+> 0
+> 1
+> px
+> converged solution learning-based-2 shifted solution-2 Reference
+> −2
+> −1
+> 0
+> 1
+> 2
+> py
+> 050 100 150 200 250 300 350 400
+> Time step
+> −2
+> 0
+> 2
+> 4
+> 6
+> ψ
+
+Fig. 4: Closed-loop trajectory with different initialization methods. The trajectories of the methods 
+
+cold-start , shifted solution-full , and 
+
+learning-based-full are almost indistinguishable, and are denoted as converged solution for clear visualization. the surrogate solution to produce the final control input. The convex problems in the surrogate problem implemented in CVXPY [36] are solved with Clarabel [37]. We run the closed-loop tracking experiment for 400 time steps, and compare the proposed method against two baselines: i) cold-start : the default zero initialization of 
+
+CasADi ;ii) shifted solution : the solution from the previous time step shifted by one step, with the last control input repeated for the final step. The initialization is com-bined to solve the original problem to full convergence and with 2 iterations of SQP, denoted as shifted solution-full and shifted solution-2 , re-spectively. For the proposed method, we report two variants: 
+
+learning-based-full , which solves the SQP to full convergence, and learning-based-2 , which limits the SQP to 2 iterations. To evaluate generalization to unseen initial conditions, the robot is subjected to a larger per-turbation during the closed-loop experiment, with lateral displacement perturbed by d ∈ [−0.05 , 0.05] m and heading angle perturbed by θ ∈ [−π/ 24 , π/ 24] rad , ensuring that the states encountered at test time lie outside the training distribution. Fig. 4 shows the closed-loop trajectory of the robot with different initialization methods. As all 
+
+cold-start , shifted solution-full , and 
+
+learning-based-full methods solve the original problem to full convergence, leading to negligible differences in the closed-loop trajectory, we denote the trajectory as 
+
+converged solution in Fig. 4 for clear visualization. From Fig. 4, we see that when the solver runs to full convergence, all methods closely follow the reference trajectory. Even with only 2 iterations of SQP, the learning-Method mean min max std.                                             
+
+> cold-start 4.140 1.857 15.565 1.063
+> shifted solution-full 2.582 1.467 8.686 0.567
+> shifted solution-2 1.717 1.151 4.426 0.382
+> learning-based-full (total) 2.739 1.654 5.472 0.329
+> learning-based-2 (total) 2.211 1.691 3.089 0.171
+> learning-based-full (init.) 0.618 0.504 1.230 0.087
+> learning-based-2 (init.) 0.622 0.500 1.451 0.086
+> learning-based-full (SQP) 2.122 1.117 4.373 0.310
+> learning-based-2 (SQP) 1.589 1.105 2.521 0.154
+
+TABLE I: Computation time ( ms ) of different methods. based method can still achieve a closed-loop trajectory that is close to the full convergence case. Unlike the trajectory tracking, where deviations from a time-indexed reference generate a correction signal, the path tracking formulation re-generates the reference at each time step based on the current state. So the state displacement induced by the suboptimality does not generate a correction signal, causing gradual drift. The results show that 2 SQP iterations are sufficient to keep the state displacement small enough so that the drift remains negligible over the full trajectory. Compared to the shifted solution, the learning-based method can achieve a closer trajectory to the reference. This demonstrates the quality of the surrogate solution as an initialization for the original problem. Table I reports the per-step computation time for each method. The second block of Table I breaks down the total runtime of the proposed method into the initialization time that solves the surrogate problem, and the SQP solve time. The runtime for solving the surrogate problem is recorded as the maximum runtime across K convex subproblems. Compared to the cold-start method, the learning-based method reduces the total runtime by around 33% , with the runtime for SQP reduced by around 48% . However, the over-head of solving the surrogate problem narrows the advan-tage over shifted-solution , which serves as a strong baseline in this experiment for two reasons: i) the moderate perturbation keeps the system close to deterministic; ii ) the high-curvature segments of the Lissajous trajectory induce a near bang-bang policy in ω, where the optimal input remains saturated across consecutive time steps and is largely unchanged by the time shift. Noticeably, the worst-case runtime of the learning-based method is significantly lower than the shifted solution method, demonstrating that the surrogate method is more robust in providing good initializations for the original problem. To further compare the quality of the surrogate solution against the shifted solution, we examine the stationarity residual ∥∇ xf (x, p ) + ∇xg(x, p )λ∥ as a solution quality metric, where λ ≥ 0 is the dual variable for the inequality constraint g(x, p ) ≤ 0. Since the surrogate solution is primal feasible by construction, and the equality constraints are eliminated by single shooting, the stationarity condition is the only remaining KKT condition to satisfy. For the shifted solution that could be potentially infeasible due to 10 −2 10 −1 10 0 10 1  
+
+> ‖∇ xf(x, p ) + ∇xg(x, p )λ‖
+> 10 0
+> 10 1
+> 10 2
+> Occurrence
+> learning-based shifted solution
+
+(a) Initial guess 10 −7 10 −6 10 −5 10 −4 10 −3 10 −2 10 −1 10 0 10 1   
+
+> ‖∇ xf(x, p ) + ∇xg(x, p )λ‖
+> 10 0
+> 10 1
+> 10 2
+> Occurrence
+> learning-based shifted solution
+
+(b) After 2 SQP iterations 
+
+Fig. 5: Histogram of the stationarity residual of the original problem at the initial guesses and after 2 iterations of SQP, for the learning-based method and the shifted solution. the time shift, a comprehensive KKT residual would include an additional nonnegative feasibility term, so the comparison on stationarity residual alone is conservative and understates the advantage of the proposed method. The evaluation is performed at the initial guess, and after 2 iterations of SQP, respectively. To obtain a consistent dual variable at the initial guess, we pass the primal initial guess to CasADi with the iteration limit set to zero, so that CasADi initializes the dual variable without solving any QP. After 2 iterations of SQP, the same residual is evaluated at the updated primal-dual pair. The histogram of the residual is shown in Fig. 5. From Fig. 5, we observe that the surrogate solution has a significantly lower stationarity residual value than the shifted solution, confirming that the surrogate solution is closer to a stationarity point of the original problem. After 2 iterations of SQP, the residuals of both approaches reduce, with the learning-based method retaining a lower residual than the shifted solution. V. C ONCLUSION 
+
+In this paper we proposed a novel learning-based approach for constructing surrogate problems of a rather broad class of parametric nonconvex optimization problems. Crucially, by using the minimum of quasiconvex components to param-eterize its objective function, the surrogate problem can be solved directly via parallel convex optimization. We validated the approximation quality of the proposed formulation in numerical experiments, including a nonconvex path-tracking problem. Our approach can be used either to replace the original problem with the surrogate problem, or to use the latter to provide a good initial guess for solving the original problem, reducing computation time and increasing the likelihood of obtaining global solutions. Future work includes extending the proposed approach to nonconvex inequality constraints, incorporating the method into active learning schemes for high-dimensional problems, embedding the surrogate problem into adaptive control schemes, and validating the framework on more complex problems. REFERENCES [1] O. Mangasarian and J. Rosen, “Inequalities for stochastic nonlinear programming problems,” Operations Research , vol. 12, pp. 143–154, 1964. [2] A. Fiacco, Introduction to Sensitivity and Stability Analysis in Non-linear Programming . London, U.K.: Academic Press, 1983. [3] T. Gal and J. Nedoma, “Multiparametric linear programming,” Man-agement Science , vol. 18, no. 7, pp. 406–422, 1972. [4] F. Borrelli, A. Bemporad, and M. Morari, “Geometric algorithm for multiparametric linear programming,” Journal of optimization theory and applications , vol. 118, pp. 515–540, 2003. [5] A. Bemporad, M. Morari, V. Dua, and E. Pistikopoulos, “The ex-plicit linear quadratic regulator for constrained systems,” Automatica ,vol. 38, no. 1, pp. 3–20, 2002. [6] P. Tøndel, T. Johansen, and A. Bemporad, “An algorithm for multi-parametric quadratic programming and explicit MPC solutions,” Au-tomatica , vol. 39, no. 3, pp. 489–497, 2003. [7] A. Gupta, S. Bhartiya, and P. Nataraj, “A novel approach to multi-parametric quadratic programming,” Automatica , vol. 47, no. 9, pp. 2112–2117, 2011. [8] P. Patrinos and H. Sarimveis, “A new algorithm for solving convex parametric quadratic programs based on graphical derivatives of solu-tion mappings,” Automatica , vol. 46, no. 9, pp. 1405–1418, 2010. [9] ——, “Convex parametric piecewise quadratic optimization: Theory and algorithms,” Automatica , vol. 47, no. 8, pp. 1770–1777, 2011. [10] T. Chen, X. Chen, W. Chen, H. Heaton, J. Liu, Z. Wang, and W. Yin, “Learning to optimize: A primer and a benchmark,” Journal of Machine Learning Research , vol. 23, no. 189, pp. 1–59, 2022. [11] B. Amos, “Tutorial on amortized optimization,” Foundations and Trends in Machine Learning , vol. 16, no. 5, pp. 592–732, 2023. [12] R. Sambharya, G. Hall, B. Amos, and B. Stellato, “Learning to warm-start fixed-point optimization algorithms,” Journal of Machine Learning Research , vol. 25, no. 166, pp. 1–46, 2024. [13] P. L. Donti, D. Rolnick, and J. Z. Kolter, “DC3: A learning method for optimization with hard constraints,” in International Conference on Learning Representations , 2021. [Online]. Available: https://openreview.net/forum?id=V1ZHVxJ6dSS [14] P. D. Grontas, A. Terpin, E. C. Balta, R. D’Andrea, and J. Lygeros, “Pinet: Optimizing hard-constrained neural networks with orthogonal projection layers,” in The Fourteenth International Conference on Learning Representations , 2026. [Online]. Available: https://openreview.net/forum?id=EJ680UQeZG [15] J. Tordesillas, J. P. How, and M. Hutter, “Rayen: Imposition of hard convex constraints on neural networks,” arXiv preprint arXiv:2307.08336 , 2023. [16] J. Ichnowski, P. Jain, B. Stellato, G. Banjac, M. Luo, F. Borrelli, J. E. Gonzalez, I. Stoica, and K. Goldberg, “Accelerating quadratic optimization with reinforcement learning,” Advances in Neural Infor-mation Processing Systems , vol. 34, pp. 21 043–21 055, 2021. [17] A. Oshin, R. V. Ghosh, A. D. Saravanos, and E. Theodorou, “Deep flexQP: Accelerated nonlinear programming via deep unfolding,” in The Fourteenth International Conference on Learning Representations , 2026. [Online]. Available: https: //openreview.net/forum?id=HL3TvE4Afm [18] K. Lange, “MM Optimization Algorithms | SIAM Publications Li-brary,” https://epubs.siam.org/doi/book/10.1137/1.9781611974409. [19] D. Bertsimas and B. Stellato, “Online mixed-integer optimization in milliseconds,” INFORMS Journal on Computing , vol. 34, no. 4, pp. 2229–2248, 2022. [20] K. Wang, B. Wilder, A. Perrault, and M. Tambe, “Automatically learning compact quality-aware surrogates for optimization problems,” in Advances in Neural Information Processing Systems , H. Larochelle, M. Ranzato, R. Hadsell, M. Balcan, and H. Lin, Eds., vol. 33. Curran Associates, Inc., 2020, pp. 9586–9596. [Online]. Available: https://proceedings.neurips.cc/paper files/paper/ 2020/file/6d0c932802f6953f70eb20931645fa40-Paper.pdf [21] L. Wu, W. G. Y. Tan, R. D. Braatz, and J. Drgoˇ na, “Koopman-boxqp: Solving large-scale nmpc at khz rates,” arXiv preprint arXiv:2602.18331 , 2026. [22] Y. Zhang, S. Yang, T. Ohtsuka, C. Jones, and J. Boedecker, “Latent linear quadratic regulator for robotic control tasks,” arXiv preprint arXiv:2407.11107 , 2024. [23] C. Finn, P. Abbeel, and S. Levine, “Model-agnostic meta-learning for fast adaptation of deep networks,” in International conference on machine learning . PMLR, 2017, pp. 1126–1135. [24] A. A. Rusu, D. Rao, J. Sygnowski, O. Vinyals, R. Pascanu, S. Osindero, and R. Hadsell, “Meta-learning with latent embedding optimization,” in International Conference on Learning Representations , 2019. [Online]. Available: https://openreview.net/ forum?id=BJgklhAcK7 [25] S. Boyd and L. Vandenberghe, Convex optimization . Cambridge university press, 2004. [26] C. Durkan, A. Bekasov, I. Murray, and G. Papamakarios, “Neural spline flows,” Advances in neural information processing systems ,vol. 32, 2019. [27] B. Amos, L. Xu, and J. Z. Kolter, “Input convex neural networks,” in Proceedings of the 34th International Conference on Machine Learning , ser. Proceedings of Machine Learning Research, D. Precup and Y. W. Teh, Eds., vol. 70. PMLR, 06–11 Aug 2017, pp. 146–155. [Online]. Available: https://proceedings.mlr.press/v70/amos17b.html [28] M. Schaller, A. Bemporad, and S. Boyd, “Learning Parametric Convex Functions,” arXiv preprint , no. arXiv:2506.04183, Jun. 2025. [29] M. Molga and C. Smutnicki, “Test functions for optimization needs,” 
+
+Test functions for optimization needs , vol. 101, no. 48, p. 32, 2005. [30] A. Bemporad, “An L-BFGS-B approach for linear and nonlinear system identification under ℓ1 and group-lasso regularization,” IEEE Transactions on Automatic Control , vol. 70, no. 7, pp. 4857–4864, 2025, code available at https://github.com/bemporad/jax-sysid. [31] D. P. Kingma and J. Ba, “Adam: A method for stochastic optimiza-tion,” arXiv preprint arXiv:1412.6980 , 2014. [32] R. H. Byrd, P. Lu, J. Nocedal, and C. Zhu, “A limited memory algorithm for bound constrained optimization,” SIAM Journal on scientific computing , vol. 16, no. 5, pp. 1190–1208, 1995. [33] X. Qian, A. De La Fortelle, and F. Moutarde, “A hierarchical model predictive control framework for on-road formation control of au-tonomous vehicles,” in 2016 IEEE intelligent vehicles symposium (iv) ,2016, pp. 376–381. [34] J. A. E. Andersson, J. Gillis, G. Horn, J. B. Rawlings, and M. Diehl, “CasADi – A software framework for nonlinear optimization and optimal control,” Mathematical Programming Computation , 2018. [35] H. Ferreau, C. Kirches, A. Potschka, H. Bock, and M. Diehl, “qpOASES: A parametric active-set algorithm for quadratic program-ming,” Mathematical Programming Computation , vol. 6, no. 4, pp. 327–363, 2014. [36] A. Agrawal, R. Verschueren, S. Diamond, and S. Boyd, “A rewriting system for convex optimization problems,” Journal of Control and Decision , vol. 5, no. 1, pp. 42–60, 2018. [37] P. J. Goulart and Y. Chen, “Clarabel: An interior-point solver for conic programs with quadratic objectives,” arXiv preprint arXiv:2405.12762 ,2024.
