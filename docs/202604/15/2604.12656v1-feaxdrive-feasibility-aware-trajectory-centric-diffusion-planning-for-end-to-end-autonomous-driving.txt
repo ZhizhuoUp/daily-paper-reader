@@ -1,0 +1,424 @@
+Title: FeaXDrive: Feasibility-aware Trajectory-Centric Diffusion Planning for End-to-End Autonomous Driving
+
+URL Source: https://arxiv.org/pdf/2604.12656v1
+
+Published Time: Wed, 15 Apr 2026 01:36:51 GMT
+
+Number of Pages: 21
+
+Markdown Content:
+# FeaXDrive: Feasibility-aware Trajectory-Centric Di ff usion Planning for End-to-End Autonomous Driving 
+
+Baoyun Wang a,1 , Zhuoren Li a,1 , Ming Liu a, Xinrui Zhang a, Bo Leng a, ∗, Lu Xiong a
+
+> aCollege of Automotive and Energy Engineering, Tongji University, Shanghai, 201804, China
+
+Abstract 
+
+End-to-end di ff usion planning has shown strong potential for autonomous driving, but the physical feasibility of generated trajectories remains insu ffi ciently addressed. In particular, generated trajectories may exhibit local geomet-ric irregularities, violate trajectory-level kinematic constraints, or deviate from the drivable area, indicating that the commonly used noise-centric formulation in di ff usion planning is not yet well aligned with the trajectory space where feasibility is more naturally characterized. To address this issue, we propose FeaXDrive, a feasibility-aware trajectory-centric di ff usion planning method for end-to-end autonomous driving. The core idea is to treat the clean trajectory as the unified object for feasibility-aware modeling throughout the di ff usion process. Built on this trajectory-centric formulation, FeaXDrive integrates adaptive curvature-constrained training to improve intrinsic geometric and kine-matic feasibility, drivable-area guidance within reverse di ff usion sampling to enhance consistency with the drivable area, and feasibility-aware GRPO post-training to further improve planning performance while balancing trajectory-space feasibility. Experiments on the NAVSIM benchmark show that FeaXDrive achieves strong closed-loop planning performance while substantially improving trajectory-space feasibility. These findings highlight the importance of ex-plicitly modeling trajectory-space feasibility in end-to-end di ff usion planning and provide a step toward more reliable and physically grounded autonomous driving planners. 
+
+Keywords: End-to-end autonomous driving, Di ff usion model, Trajectory-centric di ff usion planning, Vision-language model, Physical feasibility 
+
+1. Introduction 
+
+End-to-end (E2E) autonomous driving planning has attracted increasing attention in recent years, , as it aims to directly map scene observations to driving actions within a unified framework (Hu et al., 2023). Representative works such as UniAD, VAD, and related E2E planning methods have demonstrated the potential of unified perception, prediction, and planning for autonomous driving (Hu et al., 2023; Jiang et al., 2023). Building on this paradigm, VLM-enhanced E2E approaches further introduce multimodal semantic understanding and reasoning capabilities, thereby improving generalization and enabling better interpretation of complex tra ffi c scenes, long-tail events, and high-level navigation intentions (Shao et al., 2024a; Tian et al., 2025; Zhou et al., 2025). Representative examples include LMDrive, which explores language-guided closed-loop E2E driving (Shao et al., 2024a), and DriveVLM, which demonstrates the potential of VLMs for understanding and planning in complex and long-tail driving scenarios (Tian et al., 2025). Meanwhile, di ff usion-based planning has emerged as an increasingly prominent direction in E2E autonomous driving, owing to its strong capability for modeling multimodal driving behaviors and rich trajectory distributions (Zheng et al., 2025; Liao et al., 2025).                       
+
+> ∗Corresponding author
+> Email addresses: wangby@tongji.edu.cn (Baoyun Wang), 1911055@tongji.edu.cn (Zhuoren Li), 2110215@tongji.edu.cn (Ming Liu), 2210805@tongji.edu.cn (Xinrui Zhang), lengbo@tongji.edu.cn (Bo Leng), xiong_lu@tongji.edu.cn (Lu Xiong)
+> 1These authors contributed equally to this work.
+> arXiv:2604.12656v1 [cs.RO] 14 Apr 2026 Table 1: Failure cause distribution in score-zero planning scenes of reproduced di ff usion-based planners. Percentages are computed with respect to the score-zero scenes of each planner.
+> Failure Cause Di ff usionDrive (Liao et al., 2025) ReCogDrive (Li et al., 2025c) Drivable-area non-compliance 69.25% 56.59% At-fault collision 32.42% 45.44% Both 1.67% 2.03%
+
+However, the physical feasibility of generated trajectories remains insu ffi ciently addressed in existing E2E plan-ning methods. For example, generated trajectories may exhibit abrupt point-wise discontinuities or unnatural deflec-tions, and may violate kinematic limits when viewed from the perspective of the overall trajectory. Moreover, the generated trajectory, together with the corresponding vehicle spatial occupancy, may deviate from the drivable area, thereby breaking consistency between the trajectory and the geometric constraints of the scene, violating basic road-geometry constraints and potentially compromising tra ffi c-rule compliance and the safety of other road users (Dauner et al., 2024). Our reproduced baselines further show that drivable-area non-compliance constitutes a major source of planning failure (Table 1). In essence, these problems are di ff erent aspects of the same underlying issue: although the model is capable of generating semantically plausible future trajectories, the resulting trajectories do not satisfy both the intrinsic geometric and kinematic requirements of the trajectory itself and the spatial constraints imposed by the road environment (Katrakazas et al., 2015; Song et al., 2023; Rahman et al., 2025). We refer to this notion of executability in trajectory space as trajectory-space feasibility. A common formulation in di ff usion-based planning is noise-centric parameterization, in which the model predicts the noise term or noise residuals during both training and inference (Ho et al., 2020; Song et al., 2020; Karras et al., 2022). Although this formulation is e ff ective for general generative tasks, its prediction objective lies in noise space, making it di ffi cult to explicitly represent or e ff ectively characterize the physical feasibility of trajectories. As a result, feasibility-related signals can only influence the generation process indirectly through intermediate variables, making them di ffi cult to incorporate into training and sampling in a stable and precise manner. This separation between the prediction space and the feasibility space results in longer and less direct propagation paths for feasibility-related signals, weaker training supervision, and less intuitive correction during inference, while also reducing the physical interpretability of the overall method. Based on this observation, we reformulate E2E di ff usion planning in a trajectory-centric manner, such that the fu-ture clean trajectory serves as the unified core object in both training and inference. This reformulation is particularly suitable for autonomous driving planning, because unlike high-dimensional generation targets such as natural im-ages, a planned trajectory is low-dimensional, highly structured, and directly tied to physically interpretable planning variables (Li and He, 2025). Local geometric regularity, curvature-related constraints, kinematic feasibility, and the spatial relationship between the vehicle footprint and the drivable area are all naturally expressed in clean trajectory space rather than noise space (Katrakazas et al., 2015; Song et al., 2023; Rahman et al., 2025). As a result, directly modeling and optimizing the clean trajectory provides a unified interface for feasibility-aware training and sampling guidance. In this work, we propose FeaXDrive. The core idea is to treat the clean trajectory as the explicit carrier of feasibility-related information throughout the di ff usion process. By making it the shared optimization object for feasibility-aware modeling throughout training, inference, and post-training, the proposed method provides a unified interface for feasibility enhancement in trajectory space. Specifically, during training, we impose adaptive di ff eren-tiable curvature constraints directly on the predicted clean trajectory; during inference, we inject drivable-area guid-ance into the clean trajectory estimated at each reverse sampling step, allowing local road-geometry priors to directly influence trajectory generation; and during post-training, we further incorporate feasibility-aware GRPO fine-tuning to improve planning performance while balancing trajectory-space feasibility. An overview of the proposed method is shown in Fig. 1. Our main contributions are summarized as follows: 
+
+• We propose a trajectory-centric di ff usion planning framework with feasibility-aware training and inference for autonomous driving. By treating the clean trajectory as the central object for feasibility-aware modeling 2Figure 1: Overview of FeaXDrive. Compared with noise-centric di ff usion planning, FeaXDrive adopts a trajectory-centric formulation in which the predicted clean trajectory serves as the unified object for feasibility-aware modeling. On this basis, the method combines feasibility-aware training and inference-time drivable-area guidance to enhance trajectory-space feasibility throughout the di ff usion planning process. 
+
+throughout the di ff usion process, the proposed framework provides a unified interface for training-time feasibility enhancement and inference-time geometric guidance in trajectory space. 
+
+• We introduce an adaptive di ff erentiable curvature training strategy to improve the intrinsic feasibility of generated trajectories. By directly imposing adaptive curvature constraints on the predicted clean trajectory in trajectory space, the proposed training mechanism suppresses local geometric irregularities and curvature spikes, while improving trajectory-level kinematic feasibility. 
+
+• We develop a drivable-aware sampling guidance strategy for di ff usion sampling to improve drivable-area consistency during inference. By directly injecting local road-geometry priors into the clean trajectory at each reverse sampling step, the proposed strategy enables scene-aware geometric correction within the sampling loop. 
+
+• We further incorporate feasibility-aware Group Relative Policy Optimization (GRPO) fine-tuning (Shao et al., 2024b; Guo et al., 2025) into the proposed end-to-end di ff usion planner. By optimizing the policy with a feasibility-augmented reward that jointly captures benchmark-oriented performance and trajectory-space feasibility preference, the proposed feasibility-aware GRPO stage further improves planning performance while balancing trajectory-space feasibility, and demonstrates that the planner remains amenable to downstream policy optimization. 
+
+2. Related Work 
+
+2.1. E2E Autonomous Driving Planning 
+
+Autonomous driving systems were initially developed under modular pipelines, where perception, prediction, planning, and control were treated as separate components (Badue et al., 2021; Leng et al., 2026). As learning-based methods advanced, research gradually moved toward more unified architectures, eventually leading to E2E frameworks that directly map scene observations to planned trajectories. Representative methods such as TransFuser (Prakash et al., 2021), UniAD (Hu et al., 2023), VAD (Jiang et al., 2023), and Hydra-MDP (Li et al., 2024) have 3demonstrated the potential of integrating perception, prediction, and planning in a single E2E architecture, thereby reducing the complexity of hand-crafted modular pipelines. Building on this paradigm, subsequent research introduced large language models and vision-language mod-els into E2E driving systems. Early works such as DriveGPT4 (Xu et al., 2024), GPT-Driver (Mao et al., 2023), Agent-Driver (Mao et al., 2024), and LMDrive (Shao et al., 2024a) explored LLMs /VLMs for driving explanation, planning-oriented reasoning, and closed-loop E2E driving, showing that language modeling can provide richer high-level semantic priors than purely vision-based approaches. Subsequent methods, including DriveVLM (Tian et al., 2025), OmniDrive (Wang et al., 2024), Senna (Jiang et al., 2024), and ORION (Fu et al., 2025), further advanced this direction through hierarchical planning, integrated perception-reasoning-planning, language-guided trajectory plan-ning, and vision-language-instructed action generation. More recently, E2E frameworks have moved toward tighter integration of high-level reasoning and action generation, reflecting a broader shift toward more unified generative modeling frameworks for autonomous driving (Hwang et al., 2025; Zhou et al., 2025). 
+
+2.2. Di ff usion-Based E2E Trajectory Planning 
+
+The standard E2E paradigm based on imitation learning (IL) remains limited in its ability to capture the multi-modal distribution of expert behaviors. Di ff usion models (Tian et al., 2026) have therefore emerged as an impor-tant generative framework for trajectory generation and autonomous driving planning. Compared with deterministic regression-based methods, di ff usion-based planning is better suited to modeling the inherently multimodal nature of autonomous driving and can generate full future trajectories or action sequences through iterative denoising. Founda-tional di ff usion methods (Ho et al., 2020; Song et al., 2020) provide a general framework for conditional generation and stable sampling, while action-di ff usion methods (Chi et al., 2025) further demonstrate the potential of di ff usion models for continuous action modeling and policy learning. In autonomous driving and related trajectory-generation tasks, existing di ff usion-based methods can be roughly grouped into three lines: multimodal trajectory or behavior distribution modeling, as exemplified by Guided Conditional Di ff usion for Controllable Tra ffi c Simulation (Zhong et al., 2023) and GoalFlow (Xing et al., 2025); action or policy di ff usion, represented by Di ff usion Policy (Chi et al., 2025) and Di ff E2E (Zhao et al., 2025), which apply di ff usion directly in action space or hybrid action representations; and e ffi cient di ff usion planning for autonomous driving, represented by Di ff usionDrive (Liao et al., 2025), which im-proves sampling e ffi ciency through truncated di ff usion and anchor priors. In addition, works such as M2Di ff user (Yan et al., 2025) show that di ff usion models can also be combined with explicit trajectory optimization under stronger structural constraints. Overall, existing di ff usion-based trajectory planning has shown strong potential, yet trajectory-space feasibility has received relatively limited attention. Although the broader di ff usion literature has explored guidance, constrained sampling, and projection-based refinement (Christopher et al., 2024; Zheng et al., 2025), unified feasibility modeling in trajectory space across both training and inference is still lacking in autonomous driving. 
+
+2.3. Feasibility-Enhanced E2E Trajectory Planning 
+
+Existing studies on trajectory feasibility in autonomous driving have explored several directions. Some works improve consistency with scene structure and road geometry through map-aware representations, road-constrained losses, or additional geometric priors, thereby enhancing compliance with the drivable area and lane structure (Ridel et al., 2020; Cui et al., 2021; Greer et al., 2021). Other methods adopt a predict-then-constrain paradigm, in which candidate trajectories are first generated by a learning-based model and then refined through external optimizers, MPC, or replacement mechanisms (Bahari et al., 2021; Vitelli et al., 2022; Wang et al., 2025). More recent studies further inject constraints, rewards, or guidance signals directly into generation and policy learning, for example through sampling guidance (Yang et al., 2024; Zheng et al., 2025), reward modeling (Huang et al., 2025), aligned policy optimization (Zou et al., 2025; Zhang et al., 2025b,a; Jiang et al., 2025), or human feedback (Li et al., 2025a). Despite these advances, existing feasibility-enhanced trajectory planning methods still have several limitations. Many rely on post-generation correction, validation, or replacement rather than unified feasibility modeling of the generation process itself (Bahari et al., 2021; Vitelli et al., 2022; Wang et al., 2025), making feasibility enforcement external and weakly coupled with trajectory generation. In guided generation frameworks, feasibility-related objec-tives are often introduced only as auxiliary signals rather than being directly integrated into both training and inference (Yang et al., 2024; Zheng et al., 2025; Huang et al., 2025; Zhang et al., 2025a; Li et al., 2025c), which may lead to weaker supervision, less intuitive inference-time correction, and reduced physical interpretability. 43. Problem Formulation 
+
+We study autonomous driving trajectory planning under an E2E di ff usion framework. Given a scene condition c ,which consists of visual scene features encoded by a VLM, historical ego states, and high-level navigation commands, the goal is to generate a future planned trajectory. Beyond this standard formulation, we focus on an issue that remains insu ffi ciently addressed in existing E2E di ff usion planners, namely trajectory-space feasibility. 
+
+3.1. End-to-End Autonomous Driving Planning 
+
+We study autonomous driving trajectory planning under an E2E di ff usion framework. Given a scene condition c,which consists of VLM-encoded visual scene features, historical ego states, and high-level navigation commands, the goal is to generate a future ego planning trajectory: 
+
+x0 = [s1, s2, . . . , sT ] ∈ RT ×d, (1) where st denotes the ego trajectory state at the t-th future time step, T is the planning horizon, and d is the state dimension at each time step. The trajectory state is typically represented as 
+
+st = (xt, yt, θ t), (2) where ( xt, yt) denotes the planar position of the ego pose center, and θt denotes the heading angle. Accordingly, the E2E planner aims to learn the conditional distribution 
+
+x0 ∼ p(x0 | c), (3) thereby directly mapping scene understanding to trajectory generation within a unified framework. 
+
+3.2. Di ff usion-Based Trajectory Planning 
+
+Under the above E2E autonomous driving formulation, we model the conditional distribution of the future ego trajectory given the scene condition c using a di ff usion generative framework. Let x0 denote the clean trajectory. In standard di ff usion modeling, the forward process progressively injects Gaussian noise into x0, yielding a noisy intermediate state xt at di ff usion step t:
+
+xt = √ ¯αt x0 + p1 − ¯αt ϵ, ϵ ∼ N (0 , I), (4) where ¯ αt denotes the cumulative signal-preservation coe ffi cient determined by the noise schedule. Correspondingly, the reverse di ff usion process aims to progressively recover the future planning trajectory from the noisy state, given the current di ff usion state xt, the di ff usion step t, and the scene condition c. A common formulation in di ff usion-based trajectory planning is noise-centric parameterization, in which the network is trained to predict the noise term in the current di ff usion state: ˆϵ = fθ(xt, t, c). (5) Under this formulation, the model mainly performs learning and sampling updates around the noise or noise residual, thereby modeling the conditional trajectory distribution p(x0 | c). The advantage of di ff usion-based planning lies in its ability to model the multimodal distribution of future driving behaviors in a generative manner and to produce the entire future trajectory through iterative denoising. To address the trajectory-space feasibility problem studied in this paper, we further reformulate di ff usion-based tra-jectory planning in a trajectory-centric manner, in which the clean trajectory serves as the unified object for feasibility-aware modeling throughout training, inference, and post-training. Based on this formulation, the subsequent Methods section presents the corresponding design in detail and develops training-stage feasibility enhancement, inference-stage geometric guidance, and post-training feasibility-aware optimization within the trajectory-centric framework. 5Figure 2: Overall architecture of FeaXDrive. Under a trajectory-centric formulation, the predicted clean trajectory serves as the shared object for feasibility-aware modeling throughout training, inference, and post-training. The method integrates adaptive di ff erentiable curvature-constrained training, drivable-area guidance during reverse di ff usion sampling, and feasibility-aware GRPO post-training. 
+
+4. Methods 
+
+Building on Section 3, we develop FeaXDrive, a feasibility-aware trajectory-centric di ff usion planning method that treats the clean trajectory as the shared core object throughout training, inference, and post-training. Specifi-cally, the method consists of four components: trajectory-centric di ff usion planning, adaptive di ff erentiable curvature-constrained training for improving intrinsic trajectory feasibility, drivable-area guidance for improving drivable-area consistency during inference, and feasibility-aware GRPO post-training for further improving planning performance while balancing trajectory-space feasibility. The overall design of FeaXDrive is illustrated in Fig. 2. We next describe these components in detail. 
+
+4.1. Trajectory-Centric Di ff usion Planning 
+
+As described in Sec. 3, the planner takes scene images and text queries as VLM inputs to extract visual-semantic features, which, together with the historical trajectory and ego states, serve as the conditioning information for dif-fusion planning. Standard di ff usion planning typically adopts a noise-centric parameterization, where the network predicts the corresponding noise term ˆ ϵ given the noisy trajectory state xt, the di ff usion step t, and the scene condition 
+
+c. Based on the above discussion, we further reformulate di ff usion-based trajectory planning in a trajectory-centric manner. Specifically, given the current di ff usion state xt, di ff usion step t, and scene condition c, the planner directly predicts the corresponding clean trajectory estimate: ˆx0 = fθ(xt, t, c), (6) where ˆ x0 denotes the estimated future trajectory at the current di ff usion step, and fθ is the conditional denoising network. The subsequent feasibility modeling in our method is all built around ˆ x0. During training, ˆ x0 is directly supervised by the ground-truth future trajectory x0; during inference, the current clean trajectory estimate is also explicitly produced at each reverse sampling step, and geometric guidance is imposed on this basis. Concretely, the basic supervision term in training is defined as 
+
+Lx0 = ∥ ˆx0 − x0∥22 . (7) 6During inference, at the t-th reverse di ff usion step, the planner first predicts ˆ x0 from the current noisy state xt, and then uses this clean trajectory estimate to construct the next-state update: 
+
+xt−1 = Gxt, ˆx(t)0 , t (8) where G(·) denotes the reverse update operator associated with the specific sampler. In our framework, x0-prediction serves as a trajectory-centric formulation that makes the predicted clean trajectory the unified object of training con-straints and inference guidance. 
+
+4.2. Adaptive Curvature-Constrained Training 
+
+Under the unified trajectory-centric parameterization, we introduce an adaptive curvature-constrained training strategy to improve the intrinsic feasibility of generated trajectories. By imposing explicit regularization in the training stage, the model is encouraged at the distribution level to reduce its tendency to generate trajectories with geometric spikes, local irregularities, or violations of vehicle kinematic curvature limits. 
+
+4.2.1. Di ff erentiable Curvature Estimation and Adaptive Curvature Bound 
+
+Since discrete trajectory points are sensitive to higher-order derivatives, directly estimating curvature from the raw predicted trajectory is easily a ff ected by local fluctuations and sampling noise. To improve the stability of curva-ture estimation, we apply a lightweight di ff erentiable smoothing operation to the planar coordinates of the predicted trajectory. Let the discrete planar position sequence of the predicted trajectory be ˆPi = ( ˆ xi, ˆyi), i = 1, . . . , T. (9) We apply a fixed lightweight 1D convolution kernel along the temporal dimension to obtain the smoothed trajectory ˜Pi = S ˆPi
+
+ . (10) where S(·) denotes the di ff erentiable smoothing operator. This step does not alter the overall motion trend of the trajectory, but e ff ectively suppresses local discrete spikes and improves the robustness of subsequent curvature esti-mation. After obtaining the smoothed trajectory, we estimate curvature based on arc-length parameterization rather than directly using temporal finite-di ff erence approximation. This is because the spatial spacing between trajectory points is not always uniform across di ff erent scenarios. Compared with directly di ff erentiating a discrete time sequence, arc-length parameterization is more consistent with the geometric definition of a trajectory and is therefore better suited to characterizing its geometric shape. First, the arc-length increment between adjacent smoothed trajectory points is computed as 
+
+∆si = max  ∥ ˜pi+1 − ˜pi∥2 , ϵ s
+
+ , (11) where ϵs > 0 is the minimum arc-length constant used to prevent local arc-length degeneration. This gives the cumu-lative arc-length parameter si. Under the arc-length parameter s, the trajectory is regarded as a 2D curve ( ˜ x(s), ˜y(s)), and its first and second derivatives with respect to arc length are estimated. The corresponding curvature is estimated as 
+
+κi = ˜x′(si)˜ y′′ (si) − ˜y′(si) ˜ x′′ (si)
+
+  ˜x′(si)2 + ˜y′(si)23/2 + ϵκ
+
+, (12) where ϵκ is a numerical stabilizer term. This arc-length-based estimation makes the curvature measure better reflect the intrinsic geometric shape of the trajectory, rather than artifacts introduced by discrete-time parameterization. A fixed geometric curvature threshold is insu ffi cient to simultaneously characterize local geometric regularity and trajectory-level kinematic feasibility. In low-speed scenarios, curvature anomalies manifest mainly as local geometric irregularities, but trajectories may also violate a fixed geometric curvature bound. As speed increases, even a moderate curvature may correspond to an excessively large steering demand. Therefore, we construct a speed-aware curvature bound that combines a fixed geometric upper bound with dynamic constraints. 7Let the speed at the i-th trajectory point be vi, the maximum allowable lateral acceleration be alat max , and the fixed geometric curvature upper bound be κgeo max . According to the lateral acceleration relation 
+
+|alat | = v2 |κ| (13) the curvature upper bound implied by the lateral dynamic constraint can be derived as 
+
+κdyn max ,i = alat max 
+
+v2 
+
+> i
+
++ ϵv
+
+, (14) where ϵv is a numerical stability term. Furthermore, we define the final curvature bound as 
+
+κadp  
+
+> i
+
+= min κgeo max , κ dyn max ,i
+
+ = min 
+
+κgeo max , alat max 
+
+v2 
+
+> i
+
++ ϵv
+
+ . (15) This definition is essentially a hybrid geometric–dynamic constraint, reflecting the automatic switching of the dom-inant constraint term across di ff erent speed regimes. When the vehicle speed is low, the e ff ective threshold is often given by the fixed geometric curvature upper bound κgeo max ; as speed increases, the dynamic term gradually becomes more restrictive, causing the e ff ective curvature upper bound to tighten automatically with the motion state, thereby more e ff ectively constraining kinematic curvature violations. As a result, the adopted curvature constraint not only preserves local geometric regularity, but also provides a feasibility constraint that is more consistent with vehicle kinematics. 
+
+4.2.2. Trajectory Feasibility-Aware Loss 
+
+Based on the above curvature estimation and adaptive bound, we define a dynamics-aware training loss to penalize trajectory segments whose curvature exceeds the speed-adaptive curvature bound: 
+
+Lfea = 1
+
+T
+
+> T
+
+X
+
+> i=1
+
+max |κi| − κadp  
+
+> i
+
+, 02
+
+. (16) Accordingly, the total training loss can be written as 
+
+Ltrain = Lx0 + λfea Lfea , (17) where λfea is the weight that balances trajectory supervision and kinematic regularization. The role of Lfea is to impose a more physically meaningful bias on the trajectory distribution, thereby suppressing local geometric irregularities and improving trajectory-level kinematic feasibility. 
+
+4.3. Constraint-Aware Inference with Drivable-Area Guidance 
+
+To further improve trajectory-space feasibility, especially the spatial consistency between the generated trajectory and the drivable area, we introduce constraint-aware di ff usion sampling with drivable-area guidance during inference. The core idea is that, in the stages of reverse di ff usion, the sampler no longer relies only on the model’s generative distribution; instead, local drivable-area geometric priors are injected as guidance into the clean trajectory estimate at each step, enabling online scene-aware geometric correction. 
+
+4.3.1. Guidance within Reverse Di ff usion Sampling 
+
+Starting from an initial noisy trajectory xT ∼ N (0 , I), the reverse di ff usion process iteratively performs guidance-aware updates for t = T, T − 1, . . . , 1. At each reverse sampling step t, we first predict a clean trajectory from the current di ff usion state xt. Instead of directly using ˆ x(t)0 to generate the next state, we apply a constraint-based correction to ˆ x(t)0 based on the local road-geometry prior M, yielding a guided trajectory estimate: ˜x(t)0 = C ˆx(t)0 ; M , (18) 8where M denotes the local drivable-area geometric prior, and C(·) denotes the constraint operator corresponding to the guidance. The sampler then continues the reverse update based on the corrected clean trajectory: 
+
+xt−1 = Gxt, ˜x(t)0 , t , t = T, . . . , 1. (19) After the final reverse step, the resulting clean trajectory is taken as the planned trajectory. The geometric guidance in our method acts on the predicted x0 at every reverse sampling step and is directly integrated into the reverse sampling chain. It is not an external post-processing step applied after trajectory generation, but an online geometric correction mechanism within the sampling loop. As a result, the guidance directly influences the subsequent evolution of the sampling chain, steering the trajectory toward better consistency with the drivable area during the progressive denoising process. 
+
+4.3.2. Local Drivable-Area SDF Construction 
+
+To introduce drivable-area priors during inference, we define a local drivable-area geometric prior M, which is instantiated in the current implementation as a drivable-area signed distance field (SDF) constructed from a local HD map. Specifically, we first transform the local road-geometry information into the ego-centric coordinate system with respect to the current ego vehicle, and construct a spatial representation of the drivable region within a finite local window. We then rasterize this local drivable region and compute the corresponding signed distance field. Let the local drivable region be D ⊂ R2, with boundary ∂D. For any planar position q ∈ R2, we define its signed distance field as 
+
+S (q) =
+
+
+
+dist( q, ∂ D), q ∈ D ,
+
+0, q ∈ ∂D,
+
+− dist( q, ∂ D), q < D.
+
+(20) where, dist( q, ∂ D) denotes the Euclidean distance from point q to the boundary of the drivable region. Accordingly, the sign of S (q) characterizes the topological relationship between the point and the drivable region, while its mag-nitude |S (q)| explicitly measures the distance from q to the boundary, i.e., the geometric safety margin or the degree of o ff -road violation. In particular, when S (q) ≥ m, the point lies inside the drivable region and maintains a safety margin of at least m from the boundary. The SDF transforms the drivable-area constraint from a discrete inside /outside binary test into a continuous geo-metric distance signal. This not only enables us to determine whether a trajectory goes o ff -road, but also quantifies its safety margin and degree of boundary violation, thereby providing stable and di ff erentiable geometric information for subsequent gradient-based guidance. It should be noted that, in our problem formulation, M is regarded as a unified interface for local road-geometry priors, rather than being tied to any specific map representation. In our current experiments, M is instantiated from a local HD map, but it can also be replaced in the future by local geometric information provided by lightweight maps, online mapping, or implicit road priors. 
+
+4.3.3. Footprint-Level Drivable-Area Guidance 
+
+Applying drivable-area constraints only to the trajectory center point can easily overlook the relationship between the actual occupied region of the vehicle and the road boundary. In particular, in turning, near-boundary driving, or narrow-road scenarios, the fact that the center point remains inside the road does not necessarily imply that the entire vehicle stays within the drivable region. Therefore, we adopt a footprint-level geometric constraint. For the vehicle trajectory state at future time step τ,
+
+sτ = (xτ, yτ, θ τ), (21) we construct a rectangular vehicle footprint according to the vehicle length and width. Let the relative coordinates of the four footprint corners in the vehicle coordinate system be {δ j}4
+
+> j=1
+
+. Their positions in the global plane are then given by 
+
+pτ, j =
+
+"xτ
+
+yτ
+
+#
+
++ R(θτ) δ j, j = 1, . . . , 4, (22) 9where R(θτ) denotes the 2D rotation matrix determined by the heading angle θτ. We then perform bilinear sampling on the local SDF at these continuous coordinates to obtain the corresponding signed distance at each corner point: 
+
+dτ, j = S (pτ, j), j = 1, . . . , 4. (23) This footprint-based sampling strategy better reflects the true occupied geometry of the vehicle than a center-point constraint. On the one hand, it can explicitly capture cases where a vehicle corner leaves the drivable region while the center point still remains inside. On the other hand, since SDF sampling is continuous and di ff erentiable, gradients can be propagated directly to the vehicle position and heading, enabling more refined geometric guidance. After obtaining the footprint-level distances, we define a soft barrier guidance objective with a safety-margin term to measure the consistency between the current clean trajectory and the drivable region: 
+
+Ldrv ( ˆ x0; M) = 1
+
+T
+
+> T
+
+X
+
+> τ=1
+
+ϕ(msafe − dτ) , (24) where msafe denotes the desired safety margin to the boundary, and ϕ(·) is implemented as a softplus barrier function. When dτ is su ffi ciently large, the guidance objective approaches zero; when the footprint approaches the boundary or leaves the drivable region, it increases rapidly. To reduce unnecessary interference with reasonable trajectories, we adopt a trigger mechanism based on whether the footprint goes out of bounds. Guidance is activated only when the footprint points of the current predicted trajec-tory leave the drivable region or come excessively close to the boundary. For triggered samples, at sampling step t, we perform one or multiple updates along the gradient direction of this objective with respect to ˆ x(t)0 , yielding the guided clean trajectory estimate: ˜x(t)0 = ˆx(t)0 − ηt Φ
+
+
+
+∇ˆx(t)0
+
+Ldrv 
+
+
+
+, (25) where ηt denotes the guidance step size at sampling step t, and Φ(·) denotes the gradient normalization and scale modulation operator. In practice, we normalize the gradients on the positional dimensions to avoid excessively large variations in SDF gradient scales across di ff erent scenes. In addition, an independent scaling factor can be introduced for the heading dimension to balance geometric correction and trajectory smoothness. In summary, drivable-area guidance performs online progressive correction on the clean trajectory predicted at each sampling step using the local drivable-area geometry of the current scene, gradually steering it away from non-drivable regions and back toward geometrically consistent drivable regions. Compared with the Adaptive Curvature-Constrained Training in the training stage, drivable-area guidance does not directly learn a general preference over trajectory distributions, but instead provides scene-specific geometric correction for the current scene. The former mainly improves the intrinsic feasibility of trajectories, while the latter mainly enhances spatial consistency with the drivable region. By combining these two modules under a unified trajectory-centric representation, we develop a feasibility-aware di ff usion planning method for autonomous driving trajectory planning. 
+
+4.4. Feasibility-Aware GRPO Fine-Tuning Optimization 
+
+After imitation learning (IL) is completed, we further introduce Feasibility-Aware GRPO fine-tuning to improve planning performance while balancing trajectory-space feasibility. This stage follows the existing GRPO design for di ff usion generation chains, while incorporating feasibility-aware modeling. The core idea is to explicitly introduce trajectory-space feasibility into the benchmark-oriented reward evaluation, so that policy optimization favors candi-date trajectories that achieve both strong benchmark performance and high trajectory-space feasibility. Specifically, given a scene condition c, the current policy samples a group of candidate trajectories 
+
+ ˆx0,n Nn=1 , ˆx0,n ∼ πθ(· | c), (26) and obtains the corresponding rewards through the planning evaluator: 
+
+rn = R  ˆx0,n, c . (27) 10 Here, R(·) jointly characterizes task quality and feasibility preference, and is defined as 
+
+R ( ˆ x0, c) = Rtask ( ˆ x0, c) + λfea Rfea ( ˆ x0, c) , (28) where Rtask measures the task-level planning quality, Rfea represents the trajectory feasibility preference, and λfea is the trade-o ff coe ffi cient between the two terms. As a result, the reward optimized by GRPO is no longer determined solely by benchmark-oriented performance, but instead explicitly incorporates a preference modeling for trajectory-space feasibility. In this work, Rfea is mainly characterized by the speed-adaptive curvature feasibility defined in Section 4.2. Specif-ically, we directly adopt the curvature estimation method and the speed-adaptive constraint criterion introduced in Sec-tion 4.2, and incorporate them into the post-training reward design. If a generated trajectory satisfies the curvature-feasibility requirement defined, it receives a higher feasibility reward; otherwise, its feasibility reward is reduced accordingly, causing it to be disadvantaged in the within-group comparison. In this way, the trajectory-space feasibil-ity modeling introduced above further enters the post-training policy optimization process through feasibility-aware reward shaping. After obtaining the rewards of N candidate trajectories for the same scene, GRPO performs relative normalization of the rewards within the group to construct the relative advantage of each trajectory: 
+
+An = rn − μr
+
+σr + ϵr
+
+, (29) where μr and σr denote the mean and standard deviation of the rewards within the same group, respectively, and ϵr
+
+is a numerical stability term. Since the di ff usion planner generates the final trajectory through a multi-step reverse denoising process, policy optimization does not act only on the terminal trajectory variable, but on the entire denoising chain that generates the trajectory. Accordingly, the GRPO policy optimization term can be written as 
+
+LGRPO = −E
+
+AnKX
+
+> k=1
+
+wk log πθ
+
+ zk−1,n | zk,n, c , (30) where zK,n → zK−1,n → · · · → z0,n denotes the reverse denoising chain corresponding to the n-th sample, z0,n corre-sponds to the final generated trajectory, and wk denotes the denoising-step-related weight. This objective indicates that the relative advantage induced by the final trajectory-level reward is propagated through the entire denoising process, thereby encouraging the policy to favor candidate trajectories that are both high-quality and highly feasible. In addition, to prevent RL post-training from deviating excessively from the policy prior learned during the IL stage, we further introduce a behavior-cloning regularization term based on a fixed reference policy, yielding the final optimization objective 
+
+L = LGRPO + λBC LBC . (31) Here, LBC constrains the current policy to remain close to the generation distribution of the reference policy, thereby maintaining post-training stability while improving trajectory-space feasibility. Overall, as the post-training stage of this work, Feasibility-Aware GRPO strengthens the model’s preference for high-quality and feasible trajectories from the perspective of policy optimization through feasibility-aware reward shaping. Therefore, the proposed trajectory-centric di ff usion planner not only incorporates trajectory-space feasibility modeling during the IL training stage and the sampling stage, but also remains compatible with subsequent policy optimization, thereby further improving the overall balance between benchmark performance and trajectory-space feasibility. 
+
+5. Experiments 
+
+This section evaluates the proposed method in terms of standard planning performance, trajectory-space feasibility, module-wise contributions, and inference e ffi ciency. We first present the experimental setup, then report the main results, followed by ablation and feasibility analysis, e ffi ciency evaluation, and qualitative visualization. 11 5.1. Experimental Setup 5.1.1. Dataset and Benchmark 
+
+We conduct experiments on the NAVSIM benchmark (Dauner et al., 2024), a planning-oriented autonomous driv-ing dataset built on OpenScene (OpenDriveLab, 2024), which is a redistribution of nuPlan (Karnchanachari et al., 2024). NAVSIM provides multimodal driving observations together with closed-loop evaluation for end-to-end au-tonomous driving planning, and is split into navtrain (1,192 training scenes) and navtest (136 evaluation scenes). In each scene, the planner takes scene images, historical ego states, and navigation-related context as input, and predicts the future ego trajectory. Following the standard NAVSIM evaluation protocol, we report both benchmark planning metrics and the trajectory-space feasibility metrics considered in this work. 
+
+5.1.2. Implementation Details 
+
+We implement and evaluate our method on the NAVSIM benchmark. The model takes visual scene observations, historical ego states, and high-level navigation commands as input, and predicts the future ego trajectory. To define the curvature bound used in both training and evaluation, we align the geometric curvature limit with the minimum turning radius of the Chrysler Pacifica, the data-collection vehicle used in NAVSIM. According to the o ffi cial specification, the minimum turning radius of the Chrysler Pacifica is approximately 19 .8 ft ( ≈ 6.0 m) (Chrysler, 2026), which, under a low-speed geometric approximation, corresponds to 
+
+κgeo ≈ 1
+
+Rmin 
+
+= 16.0 ≈ 0.166 m −1. (32) Accordingly, we set the fixed geometric curvature bound to κgeo = 0.166 m −1, and set the maximum allowable lateral acceleration to alat max = 6 m /s2 (≈ 0.61 g) as an upper bound for near-limit maneuvering. Together, these values are used to construct the speed-aware curvature bound that combines a fixed geometric upper bound with dynamic constraints. Training is first performed with imitation learning for 100 epochs on 4 A800 GPUs, using bf16 mixed precision and distributed data parallel (DDP), with a per-GPU batch size of 32 and a total batch size of 128. The visual-language encoder is initialized from the same pretrained VLM checkpoint as ReCogDrive (Li et al., 2025c), based on InternVL3-2B (Chen et al., 2024b), and its parameters are frozen during training. We further conduct a feasibility-aware GRPO fine-tuning stage. Starting from the IL-trained model, we perform GRPO fine-tuning for 1 epoch on 8 A800 GPUs with a per-GPU batch size of 8. Unlike score-only post-training, the GRPO reward incorporates curvature-violation terms together with benchmark score terms, thereby further improving planning performance while balancing trajectory-space feasibility. During inference, we use DDIM sampling for all variants. Unless otherwise specified, all internal variants share the same inference settings. 
+
+5.1.3. Evaluation Metrics 
+
+We evaluate our method using two groups of metrics: 
+
+• Standard planning metrics: For the NAVSIM benchmark, we follow the o ffi cial Predictive Driver Model Score (PDMS), including no-at-fault collision (NC), drivable-area compliance (DAC), time-to-collision (TTC), comfort (Comf.), and ego progress (EP). Higher PDMS indicates better overall planning performance. 
+
+• Trajectory-space feasibility metrics: To evaluate the main focus of this work, we further consider trajectory-space feasibility. Specifically, we report the curvature violation rate under the adaptive curvature bound and the drivable-area violation rate. Let N denote the total number of evaluated planning scenes. For scene i, let I(i) 
+
+> κ
+
+= 1 if the generated trajectory violates the adaptive curvature bound, and I(i)drv = 1 if the generated trajectory violates the drivable-area constraint. The two rates are defined as Curvature Viol . Rate = 1
+
+N
+
+> N
+
+X
+
+> i=1
+
+I(i) 
+
+> κ
+
+, Drivable Area Viol . Rate = 1
+
+N
+
+> N
+
+X
+
+> i=1
+
+I(i)drv . (33) The former reflects the intrinsic geometric and kinematic aspect of trajectory-space feasibility, while the latter reflects consistency with the drivable area. Together, these metrics evaluate whether the generated trajectories remain feasible in trajectory space while maintaining competitive benchmark performance. 12 Table 2: Main closed-loop planning results on the NAVSIM benchmark. RLFT denotes reinforcement learning fine-tuning; for FeaXDrive, it is instantiated as feasibility-aware GRPO. 
+
+Method type Model NC ↑ EP ↑ Comf. ↑ TTC ↑ DAC ↑ PDMS ↑
+
+IL VADv2 (Chen et al., 2024a) 97.2 76.0 100 91.6 89.1 80.9 Driving-GPT (Chen et al., 2025) 98.9 79.7 95.6 94.9 90.7 82.4 Hydra-MDP (Li et al., 2024) 97.9 77.6 100 92.9 91.7 83.0 UniAD (Hu et al., 2023) 97.8 78.8 100 92.9 91.9 83.4 PARA-Drive (Weng et al., 2024) 97.9 79.3 99.8 93.0 92.4 84.0 TransFuser (Prakash et al., 2021) 97.7 79.2 100 92.8 92.8 84.0 DRAMA (Yuan et al., 2024) 98.0 80.1 100 94.8 93.1 85.5 ReCogDrive-IL (Li et al., 2025c) 98.3 81.1 100 94.3 95.1 86.8 Di ff usionDrive (Liao et al., 2025) 98.2 82.2 100 94.7 96.2 88.1 WoTE (Li et al., 2025b) 98.5 81.9 99.9 94.9 97.3 88.3 
+
+FeaXDrive-IL (Ours) 98.1 83.3 100 93.6 97.5 88.7 
+
+IL +RLFT TransFuser w /GRPO (Prakash et al., 2021) 98.0 88.5 100 96.6 94.7 87.9 ReCogDrive w /GRPO (Li et al., 2025c) 98.1 85.9 100 95.0 96.7 90.5 FeaXDrive (Ours) 98.2 84.2 100 94.7 98.3 90.0       
+
+> Table 3: Comparison of curvature violation rates among reproduced di ff usion-based planners.
+> Method Di ff usionDrive
+> (Liao et al., 2025)
+> ReCogDrive-IL
+> (Li et al., 2025c)
+> ReCogDrive w /GRPO
+> (Li et al., 2025c)
+> FeaXDrive-IL (Ours) FeaXDrive w /FA-GRPO (Ours) Curvature Viol. Rate ↓8.59% 8.05% 15.5% 0.88% 2.40%
+
+5.2. Main Results 
+
+Table 2 reports the main closed-loop planning results on the NAVSIM benchmark. Overall, the proposed method achieves strong planning performance under both imitation learning (IL) and reinforcement learning fine-tuning (RLFT). Under the IL setting, FeaXDrive-IL achieves a PDMS of 88.7, outperforming all other IL baselines, includ-ing Di ff usionDrive (88 .1), WoTE (88 .3), and ReCogDrive-IL (86 .8). In particular, our method achieves the highest DAC (97 .5) and the highest ego progress (83 .3) among the IL methods, indicating that the proposed method remains highly competitive on the standard NAVSIM benchmark even before RLFT. After RLFT, FeaXDrive further improves the PDMS to 90.0, demonstrating that the proposed planner remains compatible with downstream policy optimization. Although its final PDMS is slightly lower than that of ReCogDrive w/GRPO (90 .5), our method achieves a substantially higher DAC (98 .3 vs. 96 .7), indicating better compliance with the drivable area. Overall, these results show that the proposed method maintains competitive benchmark performance while exhibiting stronger drivable-area consistency. To further evaluate the main focus of this work, Table 3 reports the curvature violation rate under a unified evalu-ation pipeline. We compare our method with two reproduced di ff usion-based baselines, namely Di ff usionDrive (Liao et al., 2025) and ReCogDrive (Li et al., 2025c). Since such feasibility metrics are generally not reported in prior work and are not always directly available from released checkpoints or evaluation code, we reproduce these repre-sentative baselines to enable a fair comparison under the same evaluation setup. Under IL training, FeaXDrive-IL achieves a curvature violation rate of only 0 .88%, substantially lower than Di ff usionDrive (8 .59%) and ReCogDrive-IL (8 .05%). After Feasibility-Aware GRPO fine-tuning, FeaXDrive maintains a low curvature violation rate of 2 .40%, while ReCogDrive w /GRPO increases to 15 .5%. These results suggest that score-oriented post-training may improve benchmark metrics at the cost of trajectory-space feasibility, whereas the proposed feasibility-aware design is able to preserve much stronger curvature feasibility while still achieving competitive benchmark performance. Overall, the results demonstrate that FeaXDrive not only delivers strong planning performance on NAVSIM, but also enhances trajectory-space feasibility. Across both IL training and post-training fine-tuning, the proposed method consistently improves planning performance while balancing trajectory-space feasibility, validating the e ff ectiveness of the proposed design. 13 Table 4: IL-stage ablation study of the proposed method on benchmark performance and trajectory-space feasibility. 
+
+Method x0-pred Feasibility Training Feasibility Guidance PDMS ↑ EP ↑ DAC ↑ Drivable Area Viol. Rate ↓
+
+Curvature Viol. Rate ↓
+
+Baseline ✗ ✗ ✗ 85.32 79.56 93.84 6.16% 11.36% Trajectory-centric ✓ ✗ ✗ 86.56 81.26 94.58 5.42% 7.51% 
+
++ Feasibility Training ✓ ✓ ✗ 86.57 81.32 94.94 5.06% 0.13% 
+
+FeaXDrive-IL ✓ ✓ ✓ 88.75 83.34 97.46 2.54% 0.88% Noise-centric Trajectory-centric + Feasibility 
+
+> Training
+> 0
+> 200
+> 400
+> 600
+> 800
+> Curvature Violation Number
+> 826
+> 677
+> 8
+> 554
+> 235
+> 8
+> 0–2 m/s speed range
+> ≥ 2 m/s speed range
+> Figure 3: Comparison of curvature violation counts under di ff erent IL-stage ablation settings.
+
+5.3. Ablation and Feasibility Analysis 
+
+We further analyze the contribution of each module in the proposed method from the perspectives of benchmark performance and trajectory-space feasibility. Table 4 reports the IL-stage ablation results, while Table 5 compares di ff erent post-training strategies. Figs. 3 and 4 further visualize the e ff ect of feasibility training and drivable-area guidance on representative feasibility indicators. 
+
+Eff ect of the trajectory-centric di ff usion planning. Comparing the noise-centric di ff usion planning baseline with the trajectory-centric di ff usion planning method in Table 4, replacing the noise-centric formulation with the trajectory-centric one consistently improves both planning performance and trajectory-space feasibility. Specifically, PDMS increases from 85 .32 to 86 .56, ego progress rises from 79 .56 to 81 .26, and DAC improves from 93 .84 to 94 .58. Meanwhile, the curvature violation rate decreases from 11 .36% to 7 .51%, and the drivable-area violation rate drops from 6 .16% to 5 .42%. These results indicate that trajectory-centric di ff usion planning not only improves trajectory planning performance, but also provides a suitable and unified modeling foundation for subsequent feasibility-aware training and inference in trajectory space. 
+
+Eff ect of adaptive curvature-constrained training. Adding adaptive Curvature-Constrained Training on top of the trajectory-centric formulation produces the most significant gain in curvature-related feasibility. As shown in Table 4, the curvature violation rate drops from 7 .51% to 0 .13%, while PDMS, EP, DAC, and drivable-area violation rate change only marginally. This indicates that the proposed training strategy mainly improves the intrinsic geometric and kinematic feasibility of generated trajectories, without sacrificing benchmark performance. This trend is further confirmed by Fig. 3, where the number of curvature-violation tokens is substantially reduced in both speed ranges. We report the statistics in the 0-2 m /s and ≥ 2 m /s ranges because curvature violations may exhibit di ff erent characteristics across motion regimes. In lower-speed cases, curvature anomalies are more likely to be influenced by local geometric irregularities and discretization e ff ects, whereas with increasing speed, curvature violations tend to become more closely associated with trajectory-level kinematic feasibility. In the 0-2 m /s range, the violation count decreases from 826 in the noise-centric baseline to 677 in the trajectory-centric version, and further 14 Baseline Trajectory-centric + Feasibility                         
+
+> Guidance
+> 0
+> 100
+> 200
+> 300
+> 400
+> 500
+> 600
+> 700
+> 800
+> Drivable-Area Violation Number  748
+> 658
+> 317 Figure 4: Comparison of drivable-area violation counts under di ff erent IL-stage ablation settings. Table 5: Comparison of post-training fine-tuning strategies for FeaXDrive-IL. FA-GRPO denotes feasibility-aware GRPO.
+> Method PDMS ↑EP ↑DAC ↑Drivable Area Viol. Rate ↓
+> Curvature Viol. Rate ↓
+> FeaXDrive-IL 88.75 83.34 97.46 2.54% 0.88%
+> FeaXDrive w /GRPO 90.56 85.13 98.28 1.72% 5.79% FeaXDrive w /FA-GRPO 90.00 84.20 98.31 1.69% 2.40%
+
+to only 8 after feasibility training. In the ≥ 2 m /s range, the count drops from 554 to 235, and then further to 8. These results further show that the proposed training improves the intrinsic geometric and kinematic feasibility of trajectories. 
+
+Eff ect of drivable-area guidance. The FeaXDrive-IL model further introduces drivable-area guidance during re-verse di ff usion sampling. Compared with +Feasibility Training, PDMS increases from 86 .57 to 88 .75, DAC improves from 94 .94 to 97 .46, and the drivable-area violation rate decreases from 5 .06% to 2 .54%. Meanwhile, the curva-ture violation rate increases moderately from 0 .13% to 0 .88%. This result is consistent with the intended role of the guidance module: it mainly improves the drivable-area aspect of trajectory-space feasibility by steering the generated trajectory back toward the drivable area during sampling. The same trend is reflected in Fig. 4, where the number of drivable-area violations decreases from 748 in the baseline to 658 in the trajectory-centric model, and further to 317 after introducing feasibility guidance. 
+
+Post-training with feasibility-aware GRPO. Table 5 compares standard GRPO and the proposed feasibility-aware GRPO. Starting from FeaXDrive-IL, standard GRPO improves PDMS from 88 .75 to 90 .56, but also increases the curvature violation rate from 0 .88% to 5 .79%. In contrast, feasibility-aware GRPO achieves a PDMS of 90 .00 while keeping the curvature violation rate at a much lower level of 2 .40%. At the same time, it attains slightly higher DAC (98 .31 vs. 98 .28) and a slightly lower drivable-area violation rate (1 .69% vs. 1 .72%) than standard GRPO. These results indicate that standard benchmark-oriented GRPO tends to improve score at the expense of feasibility, whereas the proposed feasibility-aware GRPO achieves a better balance between benchmark performance and trajectory-space feasibility, with only a limited reduction in PDMS. 
+
+Overall analysis. Taken together, the ablation results reveal a clear division of roles among the proposed mod-ules. The trajectory-centric reformulation provides a unified foundation for feasibility-aware training, inference-time geometric guidance, and post-training feasibility-aware optimization; adaptive curvature-constrained training mainly improves the intrinsic geometric and kinematic feasibility of trajectories; drivable-area guidance primarily enhances 15 Figure 5: Latency breakdown of FeaXDrive inference. 
+
+the drivable-area aspect of trajectory-space feasibility during sampling; and feasibility-aware GRPO further improves planning performance while balancing trajectory-space feasibility during post-training. Overall, the step-by-step abla-tion results support the design of FeaXDrive and show that the proposed method enhances trajectory-space feasibility while maintaining strong closed-loop planning performance. 
+
+5.4. Inference E ffi ciency 
+
+We further analyze the inference e ffi ciency of FeaXDrive. Fig. 5 presents the latency breakdown of the proposed planner. Overall, the total online inference latency is 348 .73 ms. Among all components, the VLM backbone domi-nates the computational cost, with a latency of 245 .33 ms (70 .3% of the total ), followed by the planner module with 82 .96 ms (23 .8%). In contrast, the additional overhead introduced by the proposed feasibility-aware components re-mains small: local SDF construction costs 16 .03 ms (4 .6%), while drivable-area guidance adds only 4 .41 ms (1 .3%). These results indicate that the primary computational bottleneck still lies in the visual-language backbone, while the proposed feasibility-aware guidance introduces limited extra cost. This breakdown also helps explain the practicality of the proposed method. Although FeaXDrive introduces trajectory-space feasibility modeling, its online geometric guidance remains lightweight compared with the backbone and planner. In particular, the overhead of feasibility guidance is 4 .41 ms, which is small compared with the overall inference budget. This suggests that the proposed feasibility-aware design improves trajectory-space feasibility with modest additional online cost. 
+
+5.5. Qualitative Results 
+
+We further provide qualitative comparisons between the noise-centric baseline and FeaXDrive on representative planning cases. As shown in Fig. 6, the selected examples illustrate three typical issues closely related to trajectory-space feasibility, including trajectory-level kinematic infeasibility, local geometric irregularities, and drivable-area violation. In the first group of examples, the baseline produces trajectories with sharp turning patterns, leading to curvature infeasibility from a trajectory-level kinematic perspective. By comparison, FeaXDrive generates trajectories with smoother turning profiles and more feasible curvature evolution, showing that the proposed trajectory-centric feasi-bility modeling e ff ectively improves kinematic plausibility. In the second group, the baseline trajectories exhibit obvious local geometric irregularities. In contrast, FeaXDrive produces smoother trajectories with more coherent local geometry. These improvements are consistent with the e ff ect of the proposed adaptive curvature-constrained training, which suppresses local geometric spikes and improves the intrinsic geometric and kinematic feasibility of trajectories. 16 (a) Baseline (b) FeaXDrive   
+
+> (c) Baseline (d) FeaXDrive
+> (e) Baseline (f) FeaXDrive
+> Figure 6: Qualitative comparison between the noise-centric baseline and FeaXDrive on representative planning scenes. From top to bottom: local geometric irregularities, trajectory-level kinematic infeasibility, and drivable-area inconsistency. Compared with the baseline, FeaXDrive produces trajectories that are smoother, more kinematically feasible, and better aligned with the drivable area.
+
+In the third group, the baseline trajectories deviate from the drivable area. By contrast, FeaXDrive keeps the pre-dicted trajectory much closer to the drivable area and avoids obvious drivable-area violations. This result qualitatively verifies the e ff ect of drivable-area guidance, which progressively corrects the clean trajectory during reverse di ff usion sampling. Overall, these qualitative examples are consistent with the quantitative results reported in the previous sections. Compared with the baseline, FeaXDrive generates trajectories with stronger trajectory-space feasibility, exhibiting better geometric regularity, improved kinematic feasibility, and better consistency with the drivable area. 
+
+6. Discussion 
+
+The results of this work suggest that di ff erent aspects of trajectory-space feasibility may interact in a non-trivial manner. Adaptive curvature-constrained training suppresses curvature violations, whereas drivable-area guidance further improves benchmark performance and drivable-area compliance but may moderately relax the curvature op-timum achieved by training. Similarly, benchmark-oriented GRPO improves score more aggressively but sacrifices 17 trajectory-space feasibility, while feasibility-aware GRPO preserves a better balance between planning performance and trajectory-space feasibility. This work still has several limitations. First, the feasibility-aware GRPO stage mainly incorporates the intrinsic geometric and kinematic aspect of trajectory-space feasibility, and does not yet unify all aspects of trajectory-space feasibility within the reward. Second, drivable-area guidance currently relies on local map-derived geometric priors, although such priors could in principle also be provided by lightweight maps, online mapping, or other compact scene representations. Future work may explore more unified feasibility modeling across training, inference, and post-training, as well as lighter-weight scene priors and more e ffi cient VLM reasoning for end-to-end autonomous driving planning. 
+
+7. Conclusion 
+
+This paper presented FeaXDrive, a feasibility-aware trajectory-centric di ff usion planning method for end-to-end autonomous driving. Built on a trajectory-centric formulation that provides a unified foundation for feasibility-aware modeling, FeaXDrive integrates adaptive curvature-constrained training, drivable-area guidance during reverse di ff u-sion sampling, and feasibility-aware GRPO post-training. Experiments on NAVSIM showed that FeaXDrive achieves strong closed-loop planning performance while im-proving trajectory-space feasibility. The results demonstrated that the trajectory-centric formulation provides a more suitable and unified foundation for feasibility-aware modeling, while adaptive curvature-constrained training improves intrinsic geometric and kinematic feasibility, drivable-area guidance enhances consistency with the drivable area, and feasibility-aware GRPO further improves planning performance while balancing trajectory-space feasibility during post-training. Overall, this work highlights the importance of explicitly modeling trajectory-space feasibility in end-to-end di ff usion planning and provides a step toward more reliable and physically grounded autonomous driving planners. 
+
+References 
+
+Badue, C., Guidolini, R., Carneiro, R.V., Azevedo, P., Cardoso, V.B., Forechi, A., Jesus, L., Berriel, R., Paixao, T.M., Mutz, F., et al., 2021. Self-driving cars: A survey. Expert systems with applications 165, 113816. Bahari, M., Nejjar, I., Alahi, A., 2021. Injecting knowledge in data-driven vehicle trajectory predictors. Transportation research part C: emerging technologies 128, 103010. Chen, S., Jiang, B., Gao, H., Liao, B., Xu, Q., Zhang, Q., Huang, C., Liu, W., Wang, X., 2024a. Vadv2: End-to-end vectorized autonomous driving via probabilistic planning. arXiv preprint arXiv:2402.13243 . Chen, Y., Wang, Y., Zhang, Z., 2025. Drivinggpt: Unifying driving world modeling and planning with multi-modal autoregressive transformers, in: Proceedings of the IEEE /CVF International Conference on Computer Vision, pp. 26890–26900. Chen, Z., Wu, J., Wang, W., Su, W., Chen, G., Xing, S., Zhong, M., Zhang, Q., Zhu, X., Lu, L., et al., 2024b. Internvl: Scaling up vision foundation models and aligning for generic visual-linguistic tasks, in: Proceedings of the IEEE /CVF conference on computer vision and pattern recognition, pp. 24185–24198. Chi, C., Feng, S., Xu, Z., Cousineau, E.A., Burchfiel, B., Song, S., et al., 2025. Visuomotor policy learning via action di ff usion. US Patent App. 18 /594,842. Christopher, J.K., Baek, S., Fioretto, F., 2024. Projected generative di ff usion models for constraint satisfaction. arXivorg . Chrysler, 2026. 2026 chrysler pacifica limited specifications. https://www.chrysler.com/pacifica/specs. limited.html . O ffi cial vehicle specification page. Accessed: 2026-04-08. Cui, H., Shajari, H., Yalamanchi, S., Djuric, N., 2021. Ellipse loss for scene-compliant motion prediction, in: 2021 IEEE International Conference on Robotics and Automation (ICRA), IEEE. pp. 8558–8564. 18 Dauner, D., Hallgarten, M., Li, T., Weng, X., Huang, Z., Yang, Z., Li, H., Gilitschenski, I., Ivanovic, B., Pavone, M., et al., 2024. Navsim: Data-driven non-reactive autonomous vehicle simulation and benchmarking. Advances in Neural Information Processing Systems 37, 28706–28719. Fu, H., Zhang, D., Zhao, Z., Cui, J., Liang, D., Zhang, C., Zhang, D., Xie, H., Wang, B., Bai, X., 2025. Orion: A holistic end-to-end autonomous driving framework by vision-language instructed action generation, in: Proceedings of the IEEE /CVF International Conference on Computer Vision, pp. 24823–24834. Greer, R., Deo, N., Trivedi, M., 2021. Trajectory prediction in autonomous driving with a lane heading auxiliary loss. IEEE Robotics and Automation Letters 6, 4907–4914. Guo, D., Yang, D., Zhang, H., Song, J., Wang, P., Zhu, Q., Xu, R., Zhang, R., Ma, S., Bi, X., et al., 2025. Deepseek-r1 incentivizes reasoning in llms through reinforcement learning. Nature 645, 633–638. Ho, J., Jain, A., Abbeel, P., 2020. Denoising di ff usion probabilistic models. Advances in neural information processing systems 33, 6840–6851. Hu, Y., Yang, J., Chen, L., Li, K., Sima, C., Zhu, X., Chai, S., Du, S., Lin, T., Wang, W., et al., 2023. Planning-oriented autonomous driving, in: Proceedings of the IEEE /CVF conference on computer vision and pattern recognition, pp. 17853–17862. Huang, Z., Weng, X., Igl, M., Chen, Y., Cao, Y., Ivanovic, B., Pavone, M., Lv, C., 2025. Gen-drive: Enhancing di ff usion generative driving policies with reward modeling and reinforcement learning fine-tuning, in: 2025 IEEE International Conference on Robotics and Automation (ICRA), IEEE. pp. 3445–3451. Hwang, J.J., Xu, R., Lin, H., Hung, W.C., Ji, J., Choi, K., Huang, D., He, T., Covington, P., Sapp, B., et al., 2025. Emma: End-to-end multimodal model for autonomous driving. Transactions on Machine Learning Research . Jiang, B., Chen, S., Liao, B., Zhang, X., Yin, W., Zhang, Q., Huang, C., Liu, W., Wang, X., 2024. Senna: Bridging large vision-language models and end-to-end autonomous driving. arXiv preprint arXiv:2410.22313 . Jiang, B., Chen, S., Xu, Q., Liao, B., Chen, J., Zhou, H., Zhang, Q., Liu, W., Huang, C., Wang, X., 2023. Vad: Vectorized scene representation for e ffi cient autonomous driving, in: Proceedings of the IEEE /CVF International Conference on Computer Vision, pp. 8340–8350. Jiang, B., Chen, S., Zhang, Q., Liu, W., Wang, X., 2025. Alphadrive: Unleashing the power of vlms in autonomous driving via reinforcement learning and reasoning. arXiv preprint arXiv:2503.07608 . Karnchanachari, N., Geromichalos, D., Tan, K.S., Li, N., Eriksen, C., Yaghoubi, S., Mehdipour, N., Bernasconi, G., Fong, W.K., Guo, Y., et al., 2024. Towards learning-based planning: The nuplan benchmark for real-world autonomous driving, in: 2024 IEEE International Conference on Robotics and Automation (ICRA), IEEE. pp. 629–636. Karras, T., Aittala, M., Aila, T., Laine, S., 2022. Elucidating the design space of di ff usion-based generative models. Advances in neural information processing systems 35, 26565–26577. Katrakazas, C., Quddus, M., Chen, W.H., Deka, L., 2015. Real-time motion planning methods for autonomous on-road driving: State-of-the-art and future research directions. Transportation Research Part C: Emerging Tech-nologies 60, 416–442. Leng, B., Yu, R., Tu, C., Xiong, L., Eichberger, A., Li, Z., 2026. Seamless overtaking maneuvers for automated driving: Integrated motion planning based on hybrid model predictive control. IEEE Transactions on Industrial Electronics . Li, D., Ren, J., Wang, Y., Wen, X., Li, P., Xu, L., Zhan, K., Xia, Z., Jia, P., Lang, X., et al., 2025a. Finetuning generative trajectory model with reinforcement learning from human feedback. arXiv e-prints , arXiv–2503. 19 Li, T., He, K., 2025. Back to basics: Let denoising generative models denoise. arXiv preprint arXiv:2511.13720 . Li, Y., Wang, Y., Liu, Y., He, J., Fan, L., Zhang, Z., 2025b. End-to-end driving with online trajectory evaluation via bev world model, in: Proceedings of the IEEE /CVF International Conference on Computer Vision, pp. 27137–27146. Li, Y., Xiong, K., Guo, X., Li, F., Yan, S., Xu, G., Zhou, L., Chen, L., Sun, H., Wang, B., et al., 2025c. Recogdrive: A reinforced cognitive framework for end-to-end autonomous driving. arXiv preprint arXiv:2506.08052 . Li, Z., Li, K., Wang, S., Lan, S., Yu, Z., Ji, Y., Li, Z., Zhu, Z., Kautz, J., Wu, Z., et al., 2024. Hydra-mdp: End-to-end multimodal planning with multi-target hydra-distillation. arXiv preprint arXiv:2406.06978 . Liao, B., Chen, S., Yin, H., Jiang, B., Wang, C., Yan, S., Zhang, X., Li, X., Zhang, Y., Zhang, Q., et al., 2025. Di ff usiondrive: Truncated di ff usion model for end-to-end autonomous driving, in: Proceedings of the Computer Vision and Pattern Recognition Conference, pp. 12037–12047. Mao, J., Qian, Y., Ye, J., Zhao, H., Wang, Y., 2023. Gpt-driver: Learning to drive with gpt. arXiv preprint arXiv:2310.01415 . Mao, J., Ye, J., Qian, Y., Pavone, M., Wang, Y., 2024. A language agent for autonomous driving, in: First Conference on Language Modeling. OpenDriveLab, 2024. Openscene: Autonomous grand challenge toolkits. https://github.com/OpenDriveLab/ OpenScene . Accessed: 2026-04-07. Prakash, A., Chitta, K., Geiger, A., 2021. Multi-modal fusion transformer for end-to-end autonomous driving, in: Proceedings of the IEEE /CVF conference on computer vision and pattern recognition, pp. 7077–7087. Rahman, M.H., Gulzar, M.M., Haque, T.S., Habib, S., Shakoor, A., Murtaza, A.F., 2025. Trajectory planning and tracking control in autonomous driving system: Leveraging machine learning and advanced control algorithms. Engineering Science and Technology, an International Journal 64, 101950. Ridel, D., Deo, N., Wolf, D., Trivedi, M., 2020. Scene compliant trajectory forecast with agent-centric spatio-temporal grids. IEEE Robotics and Automation Letters 5, 2816–2823. Shao, H., Hu, Y., Wang, L., Song, G., Waslander, S.L., Liu, Y., Li, H., 2024a. Lmdrive: Closed-loop end-to-end driving with large language models, in: Proceedings of the IEEE /CVF conference on computer vision and pattern recognition, pp. 15120–15130. Shao, Z., Wang, P., Zhu, Q., Xu, R., Song, J., Bi, X., Zhang, H., Zhang, M., Li, Y., Wu, Y., et al., 2024b. Deepseek-math: Pushing the limits of mathematical reasoning in open language models. arXiv preprint arXiv:2402.03300 .Song, J., Meng, C., Ermon, S., 2020. Denoising di ff usion implicit models. arXiv preprint arXiv:2010.02502 . Song, X., Gao, H., Ding, T., Gu, Y., Liu, J., Tian, K., 2023. A review of the motion planning and control methods for automated vehicles. Sensors 23, 6140. Tian, C., Nguyen, A.T., Chung, E., Huang, H., 2026. Di ff usion-driven hybrid unknown input observer for vehicle dynamics estimation. IEEE Transactions on Industrial Electronics 73, 6097–6110. doi: 10.1109/TIE.2025. 3626623 .Tian, X., Gu, J., Li, B., Liu, Y., Wang, Y., Zhao, Z., Zhan, K., Jia, P., Lang, X., Zhao, H., 2025. Drivevlm: The convergence of autonomous driving and large vision-language models, in: Conference on Robot Learning, PMLR. pp. 4698–4726. Vitelli, M., Chang, Y., Ye, Y., Ferreira, A., Wołczyk, M., Osi´ nski, B., Niendorf, M., Grimmett, H., Huang, Q., Jain, A., et al., 2022. Safetynet: Safe planning for real-world self-driving vehicles using machine-learned policies, in: 2022 International Conference on Robotics and Automation (ICRA), IEEE. pp. 897–904. 20 Wang, S., Yu, Z., Jiang, X., Lan, S., Shi, M., Chang, N., Kautz, J., Li, Y., Alvarez, J.M., 2024. Omnidrive: A holistic llm-agent framework for autonomous driving with 3d perception, reasoning and planning. arXiv preprint arXiv:2405.01533 1, 3. Wang, W., Zhang, T., Song, Z., Liu, H., 2025. Trajectory optimization with dynamic drivable corridor-based collision avoidance. Applied Sciences 15, 7051. Weng, X., Ivanovic, B., Wang, Y., Wang, Y., Pavone, M., 2024. Para-drive: Parallelized architecture for real-time autonomous driving, in: Proceedings of the IEEE /CVF Conference on Computer Vision and Pattern Recognition, pp. 15449–15458. Xing, Z., Zhang, X., Hu, Y., Jiang, B., He, T., Zhang, Q., Long, X., Yin, W., 2025. Goalflow: Goal-driven flow match-ing for multimodal trajectories generation in end-to-end autonomous driving, in: Proceedings of the Computer Vision and Pattern Recognition Conference, pp. 1602–1611. Xu, Z., Zhang, Y., Xie, E., Zhao, Z., Guo, Y., Wong, K.Y.K., Li, Z., Zhao, H., 2024. Drivegpt4: Interpretable end-to-end autonomous driving via large language model. IEEE Robotics and Automation Letters 9, 8186–8193. Yan, S., Zhang, Z., Han, M., Wang, Z., Xie, Q., Li, Z., Li, Z., Liu, H., Wang, X., Zhu, S.C., 2025. M 2 di ff user: Di ff usion-based trajectory optimization for mobile manipulation in 3d scenes. IEEE Transactions on Pattern Anal-ysis and Machine Intelligence . Yang, B., Su, H., Gkanatsios, N., Ke, T.W., Jain, A., Schneider, J., Fragkiadaki, K., 2024. Di ff usion-es: Gradient-free planning with di ff usion for autonomous and instruction-guided driving, in: Proceedings of the IEEE /CVF conference on computer vision and pattern recognition, pp. 15342–15353. Yuan, C., Zhang, Z., Sun, J., Sun, S., Huang, Z., Lee, C.D.W., Li, D., Han, Y., Wong, A., Tee, K.P., et al., 2024. Drama: An e ffi cient end-to-end motion planner for autonomous driving with mamba. arXiv preprint arXiv:2408.03601 . Zhang, B., Zhang, Y., Ji, J., Lei, Y., Dai, J., Chen, Y., Yang, Y., 2025a. Safevla: Towards safety alignment of vision-language-action model via constrained learning, in: The Thirty-ninth Annual Conference on Neural Information Processing Systems. Zhang, J., Yang, X., Wang, T., Yao, Y., Petiushko, A., Li, B., 2025b. Safeauto: Knowledge-enhanced safe autonomous driving with multimodal foundation models, in: International Conference on Machine Learning, PMLR. pp. 76497– 76517. Zhao, R., Fan, Y., Chen, Z., Gao, F., Gao, Z., 2025. Di ff e2e: Rethinking end-to-end driving with a hybrid di ff usion-regression-classification policy, in: The Thirty-ninth Annual Conference on Neural Information Processing Sys-tems. Zheng, Y., Liang, R., ZHENG, K., Zheng, J., Mao, L., Li, J., Gu, W., Ai, R., Li, S.E., Zhan, X., et al., 2025. Di ff usion-based planning for autonomous driving with flexible guidance, in: The Thirteenth International Conference on Learning Representations. Zhong, Z., Rempe, D., Xu, D., Chen, Y., Veer, S., Che, T., Ray, B., Pavone, M., 2023. Guided conditional di ff usion for controllable tra ffi c simulation, in: 2023 IEEE international conference on robotics and automation (ICRA), IEEE. pp. 3560–3566. Zhou, Z., Cai, T., Zhao, S.Z., Zhang, Y., Huang, Z., Zhou, B., Ma, J., 2025. Autovla: A vision-language-action model for end-to-end autonomous driving with adaptive reasoning and reinforcement fine-tuning, in: The Thirty-ninth Annual Conference on Neural Information Processing Systems. Zou, J., Chen, S., Liao, B., Zheng, Z., Song, Y., Zhang, L., Zhang, Q., Liu, W., Wang, X., 2025. Di ff usiondrivev2: Reinforcement learning-constrained truncated di ff usion modeling in end-to-end autonomous driving. arXiv preprint arXiv:2512.07745 . 21
