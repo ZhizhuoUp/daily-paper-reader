@@ -6,70 +6,64 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-04-16
-- 运行时间：2026-04-16 20:17:03 UTC
+- 最新运行日期：2026-04-17
+- 运行时间：2026-04-17 19:59:45 UTC
 - 运行状态：成功
-- 本次总论文数：16
-- 精读区：5
+- 本次总论文数：14
+- 精读区：3
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 16 篇机器人前沿论文，重点突破流形约束下的实时全身控制与物理感知运动规划。
-核心结论指出向量化投影可显著加速复杂规划，而弱监督学习结合稀疏路线图为神经规划提供了新路径。
-推荐优先研读 9.0 分的实时控制佳作，并关注具身智能中长短期反射优化的演进方向。
-- 详情：[/202604/16/README](/202604/16/README)
+今日精选14篇机器人前沿论文，重点攻克全身协同操作与复杂环境下的安全导航难题。
+推荐关注 Sumo 框架实现的通用全身移动操作，以及在未知非线性障碍物动态下的概率安全导航算法。
+建议深入研究微分仿真与视觉语言动作（VLA）正则化，以提升端到端控制的稳定性和学习效率。
+- 详情：[/202604/17/README](/202604/17/README)
 
 ### 精读区论文标签
-1. [Vectorizing Projection in Manifold-Constrained Motion Planning for Real-Time Whole-Body Control](/202604/16/2604.13323v1-vectorizing-projection-in-manifold-constrained-motion-planning-for-real-time-whole-body-control)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：实时全身控制与无碰撞路径规划
-2. [Weakly-supervised Learning for Physics-informed Neural Motion Planning via Sparse Roadmap](/202604/16/2604.13204v1-weakly-supervised-learning-for-physics-informed-neural-motion-planning-via-sparse-roadmap)  
-   标签：评分：8.0/10、query:q4
-   evidence：高维空间中无碰撞路径的神经运动规划
-3. [Capability-Aware Heterogeneous Control Barrier Functions for Decentralized Multi-Robot Safe Navigation](/202604/16/2604.13245v1-capability-aware-heterogeneous-control-barrier-functions-for-decentralized-multi-robot-safe-navigation)  
+1. [Sumo: Dynamic and Generalizable Whole-Body Loco-Manipulation](/202604/17/2604.08508v2-sumo-dynamic-and-generalizable-whole-body-loco-manipulation)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：使用采样规划器和代价函数调整的全身运动操作
+2. [CBF-based Probabilistic Safe Navigation under Unknown Nonlinear Obstacle Dynamics](/202604/17/2604.14818v1-cbf-based-probabilistic-safe-navigation-under-unknown-nonlinear-obstacle-dynamics)  
    标签：评分：8.0/10、query:q1
-   evidence：分布式多机器人安全导航与避障
-4. [Homotopy-Guided Potential Games for Congestion-Aware Navigation](/202604/16/2604.13708v1-homotopy-guided-potential-games-for-congestion-aware-navigation)  
+   evidence：未知障碍物动力学下基于CBF的安全导航与避障
+3. [Trajectory Planning for a Multi-UAV Rigid-Payload Cascaded Transportation System Based on Enhanced Tube-RRT*](/202604/17/2604.15074v1-trajectory-planning-for-a-multi-uav-rigid-payload-cascaded-transportation-system-based-on-enhanced-tube-rrt)  
    标签：评分：8.0/10、query:q1
-   evidence：具有碰撞和拥塞感知能力的多智能体运动规划
-5. [Scale-Invariant Sampling in Multi-Arm Bandit Motion Planning for Object Extraction](/202604/16/2604.14026v1-scale-invariant-sampling-in-multi-arm-bandit-motion-planning-for-object-extraction)  
-   标签：评分：8.0/10、query:q4
-   evidence：针对狭窄空间物体提取的采样运动规划
+   evidence：密集障碍环境下的避障轨迹规划
 
 ### 速读区论文标签
-1. [Utilizing Inpainting for Keypoint Detection for Vision-Based Control of Robotic Manipulators](/202604/16/2604.13309v1-utilizing-inpainting-for-keypoint-detection-for-vision-based-control-of-robotic-manipulators)  
-   标签：评分：7.0/10、query:q8
-   evidence：构型空间中机器人操纵器的视觉控制
-2. [Boundary Sampling to Learn Predictive Safety Filters via Pontryagin's Maximum Principle](/202604/16/2604.13325v1-boundary-sampling-to-learn-predictive-safety-filters-via-pontryagins-maximum-principle)  
+1. [Simple but Stable, Fast and Safe: Achieve End-to-end Control by High-Fidelity Differentiable Simulation](/202604/17/2604.10548v2-simple-but-stable-fast-and-safe-achieve-end-to-end-control-by-high-fidelity-differentiable-simulation)  
+   标签：评分：7.0/10、query:q1
+   evidence：四旋翼无人机的避障与轨迹规划
+2. [Jump-Start Reinforcement Learning with Vision-Language-Action Regularization](/202604/17/2604.13733v1-jump-start-reinforcement-learning-with-vision-language-action-regularization)  
+   标签：评分：7.0/10、query:q6
+   evidence：用于机器人操作的高频闭环控制强化学习
+3. [Goal2Skill: Long-Horizon Manipulation with Adaptive Planning and Reflection](/202604/17/2604.13942v1-goal2skill-long-horizon-manipulation-with-adaptive-planning-and-reflection)  
+   标签：评分：7.0/10、query:q6
+   evidence：具有自适应规划的长程具身操纵
+4. [High Order Tuners for Adaptive Safety of Robotic Systems](/202604/17/2604.14308v1-high-order-tuners-for-adaptive-safety-of-robotic-systems)  
    标签：评分：7.0/10、query:q2
-   evidence：用于安全约束的预测安全滤波器和边界轨迹
-3. [Evolvable Embodied Agent for Robotic Manipulation via Long Short-Term Reflection and Optimization](/202604/16/2604.13533v1-evolvable-embodied-agent-for-robotic-manipulation-via-long-short-term-reflection-and-optimization)  
-   标签：评分：7.0/10、query:q6
-   evidence：使用视觉语言模型的机器人操作策略规划
-4. [ESCAPE: Episodic Spatial Memory and Adaptive Execution Policy for Long-Horizon Mobile Manipulation](/202604/16/2604.13633v1-escape-episodic-spatial-memory-and-adaptive-execution-policy-for-long-horizon-mobile-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：在复杂环境中协调导航与操作任务
-5. [HiVLA: A Visual-Grounded-Centric Hierarchical Embodied Manipulation System](/202604/16/2604.14125v1-hivla-a-visual-grounded-centric-hierarchical-embodied-manipulation-system)  
-   标签：评分：7.0/10、query:q6
-   evidence：解耦规划与控制的分层具身操纵系统
-6. [State and Trajectory Estimation of Tensegrity Robots via Factor Graphs and Chebyshev Polynomials](/202604/16/2604.08185v1-state-and-trajectory-estimation-of-tensegrity-robots-via-factor-graphs-and-chebyshev-polynomials)  
-   标签：评分：6.0/10、query:q5
-   evidence：张拉整体机器人的在线状态与轨迹估计
-7. [On the Existence of Quadratic Control Lyapunov Functions for Koopman-Operator based Bilinear Systems](/202604/16/2604.09267v1-on-the-existence-of-quadratic-control-lyapunov-functions-for-koopman-operator-based-bilinear-systems)  
-   标签：评分：6.0/10、query:q2
-   evidence：基于李雅普诺夫函数的优化控制综合
-8. [Trajectory-based actuator identification via differentiable simulation](/202604/16/2604.10351v1-trajectory-based-actuator-identification-via-differentiable-simulation)  
-   标签：评分：6.0/10、query:q3
-   evidence：基于轨迹优化的执行器识别
-9. [On the Optimization Landscape of Observer-based Dynamic Linear Quadratic Control](/202604/16/2604.10635v1-on-the-optimization-landscape-of-observer-based-dynamic-linear-quadratic-control)  
-   标签：评分：6.0/10、query:q2
-   evidence：基于观测器的动态线性二次控制优化景观
-10. [Ternary Logic Encodings of Temporal Behavior Trees with Application to Control Synthesis](/202604/16/2604.12092v1-ternary-logic-encodings-of-temporal-behavior-trees-with-application-to-control-synthesis)  
-   标签：评分：6.0/10、query:q5
-   evidence：用于控制综合与时序行为树的三值逻辑
-11. [XRZero-G0: Pushing the Frontier of Dexterous Robotic Manipulation with Interfaces, Quality and Ratios](/202604/16/2604.13001v1-xrzero-g0-pushing-the-frontier-of-dexterous-robotic-manipulation-with-interfaces-quality-and-ratios)  
+   evidence：利用控制屏障函数对非线性系统进行自适应安全关键控制。
+5. [Differentiable Object Pose Connectivity Metrics for Regrasp Sequence Optimization](/202604/17/2604.14733v1-differentiable-object-pose-connectivity-metrics-for-regrasp-sequence-optimization)  
+   标签：评分：7.0/10、query:profile-1
+   evidence：机器人重抓序列中间位姿的基于梯度的优化
+6. [Momentum-constrained Hybrid Heuristic Trajectory Optimization Framework with Residual-enhanced DRL for Visually Impaired Scenarios](/202604/17/2604.14986v1-momentum-constrained-hybrid-heuristic-trajectory-optimization-framework-with-residual-enhanced-drl-for-visually-impaired-scenarios)  
+   标签：评分：7.0/10、query:q8
+   evidence：辅助规划的实时轨迹优化框架
+7. [On-Line Policy Iteration with Trajectory-Driven Policy Generation](/202604/17/2604.15004v1-on-line-policy-iteration-with-trajectory-driven-policy-generation)  
+   标签：评分：7.0/10、query:q3
+   evidence：用于路径规划和最优控制的在线策略迭代
+8. [Lightweight Real-Time ALADIN for Distributed Optimization](/202604/17/2604.15176v1-lightweight-real-time-aladin-for-distributed-optimization)  
+   标签：评分：7.0/10、query:q5
+   evidence：用于时间敏感型应用的分布式优化实时计算框架。
+9. [OmniUMI: Towards Physically Grounded Robot Learning via Human-Aligned Multimodal Interaction](/202604/17/2604.10647v1-omniumi-towards-physically-grounded-robot-learning-via-human-aligned-multimodal-interaction)  
    标签：评分：6.0/10、query:q6
-   evidence：灵巧机器人操纵的数据采集系统
+   evidence：针对接触丰富型操作任务的物理接地机器人学习。
+10. [Mosaic: An Extensible Framework for Composing Rule-Based and Learned Motion Planners](/202604/17/2604.13853v1-mosaic-an-extensible-framework-for-composing-rule-based-and-learned-motion-planners)  
+   标签：评分：6.0/10、query:q4
+   evidence：组合规则型与学习型运动规划器的框架
+11. [DockAnywhere: Data-Efficient Visuomotor Policy Learning for Mobile Manipulation via Novel Demonstration Generation](/202604/17/2604.15023v1-dockanywhere-data-efficient-visuomotor-policy-learning-for-mobile-manipulation-via-novel-demonstration-generation)  
+   标签：评分：6.0/10、query:q6
+   evidence：移动操作的视觉运动策略学习
 
 
 <div class="dpr-home-promo-card">
