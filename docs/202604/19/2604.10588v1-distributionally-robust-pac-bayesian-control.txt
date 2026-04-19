@@ -1,0 +1,716 @@
+Title: Distributionally Robust PAC-Bayesian Control
+
+URL Source: https://arxiv.org/pdf/2604.10588v1
+
+Published Time: Tue, 14 Apr 2026 01:11:51 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Distributionally Robust PAC-Bayesian Control 
+
+Domagoj Herceg and Duarte Antunes 
+
+Abstract — We present a distributionally robust PAC-Bayesian framework for certifying the performance of learning-based finite-horizon controllers. While existing PAC-Bayes con-trol literature typically assumes bounded losses and matching training and deployment distributions, we explicitly address unbounded losses and environmental distribution shifts (the sim-to-real gap). We achieve this by drawing on two modern lines of research, namely the PAC-Bayes generalization theory and distributionally robust optimization via the type-1 Wasser-stein distance. By leveraging the System Level Synthesis (SLS) reparametrization, we derive a sub-Gaussian loss proxy and a bound on the performance loss due to distribution shift. Both are tied directly to the operator norm of the closed-loop map. For linear time-invariant systems, this yields a computationally tractable optimization-based framework together with high-probability safety certificates for deployment in real-world environments that differ from those used in training. 
+
+I. INTRODUCTION The integration of machine learning into control theory has provided powerful tools for synthesizing control policies directly from finite, noisy datasets. However, learning-based controllers are notoriously vulnerable to distribution shifts, as they usually assume that the data generating distribution used for training matches the deployment (testing) distribution. This discrepancy, also referred to as the sim-to-real gap, can substantially degrade performance when a controller trained under nominal conditions is deployed in the real-world, where unmodeled disturbances can act as adversarial perturbations. Compounding the issue is the finite-sample uncertainty that arises from limited training data. The PAC-Bayesian [1] framework has emerged as a rigor-ous method to provide high-probability finite-sample gener-alization guarantees for randomized learning algorithms. Us-ing PAC-Bayes techniques, the authors in [2] have provided the first non-vacuous generalization bounds in deep neural networks, which was a major breakthrough and a showcase of the potential of PAC-Bayes methods. Researchers have also applied PAC-Bayesian methods in control, such as in settings that require generalization to unseen environments in robotics [3]. In their extended work, they also treat the case of mismatch between training and testing distributions, but only use information-theoretic mea-sures of f -divergences, effectively inflating the complexity term. In addition to assuming a hard cap on the losses, the penalty due to distributional robustness is a simple additive constant term that does not depend on the control policy. More recently, authors in [4], [5] have explored PAC-Bayes guarantees in non-linear control by parameterizing the          
+
+> 1The authors are with the Department of Mechanical Engineering, Eindhoven university of Technology, Eindhoven, The Netherlands. email:
+
+{d.herceg,d.antunes }@tue.nl 
+
+underlying system with an inherently stable parameterization in order to optimize and certify the resulting performance. However, as hinted before, these works make a standard assumption of a single data generating distribution in training and deployment environments and consider bounded losses. Distributionally robust (DR) optimization [6] methods have had a much more notable presence in control [7], being used in many applications such as model predictive control [8]. DR approaches have emerged as the principal way to combat the optimizer’s curse [9], a phenomenon closely related to overfitting. The main idea is to optimize the system’s performance according to the worst distribution in an ambiguity set centered around a nominal distribu-tion [10]. This nominal distribution is often an empirical one constructed by drawing a finite number of samples. By resorting to Wasserstein distance, the authors in [11] provide probabilistic guarantees that the true distribution lies in an ambiguity set of the empirical one. In this work, we extend the PAC-Bayes control framework to handle unbounded losses and distribution shifts. In fact, we propose a distributionally robust PAC-Bayesian control framework utilizing the 1-Wasserstein distance. By leverag-ing the Kantorovich-Rubinstein duality [12], the Wasserstein robustness penalty explicitly ties the generalization bound to the controller-dependent Lipschitz constant of the closed-loop system. This bound allows us to immunize the system performance against distributional shifts in the controller design phase. In fact, our approach establishes a robust PAC-Bayesian bound that explicitly accounts for potential mis-alignment between training and deployment environments. Finally, we translate this theoretical distributionally ro-bust PAC-Bayesian bound into a computationally tractable algorithm for LTI systems via System Level Synthesis (SLS) [13]. This amounts to an effective reparameterization that enables us to provide concrete bounds on the Lipschitz and sub-Gaussian proxies, both of which depend on the controller in our framework. We are now ready to summarize our contributions. 
+
+Contributions: Our main contributions are twofold: first, we introduce a Wasserstein distributionally robust extension for PAC-Bayesian control for unbounded Lipschitz loss func-tions; second, by specializing the framework to finite-horizon LTI control in SLS form, we derive explicit controller-dependent certificates for both loss concentration and de-ployment robustness from the same closed-loop map. These certificates lead to a tractable posterior optimization problem over feasible controllers and finite-sample guarantees under disturbance shift with respect to the training distribution, which does not need to be identified. 
+
+> arXiv:2604.10588v1 [cs.LG] 12 Apr 2026
+
+The remainder of the paper is organized as follows: In Section II, we provide the reader with the necessary back-ground on the dynamical system we consider, distributional robustness, and we introduce the PAC-Bayes framework. In Section III, we state our result on distributionally robust PAC-Bayesian control for Wasserstein type-1 distance. Then, in Section IV, we reframe the problem in the SLS frame-work and specialize our results to LTI systems. We provide valid proxies for both sub-Gaussian concentration and the robustness penalty based on the closed-loop map induced by the controller. In Section V, we verify our findings with a numerical example. 
+
+Notation: Let Rn be an n dimensional vector of reals and Rn×m a matrix of reals for n, m ∈ N. For a matrix 
+
+M ∈ Rn×m, the operator vec( M ) denotes the column-stacking vectorization, i.e., vec( M ) ∈ Rnm . A cone of positive (semi-)definite matrices of size n × n is denoted by (Sn
+
+> +
+
+) Sn
+
+> ++
+
+. Similarly, let Rn 
+
+> +
+
+be a vector of non-negative reals. Let ∥ · ∥ be a norm on Rn; unless otherwise stated, this is the Euclidean norm. A function f : Rn → R is L-Lipschitz if ∥f (x′) − f (x)∥ ≤ L∥x′ − x∥ for some L > 0
+
+and all x′, x . The operator norm of the matrix M ∈ Rn×m
+
+is defined as ∥M ∥op = sup ∥w∥=1 ∥M w ∥ with w ∈ Rm.The expectation operator is denoted by E. When needed, we indicate the distribution in the subscript, e.g., EK∼Q[f (K)] 
+
+denotes expectation w.r.t. Q.II. P ROBLEM FORMULATION 
+
+In this section, we introduce the necessary background for our approach. Our goal is to provide finite-sample guarantees for learning controllers based on PAC-Bayes learning theory and to address the distribution shift between the learned con-troller in the training and deployment (testing) environments. To this end, we set up an abstract learning control problem in Section II-A. We introduce the necessary preliminaries in probability theory in Section II-B. In Section II-C we discuss distributional robustness and Wasserstein distance. In Section II-D, we summarize a key result from [14] on PAC-Bayes generalization, which we aim to extend to control settings in a distributionally robust form. We provide a short problem statement in Section II-E. 
+
+A. System Dynamics and Control 
+
+We consider a general stochastic control learning setting with controller class K and data space Z. A hypothesis K ∈K represents a controller, while a sample Z ∈ Z ⊆ Rd
+
+represents a single data point of an uncertainty realization affecting the rollout loss, such as a disturbance trajectory, model uncertainty, etc. The loss of controller K on sample Z is given by a measurable nonnegative rollout loss 
+
+ℓ : K × Z → R+.
+
+Given a training sample 
+
+S = ( Z1, . . . , Z n) ∼ D n
+
+and a controller K ∈ K, the corresponding population risk (1a) and empirical risk (1b) are defined as 
+
+R(K) := EZ∼D [ℓ(K, Z )] , (1a) 
+
+bRS (K) := 1
+
+n
+
+> n
+
+X
+
+> i=1
+
+ℓ(K, Z i). (1b) In Section IV, we specialize this abstract setup for finite-horizon LTI systems in System Level Synthesis (SLS) form, where the sample Z becomes a disturbance trajectory and the rollout loss measures weighted closed-loop performance output. 
+
+B. Probability 
+
+The central object of interest in the PAC-Bayes bound is a sub-Gaussian random variable [15]. 
+
+Definition 1 (Sub-Gaussian r.v.): A zero mean random variable X is sub-Gaussian if 
+
+E [exp ( λX )] ≤ exp 
+
+ σ2λ2
+
+2
+
+
+
+, for any λ ∈ R (2) for a given constant σ2 called the variance proxy . Equiva-lently, such X is also called σ-sub-Gaussian. □
+
+Notice that the definition above includes, among others, Gaussian variables where Definition 1 holds with equality and almost surely bounded random variables a ≤ X ≤ b,where σ2 = 14 (b − a)2. Put another way, sub-Gaussian random variables have a moment generating function (MGF) that is uniformly bounded above by the moment generating function of a Gaussian variable. 
+
+Definition 2 (KL divergence): Let Q, P be two probabil-ity distributions such that Q ≪ P (absolute continuity) is defined on a common measurable space X , with densities 
+
+q(x), p (x). Then 
+
+KL( Q∥P ) = 
+
+Z
+
+> x∈X
+
+q(x) log q(x)
+
+p(x) dx. (3) 
+
+□
+
+The definition for discrete random variables follows anal-ogously. Here we also note that the KL divergence between two Gaussian random vectors has a closed form solution. 
+
+C. Distributional robustness and Wasserstein distance 
+
+To quantify the discrepancy between the training and deployment environments, we will employ the 1-Wasserstein distance [12]. Let P(Z) be the set of probability measures 
+
+P on the data space Z ⊆ Rd with a finite first moment. 
+
+Definition 3 (1-Wasserstein Distance): For any P, Q ∈P(Z), the 1-Wasserstein distance is defined as the minimum cost of transporting one distribution to another: 
+
+W1(P, Q ) = inf 
+
+> π∈Π( P,Q )
+
+Z
+
+> Z×Z
+
+∥z − z′∥2 dπ (z, z ′) (4) where Π( P, Q ) denotes the set of all joint distributions (couplings) on Z × Z with marginals P and Q. □
+
+Based on this metric, we define the Wasserstein ambiguity set of radius ρ centered at distribution P as: 
+
+AW1 (P ) := {Q ∈ P (Z) : W1(Q, P ) ≤ ρ} (5) This set represents a family of distributions that are close to distribution P in an optimal transport sense. By Kan-torovich–Rubinstein duality [16] for any L-Lipschitz func-tion, ℓ : Z 7 → R
+
+sup  
+
+> Q∈A ρ(P)
+
+EZ∼Q[ℓ(Z)] ≤ EP [ℓ(Z)] + ρL (6) The above form is also often referred to as distributionally robust [6] optimization. However, in our case, the Lipschitz constant and the sub-Gaussian variance proxy will not be static objects, they will depend on the posterior controller distribution. 
+
+D. PAC-Bayesian Learning Theory 
+
+The PAC-Bayesian generalization theory [1] provides high-probability generalization guarantees for a distribution 
+
+of hypotheses. This is an important distinction from other statistical methods. Instead of bounding the difference be-tween the population and empirical risks (1), it bounds the 
+
+EK∼Q[R(K)] in terms of EK∼Q[ bRS (K)] , where Q is a 
+
+distribution over K, along with an additional complexity term that we explain later on. These are often called the population Gibbs and empirical Gibbs risks. It is a distribution-free approach that assumes we can sample from an unknown distribution and provides generalization guarantees through finite sample reasoning. The majority of PAC-Bayesian results yield a bound on the generalization performance with an assumed maximum cap on the loss. This setup is natural in machine learning ap-plications, as the loss is often bounded (like 0-1 classification loss). Translating this to control could be done by saturating the loss at a certain maximum value. However, this entails problems such as tedious calibration and an inevitable loss of sensitivity in the region close to the upper bound. There are also results for unbounded sub-Gaussian losses [17] with an assumed global variance proxy σ2 for the loss. However, this is often not suitable for the control of dynamical systems, as bounding the worst case loss implies a bound inherently determined by the worst possible controller among controllers. For this reason, we adopt a recent result for hypothesis dependent sub-Gaussian losses [14]. Here, we briefly note that the approach in [14] has other relevant implications in terms of optimization, but this is out of the scope of this paper. In control parlance, a hypothesis corresponds to a controller. The meaning is that the concentration bound depends on the (expected) performance of the deployed 
+
+controller. As we seek to optimize the performance of the controller, these two objectives are aligned. We state the theorem adapted to our setup. 
+
+Theorem 1 (Thm. 11 , Cor. 13 from [14]): Let K be acontroller (hypothesis) space, let P be a data-independent 
+
+prior on K, and let S = ( Z1, . . . , Z n) ∼ D n, for n ≥ 2 be a dataset sampled i.i.d. from D. For each K ∈ K , let the population and the empirical risk be as in (1). Assume that for every fixed K ∈ K , the centered loss 
+
+bℓ(K, Z ) := ℓ(K, Z ) − R(K) is σ(K)-sub-Gaussian, in the sense that 
+
+log EZ∼D exp 
+
+
+
+λ(bℓ(K, Z )
+
+
+
+≤ λ2
+
+2 σ(K)2
+
+for all λ ∈ R. Then, for any δ ∈ (0 , 1) , with probability at least 1 − δ over the draw of S ∼ Dn, for all posteriors 
+
+Q ≪ P it holds that 
+
+EK∼Q[R(K)] ≤ EK∼Q[ bRS (K)] + Cnδ (Q, P, σ ) (7) provided that EK∼Q[σ(K)2] < ∞. □
+
+In (7), shorthand Cnδ (Q, P, σ ) is the complexity term 
+
+Cnδ (Q, P, σ ) = 
+
+s
+
+2 EK∼Q[σ(K)2]  KL( Q∥P ) + log( n/δ )
+
+n − 1 .
+
+Note that we sample from the distribution D used for training and provide the deployment guarantees assuming that the data generating distribution in the real-world is the same as the training one. This is often an unrealistic assumption, and we will address this particular issue in Section III. 
+
+E. Problem statement 
+
+In this paper, we tackle the problem of ensuring that the control system trained on a finite-sample training en-vironment, with an unknown data-generating distribution, translates to predictable performance in the deployment environment under distribution shift. In particular, we aim to extend Theorem 1 to the case where the deployment generating distribution is not the same as the training one. III. D ISTRIBUTIONALLY ROBUST PAC-B AYES 
+
+In this section, we combine the nominal PAC-Bayes bound of Theorem 1 with Wasserstein robustification. We further specialize the resulting guarantee to finite-horizon SLS con-trol in Section IV. Departing from the standard PAC-Bayes, our aim is to provide a high-probability upper bound on the expected 
+
+distributionally robust population (DROP) risk, which we define as: 
+
+Rρ(K) := sup 
+
+> D′∈A ρ(D)
+
+EZ∼D ′ [ℓ(K, Z )] (8) We indicate the robust version with the ρ in the subscript, which will be the robustness radius throughout the paper. The main idea is to account for the possibility that the data seen in deployment will be generated from a different distribution 
+
+D′, thereby invalidating the assumption of Theorem 1. We treat the real-world distribution as adversarial but close, in some sense, to the training regime. The DROP risk stated above is for a generic ambiguity set Aρ with radius ρ. Note that for ρ = 0 , we recover the standard population risk from Theorem 1. In what follows, we specialize the ambiguity set to type-1 Wasserstein ambiguity and leave the more general case of arbitrary convex ambiguity sets for future work. A. Distributionally Robust PAC-Bayes via Wasserstein Dis-tance 
+
+To derive a bound where the penalty reflects the specific vulnerability of each model, we shift our attention to the 1-Wasserstein distance. The Wasserstein ambiguity ball of radius ρ ≥ 0 around the nominal distribution D is given by 
+
+Aρ(D) as defined in (5). We shall drop the W1 superscript and, from now on, understand that we are working with the Wasserstein distance when referring to ambiguity sets. 
+
+Assumption 1 (Environment): For any controller K ∈ K ,the loss function Z 7 → ℓ(K, Z ) is L(K)-Lipschitz continuous with respect to the Euclidean metric, that is, for all Z, Z ′ ∈Z:
+
+|ℓ(K, Z ) − ℓ(K, Z ′)| ≤ L(K)∥Z − Z′∥.
+
+□
+
+Assumption 1 is the regularity condition that enables the Wasserstein robustification in Theorem 2. We are now ready to state the theorem for the distributionally robust version of PAC-Bayes. 
+
+Theorem 2 (Wasserstein DR-PAC-Bayes): Let K be a hy-pothesis space, P a data-independent prior, and S = {Zi}ni=1 
+
+drawn i.i.d. from D. Assume that Assumption 1 holds. In addition, for every fixed K ∈ K , the centered nominal loss is σ(K)-sub-Gaussian under D. For any δ ∈ (0 , 1) , with probability at least 1 − δ over the draw of S ∼ D n, the following holds simultaneously for all posteriors Q ≪ P :
+
+EK∼Q [Rρ(K)] ≤ EK∼Q
+
+h bRS,ρ (K)
+
+i
+
++ Cnδ (Q, P, σ )
+
+where bRS,ρ (K) := bRS (K) + L(K)ρ and Rρ(K) is given by (8) with respect to the ambiguity set (5). 
+
+Proof: The idea of the proof is as follows. First, we bound the performance degradation caused by the de-ployment distribution D′ with respect to the training data-generating distribution D. The training data-generating dis-tribution is unknown, but we can sample from it in an i.i.d. fashion and use PAC-Bayes theory to provide performance bounds based on a finite-sample dataset. Chaining these two gives the result. We begin by bounding the worst-case risk for a fixed hypothesis K ∈ K. Since the loss Z 7 → ℓ(K, Z ) is 
+
+L(K)-Lipschitz by Assumption 1, using the Kantorovich-Rubinstein duality, the supremum of the expected loss over the 1-Wasserstein ball is upper bounded by the nominal expected loss plus a penalty proportional to the Lipschitz constant of the function. Hence for K ∈ K 
+
+sup 
+
+> D′∈A ρ(D)
+
+EZ∼D ′ [ℓ(K, Z )] ≤ R(K) + L(K)ρ. (9) Taking the expectation over the posterior distribution Q
+
+on both sides 
+
+EK∼Q [Rρ(K)] ≤ EK∼Q [R(K) + L(K)ρ] . (10) To bound the nominal population risk R(K), we invoke Theorem 1 , since by assumption, the centered nominal loss is σ(K)-sub-Gaussian under D. Hence, with probability at least 1 − δ over the sample S, it holds simultaneously for all 
+
+Q that 
+
+EK∼Q[R(K)] ≤ EK∼Q[ bRS (K)] + Cnδ (Q, P, σ ). (11) Substituting (11) into (10) gives the result. Notice that the Wasserstein DROP risk is centered around the training (unknown) distribution. The robustness penalty 
+
+L(K)ρ is now explicitly tied to the geometric sensitivity of each individual controller. Consequently, minimizing this bound requires an algorithm to actively optimize the empiri-cal robust risk, favoring models with small (expected) Lips-chitz constants that result in a better bound on generalization in unseen environments. IV. S YSTEM LEVEL SYNTHESIS AND TRACTABLE 
+
+POSTERIOR OPTIMIZATION 
+
+We now specialize the abstract setup of Section II-A to finite-horizon linear time-invariant (LTI) systems. Controller 
+
+K ∈ K is now a finite-horizon linear causal controller, and the sample Z ∈ Z is a disturbance trajectory. Furthermore, we rely on the System Level Synthesis (SLS) [13] framework to obtain an explicit sub-Gaussian proxy and the Wasserstein Lipschitz bounds in terms of the closed-loop maps from disturbances to state-control trajectories. 
+
+A. Finite-horizon LTI specialization 
+
+Consider a linear time-invariant (LTI) discrete-time dy-namical system subject to additive disturbances 
+
+xk+1 = Ax k + Bu k + wk, k ∈ { 0, . . . , T − 1}, (12) where xk ∈ Rnx is the state, and x0 is an initial state. Vector uk ∈ Rnu is the control input, and wk ∈ Rnx is an exogenous disturbance. We consider finite-horizon linear causal controllers, which may be time-varying and depend on the state history up to the current time, i.e. 
+
+uk =
+
+> k
+
+X
+
+> t=0
+
+Kk,t xt, k ∈ { 0, . . . , T − 1}.
+
+Let K denote a class of finite-horizon linear causal controllers for system (A, B ), where A ∈ Rnx×nx , B ∈ Rnx ×nu , and let K ∈ K be such a controller. Moreover, let W denote the space of disturbance trajectories over the horizon T , and 
+
+w ∈ W a particular disturbance trajectory. Notice that, in this specialization, the data space Z becomes the disturbance-trajectory space W. The rollout loss function is now 
+
+ℓ : K × W 7 → R+.
+
+B. Finite-horizon lifted SLS responses 
+
+Consider the discrete-time LTI system defined in (12). Define the stacked vectors 
+
+x := x⊤ 
+
+> 0
+
+x⊤ 
+
+> 1
+
+· · · x⊤
+
+> T
+
+⊤ ∈ R(T +1) nx ,
+
+u := u⊤ 
+
+> 0
+
+u⊤ 
+
+> 1
+
+· · · u⊤ 
+
+> T−1
+
+⊤ ∈ RT n u ,
+
+w := x⊤ 
+
+> 0
+
+w⊤ 
+
+> 0
+
+· · · w⊤ 
+
+> T−1
+
+⊤ ∈ R(T +1) nx .Notice that we include the initial state in w to ease the notation. For a finite-horizon controller, the stacked state and input trajectories are deterministic linear maps of the stacked disturbance vector: 
+
+x = Φ xw, u = Φ uw, (13) where Φx ∈ R(T +1) nx×(T +1) nx , Φu ∈ RT n u×(T +1) nx .
+
+Both matrices Φx and Φu have a lower block-triangular structure due to the causality requirement. We can write lifted responses in block-row form as 
+
+Φx =
+
+
+
+Φx[0] Φx[1] 
+
+...
+
+Φx[T ]
+
+ , Φu =
+
+
+
+Φu[0] Φu[1] 
+
+...
+
+Φu[T − 1] 
+
+ ,
+
+where Φx[k] ∈ Rnx×(T +1) nx , Φu[k] ∈ Rnu×(T +1) nx .
+
+The finite-horizon achievability constraints are 
+
+Φx[0] = Inx 0 · · · 0 ,
+
+Φx[k + 1] = AΦx[k] + BΦu[k], k ∈ { 0, . . . , T − 1} (14) These constraints define an affine feasible set over Φ := (Φ x, Φu), which can equivalently be written in compact lifted form as 
+
+FA,B = {(Φ x, Φu) : FxΦx + FuΦu = I} .
+
+where, Fx and Fu are given by 
+
+> Fx
+
+z }| {
+
+I 0 0 · · · 0
+
+−A I 0 · · · 00 −A I . . . ...... . . . . . . . . . 00 · · · 0 −A I
+
+
+
+,
+
+> Fu
+
+z }| {
+
+0 0 0 · · · 0
+
+−B 0 0 · · · 00 −B 0 . . . ...... . . . . . . . . . 00 · · · 0 −B 0
+
+
+
+.
+
+We refer the reader to [13] for further details and derivations of these equalities. 
+
+C. Subspace parameterization 
+
+To obtain a finite-dimensional hypothesis space for PAC-Bayes, we vectorize the lifted closed-loop response matrices. Let 
+
+vec(Φ) := 
+
+vec(Φ x)vec(Φ u)
+
+
+
+.
+
+Since the finite-horizon SLS feasibility constraints are affine in (Φ x, Φu), they can be written in vectorized form as 
+
+F vec(Φ) = b, for a matrix F and vector b obtained from vectorizing the affine feasibility constraints. Hence, the feasible set is an affine subspace in vectorized coordinates. Let Φ0 be any feasible baseline lifted closed-loop response satisfying F vec(Φ 0) = b, and let H be a matrix whose columns form a basis for the nullspace of F [18]. Then every feasible lifted closed-loop response can be parameterized as 
+
+vec(Φ) = vec(Φ 0) + Hθ, θ ∈ Θ ⊆ Rd.
+
+In this formulation, the learnable variable is θ ∈ Θ. Thus, the PAC-Bayesian hypothesis is now θ (as opposed to K in previous sections), while the closed-loop response matrices become Φx(θ) and Φu(θ).Furthermore, let Qc ∈ S(T +1) nx 
+
+> +
+
+and Rc ∈ ST n u 
+
+> ++
+
+denote fixed performance weighting matrices, and define the stacked performance output 
+
+y(θ) := 
+
+"
+
+Q1/2 
+
+> c
+
+00 R1/2
+
+> c
+
+# xu
+
+
+
+= M (θ)w, (15) where 
+
+M (θ) := 
+
+"
+
+Q1/2 
+
+> c
+
+Φx(θ)
+
+R1/2 
+
+> c
+
+Φu(θ)
+
+#
+
+. (16) We will consider 2-norm type losses for simplicity of exposition, but others, such as the 1-norm, are readily incorporated. 
+
+Assumption 2: For any θ ∈ Θ and w ∈ W , let the rollout loss be given by 
+
+ℓ(θ, w) := ∥M (θ)w∥. (17) The empirical risk on a sample S = {wi}ni=1 of i.i.d. trajectory-level disturbances is then 
+
+bRS (θ) := 1
+
+n
+
+> n
+
+X
+
+> i=1
+
+∥M (θ)wi∥, (18) and the population risk is 
+
+R(θ) := Ew∼D [ℓ(θ, w)] = Ew∼D [∥M (θ)w∥] . (19) We now verify the conditions of Theorem 2 for two useful disturbance models: Gaussian disturbance trajectories and almost surely bounded ones. Note once again that D is the disturbance-trajectory training distribution. 
+
+D. Controller-dependent concentration and robustness cer-tificates 
+
+We start off with a proposition on Gaussian trajectories. 
+
+Proposition 1 (Gaussian trajectory disturbances): 
+
+Assume 
+
+w ∼ N (μw, Σw).
+
+For the loss satisfying Assumption 2, the centered loss 
+
+ℓ(θ, w) − R(θ)
+
+is σ(θ)-sub-Gaussian with 
+
+σ(θ) := ∥M (θ)Σ 1/2 
+
+> w
+
+∥op . (20) 
+
+Proof: Loss is ℓ(θ, w) = ∥M (θ)w∥ by Assumption 2, with w ∼ N (μw, Σw). Reparametrize w as 
+
+w = μw + Σ 1/2 
+
+> w
+
+ξ
+
+with ξ ∼ N (0 , I ). Define ¯ℓθ (ξ) = ∥M (θ)( μw + Σ 1/2 
+
+> w
+
+ξ)∥.
+
+For any ξ, ξ ′, it follows 
+
+|¯ℓθ (ξ) − ¯ℓθ (ξ′)| ≤ ∥ M (θ)Σ 1/2 
+
+> w
+
+(ξ − ξ′)∥
+
+by the reverse triangle inequality. By using the definition of the operator norm, we further have ∥M (θ)Σ 1/2 
+
+> w
+
+(ξ −ξ′)∥ ≤ ∥ M (θ)Σ 1/2 
+
+> w
+
+∥op ∥ξ − ξ′∥ which gives the Lipschitz bound L(θ) := ∥M (θ)Σ 1/2 
+
+> w
+
+∥op for ¯ℓθ . By the Gaussian concentration theorem [15, Theorem 5.5], ¯ℓθ − E[¯ℓθ ] is σ(θ)-sub-Gaussian, with σ(θ) = ∥M (θ)Σ 1/2 
+
+> w
+
+∥op . Since ℓ(θ, w) = ¯ℓθ (ξ), this completes the proof. 
+
+Proposition 2 (Bounded trajectory disturbances): 
+
+Assume that 
+
+∥w∥ ≤ R
+
+almost surely and the loss function satisfies Assumption 2. Then the centered loss 
+
+ℓ(θ, w) − R(θ)
+
+is σ(θ)-sub-Gaussian with 
+
+σ(θ) := R
+
+2 ∥M (θ)∥op . (21) 
+
+Proof: For the operator norm and R bounded norm of 
+
+w, we have 
+
+∥M (θ)w∥ ≤ ∥ M (θ)∥op ∥w∥ ≤ R∥M (θ)∥op 
+
+Since l(θ, w) ≥ 0 by construction, it holds that 
+
+0 ≤ ℓ(θ, w) ≤ R∥M (θ)∥op .
+
+By Hoeffding’s lemma [19] for bounded random variables, it follows that the centered loss is σ(θ)-sub-Gaussian, where 
+
+σ(θ) := R
+
+2 ∥M (θ)∥op .
+
+Proposition 3 (Wasserstein Lipschitz certificate): Let the loss satisfy Assumption 2. Then it is L(θ)-Lipschitz with a bound 
+
+L(θ) = ∥M (θ)∥op . (22) 
+
+Proof: It holds that |ℓ(θ, w) − ℓ(θ, w′)| ≤ ∥ M (θ)( w −
+
+w′)∥ ≤ ∥ M (θ)∥op ∥w − w′∥. The first inequality follows from the reverse triangle inequality, while the second one follows from the definition of the operator norm. ∥M (θ)∥op 
+
+is a Lipschitz constant by definition. The quantities (20), (21), and (22) are controlled by the same weighted closed-loop map M (θ), which is one of the main advantages of the SLS formulation in the present framework. 
+
+Remark 1 (Interpretation): Theorem 2 requires only avalid controller/hypothesis sub-Gaussian proxy for the cen-tered loss. Propositions 1 and 2 show that, for the finite-horizon SLS loss ℓ(θ, w ) = ∥M (θ)w∥, this requirement is satisfied in two example trajectory-level disturbance models. In the Gaussian case, the proxy is covariance-aware and takes the form 
+
+σ(θ) = ∥M (θ)Σ 1/2 
+
+> w
+
+∥op , (23) where the covariance matrix Σw may be full. Thus, the Gaussian model allows for a correlation across the stacked disturbance trajectory, including temporal correlations, cross-coordinate correlations, etc. In the bounded case, the proxy becomes 
+
+σ(θ) = ∥M (θ)( R/ 2) I∥op = R
+
+2 ∥M (θ)∥op . (24) Hence, both certificates share the same template as they result from combining a concentration inequality with a Lip-schitz bound for the disturbance to loss map. The uncertainty enters through a scaling factor multiplying the closed-loop map. In the Gaussian case, this factor is Σ1/2 
+
+> w
+
+, while in the bounded case it is the isotropic scaling (R/ 2) I.
+
+E. Robust PAC-Bayes objective in SLS form 
+
+Combining the PAC-Bayes square-root bound given by Theorem 2 with SLS hypothesis θ yields the final learning algorithm over the posterior Q. Using the explicit proxies 
+
+σ(θ) given by (20) or (21), we state the posterior optimiza-tion problem as 
+
+minimize  
+
+> Q≪P
+
+Eθ∼Q
+
+h bRS (θ) + ρ∥M (θ)∥op 
+
+i
+
++ Cnδ (Q, P, σ ),
+
+(25) with the complexity term Cnδ (Q, P, σ ) being equal to 
+
+s
+
+2 Eθ∼Q[σ(θ)2]  KL( Q∥P ) + log( n/δ )
+
+n − 1 . (26) 
+
+Remark 2 (Computation): The optimization problem (25) can be hard to solve in its general form. One common restriction is to consider posteriors and priors that belong to the Gaussian family. Then, the KL term is available in closed form. For Gaussian distributions N (μ, Σ) , the empirical-risk and certificate terms can be estimated by Monte Carlo methods using the reparameterization trick θ = μ + Lε, ε ∼ N (0 , I ), where L is the square root of the covari-ance matrix. This yields a differentiable finite-dimensional optimization problem that is readily exploited by modern automatic differentiation (AD) methods. Otherwise, for the general Gibbs posterior, we can employ more advanced methods such as [20], [21] similar to what was done in [4]. Next, we follow up with a numerical example. V. N UMERICAL EXAMPLE 
+
+In what follows, we use Julia [22] to implement the numerical example and Zygote [23] as the AD backend. The optimization problem is formulated in JuMP [24]. 
+
+A. Double integrator 
+
+We consider a finite-horizon control problem for the discrete-time linear system (12) with 
+
+A =
+
+1.0 0.10.0 1.0
+
+
+
+, B =
+
+0.01.0
+
+
+
+(27) The state and input penalties are 
+
+bQc = diag(1 .0, 0.1) , bRc = diag(0 .01) ,
+
+and Qc, R c are constructed as 
+
+Qc := blkdiag( bQc, . . . , bQc
+
+| {z } 
+
+> T+1
+
+), R c := blkdiag( bRc, . . . , bRc
+
+| {z }
+
+> T
+
+).
+
+for the control horizon T = 10 . For the stacked trajectory, the loss is the weighted Euclidean norm 
+
+ℓ(x, u) = 
+
+> T
+
+X
+
+> t=0
+
+x⊤ 
+
+> t
+
+bQcxt + 
+
+> T−1
+
+X
+
+> t=0
+
+u⊤ 
+
+> t
+
+bRcut
+
+!1/2
+
+.Training sample size 32 64 128 256 512 1024 2048 Bound value 0.0 0.1 0.2 0.3 Gibbs risk Wasserstein term ρ·E[L] PAC-Bayes complexity Fig. 1. Decomposition of the robust PAC-Bayes certificate cost for various training sample sizes. Gibbs risk is defined as empirical cost averaged over the optimized posterior Q. As the PAC-Bayes complexity depends on the controller performance, the resulting cost is self-balancing without the need to resort to tricks such as saturation. 
+
+In the SLS specialization, this trajectory cost is precisely 
+
+ℓ(θ, w) = ∥M (θ)w∥. We construct the corresponding finite-horizon SLS parameterization Φ = Φ 0 + Hθ and optimize an isotropic Gaussian posterior 
+
+Q = N (μ, σ 2I)
+
+over the SLS coordinates θ. The training set consists of 
+
+n i.i.d. disturbance trajectories drawn from a zero-mean Gaussian with covariance 
+
+Σw = (0 .02) 2I, 
+
+which, in this example, corresponds to disturbance vectors of dimension Nw = ( T + 1) nx = 22 . The posterior is fitted with the solver using max 150 L-BFGS iterations, at a confidence level δ = 0 .05 , a prior standard deviation 
+
+σprior = 1.0, and 24 Monte Carlo samples to estimate posterior expectations. We report the bound decomposition on the training set and the comparison of the vanilla PAC-Bayes and the distributionally robust version developed in this work. The results are depicted in Figures 1 and 2. Looking at Figure 1, we can see that the PAC-Bayes complexity term diminishes with more data, as expected. However, the optimization procedure still has to balance the contribution from the Wasserstein penalty and the empirical risk, both averaged over the same posterior. Figure 2 shows the effectiveness of our method in the presence of distribution shifts. We can observe that vanilla PAC-Bayes, which stands for the PAC-Bayes term without the Wasserstein part, cannot account for environmental shifts properly. It can clearly be seen from the figure that the reported bound is violated for all sizes of the dataset n. On the other hand, our robustified method provides a correct upper-bound on the realized empirical risk. We also remark that our method performs better on distribution shifted test data than the vanilla one. Both methods have been tested on the same adversarial distribution shift. Note that the distribution shift was selected such that it stays inside the certified radius while moving the mean of the training data distribution. Training sample size n 32 64 128 256 512 1024 2048 Cost 0.2 0.4 0.6 Nominal bound (no shift) DR bound ( ρ=0.08) Nominal test cost (adversary, W ₁ ≤ 0.08) DR test cost (adversary, W ₁ ≤ 0.08) 
+
+Fig. 2. Comparison of vanilla PAC-Bayes ( ρ = 0) vs robust PAC-Bayes ( ρ = 0 .08 ). The vanilla PAC-Bayes bound (black dashed) does not properly upper-bound the test risk (gray solid) due to unmodeled distribution shift, while the robust bound (orange dashed) provides a valid bound on the test risk (blue solid). We can also observe that DRO PAC-Bayes results in a controller that has lower empirical cost in addition to correct theoretical guarantee. Both empirical test costs are validated against the same deployment distribution shift, suggesting the twofold benefit of our DRO PAC-Bayes approach. We empirically observe the same behavior over different ρ values. We report mean values for test cost. 
+
+VI. C ONCLUSION AND FUTURE WORK 
+
+In this work, we combined PAC-Bayesian generalization analysis with Wasserstein distributional robustness and spe-cialized the resulting framework to finite-horizon LTI control in SLS form. The key outcome is an explicit, tractable bound in which both concentration and robustness are certified through operator norms of the weighted closed-loop map. This yields finite-sample guarantees for randomized feasible controllers under disturbance-distribution shift. For future work, we envision extending this approach to model uncer-tainty, sub-exponential losses such as squared norm costs, and to learning-based robust model predictive control. REFERENCES [1] O. Catoni, PAC-Bayesian Supervised Classification: The Thermody-namics of Statistical Learning . Institute of Mathematical Statistics, 2007. [2] G. K. Dziugaite and D. M. Roy, “Computing nonvacuous generaliza-tion bounds for deep (stochastic) neural networks with many more parameters than training data,” in Proceedings of the Thirty-Third Conference on Uncertainty in Artificial Intelligence, UAI 2017, Sydney, Australia, August 11-15, 2017 . AUAI Press, 2017. [3] A. Majumdar and M. Goldstein, “Pac-bayes control: Synthesizing controllers that provably generalize to novel environments,” in Pro-ceedings of The 2nd Conference on Robot Learning , ser. Proceedings of Machine Learning Research, A. Billard, A. Dragan, J. Peters, and J. Morimoto, Eds., vol. 87. PMLR, 29–31 Oct 2018, pp. 293–305. [4] M. G. Boroujeni, C. L. Galimberti, A. Krause, and G. Ferrari-Trecate, “A pac-bayesian framework for optimal control with stability guarantees,” in 2024 IEEE 63rd Conference on Decision and Control (CDC) , 2024, pp. 8237–8244. [5] ——, “Pac-bayesian optimal control with stability and generalization guarantees,” arXiv preprint arXiv:2512.02858 , 2025. [6] A. Shapiro, D. Dentcheva, and A. Ruszczynski, Lectures on stochastic programming: modeling and theory . SIAM, 2021. [7] B. P. Van Parys, D. Kuhn, P. J. Goulart, and M. Morari, “Distri-butionally robust control of constrained stochastic systems,” IEEE Transactions on Automatic Control , vol. 61, no. 2, pp. 430–442, 2015. [8] P. Sopasakis, D. Herceg, A. Bemporad, and P. Patrinos, “Risk-averse model predictive control,” Automatica , vol. 100, pp. 281–288, 2019. [9] J. E. Smith and R. L. Winkler, “The optimizer’s curse: Skepticism and postdecision surprise in decision analysis,” Management Science ,vol. 52, no. 3, pp. 311–322, 2006. [10] H. Rahimian and S. Mehrotra, “Frameworks and Results in Dis-tributionally Robust Optimization,” Open Journal of Mathematical Optimization , vol. 3, pp. 1–85, 2022. [11] P. Mohajerin Esfahani and D. Kuhn, “Data-driven distributionally robust optimization using the wasserstein metric: Performance guar-antees and tractable reformulations,” Mathematical Programming , vol. 171, no. 1, pp. 115–166, 2018. [12] C. Villani et al. , Optimal transport: old and new . Springer, 2009, vol. 338. [13] Y.-S. Wang, N. Matni, and J. C. Doyle, “A system-level approach to controller synthesis,” IEEE Transactions on Automatic Control ,vol. 64, no. 10, pp. 4079–4093, 2019. [14] I. Casado, L. A. Ortega, A. P´ erez, and A. R. Masegosa, “Pac-bayes-chernoff bounds for unbounded losses,” Advances in Neural Information Processing Systems , vol. 37, pp. 24 350–24 374, 2024. [15] S. Boucheron, G. Lugosi, and P. Massart, Concentration Inequalities: A Nonasymptotic Theory of Independence . Oxford: Oxford University Press, 2013. [16] D. Kuhn, P. M. Esfahani, V. A. Nguyen, and S. Shafieezadeh-Abadeh, “Wasserstein distributionally robust optimization: Theory and appli-cations in machine learning,” in Operations research & management science in the age of analytics . Informs, 2019, pp. 130–166. [17] P. Alquier, “User-friendly introduction to pac-bayes bounds,” arXiv preprint arXiv:2110.11216 , 2021. [18] G. H. Golub and C. F. Van Loan, Matrix computations . JHU press, 2013. [19] R. Vershynin, High-dimensional probability: An introduction with applications in data science . Cambridge university press, 2018, vol. 47. [20] M. Welling and Y. W. Teh, “Bayesian learning via stochastic gradient langevin dynamics,” in Proceedings of the 28th international confer-ence on machine learning (ICML-11) , 2011, pp. 681–688. [21] Q. Liu and D. Wang, “Stein variational gradient descent: A general purpose bayesian inference algorithm,” Advances in neural informa-tion processing systems , vol. 29, 2016. [22] J. Bezanson, A. Edelman, S. Karpinski, and V. B. Shah, “Julia: A fresh approach to numerical computing,” SIAM review , vol. 59, no. 1, pp. 65–98, 2017. [Online]. Available: https://doi.org/10.1137/141000671 [23] M. Innes, “Don’t unroll adjoint: Differentiating ssa-form programs,” CoRR , vol. abs/1810.07951, 2018. [Online]. Available: http://arxiv.org/abs/1810.07951 [24] I. Dunning, J. Huchette, and M. Lubin, “Jump: A modeling language for mathematical optimization,” SIAM Review , vol. 59, no. 2, pp. 295– 320, 2017.

@@ -1,0 +1,3141 @@
+Title: Quantized Online LQR
+
+URL Source: https://arxiv.org/pdf/2604.11930v1
+
+Published Time: Wed, 15 Apr 2026 00:07:48 GMT
+
+Number of Pages: 28
+
+Markdown Content:
+> 1
+
+# Quantized Online LQR 
+
+Barron Han, Victoria Kostina, and Babak Hassibi 
+
+Abstract 
+
+We study online linear–quadratic regulation (LQR) with unknown dynamics under communication rate con-straints. Classical networked control quantizes the plant state at every time step, requiring O(T ) total bits while injecting persistent quantization noise that limits control performance. We consider a setting where the plant observes its state locally and can estimate system dynamics via ordinary least squares, while a remote controller possesses knowledge of the control cost. Rather than quantizing the raw state, the plant transmits learned dynamics estimates over a rate-limited uplink, and the controller returns the optimal control policy so that the plant can compute actions locally using its superior state knowledge. We first prove a fundamental information-theoretic lower bound: any scheme achieving O(T α) regret for α ∈ [1 /2, 1) compared to the optimal infinite horizon LQR controller that knows the true system dynamics must transmit at least Ω(log T ) bits. We then design the Quantized Certainty Equivalent (QCE-LQR) algorithm, which matches this bound. The resulting regret bound contains inflation factors 
+
+Qslow (ϱ) and Qfast (ϱ) that vanish as the codebook resolution increases, smoothly recovering the unquantized baseline regret. Numerical experiments on four benchmark systems—from a scalar unstable plant to a 24-parameter Boeing 747 lateral model—confirm that a variant of QCE-LQR achieves regret comparable to an unquantized certainty equivalent controller over a horizon of T = 10 ,000 steps. 
+
+Index Terms 
+
+Adaptive control, communication-constrained control, linear quadratic regulation, online learning, quantization. 
+
+I. I NTRODUCTION 
+
+The online LQR problem is a canonical model for analyzing the regret guarantees of data-driven adaptive control algorithms [1], [2]. Practical deployments face tight limits on communication bandwidth and onboard computation, motivating theoretical results that quantify performance–communication tradeoffs and algorithms that provably operate under rate constraints. The online LQR problem without communication constraints has been well studied [1]–[3]. Over a horizon of 
+
+T , the optimal regret relative to the infinite-horizon LQR controller with known dynamics is ˜O(√T ) (where ˜O
+
+suppresses logarithmic factors). This rate is achieved by standard ε-greedy exploration schemes when a stabilizing safety controller is available [2], and remains achievable without such a controller via more sophisticated strategies [3]. The offline LQR problem with communication constraints has also been of recent interest. The fundamental tradeoff between LQR cost and communication rate is characterized in [4]. Joint source-channel codes for LQR over noisy communication channels have been studied in [5]–[7]. Crucially, these classical networked control schemes quantize the state xt at every time step, requiring O(T ) total bits over a horizon of T . Moreover, continuous state-quantization noise is injected into the feedback loop at each step, which fundamentally limits the achievable regret when the dynamics are unknown. These works also assume the linearized dynamics are known a priori, which is often unrealistic. Most real-world systems are inherently non-linear, and their corresponding linear models are obtained by computing the local Jacobian around a nominal operating point. As a system transitions between different operating regimes— due to changes in velocity, varying payload distributions, or environmental wear—this local approximation drifts, causing the effective system parameters to vary with the changing operating conditions. This motivates a data-driven approach that learns the linearized dynamics online. Furthermore, unlike [4]–[7], we assume the actuator has direct access to the system state and can apply control inputs without quantization, so that communication is required only for transmitting the control policy . 
+
+> Barron Han, Victoria Kostina, and Babak Hassibi are with the Department of Electrical Engineering and Computing and Mathematical Sciences, California Institute of Technology, Pasadena, CA 91125 USA (e-mail: {bshan, vkostina, hassibi }@caltech.edu).
+> arXiv:2604.11930v1 [eess.SY] 13 Apr 2026 2
+
+An alternative model-free problem setting considers designing the optimal control policy without explicitly learning the system dynamics. For this problem, [8] devise the Adaptively Quantized Gradient Descent (AQGD) algorithm based on [9] to learn LQR controllers over rate-limited channels. Their main result shows that, above a finite bit-rate threshold, AQGD converges exponentially fast to the globally optimal policy with no degradation of the convergence rate relative to the unquantized setting. However, their framework studies convergence to the optimal policy rather than online regret , and requires the agent to observe multiple independent trajectories of the system to form policy gradient estimates. In this work, we study online LQR with control policy quantization, motivated by a fundamental information asymmetry between the system and the controller: the system observes its state locally and can form accurate dynamics estimates via ordinary least squares (OLS), while the controller possesses knowledge of the control cost. To address this asymmetry, the system transmits its dynamics estimates to the controller, which returns the optimal control policy Kt—not the control action ut—computed from those estimates and the cost objective. The system then applies ut = Ktxt locally, exploiting its superior knowledge of the state, xt. Unlike classical networked control [4], [7], the controller transmits the policy rather than the action and therefore does not need access to the system state. This extends naturally to tracking problems, where the controller transmits the target state alongside the policy gain, yielding an affine control law that still requires no knowledge of the current state. In the offline setting where the linear system dynamics are known, this is trivial: the controller computes the optimal gain K once and transmits it at t = 1 , requiring only O(1) bits. In the online setting, the controller cannot compute the optimal K
+
+since the dynamics are unknown, and exploration noise must be injected to accelerate learning [1], [2]. The goal is to recover the optimal ˜O(√T ) regret scaling. A naive approach of uniformly quantizing the OLS dynamics estimates fails to preserve the optimal ˜O(√T ) regret for two reasons. First , the OLS estimation error of the linearized system is highly anisotropic: different parameter subspaces converge at different polynomial rates [1], so a single-scale quantizer is forced to track the slowest rate and incurs unnecessary dimensional overhead in the dominant regret term. Second , before these asymptotic rates take effect, the transient OLS error cannot be tightly bounded, so any fixed-radius codebook risks overflow. Both challenges necessitate an adaptive, mixed-scale quantization scheme. In this paper, we study online LQR with rate-limited feedback and establish sharp limits on the communication needed to retain optimal regret. We first prove a fundamental information-theoretic lower bound: any scheme achieving O(T α) regret for α ∈ [1 /2, 1) must transmit at least Ω(log T ) bits, even if the true dynamics are known by the system. We then construct the Quantized Certainty Equivalent (QCE-LQR) algorithm, which matches this lower bound in its dependence on the horizon T . QCE-LQR is a rate-limited variant of the ε-greedy exploration certainty equivalent policy from [1], modified to compress the evolving sequence of dynamics estimates into an information-theoretically optimal O(log T ) bit stream without degrading the ˜O(√T ) regret scaling. We present the following informal theorem that combines our main results in Theorems 1 and 2. 
+
+Theorem (Informal) . In the quantized online LQR setting for horizon T , a total communication budget B(T ) = Θ(log T ) is necessary and sufficient to achieve ˜O(√T ) regret relative to the infinite-horizon LQR controller with known dynamics. 
+
+II. S ETTING 
+
+Notation: We write ρ(·) for the spectral radius of a matrix, ∥ · ∥ op for the operator (spectral) norm, and ∥ · ∥ F
+
+for the Frobenius norm. We use ≲ and ≳ to denote inequality up to universal constants, and ≍ for equality up to universal constants. All logarithms, entropies, and mutual informations are in base 2.Consider the stochastic linear system 
+
+xt+1 = Ax t + Bu t + wt, wt i.i.d. 
+
+∼ N (0 , σ 2
+
+> w
+
+I), x1 = 0 , (1) where xt ∈ Rdx is the state, ut ∈ Rdu is the control input, and the per-step cost is 
+
+c(x, u ) = x⊤Rxx + u⊤Ruu, Rx ≻ 0, R u ≻ 0. (2) 
+
+Remark 1. The isotropic noise covariance σ2
+
+> w
+
+I is without loss of generality when the noise covariance is known. Given a system with wt ∼ N (0 , Σ) for a known Σ ≻ 0, let L denote its Cholesky factor ( Σ = LL ⊤). The change 3
+
+Plant 
+
+xt+1 = Ax t + Bu t + wt
+
+( ˆAk , ˆBk ) ← OLS( data )
+
+ut = ˜Kk xt + σk gt
+
+Controller 
+
+Knows (Rx, R u)˜Kk = K∞( ˜Ak , ˜Bk )
+
+( ˜Ak , ˜Bk ) = Q( ˆAk , ˆBk )
+
+Rate-limited uplink: B(T ) bits 
+
+˜Kk
+
+Unconstrained downlink 
+
+wt ∼ N (0 , σ 2 
+
+> w
+
+I)                              
+
+> Fig. 1. System model. Communication occurs sparsely at block-wise epochs indexed by k(introduced in Section IV-A, below). At each epoch, the plant computes OLS estimates ( ˆAk,ˆBk)of the unknown dynamics and transmits a quantized version ( ˜Ak,˜Bk). The controller, which knows the cost matrices (Rx, R u), solves the DARE to compute the certainty-equivalent policy ˜Kk=K∞( ˜Ak,˜Bk)and transmits it to the plant without rate constraints. At every time step t, the plant applies the current epoch’s policy ut= ˜Kkxt+σkgtwith decaying exploration noise.
+
+of coordinates ¯xt = L−1xt yields ¯xt+1 = ¯A ¯xt + ¯B u t + ¯ wt with ¯A = L−1AL , ¯B = L−1B, ¯wt ∼ N (0 , I ), and cost matrices ¯Rx = L⊤RxL ≻ 0, ¯Ru = Ru.
+
+For a stationary controller K, define the infinite-horizon average cost 
+
+J(A, B, K ) := lim  
+
+> T→∞
+
+1
+
+T E
+
+h TX
+
+> t=1
+
+c(xt, Kx t)
+
+i
+
+, J∞(A, B ) := inf  
+
+> K
+
+J(A, B, K ), (3) and define the finite-horizon regret of a (possibly time-varying, randomized) policy π = {ut} by 
+
+Regret T := 
+
+> T
+
+X
+
+> t=1
+
+c(xt, u t) − T J ∞(A, B ). (4) Simchowitz and Foster showed that without a rate limit, the optimal regret scales as Θ( d2
+
+> u
+
+dx
+
+√T ) [1]. 
+
+Assumption 1. We assume that the system (A, B ) is stabilizable and a stabilizing K0, ρ(A − BK 0) < 1, is known by both the controller and system upfront. 
+
+In our setting, communication is over a noiseless but asymmetric bidirectional channel, consistent with standard IoT and edge architectures where the battery-powered plant is power-limited on its uplink while the grid-powered controller has ample downlink capacity. The uplink (plant → controller) is rate-limited: let Πt denote the uplink transcript available to the controller when the time-t policy is selected, and let B(t) denote its cumulative bit length, with total B(T ) by horizon T . This transcript is generated causally from plant-side information available before the action at time t is applied. The downlink (controller → plant) is unconstrained, allowing the controller to transmit the full-precision policy matrix. We assume the class of linear policies ut = Ktxt. At time t, the control policy Kt
+
+must be measurable with respect to Πt (and the controller’s local randomness). While an unconstrained downlink theoretically allows the controller to transmit the cost matrices (Rx, R u),enabling the plant to solve the Discrete Algebraic Riccati Equation (DARE) locally to obtain K∞(A, B ), transmitting only the policy Kt reflects key operational realities in cloud-edge systems. First, in fleet deployments, cost matrices encode proprietary strategic priorities; transmitting only Kt obfuscates these costs, as inverse-LQR is ill-posed. Second, edge devices lack the computational capability for iterative DARE solvers (e.g., Schur decompositions), whereas OLS estimation requires only basic matrix operations. Finally, in decentralized systems like energy grids, the effective cost reflects dynamic global states. Streaming this full context is bandwidth-prohibitive, so the cloud must evaluate the global objective and transmit only the compiled local policy Kt.We use t to denote the discrete time index, and k to denote the algorithm epoch index, described in Section IV-A, below. For a stabilizable pair (A, B ), let P∞(A, B ) denote the unique stabilizing solution to the discrete algebraic Riccati equation (DARE) 
+
+P = A⊤P A + Rx − A⊤P B (Ru + B⊤P B )−1B⊤P A, (5) 4
+
+and let K∞(A, B ) be the corresponding optimal stationary gain, 
+
+K∞(A, B ) := −(Ru + B⊤P∞(A, B ) B)−1B⊤P∞(A, B ) A. (6) Denote the optimal closed-loop matrix by 
+
+Acl ,⋆ := A + BK ∞(A, B ). (7) For a Schur-stable matrix M and a positive semidefinite matrix Q, let dlyap [M, Q ] denote the unique solution X ⪰ 0
+
+to the discrete Lyapunov equation X = M ⊤XM + Q. When Q = I, we abbreviate dlyap [M ] := dlyap [M, I ].Define: 
+
+J∞ := σ2
+
+> w
+
+Tr( P∞(A, B )) , (optimal cost), (8) 
+
+J0 := J(A, B, K 0), (initial controller cost), (9) 
+
+P0 := J0/d x, (normalized initial cost), (10) 
+
+ΨB := max {1, ∥B∥op }, (controllability proxy). (11) When the arguments (A, B ) are omitted from these functions (e.g., P∞), they correspond to the true system parameters. Following [1], define the safe constant 
+
+Csafe (A, B ) := 54 ∥P∞(A, B )∥5op , (12) which governs the radius within which certainty-equivalent control remains stabilizing, in Section IV-D below. We use C0 throughout to denote a universal constant arising from the OLS self-normalized bound in Section IV-F below. III. C ONVERSE : N ECESSITY OF Ω(log T ) BITS 
+
+In this section, we establish a fundamental information-theoretic limit on the communication required for near-optimal adaptive control. We prove that any scheme achieving sub-linear regret must transmit at least Ω(log T ) bits from the plant to the controller. Fix r > 0 and define the class of stabilizable instances whose optimal gain lies in a Frobenius ball of radius r:
+
+Θ := (A, B ) : ( A, B ) stabilizable , ∥K∞(A, B )∥F ≤ r . (13) 
+
+Theorem 1 (Fundamental Regret-Communication Trade-off) . Fix α ∈ [1 /2, 1) and C1 > 0. Consider any quantized control scheme of the form ut = Ktxt, where for each t, the random matrix Kt ∈ Rdu×dx is measurable with respect to the controller’s received uplink transcript Πt and its local randomness (cf. Section II). If 
+
+sup 
+
+> θ∈Θ
+
+E[Regret T ] ≤ C1T α, (14) 
+
+then there exists a constant C, depending only on (Rx, R u, σ 2
+
+> w
+
+, r, d x, d u, C 1, α ) and not on T , such that 
+
+B(T ) ≥ dudx
+
+2 (1 − α) log 2 T − C. (15) 
+
+Corollary 1 (Optimal Regret Requires Ω(log T ) Bits) . To achieve the optimal unquantized regret scaling of 
+
+E[Regret T ] = O(√T ) corresponding to α = 1 /2 in (14) , the total communication budget must scale as: 
+
+B(T ) ≥ dudx
+
+4 log 2 T − C. (16) 
+
+Proof sketch. The full proof is in Appendix A. We construct a concrete hard subclass Θhard ⊂ Θ parametrized by a cube of gains K ∈ [−a, a ]du×dx , where a := r/ √dudx is chosen so that every K in the cube satisfies ∥K∥F ≤ r
+
+and hence Θhard ⊂ Θ. Each K indexes a stabilizable instance (AK , B K ) for which K∞(AK , B K ) = K, and all instances share the common optimal cost J∞(AK , B K ) = σ2
+
+> w
+
+Tr( P ). A regret identity then decomposes horizon-T
+
+regret into a sum of per-step excess costs, each lower bounded by a constant times E∥Kt − K∥2 
+
+> F
+
+via the process-noise covariance floor. Averaging over the first half of the horizon produces a single estimator bK of K satisfying 
+
+E∥ bK − K∥2 
+
+> F
+
+≤ Cest T α−1. Finally, placing a uniform prior on the cube and applying the data-processing inequality bounds the mutual information by the transcript length B(T ). We lower bound the distortion in K using a Gaussian reduction. Combining these yields (15). 5
+
+IV. A CHIEVABILITY : ˜O(√T ) REGRET WITH O(log T ) BITS 
+
+In this section, we present the Quantized Certainty Equivalent LQR (QCE-LQR) algorithm, which builds upon the unquantized adaptive control scheme of [1]. By integrating our novel quantization protocols, we show how the plant can compress its local dynamics estimates into O(log T ) total bits without degrading the ˜O(√T ) regret scaling. Define dimensional constants 
+
+d := dx + du, ds := d2 
+
+> x
+
++ dxdu, (17) where ds is the total number of unknown system parameters. For a codebook resolution ϱ ∈ (0 , 1/√2) , define 
+
+Cϱ := 11 − ϱ√2 , (18) and the quantization inflation factors 
+
+Qslow (ϱ) = ϱ2C2
+
+> ϱ
+
+ 1 + 2 1/4
+
+1 − ϱ 21/4
+
+2
+
+· C0 (1 .0835) 4, (19) 
+
+Qfast (ϱ) = ϱ2C2
+
+> ϱ
+
+ 1 + √21 − ϱ√2
+
+2
+
+· C0 (1 .0835) 6. (20) Finally, define the OLS mixing time and the pre-safe duration bound (Lemma 7 in Section IV-I, below): 
+
+τls := d max {1, d u/d x}  ∥P∞∥3op P0 + ∥P∞∥11 op Ψ6
+
+> B
+
+ log d∥P∞∥op 
+
+δ , (21) 
+
+τsafe := d ∥P∞∥10 op (1 + ∥K0∥2op ) log Ψ2 
+
+> B
+
+J0
+
+δ . (22) For the communication bound, let β := ϱ√2 and 
+
+m∞ := 2 − β
+
+1 − β , bϱ := 2 ⌊log 2⌈m∞⌉⌋ + 1 . (23) Let θmax denote the largest absolute entry of the system matrices, 
+
+θmax := max  
+
+> i,j
+
+{| Aij |, |Bij |} , (24) and define the one-time initialization cost 
+
+Binit := O
+
+
+
+ds log 
+
+
+
+1 + θmax Csafe (A, B ) pds
+
+ 
+
+. (25) 
+
+Theorem 2 (Main Achievability Result) . Under the setting of Section III, for any δ ∈ (0 , 1 
+
+> T
+
+), the QCE-LQR algorithm (Algorithm 1) satisfies the following with probability at least 1 − δ.
+
+(a) Total Communication. The total number of bits transmitted by horizon T is bounded by 
+
+B(T ) ≤
+
+
+
+ds log 2
+
+
+
+1 + 2
+
+ϱ
+
+
+
++ bϱ
+
+
+
+log 2 T + Binit + O log τsafe + log 2 τls 
+
+ = O ds log T . (26) 
+
+(b) Total Regret. The regret satisfies 
+
+Regret T ≲ √T
+
+
+
+du
+
+pdx Ψ3 
+
+> B
+
+∥P∞∥11 /2op 
+
+q
+
+log ∥P∞∥op  
+
+> δ
+
++
+
+q
+
+d log 1 
+
+> δ
+
+∥P∞∥4op + Qslow (ϱ) dxdu
+
+σ2in 
+
+∥P∞∥10 op log 1
+
+> δ
+
+
+
+(27) 
+
++ log T · Qfast (ϱ) d2 
+
+> x
+
+∥P∞∥11 op log 2 1 
+
+> δ
+
++ d2Ψ2 
+
+> B
+
+P0∥P∞∥10 op (1 + ∥K0∥2op ) log Ψ2  
+
+> BJ0
+> δ
+
+log 1
+
+> δ
+
++ pdd x Ψ2 
+
+> B
+
+∥P∞∥17 /2op 
+
+q
+
+log ∥P∞∥op  
+
+> δ
+
+log 2 1  
+
+> δ
+
++ Ψ B J0 ∥P∞∥3op τls log 1
+
+> δ
+
++ d2 
+
+> x
+
+∥P∞∥3op τls log 2 1  
+
+> δ
+
+.
+
+Theorem 2 shows that Regret T = ˜O(√T ) is achievable using only O(log T ) bits. Part (a) establishes that the total uplink cost grows as [ds log 2(1 + 2 /ϱ ) + bϱ] · log 2 T plus a one-time initialization overhead Binit that depends 6
+
+on the system parameters but not on T ; the detailed accounting is in Appendix C. Part (b) gives a regret bound with σ2in from (106) (see Appendix D). The dominant √T coefficient is du
+
+√dx Ψ3 
+
+> B
+
+∥P∞∥11 /2op 
+
+plog( ∥P∞∥op /δ ),yielding the optimal ˜O(pd2
+
+> u
+
+dx T ) dimension scaling of [1]. The quantization contributes the slow-rate term 
+
+Qslow (ϱ) dxdu
+
+> σ2in
+
+∥P∞∥10 op log(1 /δ ) at the √T scale and the fast-rate term Qfast (ϱ) d2 
+
+> x
+
+∥P∞∥11 op log 2(1 /δ ) at the log T
+
+scale, and both inflation factors vanish as ϱ → 0.
+
+A. Algorithm Overview 
+
+Our main algorithm, Quantized Certainty Equivalent LQR ( QCE-LQR ) (Algorithm 1), is a rate-limited adaptation of the ε-greedy scheme from [1]. The algorithm takes as input a stabilizing controller K0 and proceeds in doubling epochs k of length τk = 2 k. During an initial burn-in period, the plant uses K0 with Gaussian excitation to explore the state space. Once the plant’s local, unquantized OLS estimate achieves sufficient statistical reliability at epoch ksafe , it transmits this initial estimate to the controller using an absolute Elias Gamma encoding. This establishes a shared, reliable baseline model ( ˜Aksafe , ˜Bksafe ) between the plant and the controller. From this baseline, both tracking sides natively compute a known safe set Bsafe designed to guarantee closed-loop stability for any contained parameter. In the post-safe phase ( k > k safe ), the plant relies on differential quantization. At the end of each epoch k, it computes an updated OLS estimate ˆθk := vec( ˆAk, ˆBk) ∈ Rds (28) and sends a quantized innovations update relative to the previously shared estimate. Writing ˜θk := vec( ˜Ak, ˜Bk) for the shared decoded parameter, both sides maintain it via 
+
+˜θk = ˜θk−1 + skcqk , (29) where qk is the transmitted codeword index corresponding to a vector cqk from a fixed codebook C (a ϱ-net of the unit ball in Rds ), and sk is a scalar radius. Given the sequence of shared parameters, the controller projects onto the known safe set: ˇθk := vec( ˇAk, ˇBk) = Π Bsafe (˜θk), (30) which ensures closed-loop stability with high probability. It then synthesizes the certainty-equivalent controller 
+
+˜Kk := K∞( ˇAk, ˇBk) (31) and transmits it back to the plant over the unconstrained downlink. The plant applies this policy with decaying exploration noise: 
+
+ut = ˜Kkxt + σkgt, σ2 
+
+> k
+
+:= min {1, σ 2in τ −1/2 
+
+> k
+
+}, (32) where gt i.i.d.
+
+∼ N (0 , I du ) is isotropic Gaussian excitation and σ2in > 0 is an exploration constant computed at epoch 
+
+ksafe , specified in Lemma 1 (Section IV-D, below). Because the codebook C is a fixed, dimension-dependent ϱ-net, each epoch requires communicating a constant number of bits log 2 |C| for the codeword index. In addition, each epoch carries a small overhead: a 1-bit safety flag indicating whether the safe trigger has fired, and an Elias-Gamma coded adaptive multiplier mk (defined in Section IV-H, below) that scales the quantization radius to absorb transient estimation errors. By Lemma 6 (Section IV-H, below), mk contracts to O(1) after a bounded number of epochs, so the total transmission rate per epoch is O(1) bits asymptotically. Summing over ≍ log 2 T epochs, this scheme compresses the entire sequence of dynamics estimates into O(log T ) total bits. The key technical challenge, treated in the subsequent sections, is designing the scale sequence sk such that quantization errors do not degrade the asymptotic ˜O(√T ) regret. 
+
+B. Quantization Rule: Adaptive Scale Protocol 
+
+The key challenge in designing the quantization schedule is that the OLS estimation error is highly anisotropic .As shown in Corollary 2 in Section IV-F, below, after a bounded period τls , the error decays as τ −1/4 for the 
+
+dxdu-dimensional subspace (the “slow” rate) but as τ −1/2 for the d2
+
+> x
+
+-dimensional subspace (the “fast” rate). A standard single-scale tracking quantizer would set its radius to sk ∝ τ −1/4 
+
+> k
+
+, forcing the slow rate to dominate and coupling the d2 
+
+> x
+
+scaling into the dominant √T regret term. 7              
+
+> TABLE I PARAMETER ESTIMATE NOTATION AT EPOCH k≥ksafe .
+> Symbol Description Known to
+> ˆθkUnquantized OLS estimate (28) Plant only
+> ¯θkPlant-side projected estimate (34) Plant only
+> ˜θkShared decoded (quantized) estimate (29) Both
+> ˇθkController-side projected estimate (30) Both
+
+To avoid this, we define the ideal base schedule 
+
+sbase  
+
+> k
+
+= cslow τ −1/4 
+
+> k
+
++ cfast τ −1/2 
+
+> k
+
+, (33) where cslow and cfast are constants computed at epoch ksafe in Section IV-G, below. The key design principle is that 
+
+cslow and cfast are calibrated to match the dimension-dependent scaling of the OLS estimation error (Corollary 2 in Section IV-F, below): cslow isolates the dxdu-dimensional slow-rate component, while cfast isolates the d2
+
+> x
+
+-dimensional fast-rate component. Because the quantization error ϱs k inherits the same two-scale decay as the underlying estimation error, it adds no order-wise overhead to the total parameter error. While the quantizer remains an isotropic ϱ-net of the unit ball, this tighter envelope ensures the d2 
+
+> x
+
+contribution is quarantined into the lower-order 
+
+log T regret term. After the safe epoch ksafe , the plant projects the OLS estimate onto the safe set, 
+
+¯θk := Π Bsafe (ˆθk), (34) and computes the innovation 
+
+∆k := ¯θk − ˜θk−1. (35) Because the asymptotic OLS bounds only hold after a mixing time τls (Corollary 2 in Section IV-F, below), early innovations may exceed sbase  
+
+> k
+
+. The plant therefore dynamically computes a multiplier 
+
+mk = max 
+
+
+
+1,
+
+ ∥∆k∥2
+
+sbase 
+
+> k
+
+ 
+
+, (36) and sets the actual scale sk = mk · sbase  
+
+> k
+
+. By construction, ∥∆k∥2 ≤ sk, making quantizer overflow impossible. The multiplier mk is transmitted via Elias Gamma coding at a cost of 2⌊log 2 mk⌋ + 1 bits. The plant then quantizes using the ϱ-net: 
+
+qk ∈ arg min  
+
+> c∈C
+
+∥∆k − skc∥2, ∥˜θk − ¯θk∥2 ≤ ϱs k. (37) 
+
+C. Two Phases: Before and After the Safe Epoch 
+
+Initially, the controller applies a known stabilizing gain K0 with Gaussian excitation, e.g. ut = K0xt + gt,
+
+gt ∼ N (0 , I ). This guarantees boundedness and persistent excitation sufficient for OLS to become accurate. At the end of each epoch k, the plant computes the self-normalized confidence radius Conf k as in [1], where 
+
+Csafe was defined in (12). The safe epoch is triggered when the following two conditions are both met: 1) the empirical covariance satisfies Λk ⪰ I, and 2) the OLS estimation error is small enough: √Conf k ≤ ϵtarget ,where the target precision is 
+
+ϵtarget := 19 Csafe ( ˆAk, ˆBk) . (38) The trigger and quantization precision share the same threshold ϵtarget . This ensures that the decoded center ˜θksafe 
+
+is close enough to ˆθksafe for the perturbation lemma (Lemma 2) to apply with ˜θksafe as the common center (see Appendix B for details). At this point, the algorithm has gathered sufficient data to switch from the known stabilizing controller K0 to a learned certainty-equivalent controller (31): it sets safe ← True and declares the corresponding epoch index ksafe . Crucially, this trigger depends only on the OLS confidence and not on the quantization scale, so 8
+
+the safe epoch occurs at the same time as in the unquantized algorithm of [1], recovering the same regret in the pre-safe period up to constants. At the safe epoch, the plant performs an initialization via Elias Gamma coding: each of the ds (17) coordinates of ˆθksafe is transmitted as a signed integer on a dyadic grid with step ∆ = 2 −E , where E = ⌈log 2(√ds/(2 ϵtarget )) ⌉.This yields a shared reconstruction ˜θksafe with ∥˜θksafe − ˆθksafe ∥2 ≤ ϵtarget .Both plant and controller then set the safe radius from the shared decoded center: 
+
+rsafe := 13 Csafe ( ˜Aksafe , ˜Bksafe ) . (39) Since the decoded pair ( ˜Aksafe , ˜Bksafe ) is obtained solely from the transmitted indices, both sides compute the same 
+
+rsafe with no communication cost. We then form a fixed operator-norm neighborhood (“safe set”) 
+
+Bsafe := 
+
+n
+
+(A, B ) : max {∥ A − ˜Aksafe ∥op , ∥B − ˜Bksafe ∥op } ≤ rsafe 
+
+o
+
+, (40) and we choose the initial exploration variance σ2in using the same explicit formula as in [1], but evaluated at the same shared estimate ( ˜Aksafe , ˜Bksafe ). This sets the initial scale from which the exploration schedule σ2 
+
+> k
+
+in (32) decays. After ksafe , the controller continues decoding ˜θk from the received indices, but it does not directly synthesize a controller from ( ˜Ak, ˜Bk). Instead, it first performs the safe-set projection (30) and synthesizes the certainty-equivalent controller (31), applying the policy (32) with continual exploration noise. Let the empirical covariance over epoch k be 
+
+Λk :=  
+
+> τk−1
+
+X
+
+> t=τk−1
+
+xt
+
+ut
+
+  xt
+
+ut
+
+⊤
+
+. (41) Define the confidence scalar 
+
+Conf k := 6 λmin (Λk)−1
+
+d log 5 + log 
+
+ 4k2 det(3 Λk/δ )1
+
+ 
+
+, (42) with the convention Conf k = ∞ if Λk̸ ≻ 0.
+
+D. Correctness of Quantized Perturbations 
+
+Let 
+
+Pk = P∞
+
+ ˜Kk, A, B 
+
+
+
+, Jk = Tr( Pk) (43) denote the infinite-horizon LQR cost matrix and cost of the quantized controller at epoch k ≥ ksafe on the true system. Define the safe event 
+
+Esafe := 
+
+ h bAksafe − A | bBksafe − B
+
+i 2op ≤ Conf ksafe 
+
+
+
+. (44) Write Acl ,k := A + B ˜Kk for the quantized closed-loop matrix at epoch k.The following lemma verifies that the quantized controller ˜Kk inherits the essential properties of the optimal controller K∞(A, B ). It parallels Lemma 5.1 in [1], which proves the same properties on the certainty equivalent controller generated directly from the OLS estimates. The following lemma contains six bounds that serve dis-tinct roles in the regret analysis: (1) links per-epoch excess cost to parameter estimation error, driving the main P 
+
+> k
+
+τk(Jk − J∞) regret term; (2) ensures the closed-loop Riccati solution does not blow up, which is needed for the self-normalized OLS confidence sets to remain valid; (3) controls the magnitude of the applied control input, preserving the exploration–exploitation balance required for persistent excitation; (4) bounds the H∞ gain of the closed loop, ensuring process noise is not catastrophically amplified and that state norms remain bounded (Lemma 5.3 in [1]); (5) establishes strict Lyapunov contraction of the quantized closed-loop matrix with respect to the optimal Lyapunov function, guaranteeing closed-loop stability and enabling the telescoping argument in the regret decomposition; (6) specifies the exploration variance σ2in that balances fast OLS convergence against exploration cost, achieving the optimal ˜O(pdxd2
+
+> u
+
+T ) dimension scaling. 9
+
+Lemma 1. (Correctness of Quantized Perturbations) On the event Esafe , the following bounds hold for all k ≥ ksafe .
+
+1) Jk − J∞ ≲ ∥P∞∥8op 
+
+
+
+∥ ˜A − A∥2 
+
+> F
+
++ ∥ ˜B − B∥2
+
+> F
+
+
+
+.
+
+2) Jk ≲ J∞, and ∥Pk∥op ≲ ∥P∞∥op .
+
+3) ∥ ˜Kk∥2op ≤ 21 20 ∥P⋆∥op .
+
+4) ∥Acl ,k ∥H∞ ≲ ∥Acl ,⋆ ∥H∞ ≲ ∥P⋆∥3/2op .
+
+5) A⊤
+
+> cl ,k
+
+dlyap [Acl ,⋆ ]Acl ,k ⪯  1 − 12 ∥dlyap [Acl ,⋆ ]∥−1op 
+
+ dlyap [Acl ,⋆ ], where I ⪯ dlyap [Acl ,⋆ ] ⪯ P⋆.6) σ2in ≍ √dx∥P∞∥9/2op ΨB
+
+q
+
+log ∥P∞∥op  
+
+> δ
+
+.
+
+The proof relies on the following result from [1]. 
+
+Lemma 2 (Thm. 11 from [1]) . Let (A0, B 0) be a stabilizable system. Then, for any pair of systems ( bA, bB), (A, B )
+
+satisfying 
+
+max 
+
+n
+
+∥ bA − A0∥op , ∥ bB − B0∥op 
+
+o
+
+≤ 13Csafe (A0, B 0) and max {∥ A − A0∥op , ∥B − B0∥op } ≤ 13Csafe (A0, B 0) ,
+
+each is stabilizable, and satisfies 
+
+max {∥ A − bA∥op , ∥B − bB∥op } ≤ 1
+
+Csafe (A, B ) , (45) 
+
+∥P∞(A, B )∥op ≤ 1.0835 ∥P∞(A0, B 0)∥op , (46) 
+
+Csafe (A, B ) ≤ 1.5 Csafe (A0, B 0). (47) The proof of Lemma 1 is given in Appendix B. 
+
+E. Regret Bound Sketch 
+
+The regret decomposes into two phases: pre-safe burn-in, and post-safe tracking. 
+
+Pre-safe regret. Before the safe trigger fires, the algorithm executes K0 identically to the unquantized setting of [1]. Because the trigger depends only on the OLS confidence and the quantization error is subsequently constrained to be of similar order, the safe epoch occurs at a bounded stopping time τksafe ≤ τsafe (22). The accumulated pre-safe regret is  
+
+> τksafe −1
+
+X
+
+> t=1
+
+c(xt, u t) ≲ d2Ψ2 
+
+> B
+
+P0∥P∞∥10 op (1 + ∥K0∥2op )
+
+× log Ψ2  
+
+> BJ0
+> δ
+
+log 1 
+
+> δ
+
+,
+
+(48) which matches the unquantized pre-safe bound of [1, Lem. 5.5]. 
+
+Post-safe regret. Following [1, Lem. 5.2], the post-safe regret decomposes as 
+
+> T
+
+X
+
+> t=τksafe
+
+ c(xt, u t) − J∞
+
+
+
+≲
+
+> kfin
+
+X
+
+> k=ksafe
+
+τk(Jk − J∞)+ √T  duσ2in Ψ2 
+
+> B
+
+∥P∞∥op +
+
+q
+
+d log 1 
+
+> δ
+
+∥P∞∥4op 
+
+
+
++ lower-order terms .
+
+(49) The perturbation bound gives 
+
+Jk − J∞ ≲ ∥P∞∥8op ˜θk − θ⋆ 
+
+> 2F
+
+, (50) which splits into an unquantized OLS error and a quantization reconstruction error ϱ2s2
+
+> k
+
+. Using the OLS error bounds and the ideal base schedule (33), the quantization-induced regret separates as 
+
+∥P∞∥8op ϱ2C2
+
+> ϱ
+
+ c2slow 
+
+√T + c2fast log T , (51) 10 
+
+recovering the inflation factors Qslow (ϱ) and Qfast (ϱ). The exploration variance σ2in appears in two competing terms in (49): the direct exploration cost duσ2in Ψ2 
+
+> B
+
+∥P∞∥op 
+
+√T and, through the OLS estimation cost, a 1/σ 2in term. Balancing these yields σ2in ≍ √dx∥P∞∥9/2op ΨB
+
+plog( ∥P∞∥op /δ ) and recovers the optimal dominant coefficient 
+
+du
+
+√dx Ψ3 
+
+> B
+
+∥P∞∥11 /2op 
+
+plog( ∥P∞∥op /δ ) · √T .
+
+F. Regret Analysis for Safe Rounds 
+
+Lemma 1 establishes important conditions to analyze the regret incurred by Algorithm 1 (described in Sec-tion IV-A). In particular, it guarantees that the quantized and projected controller ˜Kk remains stabilizing for the true system (A, B ), with cost and operator-norm bounds comparable to the optimal controller. These conditions allow us to reproduce Lemmas 5.2, 5.3, and 5.4 from [1]. 
+
+Lemma 3 (Regret Decomposition on Safe Rounds, Lem. 5.2 from [1]) . There is an event Ereg which holds with probability at least 1 − δ 
+
+> 8
+
+such that, on Ereg ∩ E safe , the following bound holds 
+
+> T
+
+X
+
+> t=τksafe
+
+ x⊤ 
+
+> t
+
+Rxxt + u⊤ 
+
+> t
+
+Ruut − J∞
+
+
+
+≲
+
+> kfin
+
+X
+
+> k=ksafe
+
+τk(Jk − J∞) + log T max   
+
+> k≤log T
+
+∥xτk ∥22
+
++ √T  duσ2in Ψ2 
+
+> B
+
+∥P∞∥op + pd log(1 /δ ) ∥P∞∥4op 
+
+
+
++ log 2 1  
+
+> δ
+
+(1 + √dσ 2in Ψ2 
+
+> B
+
+)∥P∞∥4op .
+
+(52) 
+
+Lemma 4 (Lem. 5.3 from [1]) . There is an event Ebound which holds with probability at least 1 − δ 
+
+> 8
+
+such that, conditioned on Esafe ∩ E bound 
+
+∥xτk ∥ ≤ 
+
+q
+
+x⊤ 
+
+> τk
+
+dlyap [Acl ,⋆ ]xτk ≲ pΨB J0 log(1 /δ )∥P∞∥3/2op , ∀k ≥ ksafe . (53) 
+
+Lemma 5 (Lem. 5.4 from [1]) . Recall τls from (21) . There is an event Els , which holds with probability at least 
+
+1 − δ/ 8, such that conditioned on Els ∩ E safe ∩ E bound ,
+
+bAk − A 2F + bBk − B 2F ≲ dxdu∥P∞∥2op 
+
+σ2in τ 1/2
+
+> k
+
+log 
+
+ 1
+
+δ
+
+
+
++ ∥P∞∥3op 
+
+d2
+
+> x
+
+τk
+
+log 
+
+ 1
+
+δ
+
+2
+
+, ∀k : cτ ls ≤ τk ≤ T, (54) 
+
+where c > 0 is a universal constant. 
+
+We now extract the two-rate form of the OLS error bound that motivates the two-scale quantization schedule. 
+
+Corollary 2 (Two-rate OLS error bound) . Under the event Els ∩ E safe ∩ E bound , for all k such that cτ ls ≤ τk ≤ T ,
+
+bAk − A F + bBk − B F ≤ Vslow τ −1/4 
+
+> k
+
++ Vfast τ −1/2 
+
+> k
+
+, (55) 
+
+where 
+
+Vslow := pC0 ∥P∞∥op 
+
+s
+
+dxdu
+
+σ2in 
+
+log 
+
+ 1
+
+δ
+
+
+
+, (56) 
+
+Vfast := pC0 ∥P∞∥3/2op dx log 
+
+ 1
+
+δ
+
+
+
+, (57) 
+
+and C0 is a universal constant. 11 
+
+G. Data-Driven Computation of the Quantization Schedule 
+
+The constants Vslow and Vfast in Corollary 2 depend on the true ∥P∞∥op , which is unknown to the algorithm. To set the quantization schedule cslow and cfast in a fully implementable way, both the plant and controller use the safe-set geometry available at epoch ksafe to compute an upper bound. Applying (46) to the projected center ˜θksafe (30) gives 
+
+∥P∞∥op ≤ 1.0835 P∞( ˜Aksafe , ˜Bksafe ) op =: bPop . (58) Since ( ˜Aksafe , ˜Bksafe ) is the shared decoded model, bPop is computable by both sides. Replacing ∥P∞∥op with bPop 
+
+in Corollary 2 yields deterministic upper bounds on the true constants: 
+
+Definition 1 (Empirical proxies) .
+
+bVslow := pC0 bPop 
+
+s
+
+dxdu
+
+σ2in 
+
+log 
+
+ 1
+
+δ
+
+
+
+, (59) 
+
+bVfast := pC0 bP 3/2op dx log 
+
+ 1
+
+δ
+
+
+
+. (60) Appendix B further gives the comparison: 
+
+∥P∞∥op ≤ bPop ≤ (1 .0835) 2∥P∞∥op . (61) Hence bVslow ≥ Vslow and bVfast ≥ Vfast . Note that σ2in is computed and set at epoch ksafe (see Algorithm 4), so it does not require bounding. The implementable two-scale base schedule coefficients are then set at epoch ksafe as: 
+
+cslow = 1 + 2 1/4
+
+1 − ϱ 21/4 bVslow , (62) 
+
+cfast = 1 + √21 − ϱ √2
+
+bVfast . (63) The transient gap between ksafe and the onset of the asymptotic OLS rate is handled natively by the adaptive multiplier mk, which absorbs any excess innovation (Section IV-H). The leading quantization error is driven by c2slow ∝ bV 2slow ∝ dxdu, isolating the d2 
+
+> x
+
+scaling to cfast and achieving optimal ˜O(pdxd2
+
+> u
+
+T ) regret. 
+
+H. Quantization Error Analysis 
+
+Standard differential quantizers set a fixed codebook radius sk and assume the parameter innovation ∥∆k∥2
+
+will always land within it. In our setting, the two-scale base schedule (33) is calibrated to the asymptotic OLS error rate (Corollary 2), which only holds for epochs k > k ls . During the transient window between ksafe (when differential tracking begins) and kls (when the asymptotic OLS rate bounds take effect), the estimation error may significantly exceed sbase  
+
+> k
+
+, causing the innovation ∥∆k∥2 to overflow the base codebook radius. Enlarging the codebook to cover the worst-case transient error would force the per-epoch bit cost to scale with Ω( T ), exceeding the logarithmic budget. Adaptive quantizer scaling resolves this via the dynamic multiplier mk, which expands the effective quantization radius on-the-fly to absorb any transient innovation excess. The key mathematical insight is that once the asymptotic OLS regime begins, the interaction between the shrinking estimation error and the codebook dynamics forms a contraction : mk collapses back to O(1) within a constant number of epochs with high probability, achieving overflow immunity during the transient phase without incurring an asymptotic bit-rate penalty. What remains is to show that: (i) the multiplier mk contracts to O(1) , ensuring O(log T ) bit rate, and (ii) the random scale sk = mksbase  
+
+> k
+
+does not inflate the regret beyond the ideal base schedule. 
+
+Lemma 6 (Contraction of the Adaptive Multiplier) . Let ϱ < 1/√2 and β := ϱ√2 < 1. On the event Els ∩ E safe ∩Ebound , for all epochs k > k ls (where the asymptotic OLS bound (55) holds), the multiplier satisfies 
+
+mk < 1 + β(mk−1 − 1) + 1 . (64) 12 
+
+Consequently, lim sup k→∞ mk ≤ 2−β 
+
+> 1−β
+
+= O(1) .
+
+We establish an envelope recurrence sk ≤ ϱs k−1 + Uk (where Uk bounds the unquantized estimation errors), allowing us to bound the total quantization-induced regret. The formal statement and proof of this bound are deferred to Appendix D. 
+
+I. Pre-Safe Period Regret 
+
+Because our algorithm executes the baseline stabilizing controller K0 before the safety trigger, and this trigger occurs with high probability at a bounded stopping time, the system behavior during this phase is identical to the unquantized setting. Consequently, we can upper-bound the regret accumulated during the pre-safe period using the same method as Lemma 5.5 in [1]. 
+
+Lemma 7 (Pre-Safe Regret) . There is an event Ereg ,init which holds with probability 1 − δ 
+
+> 8
+
+such that the duration of the pre-safe exploration phase is bounded by: 
+
+τksafe ≤ 2 · 729 2 ∥P∞∥10 op d(1 + ∥K0∥2op ) log Ψ2 
+
+> B
+
+J0
+
+δ , (65) 
+
+and the total regret accumulated during this phase is bounded by:  
+
+> τksafe −1
+
+X
+
+> t=1
+
+x⊤ 
+
+> t
+
+Rxxt + u⊤ 
+
+> t
+
+Ruut ≲ d2∥P∞∥10 op Ψ2 
+
+> B
+
+P0
+
+
+
+1 + ∥K0∥2op 
+
+
+
+log Ψ2 
+
+> B
+
+J0
+
+δ · log 1
+
+δ . (66) 
+
+Remark (Elimination of the Dimensionality and Delay Penalty). Our safety test involves only the OLS confidence bound and then requires the quantization error to be of similar order. This recovers the O(log T ) stopping time and 
+
+O(log 2 T ) pre-safe regret of the unquantized algorithm. 
+
+J. Proof of Theorem 2 Proof sketch. The full proof is given in Appendix D. The argument proceeds by decomposing the post-safe regret via Lemma 5.2 of [1] into epoch-level cost deviations and boundary state norms. By Lemma 1, the cost deviation at each epoch satisfies 
+
+Jk − J∞ ≲ ∥P∞∥8op ˜θk − θ⋆ 
+
+> 2F
+
+, (67) which splits into an unquantized OLS error and a quantization reconstruction error ϱ2s2
+
+> k
+
+. The adaptive multiplier 
+
+mk makes sk a random variable, but Lemma 6 ensures mk = O(1) asymptotically. Applying Lemma 8 bounds the weighted quantization regret by the ideal base schedule: the ϱ-contraction in the envelope recurrence sk ≤ ϱs k−1 + Uk contributes a factor of C2 
+
+> ϱ
+
+, so the quantization-induced regret scales as 
+
+ϱ2C2 
+
+> ϱ
+
+· c2slow · √T + ϱ2C2 
+
+> ϱ
+
+· c2fast · log T. (68) Substituting the definitions of cslow (62) and cfast (63) and absorbing the proxy comparison bPop ≤ (1 .0835) 2∥P∞∥op 
+
+from (61) recovers Qslow (ϱ) (19) and Qfast (ϱ) (20). Combining with the pre-safe regret (Lemma 7) yields the stated bound. V. N UMERICAL EXPERIMENTS 
+
+We evaluate a practical variant of QCE-LQR on four benchmark systems of increasing complexity to verify that the quantization overhead is consistently small. 13 
+
+Algorithm 1 Quantized Certainty Equivalent Control with Adaptive Scale 
+
+Require: Stabilizing controller K0, confidence δ, codebook C (ϱ-net of unit ball, ϱ < 1/√2). 
+
+1: Init: safe ← FALSE , ˜θksafe ← ⊥ , Bsafe ← ⊥ , σin ← ∞ .
+
+2: Play: u1 ∼ N (0 , I ).
+
+3: for epoch k = 2 , 3, . . . do 
+
+4: τk ← 2k
+
+5: — P LANT SIDE —
+
+6: ( ˆAk, ˆBk, Λk) ← OLS (k); ˆθk ← vec( ˆAk, ˆBk).
+
+7: if safe is F ALSE then ▷ Pre-safe: Decoupled Statistical Trigger 
+
+8: Conf k ← 6 λmin (Λk)−1
+
+
+
+d log 5 + log 
+
+ 4k2 det(3 Λk )
+
+> δ
+
+ 
+
+9: if Λk ⪰ I and √Conf k ≤ 19 Csafe ( ˆAk , ˆBk ) then 
+
+10: ϵtarget ← 19 Csafe ( ˆAk , ˆBk )
+
+11: safe ← TRUE ; ksafe ← k.
+
+12: ˜θksafe ← ABSOLUTE INIT (ˆθk, ϵ target ) ▷ Elias Gamma; zero overflow risk 
+
+13: rsafe ← 13 Csafe ( ˜Aksafe , ˜Bksafe ) ▷ Computed locally from decoded center 
+
+14: σ2in , Bsafe , c slow , c fast ← SAFE ROUND INIT ( ˜Aksafe , ˜Bksafe , r safe , ϱ, δ ).
+
+15: end if 
+
+16: Transmit safe flag to Controller. ▷ No incremental update 
+
+17: else ▷ Post-safe: adaptive scale protocol 
+
+18: ¯θk ← ΠBsafe (ˆθk) ▷ Plant-side projection of raw estimate 
+
+19: ∆k ← ¯θk − ˜θk−1 ▷ Track against exact shared baseline 
+
+20: sbase  
+
+> k
+
+← cslow τ −1/4 
+
+> k
+
++ cfast τ −1/2 
+
+> k
+
+▷ Ideal base schedule 
+
+21: mk ← max 1, ∥∆k∥2/s base 
+
+> k
+
+ ▷ Adaptive multiplier 
+
+22: sk ← mk · sbase 
+
+> k
+
+23: Transmit mk via Elias Gamma coding ( 2⌊log 2 mk⌋ + 1 bits). 
+
+24: qk ← argmin c∈C ∥∆k − skc∥2; ˜θk ← ˜θk−1 + skcqk .
+
+25: Transmit qk to Controller. 
+
+26: end if 
+
+27: — C ONTROLLER SIDE —
+
+28: if safe is F ALSE then 
+
+29: ˜Kk ← K0
+
+30: else 
+
+31: if k = ksafe then 
+
+32: Receive Elias Gamma bits ( E and zi); reconstruct absolute ˜θksafe .
+
+33: rsafe ← 13 Csafe ( ˜Aksafe , ˜Bksafe ) ▷ Computed locally from decoded center 
+
+34: σ2in , Bsafe , c slow , c fast ← SAFE ROUND INIT ( ˜Aksafe , ˜Bksafe , r safe , ϱ, δ ).
+
+35: else 
+
+36: Receive mk; compute sk ← mk · sbase  
+
+> k
+
+. Receive qk; update ˜θk ← ˜θk−1 + skcqk .
+
+37: end if 
+
+38: ˇθk ← ΠBsafe (˜θk) ▷ Controller-side safe projection 
+
+39: Compute CE policy ˜Kk ← K∞( ˇAk, ˇBk). ▷ Synthesize from safe parameter 
+
+40: end if 
+
+41: Transmit ˜Kk to Plant. 
+
+42: — P LANT SIDE (E XECUTION ) — 
+
+43: Set exploration variance σ2 
+
+> k
+
+← min {1, σ 2in τ −1/2 
+
+> k
+
+}.
+
+44: for t = τk, . . . , τ k+1 − 1 do 
+
+45: Apply ut = ˜Kkxt + σkgt, with gt ∼ N (0 , I ).
+
+46: end for 
+
+47: end for 14 
+
+Algorithm 2 OLS( k)
+
+1: Input: Examples xτk−1 , . . . , xτk , uτk−1 , . . . , uτk −1.
+
+2: Return ( bAk, bBk, Λk), where 
+
+h bAk bBk
+
+i
+
+←
+
+ 
+
+> τk−1
+
+X
+
+> t=τk−1
+
+xt+1 
+
+xt
+
+ut
+
+⊤
+
+ Λ†
+
+> k
+
+, and Λk ← 
+
+> τk−1
+
+X
+
+> t=τk−1
+
+(xt, ut)( xt, ut)⊤.
+
+Algorithm 3 ABSOLUTE INIT (ˆθ, ϵ target )
+
+Require: OLS estimate ˆθ ∈ Rds with ds = d2 
+
+> x
+
++ dxdu, target ℓ2 precision ϵtarget .
+
+1: ∆max ← 2ϵtarget /√ds ▷ Per-coordinate step to meet total ℓ2 error 
+
+2: E ← ⌈ log 2(1 /∆max )⌉; ∆ ← 2−E ▷ Dyadic grid step 
+
+3: Transmit exponent E via Elias Gamma coding. 
+
+4: for i = 1 , . . . , d s do 
+
+5: zi ← ⌊ ˆθi/∆⌉ ▷ Round to nearest grid point 
+
+6: Transmit zi via Signed Elias Gamma coding. 
+
+7: ˜θi ← zi · ∆
+
+8: end for 
+
+9: Return ˜θ. ▷ ∥˜θ − ˆθ∥2 ≤ ϵtarget by construction 
+
+Algorithm 4 SAFE ROUND INIT ( bA, bB, r safe , ϱ, δ )
+
+Require: Reconstructed safe pair ( bA, bB), absolute safe radius rsafe , codebook radius ϱ < 1/√2, failure probability 
+
+δ.
+
+1: 1: Define Safe Set and Empirical Complexity: 
+
+2: Bsafe ←
+
+n
+
+(A, B ) : max 
+
+n
+
+∥A − bA∥op , ∥B − bB∥op 
+
+o
+
+≤ rsafe 
+
+o
+
+.
+
+3: bPop ← 1.0835 P∞( bA, bB) op .
+
+4: 2: Compute Exploration Variance: 
+
+σ2in := pdx bP 9/2op max 
+
+
+
+1, bB op + rsafe 
+
+ s
+
+log bPop 
+
+δ
+
+5: 3: Compute Ideal Asymptotic Bounds and Two-Scale Constants: 
+
+bVslow := pC0 bPop 
+
+s
+
+dxdu
+
+σ2in 
+
+log 
+
+ 1
+
+δ
+
+
+
+, bVfast := pC0 bP 3/2op dx log 
+
+ 1
+
+δ
+
+
+
+cslow := 1 + 2 1/4
+
+1 − ϱ 21/4 bVslow 
+
+cfast := 1 + √21 − ϱ √2
+
+bVfast 
+
+6: Return σ2in , Bsafe , cslow , cfast .15 
+
+A. Benchmark Systems 
+
+1) Scalar Unstable (dx = 1 , d u = 1) : xt+1 = 1 .1 xt + ut + wt. Spectral radius ρ(A) = 1 .1, parameter dimension 
+
+ds = 2 .2) Double Integrator (dx = 2 , d u = 1) : A =  1 1 0 1 
+
+, B =  0.51
+
+. Marginally unstable (ρ(A) = 1) , ds = 6 .3) Inverted Pendulum (dx = 2 , d u = 1) : Linearized pendulum on a cart (mass 0.1 kg, length 0.5 m), discretized at ∆t = 0 .05 s. Unstable with ρ(A) = 1 .248 , ds = 6 .4) Boeing 747 Lateral (dx = 4 , d u = 2) : Yaw–sideslip–roll dynamics [10] discretized at ∆t = 0 .5 s. Nearly marginally stable (ρ(A) = 0 .996) , ds = 24 .All systems use Rx = Ru = I and i.i.d. process noise wt ∼ N (0 , I ).
+
+B. Practical Variant Used in Simulation 
+
+Theoretical QCE-LQR is defined and analyzed in Section IV. For finite-horizon simulations, we use a practical variant that keeps the same communication architecture and blockwise update structure but replaces several conser-vative components by implementation-ready alternatives. These modifications are not covered by the main theorem; the goal of this section is to assess practical low-rate performance. 
+
+1) Data-Driven Bootstrap Trigger: The theoretical trigger requires √Conf k ≤ 1/(9 Csafe ) with Csafe ≲ ∥P∞∥5op .Table II shows this is unreachable in practice: for the Boeing 747 system the required estimation accuracy is ∼ 10 −11 ,exceeding what OLS can produce in any feasible horizon.                             
+
+> TABLE II THEORETICAL SAFE TRIGGER GAP :√Conf kVS .2ϵtarget = 2 /(9 Csafe )AT T= 10 ,000 .System ∥P∞(A, B )∥op Csafe 2ϵtarget
+> √Conf k
+> Scalar ( a= 1 .1)1.77 9.5×10 22.3×10 −48.5×10 −2
+> Double Integrator 3.60 3.3×10 46.8×10 −61.2×10 −1
+> Inv. Pendulum 24.0 4.3×10 85.2×10 −10 8.2×10 −2
+> Boeing 747 55.9 2.9×10 10 7.5×10 −12 3.3×10 −1
+
+In simulation, we replace this with a bootstrap stability trigger . At each epoch boundary, the plant computes the OLS estimate ( bAk, bBk) and the corresponding certainty-equivalent gain bKk. It then draws Nmc = 50 Monte Carlo samples from the OLS sampling distribution. Under the linear model xt+1 = [ A | B] zt + wt with zt = [ x⊤ 
+
+> t
+
+, u ⊤ 
+
+> t
+
+]⊤
+
+and Gaussian noise wt ∼ N (0 , σ 2
+
+> w
+
+I), we let each row ˆθi of the OLS estimate be distributed as ˆθi ∼ N (θ⋆,i , σ 2
+
+> w
+
+Λ−1 
+
+> k
+
+),where Λk = P 
+
+> t
+
+ztz⊤ 
+
+> t
+
+is the empirical covariance matrix. Each sample (A(j), B (j)) is drawn from this distribution, and we verify that ρ(A(j) + B(j) bKk) < 0.99 for every sample. The safe phase is declared only if all sampled systems are stabilized, ensuring that the trigger fires only when the empirical uncertainty is small enough that the learned controller is statistically likely to be safe. As a secondary safeguard, both controllers employ a fallback test : if the state norm exceeds five times the maximum norm observed during pre-safe exploration, the algorithm reverts to the baseline stabilizing controller 
+
+K0 and resumes exploration. 
+
+2) Coordinate-Wise Scalar Quantization: The theoretical analysis uses a ϱ-net codebook on the unit sphere 
+
+Sds−1 to quantize the correction ∆k = ¯θk − ˜θk−1, transmitting the direction via a codebook index and the scale via Elias Gamma coding. While this achieves optimal rate–distortion scaling, it is difficult to implement in practice. We instead quantize each coordinate of ∆k independently using a uniform scalar quantizer with step size 1/√τk.This matches the O(τ −1/2) “fast” OLS estimation rate (Corollary 2), which in practice governs the convergence of all parameter coordinates—including the dxdu subspace whose worst-case theoretical rate is τ −1/4. Coordinate i
+
+is encoded as a sign bit plus the Elias Gamma encoding of the integer index ⌈| ∆k,i |√τk ⌉. Unlike the theorem’s two-scale vector quantizer, this simplification is not accompanied by the same worst-case guarantee: using the fast rate instead of the conservative two-scale schedule (33) may inflate the worst-case bit budget from O(ds log T )
+
+to O(ds log 2 T ). For the four benchmarked systems considered here, however, the realized communication cost remains close to O(ds log T ) since OLS converges at the fast τ − 12 
+
+> k
+
+rate across all dimensions in these simulations. 16 
+
+3) Exploration Decay: The theoretical exploration rate is σ2 
+
+> k
+
+= min {1, σ 2in τ −1/2 
+
+> k
+
+}, which depends on σin in Point 6 of Lemma 1. For the inverted pendulum algorithm, this evaluates to σ2in ≈ 1649 . This means σk = 1 (no decay) for all τk ≤ σ4in ≈ 7.4×10 12 , far exceeding our horizon. The excessive exploration noise injects cost through the unstable dynamics, causing linear regret growth. In simulation, we therefore set σ2in = 1 so that exploration decays as σk ∼ τ −1/4 
+
+> k
+
+within the simulation horizon. 
+
+C. Results 
+
+We compare two controllers over T = 10 4 steps and 50 independent trials: 1) Unquantized CE: Full-precision certainty-equivalence. The controller receives ˆθk ∈ Rds exactly at each epoch boundary. 2) Practical QCE-LQR: Quantized certainty-equivalence with the simulation variant above. We report its realized communication empirically. Table III and Figures 2–3 summarize the findings.                                           
+
+> TABLE III PRACTICAL QCE-LQR VS . U NQUANTIZED CE ( T= 10 4,50 TRIALS ,MEDIAN REGRET ). System (dx, d u)ρ(A)CE Regret Practical QCE Regret Overhead Bits Scalar Unstable (1 ,1) 1.10 953 880 −7.6% 123
+> Double Integrator (2 ,1) 1.00 1,886 1,723 −8.6% 279
+> Inverted Pendulum (2 ,1) 1.25 22 ,761 15 ,856 −30 .3% 232
+> Boeing 747 (4 ,2) 1.00 25 ,484 32 ,504 +27 .5% 819
+
+Across all four benchmarks, Practical QCE-LQR achieves normalized regret comparable to the unquantized baseline (Figure 2). We observe that before the safe flag is declared, the tracking controller incurs linear regret growth since it executes the known stabilizing controller K0. The normalized regret then decays to a constant level as the controller converges to the optimal policy. The differences in median regret (Table III) are within stochastic variability for the lower-dimensional systems. For the Boeing 747 ( ds = 24 ), the bootstrap trigger fires slightly later in some trials due to the higher statistical uncertainty, resulting in modestly higher regret. The realized bit count scales with ds: from 123 bits ( ds = 2 ) to 819 bits ( ds = 24 ), close to the O(ds log T ) trend in these experiments. Figure 3 confirms the characteristic three-phase structure across all systems: pre-safe flags, Elias Gamma initialization, and logarithmically growing tracking corrections. VI. C ONCLUSION 
+
+We have established that Θ(log T ) bits of communication are both necessary and sufficient to achieve the optimal 
+
+˜O(√T ) regret in online LQR with unknown dynamics and a rate-limited plant-to-controller link. By transmitting learned models instead of raw states, communication only needs to track the estimator’s innovation, which shrinks as learning converges, breaking the O(T ) bandwidth barrier of classical state-quantization approaches. 
+
+Summary of Contributions 
+
+1) Converse (Theorem 1). Any scheme achieving worst-case expected regret O(T α) for α ∈ [1 /2, 1) must transmit at least Ω( dudx(1 − α) log T ) bits by time T , even if the true dynamics are known at the system. This establishes a fundamental information-theoretic floor on the communication cost of near-optimal adaptive control. 2) Achievability (Theorem 2). The QCE-LQR algorithm attains ˜O(√T ) regret using only O(( d2 
+
+> x
+
++ dxdu) log T )
+
+total bits. The algorithm employs a two-scale adaptive quantization protocol that separately tracks the slow (τ −1/4 
+
+> k
+
+) and fast ( τ −1/2 
+
+> k
+
+) decay rates of the OLS estimation error, combined with an absolute initialization via Elias Gamma coding that guarantees zero overflow risk. 3) Explicit Quantization–Regret Tradeoff. The regret bound in Theorem 2 exposes the precise cost of quan-tization through the inflation factors Qslow (ϱ) and Qfast (ϱ). As the codebook resolution increases ( ϱ → 0), these factors vanish, smoothly recovering the exact unquantized Simchowitz & Foster baseline. 17 
+
+(a) Scalar unstable ( a = 1 .1, 123 bits) (b) Double integrator ( 279 bits) 
+
+(c) Inverted pendulum ( 232 bits) (d) Boeing 747 lateral ( 819 bits)        
+
+> Fig. 2. Normalized regret Regret( t)/√tfor Practical QCE-LQR (red) vs. unquantized CE (blue), T= 10 4,50 trials. Solid lines show medians; shaded bands show the interquartile range. Both controllers use the causal bootstrap trigger with a runtime fallback shield. In all four systems the two controllers converge to comparable asymptotic values, confirming that quantization overhead is small in these simulations.
+
+4) Dimension matching and explicit tradeoff. The two-scale schedule quarantines the d2 
+
+> x
+
+scaling into the lower-order log T term, preserving the optimal ˜O(pdxd2
+
+> u
+
+T ) dimension dependence. The quantization penalty is fully captured by Qslow (ϱ) and Qfast (ϱ), which vanish as ϱ → 0, making the bandwidth–regret tradeoff explicit. 
+
+Next Steps 
+
+Closing the dimensional gap. Our bounds are tight in the horizon T but a gap remains in the dimension-dependent constant multiplying log T . The converse establishes a lower bound of Ω( dudx log T ) bits, counting only the dudx degrees of freedom in the gain K ∈ Rdu×dx , since the proof technique relies on a mutual information bound between K∞(A, B ) and ˆK, while the achievability requires O(( d2 
+
+> x
+
++ dxdu) log T ) bits for the full estimate 
+
+ˆθ = vec( ˆA, ˆB) ∈ Rd2 
+
+> x+dxdu
+
+. The additional d2 
+
+> x
+
+log T term arises because the controller needs ˆA to solve the DARE; in our architecture these parameters cannot be eliminated from the uplink. Closing this gap by strengthening the converse to Ω(( d2 
+
+> x
+
++ dxdu) log T ) remains open. 
+
+Symmetric channel extension. Our main results assume an asymmetric bi-directional channel (rate-limited uplink, unconstrained downlink). The analysis extends to a fully symmetric rate-limited channel in which the controller must also quantize the policy ˜Kk. The policy innovation ∆Kk := ˜Kk − ˜Kk−1 inherits the same O(τ −1/4 
+
+> k
+
+)
+
+decay rate as the dynamics estimates, so the controller can quantize ∆Kk using the identical two-scale schedule and Elias Gamma protocol. The resulting Frobenius-norm error can be bounded using the same techniques. A rate of 
+
+O(log T ) downlink bits preserves the optimal ˜O(√T ) regret, yielding a total symmetric cost of O(( d2 
+
+> x
+
++dxdu) log T )
+
+bits. A full proof of this extension is left for future work. 18 
+
+(a) Scalar unstable ( 123 bits) (b) Double integrator ( 279 bits) 
+
+(c) Inverted pendulum ( 232 bits) (d) Boeing 747 lateral ( 819 bits) 
+
+Fig. 3. Total bits transmitted B(t) by Practical QCE-LQR over time for each system. Dashed lines show the Θ(log T ) reference. All systems exhibit the characteristic three-phase structure: pre-safe flags, Elias Gamma initialization jump, and logarithmically growing tracking corrections. Total bits scale with ds: from 123 (ds = 2 ) to 819 (ds = 24 ). 
+
+REFERENCES 
+
+[1] M. Simchowitz and D. Foster, “Naive exploration is optimal for online LQR,” in Proceedings of the 37th International Conference on Machine Learning (H. D. III and A. Singh, eds.), vol. 119 of Proceedings of Machine Learning Research , pp. 8937–8948, PMLR, 13–18 Jul 2020. [2] H. Mania, S. Tu, and B. Recht, “Certainty equivalence is efficient for linear quadratic control,” in Advances in Neural Information Processing Systems , pp. 10154–10164, Dec 2019. [3] T. Kargin, S. Lale, K. Azizzadenesheli, A. Anandkumar, and B. Hassibi, “Thompson sampling for partially observable linear-quadratic control,” in 2023 American Control Conference (ACC) , pp. 4561–4568, May 2023. [4] V. Kostina and B. Hassibi, “Rate-cost tradeoffs in control,” IEEE Transactions on Automatic Control , vol. 64, pp. 4525–4540, Apr. 2019. [5] S. Tatikonda and S. Mitter, “Control under communication constraints,” IEEE Transactions on Automatic Control , vol. 49, no. 7, pp. 1056–1068, Jul 2004. [6] B. Han, V. Kostina, B. Hassibi, and O. Sabag, “Coded Kalman filtering over MIMO Gaussian channels with feedback,” in 2024 IEEE International Symposium on Information Theory (ISIT) , pp. 3261–3266, Jul 2024. [7] A. Sahai and S. Mitter, “The necessity and sufficiency of anytime capacity for stabilization of a linear system over a noisy communication link—part i: Scalar systems,” IEEE Transactions on Information Theory , vol. 52, pp. 3369–3395, Jul 2006. [8] A. Mitra, L. Ye, and V. Gupta, “Towards model-free LQR control over rate-limited channels,” in Proceedings of the Learning for Dynamics and Control Conference (L4DC) , Proceedings of Machine Learning Research, pp. 1253–1265, PMLR, Jul 2024. [9] M. Fazel, R. Ge, S. Kakade, and M. Mesbahi, “Global convergence of policy gradient methods for the linear quadratic regulator,” in 
+
+Proceedings of the 35th International Conference on Machine Learning (J. Dy and A. Krause, eds.), vol. 80 of Proceedings of Machine Learning Research , pp. 1467–1476, PMLR, 10–15 Jul 2018. [10] B. Friedland, Control System Design: An Introduction to State-Space Methods . Dover Publications, reprint ed., 2005. [11] Y. Abbasi-Yadkori and C. Szepesv´ ari, “Regret bounds for the adaptive control of linear quadratic systems,” in Proceedings of the 24th Annual Conference on Learning Theory (S. M. Kakade and U. von Luxburg, eds.), vol. 19 of Proceedings of Machine Learning Research , (Budapest, Hungary), pp. 1–26, PMLR, 09–11 Jun 2011. 19 
+
+APPENDIX APROOF OF THEOREM 1 (C ONVERSE )
+
+Proof. As outlined in Section III, this proof proceeds in four main steps. First, we construct a hard subclass of systems Θhard parametrized by the optimal controller gain K. Second, we establish a regret identity demonstrating that sub-linear regret bounds the mean-squared error of estimating K. Third, we use the controller’s sequence of actions to construct a concrete estimator bK for the hidden gain. Finally, we place a uniform prior on the hard class and apply information-theoretic inequalities to show that transmitting enough bits to form this estimator requires 
+
+Ω(log T ) bits. We may assume T ≥ 4, since finitely many smaller horizons can be absorbed into the constant C.
+
+a) Step 1: Constructing a Hard Subclass.: We begin by defining a localized hypercube of optimal control gains. Set 
+
+a := r
+
+√dudx
+
+, Cr := [ −a, a ]du×dx , (69) so that every K ∈ C r satisfies ∥K∥F ≤ r.Choose 
+
+c > 1 + r2λmax (Ru)
+
+λmin (Rx) (70) and set 
+
+P := cR x ≻ 0. (71) For each K ∈ C r, define 
+
+MK := ( c − 1) Rx − K⊤RuK. (72) Since ∥K∥F ≤ r,
+
+K⊤RuK ⪯ λmax (Ru)∥K∥2 
+
+> F
+
+Idx ⪯ r2λmax (Ru)Idx , (73) so our choice of c implies MK ≻ 0. Now define 
+
+ΦK := P −1/2M 1/2 
+
+> K
+
+, BK := −P −1Φ−⊤  
+
+> K
+
+K⊤Ru, AK := Φ K − BK K. (74) Then 
+
+AK + BK K = Φ K , (75) 
+
+Φ⊤ 
+
+> K
+
+P ΦK = MK = ( c − 1) Rx − K⊤RuK, (76) 
+
+B⊤ 
+
+> K
+
+P ΦK = −RuK. (77) Hence 
+
+Rx + K⊤RuK + Φ ⊤ 
+
+> K
+
+P ΦK = P. (78) Also, Φ⊤ 
+
+> K
+
+P ΦK ⪯ (c − 1) Rx = c−1 
+
+> c
+
+P , so ρ(Φ K ) < 1. Therefore (AK , B K ) is stabilizable. Let 
+
+Θhard := {(AK , B K ) : K ∈ C r}. (79) We now show that K∞(AK , B K ) = K for every K ∈ C r, so in particular Θhard ⊂ Θ.20 
+
+b) Step 2: The Regret Identity.: Next, we relate the expected regret to the mean-squared-error of the controller’s sequence of actions. Fix K ∈ C r and consider the corresponding system (AK , B K ). Define 
+
+V (x) := x⊤P x, SK := Ru + B⊤ 
+
+> K
+
+P B K . (80) Then SK ≻ 0 and SK ⪰ Ru ⪰ λmin (Ru)Idu . For arbitrary x ∈ Rdx and u ∈ Rdu ,
+
+AK x + BK u = Φ K x + BK (u − Kx ). (81) Therefore 
+
+V (AK x + BK u) = x⊤Φ⊤ 
+
+> K
+
+P ΦK x + 2 x⊤Φ⊤ 
+
+> K
+
+P B K (u − Kx ) + ( u − Kx )⊤B⊤ 
+
+> K
+
+P B K (u − Kx ). (82) Consider 
+
+x⊤Rxx + u⊤Ruu + V (AK x + BK u) − V (x)= x⊤ Rx + Φ ⊤ 
+
+> K
+
+P ΦK − P x + u⊤Ruu − 2x⊤K⊤Ru(u − Kx ) + ( u − Kx )⊤B⊤ 
+
+> K
+
+P B K (u − Kx )= x⊤ Rx + K⊤RuK + Φ ⊤ 
+
+> K
+
+P ΦK − P x + ( u − Kx )⊤SK (u − Kx )= ( u − Kx )⊤SK (u − Kx ). (83) The first equality substitutes (82) for V (AK x + BK u) and applies (77) to the cross term. The second expands 
+
+u⊤Ruu = x⊤K⊤RuKx + 2 x⊤K⊤Ru(u − Kx ) + ( u − Kx )⊤Ru(u − Kx ): the ±2x⊤K⊤Ru(u − Kx ) terms cancel and Ru + B⊤ 
+
+> K
+
+P B K = SK (80). The third applies (78). If w ∼ N (0 , σ 2
+
+> w
+
+Idx ), then E[V (AK x + BK u + w)] = 
+
+V (AK x + BK u) + σ2
+
+> w
+
+Tr( P ), so with JP := σ2
+
+> w
+
+Tr( P ) we have the one-step identity 
+
+x⊤Rxx + u⊤Ruu + E[V (AK x + BK u + w)] − V (x) − JP = ( u − Kx )⊤SK (u − Kx ). (84) Since SK ≻ 0, the unique minimizer is u = Kx . Hence K∞(AK , B K ) = K and J∞(AK , B K ) = JP , confirming 
+
+Θhard ⊂ Θ.Fix K ∈ C r and run any scheme achieving the regret bound (14) on (AK , B K ). Write 
+
+Regret KT := 
+
+> T
+
+X
+
+> t=1
+
+ct − T J P , ϵKt := E
+
+h
+
+(ut − Kx t)⊤SK (ut − Kx t)
+
+i
+
+. (85) Summing (84) from t = 1 to T with x1 = 0 gives 
+
+> T
+
+X
+
+> t=1
+
+ϵKt = E[Regret KT ] + E[V (xT +1 )] . (86) Since P = cR x by (71), we have x⊤Rxx = 1 
+
+> c
+
+V (x) exactly. Identity (84) therefore implies 
+
+E[V (xt+1 )] ≤
+
+ c − 1
+
+c
+
+
+
+E[V (xt)] + JP + ϵKt . (87) Iterating from V (x1) = 0 yields E[V (xT +1 )] ≤ cJ P + PTt=1 
+
+  c−1
+
+> c
+
+T −t ϵKt , and combining with (86) gives 
+
+> T
+
+X
+
+> t=1
+
+1 −
+
+ c − 1
+
+c
+
+T −t!
+
+ϵKt ≤ E[Regret KT ] + cJ P . (88) Let m := ⌊T / 2⌋. For every t ∈ { 2, . . . , m } we have T − t ≥ 1, hence 1 −   c−1
+
+> c
+
+T −t ≥ 1 − c−1 
+
+> c
+
+= 1 
+
+> c
+
+. Therefore (88) implies 
+
+1
+
+c
+
+> m
+
+X
+
+> t=2
+
+ϵKt ≤ E[Regret KT ] + cJ P . (89) Since Θhard ⊂ Θ, the assumed regret bound gives E[Regret KT ] ≤ C1T α for all K ∈ C r.Fix t ≥ 2 and let Ft−1 denote the sigma-field generated by (x1, u 1, . . . , x t−1, u t−1). Let Gt−1 be the enlargement of Ft−1 by all encoder/controller randomization used before ut is chosen. By the timing convention in Section II, the 21 
+
+transcript available when selecting Kt is generated from the past state-action history, so Kt is Gt−1-measurable. Since 
+
+xt = AK xt−1 + BK ut−1 + wt−1 with wt−1 ∼ N (0 , σ 2
+
+> w
+
+Idx ) independent of Gt−1, we have E[xtx⊤ 
+
+> t
+
+| G t−1] ⪰ σ2
+
+> w
+
+Idx .Writing Mt := ( Kt − K)⊤SK (Kt − K) ⪰ 0 and using ut = Ktxt,
+
+ϵKt = E
+
+h
+
+x⊤ 
+
+> t
+
+Mtxt
+
+i
+
+= E
+
+h
+
+Tr( Mtxtx⊤ 
+
+> t
+
+)
+
+i
+
+= E
+
+h
+
+Tr 
+
+
+
+Mt E[xtx⊤ 
+
+> t
+
+| G t−1]
+
+i 
+
+≥ σ2 
+
+> w
+
+E[Tr( Mt)] 
+
+≥ σ2
+
+> w
+
+λmin (Ru) E∥Kt − K∥2 
+
+> F
+
+. (90) Set c0 := σ2
+
+> w
+
+λmin (Ru) > 0. Combining (89) with the regret hypothesis yields 
+
+1
+
+m − 1
+
+> m
+
+X
+
+> t=2
+
+E∥Kt − K∥2 
+
+> F
+
+≤ Cest T α−1, (91) where Cest := 5cc0 (C1 + cJ P ), using T ≥ 4 ⇒ m − 1 ≥ T / 5.
+
+c) Step 3: Constructing the Gain Estimator.: Achieving sub-linear regret implies that the chosen controls Kt
+
+are ultimately very close to the true optimal gain K. Let Z be uniform on {2, . . . , m } and independent of everything else, and define bK := KZ . Averaging (91) over Z gives 
+
+E∥ bK − K∥2 
+
+> F
+
+≤ Cest T α−1. (92) 
+
+d) Step 4: Information-Theoretic Lower Bound.: Finally, we apply the data-processing inequality to bound the mutual information between the communication transcript and the true system gain. Place the prior K ∼ Unif( Cr)
+
+on the hard family Θhard . Let ΠT denote the full uplink transcript received by the controller by time T . Since 
+
+(Z, bK) is obtained from ΠT , the Markov chain K → ΠT → (Z, bK) holds. By the data-processing inequality, 
+
+I(K; Z, bK) ≤ I(K; Π T ) ≤ H(Π T ) ≤ B(T ) + 1 . (93) Since K is uniform on [−a, a ]dudx , h(K) = dudx log 2(2 a) = dudx log 2
+
+ 2r√dudx
+
+
+
+. Also, h(K | Z, bK) ≤ h(K − bK).By the Gaussian maximum-entropy bound under a second-moment constraint and (92), 
+
+h(K − bK) ≤ dudx
+
+2 log 2
+
+ 2πe dudx
+
+Cest T α−1
+
+
+
+. (94) Therefore 
+
+B(T ) + 1 ≥ h(K) − h(K | Z, bK)
+
+≥ dudx log 2
+
+ 2r
+
+√dudx
+
+
+
+− dudx
+
+2 log 2
+
+ 2πe dudx
+
+Cest T α−1
+
+
+
+= dudx
+
+2 (1 − α) log 2 T + dudx log 2
+
+ 2r
+
+√dudx
+
+
+
+− dudx
+
+2 log 2
+
+ 2πe dudx
+
+Cest 
+
+
+
+. (95) This gives B(T ) ≥ dudx 
+
+> 2
+
+(1 −α) log 2 T −C for the finite constant C := 1+ dudx 
+
+> 2
+
+log 2
+
+ 2πe dudx Cest 
+
+
+
+−dudx log 2
+
+ 2r√dudx
+
+
+
+.APPENDIX BPROOF OF SUPPORTING LEMMAS 
+
+Proof of Lemma 1. By Algorithm 1, at epoch ksafe , the Decoupled Statistical Trigger passes: 
+
+pConf ksafe ≤ ϵtarget = 19 Csafe ( ˆAksafe , ˆBksafe ) . (96) The plant then quantizes ˆθksafe at precision ϵtarget (38), yielding a shared reconstruction ˜θksafe satisfying 
+
+∥˜θksafe − ˆθksafe ∥2 ≤ ϵtarget . (97) 22 
+
+Recall from (39) that both sides set rsafe = 1 /(3 Csafe ( ˜Aksafe , ˜Bksafe )) .Note that the estimated safe constant Csafe ( ˆAksafe , ˆBksafe ) remains finite at the trigger, meaning the center pair 
+
+( ˆAksafe , ˆBksafe ) is stabilizable. Since ϵtarget < 13 Csafe ( ˆAksafe , ˆBksafe ) , we may apply Lemma 2 with center (A0, B 0) = ( ˆAksafe , ˆBksafe ) to the decoded pair ( ˜Aksafe , ˜Bksafe ), concluding that it is stabilizable with 
+
+Csafe ( ˜Aksafe , ˜Bksafe ) ≤ 1.5 Csafe ( ˆAksafe , ˆBksafe ). (98) Applying Lemma 2 with the same center ( ˆAksafe , ˆBksafe ) to the true system (A, B ) on the event Esafe similarly yields 
+
+Csafe (A, B ) ≤ 1.5 Csafe ( ˆAksafe , ˆBksafe ). (99) Combining (96) and (97) with (98), the total OLS-plus-quantization error satisfies 
+
+pConf ksafe + ϵtarget ≤ 29 Csafe ( ˆAksafe , ˆBksafe ) ≤ 13 Csafe ( ˜Aksafe , ˜Bksafe ) = rsafe . (100) We now verify that, on the event Esafe (44), the true system lies in Bsafe (40). By the triangle inequality, 
+
+max 
+
+n
+
+∥A − eAksafe ∥op , ∥B − eBksafe ∥op 
+
+o
+
+≤
+
+h eAksafe − A | eBksafe − B
+
+i 
+
+> op
+
+(101a) 
+
+≤
+
+h bAksafe − eAksafe | bBksafe − eBksafe 
+
+i
+
+> op
+
++
+
+h bAksafe − A | bBksafe − B
+
+i 
+
+> op
+
+(101b) 
+
+≤ ϵtarget + pConf ksafe (101c) 
+
+≤ rsafe = 13 Csafe ( ˜Aksafe , ˜Bksafe ) , (101d) where (101b) uses the triangle inequality, (101c) uses (97) and (44), and (101d) follows from (100). Therefore both (A, B ) and every ( ˜A, ˜B) ∈ B safe (40) lie within a ball of radius 13 Csafe ( ˜Aksafe , ˜Bksafe ) around the decoded center 
+
+( ˜Aksafe , ˜Bksafe ), which is the hypothesis of Lemma 2. Moreover, combining (96), (97), and (99) gives 
+
+max 
+
+n
+
+∥A − eAksafe ∥op , ∥B − eBksafe ∥op 
+
+o
+
+≤ 29 Csafe ( ˆAksafe , ˆBksafe ) ≤ 13 Csafe (A, B ) . (102) Applying Lemma 2 once more with center (A, B ) and system ( ˜Aksafe , ˜Bksafe ) yields 
+
+bPop = 1 .0835 P∞( ˜Aksafe , ˜Bksafe ) op ≤ (1 .0835) 2 ∥P∞∥op . (103) Further, any ( ˜A, ˜B) ∈ B safe satisfies 
+
+max 
+
+n
+
+∥ ˜A − A∥op , ∥ ˜B − B∥op 
+
+o
+
+≤ 1
+
+Csafe (A, B ) , (104) where Bsafe is defined in (40). In particular, in future epochs k ≥ ksafe , the quantized system estimates are projected on Bsafe (Line 25 Algorithm 1), so it holds for those estimates. Then, the first three points of the lemma follow from Theorem 5 in [1]. In particular, for point 1) ,
+
+Jk − J∞ ≲ ∥P∞∥8op 
+
+
+
+∥ΠBsafe ( ˜A) − A∥2 
+
+> F
+
++ ∥ΠBsafe ( ˜B) − B∥2
+
+> F
+
+
+
+≤ ∥ P∞∥8op 
+
+
+
+∥ ˜A − A∥2 
+
+> F
+
++ ∥ ˜B − B∥2
+
+> F
+
+
+
+, (105) where the second equality holds since (A, B ) ∈ B safe , and the projection is non-expansive. The next two points follow from Theorem 8 in [1]. The final point results from the proof of Lemma 5.1 in [1], recalling that we use the same scaling: 
+
+σ2in := pdx P∞( bA, bB) 9/2op max 
+
+
+
+1, bB op + rsafe 
+
+vuutlog 
+
+P∞( bA, bB) op 
+
+δ . (106) 23 
+
+APPENDIX CPROOF OF THEOREM 2: C OMMUNICATION BOUND 
+
+Proof. Let KT := ⌈log 2 T ⌉ + 1 be the number of doubling epochs intersecting [1 , T ]. Since the algorithm commu-nicates only at epoch boundaries, every uplink message is counted once per epoch. We account for four message types. 
+
+Codeword indices. The codebook C is a ϱ-net of the unit ball in Rds . The standard volumetric covering bound gives |C| ≤ (1 + 2 /ϱ )ds . Each index qk costs at most 
+
+log 2 |C| ≤ ds log 2
+
+
+
+1 + 2
+
+ϱ
+
+
+
+bits, and over at most KT post-safe epochs the total is 
+
+Bq(T ) ≤ ds log 2
+
+
+
+1 + 2
+
+ϱ
+
+
+
+KT . (107) 
+
+Adaptive multipliers. Algorithm 1 sends mk via Elias Gamma coding at cost 2⌊log 2 mk⌋ + 1 bits. By Lemma 6, for k > k ls ,
+
+mk < 2 + β(mk−1 − 1) , β := ϱ√2 < 1,
+
+so lim sup k mk ≤ m∞ := (2 − β)/(1 − β). Define Mϱ := ⌈m∞⌉. Since mk − m∞ < β (mk−1 − m∞), after at most h = O(log +(mkls − m∞)) additional epochs, mk ≤ Mϱ for all subsequent k. Therefore all but finitely many multiplier messages cost at most 
+
+bϱ := 2 ⌊log 2 Mϱ⌋ + 1 
+
+bits each, giving 
+
+Bm(T ) ≤ bϱKT + O(log 2 mkls ). (108) Since mk decays geometrically over h = O(log + mkls ) epochs, the sum of the Elias encoding costs O(log mk) forms an arithmetic progression bounded by O(log 2 mkls ). Because mkls scales polynomially with τls , this, along with the pre-contraction expansion phase, adds a finite, one-time transient overhead of O(log 2 τls ), which is retained explicitly in (111). Under the theorem choice δ = 1 /T , we have τls = O(log T ), so this overhead is at most 
+
+O(log 2log T ).
+
+Pre-safe flags. Algorithm 1 sends a 1-bit safe flag during the pre-safe phase. Thus Bflag ≤ ksafe . Since τk = 2 k,Lemma 7 gives 
+
+ksafe ≤ 1 + log 2 τksafe = O
+
+
+
+log 
+
+
+
+d(1 + ∥K0∥2op )∥P∞∥10 op log Ψ2 
+
+> B
+
+J0
+
+δ
+
+ 
+
+, (109) which is a one-time overhead. 
+
+Absolute initialization. ABSOLUTE INIT sends the exponent E and the signed integers z1, . . . , z ds via Elias Gamma coding. Both sides compute rsafe from the shared decoded center (39). Since 
+
+E =
+
+
+
+log 2
+
+√ds
+
+2ϵtarget 
+
+
+
+, ϵtarget = 19 Csafe ( ˆAksafe , ˆBksafe ) ,
+
+and by Lemma 2, Csafe ( ˆAksafe , ˆBksafe ) < 1.5Csafe (A, B ), we get 
+
+E = O(log ds + log Csafe (A, B )) = O(log ds + log ∥P∞∥op ) .
+
+Each zi = ⌊ˆθi/∆⌉ with ∆ = 2 −E ≍ ϵtarget /√ds, so Elias coding gives 
+
+Binit = O
+
+
+
+ds log 
+
+
+
+1 + θmax ·√ds
+
+ϵtarget 
+
+ 
+
+, (110) where θmax = max i,j {| Aij |, |Bij |} . On Esafe , ˆθksafe is within O(ϵtarget ) of θ⋆, so this is O(ds log(1+ θmax Csafe 
+
+√ds)) ,a finite one-time cost. 24 
+
+Total. Combining all four components: 
+
+B(T ) = Bq(T ) + Bm(T ) + Bflag + Binit 
+
+≤
+
+
+
+ds log 2
+
+
+
+1 + 2
+
+ϱ
+
+
+
++ bϱ
+
+
+
+KT + Binit + O log τksafe + log 2 τls 
+
+ . (111) Since KT ≤ ⌈ log 2 T ⌉ + 1 ≤ log 2 T + 2 , this gives B(T ) = O(ds log T ).APPENDIX DPROOF OF THEOREM 2: R EGRET BOUND 
+
+A. Proof of the Contraction Lemma Proof of Lemma 6. For k > k ls , the OLS bounds hold. Let OLS k := bVslow τ −1/4 
+
+> k
+
++ bVfast τ −1/2 
+
+> k
+
+. By the triangle inequality centered at θ⋆ and non-expansiveness of projection: 
+
+∥∆k∥2 ≤ ∥ ¯θk − θ⋆∥2 + ∥θ⋆ − ¯θk−1∥2 + ∥¯θk−1 − ˜θk−1∥2 ≤ OLS k + OLS k−1 + ϱs k−1.
+
+By the design of cslow and cfast in (62)–(63): 
+
+OLS k + OLS k−1 ≤ sbase  
+
+> k
+
+− ϱs base  
+
+> k−1
+
+.
+
+Indeed, using τ −1/4 
+
+> k−1
+
+= 2 1/4τ −1/4 
+
+> k
+
+and τ −1/2 
+
+> k−1
+
+= √2 τ −1/2 
+
+> k
+
+, the left-hand side equals bVslow (1 + 2 1/4)τ −1/4 
+
+> k
+
++ bVfast (1 + 
+
+√2) τ −1/2 
+
+> k
+
+, while the right-hand side expands to cslow (1 − ϱ 21/4)τ −1/4 
+
+> k
+
++ cfast (1 − ϱ√2) τ −1/2 
+
+> k
+
+, and by the definitions (62)–(63) these are identical. Substituting sk−1 = mk−1sbase  
+
+> k−1
+
+:
+
+∥∆k∥2 ≤ sbase  
+
+> k
+
++ ϱs base  
+
+> k−1
+
+(mk−1 − 1) .
+
+Dividing by sbase  
+
+> k
+
+and using sbase  
+
+> k−1
+
+/s base  
+
+> k
+
+≤ √2 (since the ratio is a weighted average of 21/4 and √2 with positive weights cslow τ −1/4 
+
+> k
+
+and cfast τ −1/2 
+
+> k
+
+, hence bounded by √2): 
+
+∥∆k∥2
+
+sbase 
+
+> k
+
+≤ 1 + ϱ√2( mk−1 − 1) .
+
+Since mk = ⌈∥ ∆k∥2/s base  
+
+> k
+
+⌉ and ⌈x⌉ < x + 1 , the contraction follows. With β = ϱ√2 < 1, the sequence converges exponentially to the fixed point m⋆ = (2 − β)/(1 − β) = O(1) .
+
+B. Proof of the Regret Convolution Bound 
+
+Lemma 8 (Regret Convolution Bound) . For any non-negative sequence Uk satisfying sk ≤ Pkj=ksafe ϱk−j Uj , with 
+
+ϱ < 1/√2, X
+
+> k
+
+τks2 
+
+> k
+
+≤ C2
+
+> ϱ
+
+X
+
+> k
+
+τkU 2 
+
+> k
+
+, where Cϱ = 11 − ϱ√2 . (112) 
+
+Remark. By the definition of mk, sk ≤ ∥ ∆k∥2 + sbase  
+
+> k
+
+. By the triangle inequality, ∥∆k∥2 ≤ Ek + Ek−1 + ϱs k−1
+
+where Ek := ∥¯θk − θ⋆∥2. This gives the envelope recurrence sk ≤ ϱs k−1 + Uk with Uk := Ek + Ek−1 + sbase  
+
+> k
+
+.
+
+Proof of Lemma 8. We split ϱk−j = ( ϱ√2) (k−j)/2 · (ϱ/ √2) (k−j)/2 and apply Cauchy–Schwarz inequality to sk ≤P 
+
+> j
+
+ϱk−j Uj :
+
+s2 
+
+> k
+
+≤ X
+
+> j≤k
+
+(ϱ√2) k−j
+
+| {z } 
+
+> ≤Cϱ
+
+· X
+
+> j≤k
+
+ ϱ
+
+√2
+
+k−j
+
+U 2 
+
+> j
+
+.
+
+Multiplying s2 
+
+> k
+
+by τk = 2 k and summing over k, we obtain: 
+
+X
+
+> k
+
+τks2 
+
+> k
+
+≤ Cϱ
+
+X
+
+> k
+
+X
+
+> j≤k
+
+2k
+
+ ϱ
+
+√2
+
+k−j
+
+U 2 
+
+> j
+
+.25 
+
+Setting m = k−j and exchanging the order of summation, the factor 2k(ϱ/ √2) k−j = 2 j ·(2 ·ϱ/ √2) m = τj (ϱ√2) m,giving X
+
+> k
+
+τks2 
+
+> k
+
+≤ Cϱ
+
+X
+
+> j
+
+τj U 2
+
+> j
+> ∞
+
+X
+
+> m=0
+
+(ϱ√2) m = C2
+
+> ϱ
+
+X
+
+> j
+
+τj U 2 
+
+> j
+
+.
+
+C. Bound on Safety Event Probability 
+
+Lemma 9 (Lem. 5.5 from [1]) . The event Esafe holds with probability at least 1 − δ 
+
+> 2
+
+.
+
+Proof. Let 
+
+Econf = \ 
+
+> k:Λk⪰I
+
+
+
+ˆAk − A | ˆBk − B 2 
+
+> op
+
+≤ Conf k
+
+
+
+, (113) where T denotes the intersection of events over all k such that Λk ⪰ I, and Λk is defined in (41). Lemma E.2 in [1], which is a Corollary of Theorem 1 from [11], applied with empirical covariance Λ = Λk, baseline matrix 
+
+Λ0 = I, and confidence parameter δ/ (4 k2), yields 
+
+P
+
+ 
+
+ˆAk − A | ˆBk − B 2 
+
+> op
+
+≥ Conf k
+
+
+
+∩ { Λk ⪰ I}
+
+
+
+≤ δ
+
+4k2 . (114) Applying the union bound over all epochs and noting that at epoch ksafe , Λksafe ⪰ I, we have that 
+
+P[Esafe ] ≥ P [Econf ] ≥ 1 −
+
+> ∞
+
+X
+
+> k=1
+
+δ
+
+4k2 ≥ 1 − δ
+
+2 . (115) 
+
+D. Proof of the Pre-Safe Regret Lemma Proof of Lemma 7. Before epoch ksafe , Algorithm 1 executes the baseline stabilizing controller K0 with independent Gaussian exploration noise, identical to the unquantized algorithm in [1]. By Lemma G.9 in [1], for δ < 1/T , the cost during this phase is bounded with probability 1 − δ by:  
+
+> τksafe −1
+
+X
+
+> t=1
+
+x⊤ 
+
+> t
+
+Rxxt + u⊤ 
+
+> t
+
+Ruut ≤ d τ ksafe Ψ2 
+
+> B
+
+P0 log 1
+
+δ . (116) What remains is to upper-bound the stopping time τksafe . Under the Decoupled Statistical Trigger, the safe phase is declared as soon as Λk ⪰ I (41) and: 
+
+pConf k ≤ 19 Csafe ( ˆAk, ˆBk) . (117) We proceed by contraposition to find the maximum duration the algorithm can remain unsafe. Assume the statistical confidence is sufficiently small with respect to the true system: 
+
+pConf k ≤ 227 Csafe (A, B ) . (118) Conditioned on Esafe (44), assumption (118) implies: 
+
+max 
+
+
+
+ˆAk − A op , ˆBk − B op 
+
+
+
+≤ pConf k ≤ 227 Csafe (A, B ) < 13 Csafe (A, B ) .
+
+Lemma 2 (with center (A, B )) then gives Csafe ( ˆAk, ˆBk) ≤ 1.5 Csafe (A, B ).Substituting this bound into our algorithm’s trigger threshold yields: 
+
+19 Csafe ( ˆAk, ˆBk) ≥ 19 × 1.5 Csafe (A, B ) = 227 Csafe (A, B ) .26 
+
+Therefore, if (118) holds, we have √Conf k ≤ 19 Csafe ( ˆAk , ˆBk ) , meaning the algorithm’s trigger condition (117) strictly passes. By contraposition, if the algorithm has not yet switched to the safe phase, it must be the case that (118) is false: 
+
+Conf k > 4729 Csafe (A, B )2 .
+
+By the definition of the safe constant, Csafe (A, B ) ≤ 54 ∥P∞∥5op , yielding the deterministic necessary condition to remain in the pre-safe phase: 
+
+Conf k > 4729 · 54 2 ∥P∞∥10 op 
+
+= 1729 2 ∥P∞∥10 op 
+
+. (119) We now apply Lemma G.11 from [1], which provides a high-probability upper bound on Conf k under the baseline controller K0:
+
+Conf k ≤ d(1 + ∥K0∥2op )
+
+τk
+
+log Ψ2 
+
+> B
+
+J0
+
+δ . (120) Combining the necessary condition (119) with the upper bound (120): 
+
+1729 2 ∥P∞∥10 op 
+
+< d(1 + ∥K0∥2op )
+
+τk
+
+log Ψ2 
+
+> B
+
+J0
+
+δ .
+
+Solving for τk, the algorithm must have switched before: 
+
+τstop ≤ 729 2 ∥P∞∥10 op d(1 + ∥K0∥2op ) log Ψ2 
+
+> B
+
+J0
+
+δ .
+
+Since epoch lengths double, τksafe ≤ 2τstop . Substituting into (116) yields (66). 
+
+E. Proof of Theorem 2 Proof. We analyze the post-safe regret using the decomposition (52). Three terms require treatment: the per-epoch excess cost, the boundary term, and the lower-order remainder. 
+
+Per-epoch excess cost. By Lemma 1 point (1), for every post-safe epoch k ≥ ksafe ,
+
+Jk − J∞ ≲ ∥P∞∥8op 
+
+
+
+˜Ak − A 2F + ˜Bk − B 2F
+
+
+
+. (121) We split the sum over post-safe epochs k ≥ ksafe into two ranges:  
+
+> •
+
+Asymptotic epochs (τk > cτ ls ): the OLS rate (54) applies, and these produce the main √T contribution.  
+
+> •
+
+Transient epochs (ksafe ≤ k with τk ≤ cτ ls ): the OLS rate does not yet hold, but both ( ˜Ak, ˜Bk) and (A, B )
+
+lie in Bsafe .For the transient epochs, the safety derivation in Appendix B gives 
+
+max { ˜Ak − A op , ˜Bk − B op } ≤ 1
+
+Csafe (A, B ) = O(1) ,
+
+so Jk − J∞ = O(1) per epoch. The number of transient epochs is O(log( τls /τ ksafe )) and each has τk ≤ cτ ls =
+
+O(poly(log T )) , so X 
+
+> k:τk≤cτ ls
+
+τk(Jk − J∞) = O(poly(log T )) .
+
+Epoch-boundary state norms. By Lemma 5.3 from [1], on the event Esafe ∩ E bound ,
+
+∥xτk ∥22 ≲ ΨB J0 log 1
+
+δ ∥P∞∥3op , ∀k ≥ ksafe .
+
+Substituting into the boundary term of (52): 
+
+log T max   
+
+> k≤log T
+
+∥xτk ∥22 ≲ ΨB J0∥P∞∥3op log T · log 1
+
+δ ≤ ΨB J0∥P∞∥3op τls log 1
+
+δ ,27 
+
+where the last inequality uses log T ≤ τls for T sufficiently large. 
+
+Combining. Absorbing the transient-epoch and boundary contributions into the lower-order terms, and retaining only the asymptotic sum, we arrive at 
+
+> kfin
+
+X
+
+> k=ksafe
+
+τk(Jk − J∞) + log T max   
+
+> k≤log T
+
+∥xτk ∥22
+
+≲ X 
+
+> k:τk>τ ls
+
+τk∥P∞∥8op 
+
+
+
+˜Ak − A 2F + ˜Bk − B 2F
+
+
+
++ Ψ B J0∥P∞∥3op τls log 1
+
+δ . (122) Focusing on the first term, we separate the parameter error into the unquantized OLS error and the quantization error. The regret depends on the controller-side projection ˇθk = Π Bsafe (˜θk) (30). Since θ⋆ ∈ B safe on Esafe , non-expansiveness of projection gives ˇθk − θ⋆ F ≤ ˜θk − θ⋆ F, so it suffices to bound the decoded error ˜θk − θ⋆ F.For the plant, the projected estimate is ¯θk = Π Bsafe (ˆθk). By identical reasoning, ¯θk − θ⋆ F ≤ ˆθk − θ⋆ F.Furthermore, because the quantized message bounds the reconstruction error by the scale radius, ˜θk − ¯θk F ≤ ϱs k,so applying the triangle inequality and (a + b)2 ≤ 2a2 + 2 b2 gives: 
+
+X 
+
+> k:τk>τ ls
+
+τk∥P∞∥8op 
+
+
+
+˜Ak − A 2F + ˜Bk − B 2F
+
+
+
+≤ 2∥P∞∥8op 
+
+X 
+
+> k:τk>τ ls
+
+τk
+
+bAk − A 2F + bBk − B 2F + ϱ2s2
+
+> k
+
+
+
+. (123) Conditioned on the high-probability event Els ∩ E safe ∩ E bound , the OLS errors are deterministically bounded. By the definition of the multiplier (36), mk = max {1, ⌈∥ ∆k∥2/s base  
+
+> k
+
+⌉} ≤ ∥ ∆k∥2/s base  
+
+> k
+
++ 1 . Thus, sk ≤ ∥ ∆k∥2 + sbase  
+
+> k
+
+.By the triangle inequality, ∥∆k∥2 ≤ ¯θk − θ⋆ F + ¯θk−1 − θ⋆ F + ¯θk−1 − ˜θk−1 F. Let Ek := ¯θk − θ⋆ F.Because the reconstruction error is bounded by ϱs k−1, we obtain the recurrence for all tracking epochs k > k safe :
+
+sk ≤ ϱs k−1 + Ek + Ek−1 + sbase 
+
+> k
+
+| {z }
+
+> := Uk
+
+. (124) To unroll this recurrence, we must account for the base case at epoch ksafe . The differential tracking loop begins at ksafe + 1 ; at ksafe itself, A BSOLUTE INIT returns ˜θksafe . On Esafe , both ˜θksafe and θ⋆ lie in Bsafe , so by the safety derivation in (101), 
+
+sinit := ˜θksafe − θ⋆ F ≤√ds
+
+Csafe (A, B ) = O(1) , (125) where ds = dx(dx + du) and the √ds factor converts from the per-block operator norms to the vectorized Frobenius norm. Unrolling the recurrence down to this boundary gives 
+
+sk ≤
+
+> k
+
+X
+
+> j=ksafe +1
+
+ϱk−j Uj + ϱk−ksafe sinit . (126) To express this as a single convolution, we define Uksafe := sinit and write 
+
+sk ≤
+
+> k
+
+X
+
+> j=ksafe
+
+ϱk−j Uj . (127) By applying Lemma 8 (since τk = 2 k and ϱ < 1/√2), the weighted ℓ2-norm of this convolution is strictly bounded: 
+
+Rquant := ∥P∞∥8op log 2 T
+
+X
+
+> k=ksafe
+
+τkϱ2s2 
+
+> k
+
+≤ ∥ P∞∥8op ϱ2C2 
+
+> ϱ
+> log 2T
+
+X
+
+> k=ksafe
+
+τkU 2 
+
+> k
+
+. (128) We analyze Uk on the good event across two phases. 28 
+
+Transient Phase (τk ≤ cτ ls ). For the base case j = ksafe , Uksafe = sinit = O(1) by (125). For j > k safe , any projected parameter and the true system both lie in Bsafe , so by the safety derivation (Appendix B), 
+
+Ej = ¯θj − θ⋆ F ≤√ds
+
+Csafe (A, B ) = O(1) , Uj = O(1) .
+
+Asymptotic Phase (τk > cτ ls ). The statistical OLS bounds apply deterministically: 
+
+Ek ≤ OLS k := bVslow τ −1/4 
+
+> k
+
++ bVfast τ −1/2 
+
+> k
+
+.
+
+By the design of the ideal base schedule (see (62)–(63)) and the same calculation used in the proof of Lemma 6, 
+
+OLS k + OLS k−1 ≤ sbase  
+
+> k
+
+, so Uk ≤ 2sbase  
+
+> k
+
+.
+
+Combining. Substituting these bounds into (128) gives the explicit split  
+
+> log 2T
+
+X
+
+> k=ksafe
+
+τkU 2 
+
+> k
+
+≤ X 
+
+> τk≤cτ ls
+
+τk · O (1) 
+
+| {z }
+
+> ≤ O (τls )
+
++ X 
+
+> τk>cτ ls
+
+τk · 4( sbase  
+
+> k
+
+)2
+
+| {z }
+
+> asymptotic contribution
+
+. (129) Expanding (33), (sbase  
+
+> k
+
+)2 = ( cslow τ −1/4 
+
+> k
+
++ cfast τ −1/2 
+
+> k
+
+)2 ≤ 2c2slow τ −1/2 
+
+> k
+
++ 2 c2fast τ −1 
+
+> k
+
+and multiplying by τk yields terms τ 1/2 
+
+> k
+
+and τ 0 
+
+> k
+
+. Since τk = 2 k, the doubling-epoch geometric sums evaluate as   
+
+> ⌊log 2T⌋
+
+X
+
+> k=0
+
+τ 1/2 
+
+> k
+
+=  
+
+> ⌊log 2T⌋
+
+X
+
+> k=0
+
+2k/ 2 ≤ 2(⌊log 2 T ⌋+1) /2 − 1
+
+√2 − 1 ≲ √T ,   
+
+> ⌊log 2T⌋
+
+X
+
+> k=0
+
+1 = ⌊log 2 T ⌋ + 1 ≲ log T. (130) Therefore the quantization contribution splits into two scales: 
+
+Rquant ≲ ∥P∞∥8op (ϱC ϱcslow )2√T + ∥P∞∥8op (ϱC ϱcfast )2 log T + ∥P∞∥8op ϱ2C2 
+
+> ϱ
+
+· O (τls ). (131) 
+
+Full regret bound. Combining (123) with the OLS error from (54), we obtain: (123) ≲ √T
+
+ dxdu
+
+σ2in 
+
+∥P∞∥10 op log 1
+
+δ + ∥P∞∥8op (ϱC ϱcslow )2
+
+
+
++ log T · ∥ P∞∥8op (ϱC ϱcfast )2 + d2
+
+> x
+
+∥P∞∥3op τls log 2 1
+
+δ .
+
+(132) Further combining this with the regret decomposition (52), we have: 
+
+> T
+
+X
+
+> t=τksafe
+
+(x⊤ 
+
+> t
+
+Rxxt + u⊤ 
+
+> t
+
+Ruut − J∞) ≲ √T
+
+
+
+duσ2in Ψ2 
+
+> B
+
+∥P∞∥op +
+
+r
+
+d log 1
+
+δ ∥P∞∥4op 
+
++ dxdu
+
+σ2in 
+
+∥P∞∥10 op log 1
+
+δ + ∥P∞∥8op (ϱC ϱcslow )2
+
+
+
++ log T · ∥ P∞∥8op (ϱC ϱcfast )2
+
++ (1 + √dσ 2in ΨB )∥P∞∥4op log 2 1
+
+δ + Ψ B J0∥P∞∥3op τls log 1
+
+δ
+
++ d2
+
+> x
+
+∥P∞∥3op τls log 2 1
+
+δ
+
+(133) Substituting σ2in ≍ √dx ∥P∞∥9/2op ΨB
+
+plog( ∥P∞∥op /δ ) from Lemma 1 point (6) into the σ2in -dependent terms:  
+
+> •
+
+duσ2in Ψ2 
+
+> B
+
+∥P∞∥op = du
+
+√dx Ψ3 
+
+> B
+
+∥P∞∥11 /2op 
+
+plog( ∥P∞∥op /δ ). 
+
+> •dxdu
+> σ2in
+
+∥P∞∥10 op log 1 
+
+> δ
+
+= du  
+
+> √dx∥P∞∥11 /2op log(1 /δ )ΨB
+
+√log( ∥P∞∥op /δ ) ≤ du 
+
+> √dx∥P∞∥11 /2op
+
+√log( ∥P∞∥op /δ )ΨB , which is at most the first term since ΨB ≥ 1.
+
+> •
+
+√d σ 2in ΨB ∥P∞∥4op log 2 1  
+
+> δ
+
+= √dd x Ψ2 
+
+> B
+
+∥P∞∥17 /2op 
+
+plog( ∥P∞∥op /δ ) log 2 1  
+
+> δ
+
+.Substituting the definitions of cslow (62) and cfast (63) and the proxy comparison (103) recovers Qslow (ϱ) (19) and 
+
+Qfast (ϱ) (20) in the quantization terms, yielding Theorem 2(b).

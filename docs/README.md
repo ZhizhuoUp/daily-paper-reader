@@ -6,49 +6,47 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-04-18
-- 运行时间：2026-04-18 20:20:01 UTC
+- 最新运行日期：2026-04-19
+- 运行时间：2026-04-19 19:27:53 UTC
 - 运行状态：成功
-- 本次总论文数：9
-- 精读区：2
-- 速读区：7
+- 本次总论文数：8
+- 精读区：0
+- 速读区：8
 
 ### 今日简报（AI）
-今日深度解析机器人逆运动学奇异性规避与鲁棒预测控制，共收录 9 篇前沿成果。
-核心结论指出，统一经典与学习方法的 IK 框架及 Tube-based 数据驱动控制是提升复杂系统稳定性的关键。
-建议普通读者从灵巧手操作与微分仿真入手，关注数据驱动技术在实际机器人控制中的落地应用。
-- 详情：[/202604/18/README](/202604/18/README)
+今日速览 8 篇前沿论文，重点聚焦机器人零样本操作与高效复合优化算法。
+AnySlot 实现了基于视觉语言模型的零样本插槽级放置，而 PANOC-lite 为复合极小化问题提供了更简洁高效的求解方案。
+建议关注 VLA 模型在精准操控领域的突破，以及分布鲁棒控制在复杂系统中的应用潜力。
+- 详情：[/202604/19/README](/202604/19/README)
 
 ### 精读区论文标签
-1. [Singularity Avoidance in Inverse Kinematics: A Unified Treatment of Classical and Learning-based Methods](/202604/18/2604.13405v1-singularity-avoidance-in-inverse-kinematics-a-unified-treatment-of-classical-and-learning-based-methods)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：串联机械臂的约束优化与奇异性规避
-2. [Tube-Based Robust Data-Driven Predictive Control](/202604/18/2604.15252v1-tube-based-robust-data-driven-predictive-control)  
-   标签：评分：8.0/10、query:q2
-   evidence：基于在线优化（二次规划）的数据驱动预测控制
+- 本次无精读推荐。
 
 ### 速读区论文标签
-1. [Trajectory-based actuator identification via differentiable simulation](/202604/18/2604.10351v2-trajectory-based-actuator-identification-via-differentiable-simulation)  
-   标签：评分：7.0/10、query:q8
-   evidence：基于轨迹优化的机器人执行器辨识
-2. [XRZero-G0: Pushing the Frontier of Dexterous Robotic Manipulation with Interfaces, Quality and Ratios](/202604/18/2604.13001v2-xrzero-g0-pushing-the-frontier-of-dexterous-robotic-manipulation-with-interfaces-quality-and-ratios)  
+1. [AnySlot: Goal-Conditioned Vision-Language-Action Policies for Zero-Shot Slot-Level Placement](/202604/19/2604.10432v2-anyslot-goal-conditioned-vision-language-action-policies-for-zero-shot-slot-level-placement)  
    标签：评分：7.0/10、query:q6
-   evidence：灵巧机器人操作与数据采集系统
-3. [A Dynamic-Growing Fuzzy-Neuro Controller, Application to a 3PSP Parallel Robot](/202604/18/2604.13763v1-a-dynamic-growing-fuzzy-neuro-controller-application-to-a-3psp-parallel-robot)  
-   标签：评分：7.0/10、query:q5
-   evidence：并联机器人的实时位置控制
-4. [RAD-2: Scaling Reinforcement Learning in a Generator-Discriminator Framework](/202604/18/2604.15308v1-rad-2-scaling-reinforcement-learning-in-a-generator-discriminator-framework)  
+   evidence：用于机器人操作和精确放置的VLA策略
+2. [Distributionally Robust PAC-Bayesian Control](/202604/19/2604.10588v1-distributionally-robust-pac-bayesian-control)  
+   标签：评分：7.0/10、query:q2
+   evidence：基于学习的控制器的分布鲁棒优化
+3. [PANOC-lite: A simpler and more efficient algorithm for composite minimization](/202604/19/2604.14503v1-panoc-lite-a-simpler-and-more-efficient-algorithm-for-composite-minimization)  
    标签：评分：7.0/10、query:q3
-   evidence：基于扩散模型的轨迹分布规划与闭环规划
-5. [Robotic Manipulation is Vision-to-Geometry Mapping ($f(v) \rightarrow G$): Vision-Geometry Backbones over Language and Video Models](/202604/18/2604.12908v1-robotic-manipulation-is-vision-to-geometry-mapping-fv-rightarrow-g-vision-geometry-backbones-over-language-and-video-models)  
+   evidence：复合极小化的高效优化算法
+4. [Deep Photonic Reservoir Computer Meets UAV Control: An ultra-fast learning-based compensator for agile flight in confined space](/202604/19/2604.10262v1-deep-photonic-reservoir-computer-meets-uav-control-an-ultra-fast-learning-based-compensator-for-agile-flight-in-confined-space)  
+   标签：评分：6.0/10、query:q5
+   evidence：用于无人机实时控制的超快学习补偿器
+5. [AIM: Intent-Aware Unified world action Modeling with Spatial Value Maps](/202604/19/2604.11135v1-aim-intent-aware-unified-world-action-modeling-with-spatial-value-maps)  
    标签：评分：6.0/10、query:q6
-   evidence：用于通用机器人操纵控制的视觉到几何映射
-6. [On the Optimality of Uncertain MDP Abstractions](/202604/18/2604.13377v1-on-the-optimality-of-uncertain-mdp-abstractions)  
+   evidence：用于机器人控制和操作的意图感知世界动作建模
+6. [Quantized Online LQR](/202604/19/2604.11930v1-quantized-online-lqr)  
    标签：评分：6.0/10、query:q2
-   evidence：基于抽象的非线性随机系统控制综合
-7. [Vision-Based Safe Human-Robot Collaboration with Uncertainty Guarantees](/202604/18/2604.15221v1-vision-based-safe-human-robot-collaboration-with-uncertainty-guarantees)  
+   evidence：用于最优控制的在线线性二次调节 (LQR)
+7. [Safe reinforcement learning with online filtering for fatigue-predictive human-robot task planning and allocation in production](/202604/19/2604.12667v2-safe-reinforcement-learning-with-online-filtering-for-fatigue-predictive-human-robot-task-planning-and-allocation-in-production)  
    标签：评分：6.0/10、query:q4
-   evidence：安全的机器人协作与运动预测
+   evidence：协作制造中的人机任务规划与分配
+8. [POMDP-based Object Search with Growing State Space and Hybrid Action Domain](/202604/19/2604.14965v1-pomdp-based-object-search-with-growing-state-space-and-hybrid-action-domain)  
+   标签：评分：6.0/10、query:q4
+   evidence：复杂环境下的移动机器人运动规划
 
 
 <div class="dpr-home-promo-card">

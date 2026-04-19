@@ -1,0 +1,1071 @@
+Title: PANOC-lite: A simpler and more efficient algorithm for composite minimization
+
+URL Source: https://arxiv.org/pdf/2604.14503v1
+
+Published Time: Fri, 17 Apr 2026 00:24:35 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# PANOC-lite: A simpler and more efficient algorithm for composite minimization 
+
+Alexander Bodard ∗ Pieter Pas ∗ Andreas Themelis † Panagiotis Patrinos ∗
+
+Abstract — This work introduces a simple and efficient line-search method for composite minimization that accelerates proximal-gradient iterations with fast Newton-type directions. Our algorithm is based on simple operations and only requires the standard proximal-gradient oracle, similar to PANOC and ZeroFPR, provided that the nonsmooth term is convex. Noteworthy improvements include a cheaper backtracking procedure, in the sense that no additional gradients need to be evaluated, and an enlarged range of permitted stepsizes. Global subsequential convergence and local superlinear convergence are established under conventional assumptions by considering a novel merit function which is less expensive to evaluate than alternatives like the forward-backward envelope. Finally, the proposed approach is validated on model predictive control problems with collision avoidance constraints, as well as on the LIBSVM and CUTEst benchmarks. 
+
+I. I NTRODUCTION 
+
+A. Problem statement and motivation 
+
+We consider nonconvex composite minimization problems 
+
+minimize  
+
+> x∈Rn
+
+φ(x) := f (x) + g(x) (P) where f : Rn → R is smooth, and g : Rn → R is convex and ‘proximable’. In particular, we assume the following: 
+
+Assumption I. The following hold in problem (P) :
+
+(i) f : Rn → R is Lf -Lipschitz smooth; 
+
+(ii) g : Rn → R is proper, lsc and convex; 
+
+(iii) arg min φ̸ = ∅, i.e., a solution exists. 
+
+Composite objectives arise in various fields, like optimal control and machine learning. Prominent examples include constrained optimization, where g is the indicator of aclosed convex set, and regularized problems, where g acts as a regularization term. More generally, nonlinear programs (NLPs) can also give rise to problems of the form (P): when solved using an augmented Lagrangian method (ALM), this requires solving a sequence of such composite subproblems. In the context of nonlinear model predictive control [15], this approach has been successfully applied, for example to problems with general state constraints [12], [18].    
+
+> This work was supported by: Research Foundation Flanders (FWO) PhD grant No. 11M9523N and research projects G081222N, G033822N, G0A0920N; Research Council KU Leuven C1 project No. C14/18/068; JSPS KAKENHI grant number JP24K20737.
+> ∗Department of Electrical Engineering (ESAT-STADIUS), KU Leuven, Kasteelpark Arenberg 10, 3001 Leuven, Belgium.
+> †Faculty of Information Science and Electrical Engineering (ISEE), Kyushu University, 744 Motooka, Nishi-ku, 819-0395 Fukuoka, Japan.
+> E-mails: {alexander.bodard,pieter.pas,panos.patrinos }@kuleuven.be, andreas.themelis@ees.kyushu-u.ac.jp
+
+A fundamental scheme in addressing (P) is the proximal-gradient (PG) method, with iterations of the form 
+
+xk+1 = Tγ (xk) := prox γg (xk − γ∇f (xk)) (1) for some stepsize γ > 0. This simple update rule serves as the basis for numerous accelerated variants, which either rely on Nesterov-type acceleration [1] or on fast Newton-type directions [20], [21], [11], [22]. However, ensuring global convergence of such methods often constitutes asignificant challenge. A common approach is to design a merit function with suitable properties, and combine it with classical linesearch [20], [21], [22] or trust-region [2], [11] strategies. Initially proposed in [13], the forward-backward envelope (FBE) has been thoroughly analyzed and used as a merit function [20], [21], [2]. Other surrogate functions give rise to alternative algorithms [11], [22]. Somewhat remarkably, evaluating these existing merit functions not only requires function evaluations of f and g,but also of ∇f and prox γg . Therefore, every additional back-tracking step of a linesearch procedure requires an additional evaluation of this first-order oracle, which is qualitatively different from the classical smooth setting. This raises the question whether we can design a merit function whose evaluation does not involve calls to ∇f , which typically constitutes the most expensive operation. 
+
+B. Contributions 
+
+To address this shortcoming, we propose a novel merit function for composite objectives φ ≡ f + g which, un-like existing alternatives, can be evaluated without gradient computations ∇f , and present a novel linesearch method (PANOC -lite) that has a cheaper backtracking procedure and allows for larger stepsizes than state-of-the-art alternatives. This algorithm adopts the philosophy of PANOC [20]: 1 de-spite only involving plain (nonscaled) proximal gradient op-erations, it attains global subsequential convergence and lo-cal superlinear convergence under conventional assumptions. Several numerical experiments on model predictive control problems with collision avoidance constraints, sparse logistic regression, and on CUTE ST benchmarks demonstrate the performance of the proposed method. 
+
+C. Notation 
+
+We denote by N, R and R = R∪{ +∞} the set of natural, real and extended real numbers, respectively. The Euclidean  
+
+> 1Strictly speaking, the algorithm is closer to its predecessor Z ERO FPR [21] in its way to compute update directions (see the overview in §II-A). We nonetheless stick the more user-friendly name PANOC -lite.
+> arXiv:2604.14503v1 [math.OC] 16 Apr 2026
+
+inner product and norm are denoted by ⟨· , ·⟩ and ∥ · ∥ . By 
+
+ΠC we denote the Euclidean projection on a set C. The set 
+
+fix T := {x ∈ Rn | x ∈ T (x)} contains the fixed points of a set-valued operator T : Rn ⇒ Rn and zer T := {x | 0 ∈
+
+T (x)} denotes its zeros. The proximal operator and Moreau envelope of a convex function h : Rn → R with stepsize 
+
+γ > 0 are prox γh (x) := arg min u{h(u) + 12γ ∥u − x∥2} and 
+
+hγ (x) := inf u{h(u) + 12γ ∥u − x∥2}, respectively. By ∂h 
+
+we indicate the convex subdifferential of h. We denote the set of k times continuously differentiable functions by Ck
+
+and say that f ∈ C 1 is Lf -smooth when ∇f is Lf -Lipschitz continuous. The pointwise Lipschitz modulus of h at x ∈ Rn
+
+is lip h(x) := lim sup y,z →xy̸ =z 
+
+> |h(y)−h(z)|∥x−z∥
+
+. Otherwise, we adopt the notation from [17]. II. A NOVEL MERIT FUNCTION 
+
+A. Background and preliminaries 
+
+Fixed-points of (1) are zeros of the natural residual 
+
+Rnat  
+
+> γ
+
+(x) := γ−1(x − Tγ (x)) . (2) Methods like PANOC [20] and Z ERO FPR [21] find such zeros through a linesearch procedure that uses the FBE [13] 
+
+φγ (x) = inf 
+
+> u∈Rn
+
+{f (x) + ⟨∇ f (x), u − x⟩ + g(u) + 12γ ∥u − x∥2}
+
+as a merit function, which can be explicitly expressed as 
+
+φγ (x)= f (x)+ g(Tγ (x)) −γ⟨∇ f (x),Rnat  
+
+> γ
+
+(x)⟩+ γ 
+
+> 2
+
+∥Rnat  
+
+> γ
+
+(x)∥2
+
+in terms of the natural residual [19, Eq. (2.2)]. In particular, at every iteration, Z ERO FPR  
+
+> •
+
+computes ¯x = Tγ (x) and a ‘fast’ direction d ∈ Rn; 
+
+> •
+
+constructs candidate points xcand (τ ) := ¯ x + τ d with backtracking parameter τ ∈ (0 , 1] ; and  
+
+> •
+
+selects x+ = xcand (τ ) with τ such that, for some σ > 0,
+
+φγ (xcand (τ )) − φγ (x) ≤ − σ∥Rnat  
+
+> γ
+
+(x)∥2.Three properties are crucial in ensuring well-definedness: (i) the point ¯x = Tγ (x) yields sufficient decrease on φγ ,specifically, φγ (¯ x) − φγ (x) ≤ − γ 1−γL f 
+
+> 2
+
+∥Rnat  
+
+> γ
+
+(x)∥2;(ii) candidate points eventually approach this sufficient de-crease point, i.e., xcand (τ ) → ¯x as τ → 0; and (iii) the FBE φγ is continuous, so that φγ (xcand (τ )) →
+
+φγ (¯ x) as τ → 0.Properties (i) and (iii) are inherently related to the FBE, whereas (ii) follows by construction of the candidate points. PANOC is similar in nature to Z ERO FPR, but it considers candidate points of the form xcand (τ ) = (1 −τ )¯ x+τ (x+d).While the algorithms are conceptually equivalent, this minor modification yields a cleaner update that saves one call to Tγ
+
+per iteration (albeit without necessarily reducing the total number of such calls compared to Z ERO FPR). We build specifically on the update rule of Z ERO FPR, as its structure is the one that enables fast asymptotic convergence in our setting. We nonetheless adopt the name ‘ PANOC -lite’, as  
+
+> PANOC
+
+is more widely recognized and, as just noted, the two methods are conceptually equivalent. Other works [11], [22] use the normal residual [16] 
+
+Rnor  
+
+> γ
+
+(z) := ∇f (prox γg (z)) + γ−1(z − prox γg (z)) , (3) and propose algorithms involving the related merit function 
+
+Hτ (x) := φ(prox γg (x)) + τ γ  
+
+> 2
+
+∥Rnor  
+
+> γ
+
+(x)∥2 with τ ∈ (0 , 1) .
+
+We emphasize that both the natural and normal residual characterize the first-order optimality conditions of (P). 
+
+Proposition 1 ([11, Lem. 2.1]) . Under Assumption I, 
+
+prox γg (zer R nor  
+
+> γ
+
+) ⊆ zer R nat  
+
+> γ
+
+= zer ∂φ = zer( ∇f + ∂g ).
+
+Since merit functions are evaluated at every candidate point, their computational cost may significantly impact the overall efficiency of the method. The evaluation of φγ and 
+
+Hτ requires the computation of Rnat  
+
+> γ
+
+or Rnor  
+
+> γ
+
+, respectively, and hence the computation of ∇f and prox γg . The following section proposes an alternative merit function that avoids these gradients ∇f , thus considerably reducing the compu-tational cost of an individual backtracking step. 
+
+B. A novel merit function and its properties 
+
+Inspired by Hτ , we propose the merit function ψγ := 
+
+φ ◦ prox γg , which notably does not involve gradients ∇f .We now present a sufficient decrease condition involving ψγ
+
+and establish (strict) continuity of ψγ , thus mirroring similar properties of φγ that have proven crucial in ensuring well-definedness of P ANOC and Z ERO FPR. First, recall the cost decrease by a single PG iteration. 
+
+Lemma 2 (Cost decrease [4, Rem. 4(iii)]) . If Assumption I holds, then for any γ > 0 and any x ∈ Rn we have 
+
+φ(Tγ (x)) − φ(x) ≤ − γ 2−γL f 
+
+> 2
+
+∥Rnat  
+
+> γ
+
+(x)∥2. (4) Applying Lemma 2 to a point ˆx = prox γg (x) immediately yields a sufficient decrease condition for ψγ , i.e., 
+
+ψγ (ˆ x − γ∇f (ˆ x)) − ψγ (x) ≤ − γ 2−γL f 
+
+> 2
+
+∥Rnat  
+
+> γ
+
+(ˆ x)∥2. (5) Second, we establish strict continuity of ψγ .
+
+Lemma 3. If Assumption I(ii) holds, then g ◦ prox γg is strictly continuous for any γ > 0, with 
+
+lip[ g ◦ prox γg ]( x) ≤ 1 
+
+> γ
+
+∥x − prox γg (x)∥.
+
+Proof. For xi ∈ Rn let ¯xi := prox γg (xi), i = 1 , 2. Then, 
+
+g ◦ prox γg (x1) − g ◦ prox γg (x2)= gγ (x1) − gγ (x2) − 12γ ∥¯x1 − x1∥2 + 12γ ∥¯x2 − x2∥2
+
+≤ ⟨∇ gγ (x2), x 1 − x2⟩ + 12γ ∥x1 − x2∥2
+
+− 12γ ∥¯x1 − x1∥2 + 12γ ∥¯x2 − x2∥2
+
+= 1 
+
+> γ
+
+⟨x2 − ¯x2, x 1 − x2⟩ + 12γ ∥x1 − x2∥2
+
+− 12γ ∥¯x1 − x1∥2 + 12γ ∥¯x2 − x2∥2
+
+= 12γ ∥¯x2 − x1∥2 − 12γ ∥¯x1 − x1∥2
+
+≤ 1+ 1 
+
+> ε
+> 2γ
+
+∥¯x2 − ¯x1∥2 + ε 
+
+> 2γ
+
+∥¯x1 − x1∥2
+
+≤ 1+ 1 
+
+> ε
+> 2γ
+
+∥x2 − x1∥2 + ε 
+
+> 2γ
+
+∥¯x1 − x1∥2,where the consecutive inequalities follow by 1 
+
+> γ
+
+-Lipschitz differentiability of gγ , Young’s inequality, and nonexpansive-ness of prox γg , respectively. With ε = ∥x1−x2∥∥x1−¯x1∥ we obtain    
+
+> g◦prox γg (x1)−g◦prox γg (x2)
+> ∥x2−x1∥
+
+≤ 12γ ∥x2 − x1∥ + 1 
+
+> γ
+
+∥¯x1 − x1∥,
+
+and letting x2, x 1 → x yields the claimed bound. 
+
+Corollary 4. If Assumption I(ii) holds and if f : Rn → R is 
+
+C1 on Rn, then ψγ := φ ◦ prox γg is strictly continuous for any γ > 0, with 
+
+lip ψγ (x) ≤ ∥∇ f (prox γg (x)) ∥ + 1 
+
+> γ
+
+∥x − prox γg (x)∥.
+
+III. A LGORITHM 
+
+A. Overview 
+
+We now introduce PANOC -lite, a variant of Z ERO FPR [21] based on the novel merit function ψγ . Recall that for a given iterate xk, Z ERO FPR considers candidate points of the form 
+
+xk+1 cand (τ ) := ¯ xk + τ d k, ¯xk = Tγ (xk),
+
+where τ > 0 is a backtracking parameter. A candidate point 
+
+xk+1 cand (τ ) is accepted by the linesearch procedure whenever a sufficient decrease condition on the FBE is satisfied. The sufficient decrease condition ensures global convergence, and the proximal-gradient step and continuity of the FBE guarantee that the condition holds for sufficiently small values of τ . P ANOC -lite follows a similar strategy, but instead verifies descent directly on the objective φ. The key idea is that φ is evaluated only at points of the form prox γg (x). As such, we implicitly work with the merit function ψγ , and the linesearch condition (7) becomes equivalent to 
+
+ψγ (xk+1 ) − ψγ (xk) ≤ − σ∥Rnat  
+
+> γ
+
+(ˆ xk)∥2. (6) By leveraging the previously derived sufficient decrease condition (5) and the continuity of ψγ (Corollary 4), §III-B establishes well-definedness and global convergence using similar arguments as for Z ERO FPR (Theorem 9). 
+
+Algorithm 1 PANOC -lite 
+
+REQUIRE : x0 ∈ Rn, γ ∈ (0 , 2/Lf ), β ∈ (0 , 1) , σ ∈ (0 , γ 2−γL f 
+
+> 2
+
+);INITIALIZE : ˆx0 = prox γg (x0); 
+
+> 1:
+
+for k = 1 , 2 . . . do  
+
+> 2:
+
+¯xk = ˆ xk − γ∇f (ˆ xk ); 
+
+> 3:
+
+Rnat  
+
+> γ
+
+(ˆ xk ) = γ−1(ˆ xk − prox γg (¯ xk )) ; 
+
+> 4:
+
+Select a direction ¯dk ∈ Rn at ¯xk and let 
+
+xk+1 = ¯ xk + τk ¯dk
+
+ˆxk+1 = prox γg (xk+1 )
+
+where τk is the largest in βi | i ∈ N such that 
+
+φ(ˆ xk+1 ) − φ(ˆ xk ) ≤ − σ∥Rnat  
+
+> γ
+
+(ˆ xk )∥2. (7) 
+
+Sufficiently close to a strong local minimum, well-chosen directions ¯dk ensure that the unit stepsize τk = 1 is accepted, in which case xk+1 = ¯ xk + ¯dk. In particular, §III-B formally proves a local superlinear convergence rate under a mild differentiability assumption on Rnor  
+
+> γ
+
+at the limit point ¯x⋆
+
+(which we will see is equivalent to a similar assumption used by Z ERO FPR), and under a classical Dennis-Mor´ e condition 
+
+lim 
+
+> k→∞
+
+∥Rnor  
+
+> γ
+
+(¯ xk) + J R nor  
+
+> γ
+
+(¯ x⋆) ¯dk∥∥ ¯dk∥ = 0 . (8) This motivates Newton-type directions of the form 
+
+¯dk = −Hk Rnor  
+
+> γ
+
+(¯ xk), (9) where Hk is an invertible operator that, ideally, captures cur-vature information of Rnor  
+
+> γ
+
+. Practical quasi-Newton schemes update a linear operator Hk recursively in such a way that an inverse secant condition holds: 
+
+¯xk+1 − ¯xk = Hk+1 
+
+ Rnor  
+
+> γ
+
+(¯ xk+1 ) − Rnor  
+
+> γ
+
+(¯ xk) .
+
+We emphasize that the combination of natural residuals (in the linesearch condition) and normal residuals (for the directions ¯dk) is a distinctive feature of PANOC -lite. 
+
+Remark 5 (Cheaper backtracking) . At every iteration, 
+
+> PANOC
+
+-lite requires one gradient ∇f to compute ¯xk, and another gradient ∇f to compute Rnor  
+
+> γ
+
+(¯ xk), which is needed for Newton-type directions (9). Hence, PANOC -lite needs exactly two gradients per iteration, regardless of the number of backtracking steps. In contrast, Z ERO FPR and PANOC 
+
+perform an additional evaluation of ∇f every time the linesearch procedure backtracks, as the FBE is re-evaluated. 
+
+Remark 6 (Larger stepsizes) . Global convergence guaran-tees for PANOC -lite hold if the stepsize γ satisfies γ ∈
+
+(0 , 2/Lf ). This notably improves upon FBE-based methods which instead require smaller stepsizes γ ∈ (0 , 1/Lf ).
+
+Remark 7 (Adaptive variant) . An unknown Lipschitz con-stant Lf can be estimated adaptively using a similar proce-dure as described in [21, Rem. 5.2]. Fix a ratio α ∈ (0 , 1) ,an initial estimate L > 0, stepsize γ ∈ (0 , 2/L), and param-eter σ ∈ (0 , γ 2−γL  
+
+> 2
+
+). At every iteration, after computing 
+
+Rnat  
+
+> γ
+
+(ˆ xk), verify the Lipschitz upper bound between the points ˆxk and yk := Tγ (ˆ xk). If violated, i.e., if 
+
+f (yk) > f (ˆ xk) − ⟨∇ f (ˆ xk), ˆxk − yk⟩ + L 
+
+> 2
+
+∥ˆxk − yk∥2,
+
+then update γ ← αγ , L ← L/α, and σ ← ασ and restart that iteration. This can only happen a finite number of times, after which L ≥ Lf . From then on γ and σ are also constant, and the sufficient decrease derived from Lemma 2 still holds. In particular, all convergence results remain valid. 
+
+B. Convergence analysis 
+
+We now establish the well-definedness of PANOC -lite and use the sufficient decrease condition (7) to show convergence. 
+
+Theorem 8 (Well-definedness) . Suppose that Assumption I holds. Then PANOC -lite is well defined: every iteration ter-minates after a finite number of backtracking steps. Proof. We know from (5) that ψγ (¯ xk) − ψγ (xk) ≤−γ 2−γL f 
+
+> 2
+
+∥Rnat  
+
+> γ
+
+(ˆ xk)∥2. Since xk+1 → ¯xk as τk → 0, and due to continuity of ψγ (Corollary 4) and the fact that 
+
+σ ∈ (0 , γ 2−γL f 
+
+> 2
+
+), (6) holds for τk small enough. Theorem 9 (Global subsequential convergence) . Under As-sumption I, a sequence ˆxk generated by PANOC -lite satisfies: 
+
+(i) (∥Rnat  
+
+> γ
+
+(ˆ xk)∥2)k∈N has finite sum; 
+
+(ii) any limit point ˆx⋆ of (ˆ xk)k∈N satisfies ˆx⋆ ∈ zer R nat  
+
+> γ
+
+;
+
+(iii) if φ is level bounded, then (ˆ xk)k∈N is bounded. Proof. A standard telescoping argument and inf φ > −∞ 
+
+establish that P
+
+> k∈N
+
+∥Rnat  
+
+> γ
+
+(ˆ xk)∥2 < ∞, and in particular 
+
+Rnat  
+
+> γ
+
+(ˆ xk) → 0. Therefore, any accumulation point ˆx⋆ of 
+
+(ˆ xk)k∈N satisfies ˆx⋆ = Tγ (ˆ x⋆) (cfr. Proposition 1), and is thus stationary (see [20] for a similar argument). Iterative application of (7) reveals that φ(ˆ xk) ≤ φ(ˆ x0) for all k ∈ N;hence (ˆ xk)k∈N is bounded whenever φ is level bounded. Moreover, if the directions ( ¯dk)k∈N are superlinear with respect to (¯ xk)k∈N, then unit stepsize is eventually accepted, achieving a local superlinear rate of convergence. 
+
+Theorem 10 (Superlinear convergence) . Let Assumption I hold. Consider the iterates generated by PANOC -lite and suppose that ˆxk converges to a strong local minimizer 
+
+x⋆ of φ. Suppose further that the directions ( ¯dk)k∈N are superlinear with respect to (¯ xk)k∈N, in the sense that 
+
+lim 
+
+> k→∞
+
+∥¯xk + ¯dk − ¯x⋆∥∥¯xk − ¯x⋆∥ = 0 (10) 
+
+with ¯x⋆ := x⋆ − γ∇f (x⋆). Then τk = 1 is eventually always accepted and (ˆ xk)k∈N converges superlinearly. Proof. Up to discarding early iterates, there exists μ > 0
+
+such that φ(ˆ xk) − φ⋆ ≥ μ 
+
+> 2
+
+∥ˆxk − x⋆∥ holds for every k,where φ⋆ := φ(x⋆). It follows from Lemma A.1 that 
+
+ϵk := ψγ (¯ xk + ¯dk) − φ⋆
+
+ψγ (xk) − φ⋆
+
+≤ 1 + γL f
+
+γμ 
+
+∥¯xk + ¯dk − ¯x⋆∥2
+
+∥ˆxk − x⋆∥2
+
+≤ (1 + γL f )2
+
+γμ 
+
+∥¯xk + ¯dk − ¯x⋆∥2
+
+∥¯xk − ¯x⋆∥2 ,
+
+where the last inequality is due to the (1 + γL f )-Lipschitz continuity of id − γ∇f . As such, it follows that ϵk → 0
+
+as k → ∞, and we can thus assume without loss of generality that ϵk ≤ 1 holds for all k. Similarly, since 
+
+yk := prox γg (ˆ xk − γ∇f (ˆ xk)) also converges to x⋆, we may assume that for all k it holds that φ(yk) ≥ φ⋆. Then, 
+
+ψγ (¯ xk + ¯dk) − ψγ (xk) = − (1 − ϵk)ψγ (xk) − φ⋆
+
+
+
+≤ − (1 − ϵk)ψγ (xk) − φ(yk)
+
+≤ − (1 − ϵk)γ 2−γL f 
+
+> 2
+
+∥Rnat  
+
+> γ
+
+(ˆ xk)∥2
+
+is eventually smaller than −σ∥Rnat  
+
+> γ
+
+(ˆ xk)∥2, resulting in ac-ceptance of τk = 1 . It follows that the ¯xk-update eventually boils down to 
+
+(
+
+ˆxk+1 = prox γg (¯ xk + ¯dk)¯xk+1 = ˆ xk+1 − γ∇f (ˆ xk+1 ),
+
+hence, by nonexpansiveness of prox γg and (1 + γL f )-Lipschitz continuity of id − γ∇f ,
+
+lim 
+
+> k→∞
+
+∥ˆxk+1 − x⋆∥∥ˆxk − x⋆∥ ≤ lim 
+
+> k→∞
+
+∥¯xk + ¯dk − ¯x⋆∥ 
+
+> 11+ γL f
+
+∥¯xk − ¯x⋆∥ = 0 .
+
+If Rnor  
+
+> γ
+
+is strictly differentiable at the limit ¯x⋆, then Newton-type directions of the form (9) are superlinear di-rections (10) under a Dennis-Mor´ e condition (8). Before proving this, we first describe the local differentiability of the normal residual under the same assumption that yields differentiability of the natural residual [21, Assumpt. II]. Regarding the notion of epi-differentiability , we refer the interested reader to [17, §13]. 
+
+Assumption II. With respect to a given point x⋆ ∈ fix Tγ
+
+(i) ∇2f exists and is (strictly) continuous around x⋆;
+
+(ii) g is (strictly) twice epi-differentiable at x⋆ for −∇ f (x⋆),with generalized quadratic second order epi-derivative. The assumptions are said to be “strictly” satisfied whenever the stronger conditions in parenthesis hold. 
+
+Twice epi-differentiability is a necessary and sufficient condition for differentiability of prox γg at x⋆ − γ∇f (x⋆)
+
+[14]. This is a mild assumption, as exemplified by the fact that it holds for the broad class of C2-partly smooth functions [10] under a mild strict complementarity condition 
+
+−∇ f (x⋆) ∈ relint ∂g (x⋆) [6, Thm. 28], see also [2]. 
+
+Theorem 11 (Differentiability of the normal residual) . Let Assumption I hold and let γ > 0. Suppose further that Assumption II holds (strictly) with respect to a point x⋆ ∈
+
+fix Tγ . Then, the normal residual Rnor  
+
+> γ
+
+is (strictly) differen-tiable at ¯x⋆ := x⋆ − γ∇f (x⋆) with Jacobian 
+
+J R nor  
+
+> γ
+
+(¯ x⋆) = γ−1 [id − Qγ (x⋆)Pγ (x⋆)] 
+
+where Qγ (x⋆) := id − γ∇2f (x⋆), Pγ (x⋆) := J prox γg (¯ x⋆).Proof. Under Assumption II, prox γg is (strictly) differen-tiable at x⋆ − γ∇f (x⋆) =: ¯ x⋆ [14], from which we obtain 
+
+J R nor  
+
+> γ
+
+(¯ x⋆) = ∇2f (prox γg (¯ x⋆))J prox γg (¯ x⋆)+ γ−1(id − J prox γg (¯ x⋆)) .
+
+Using the fact that Pγ (x⋆) = J prox γg (¯ x⋆) and grouping terms involving Pγ (x⋆) yields 
+
+J R nor  
+
+> γ
+
+(¯ x⋆) = γ−1  id − Qγ (prox γg (¯ x⋆)) Pγ (x⋆) .
+
+The claim now follows by observing that prox γg (¯ x⋆) = prox γg (x⋆ − γ∇f (x⋆)) = x⋆.Observe from [21, Thm. 4.10] that the Jacobians of Rnat 
+
+> γ
+
+and Rnor  
+
+> γ
+
+are related by the relation 
+
+J R nat  
+
+> γ
+
+(x⋆) = J R nor  
+
+> γ
+
+(¯ x⋆)⊤. (11) Hence, results involving the natural residual are easily trans-ferred to the normal residual. 
+
+Corollary 12 (Conditions for strong local minimality) . Let Assumption I hold and let γ ∈ (0 , 1/Lf ). Suppose further that Assumption II is satisfied with respect to a point x⋆ ∈ fix Tγ .Then the following are equivalent: 
+
+(i) x⋆ is a strong local minimizer for φ;
+
+(ii) x⋆ is a local minimizer for φ and J R nat  
+
+> γ
+
+(x⋆) is non-singular; (iii) x⋆ is a local minimizer for φ and J R nor  
+
+> γ
+
+(¯ x⋆) with ¯x⋆ := 
+
+x⋆ − γ∇f (x⋆) is nonsingular. Proof. The equivalence between the first two items is shown in [21, Thm. 4.11]; in turn, that between the last two items follows from (11). When J R nor  
+
+> γ
+
+(¯ x⋆) is nonsingular and the Dennis-Mor´ econdition (8) holds, the directions ( ¯dk)k∈N are superlinear, which by Theorem 10 implies superlinear convergence of 
+
+(ˆ xk)k∈N.
+
+Theorem 13 (Superlinear convergence under Dennis-Mor´ econdition) . Let Assumption I hold, and let γ ∈ (0 , 1/Lf ).Consider the iterates generated by PANOC -lite and suppose that Assumption II is strictly satisfied at a strong local mini-mizer x⋆ of φ. Moreover, suppose that  ˆxk 
+
+> k∈N
+
+converges to 
+
+x⋆ and that the directions   ¯dk 
+
+> k∈N
+
+satisfy the Dennis-Mor´ econdition (8) where ¯x⋆ := x⋆ − γ∇f (x⋆). Then, (10) holds and in particular all the claims from Theorem 10 hold. Proof. By continuity of ∇f , convergence of  ˆxk 
+
+> k∈N
+
+to x⋆
+
+implies convergence of  ¯xk 
+
+> k∈N
+
+to ¯x⋆. From x⋆ ∈ fix Tγ ,we derive Rnor  
+
+> γ
+
+(¯ xk) → 0 and by (8) that ¯dk → 0. Note that 
+
+Rnor  
+
+> γ
+
+(¯ xk) + J R nor  
+
+> γ
+
+(¯ x⋆) ¯dk
+
+∥ ¯dk∥ = Rnor  
+
+> γ
+
+(¯ xk + ¯dk)
+
+∥ ¯dk∥
+
++ Rnor  
+
+> γ
+
+(¯ xk) + J R nor  
+
+> γ
+
+(¯ x⋆) ¯dk − Rnor  
+
+> γ
+
+(¯ xk + ¯dk)
+
+∥ ¯dk∥
+
+Then, since ¯dk → 0 and from the Dennis-Mor´ e condition (8) and strict differentiability of Rnor  
+
+> γ
+
+at ¯x⋆ it follows that 
+
+lim 
+
+> k→∞
+
+∥Rnor  
+
+> γ
+
+(¯ xk + ¯dk)∥∥ ¯dk∥ = 0 .
+
+Nonsingularity of J R nor  
+
+> γ
+
+(¯ x⋆) (from Corollary 12) ensures that for all ¯x sufficiently close to ¯x⋆ there exists a constant 
+
+α > 0 such that ∥Rnor  
+
+> γ
+
+(¯ x)∥ ≥ α∥¯x − ¯x⋆∥. Since dk →
+
+0 by the Dennis-Mor´ e condition, also ¯xk + ¯dk → ¯x⋆, and eventually this lower bound must hold. Therefore, 
+
+0 ← ∥Rnor  
+
+> γ
+
+(¯ xk + ¯dk)∥∥ ¯dk∥ ≥ α ∥¯xk + ¯dk − ¯x⋆∥∥ ¯dk∥≥ α ∥¯xk + ¯dk − ¯x⋆∥∥¯xk + ¯dk − ¯x⋆∥ + ∥¯xk − ¯x⋆∥ = α   
+
+> ∥¯xk+ ¯dk−¯x⋆∥∥¯xk−¯x⋆∥
+
+1 + ∥¯xk + ¯dk −¯x⋆∥∥¯xk −¯x⋆∥
+
+and hence (10) follows. We conclude with a remark on structured directions [12]. 
+
+Remark 14 (Structured directions) . Update directions lever-aging additional structure of g were proposed in [12, §III]. If g is the indicator of a box, then define index sets of 
+
+active (K) and inactive ( J ) constraints at ˆx−γ∇f (ˆ x). Since the Jacobian (if it exist) of prox γg at this forward point is a diagonal matrix with ones and zeros, Newton directions 
+
+d = −J R nat  
+
+> γ
+
+(ˆ x) R nat  
+
+> γ
+
+(ˆ x) satisfy 1 
+
+> γ
+
+dK = − Rnat  
+
+> γ
+
+(ˆ x) 
+
+> K
+
+and 
+
+∇2 
+
+> JJ
+
+f (ˆ x)dJ = −∇ J f (ˆ x) − ∇ 2
+
+> JK
+
+f (ˆ x)dK.
+
+Thus, dJ is ‘close’ to a Newton direction of f restricted to inactive constraints. A similar derivation holds for Newton directions d = −J R nor  
+
+> γ
+
+(x) R nor  
+
+> γ
+
+(x). By a slight abuse of notation, let K (J ) now denote the index sets of active (inactive) constraints at x and define ˆx = prox γg (x). Then,  
+
+> 1
+> γ
+
+dK = − Rnor  
+
+> γ
+
+(x) 
+
+> K
+
+− ∇ 2 
+
+> KJ
+
+f (ˆ x)dJ
+
+∇2 
+
+> JJ
+
+f (ˆ x)dJ = −∇ J f (ˆ x).
+
+In this case dJ exactly reduces to a Newton direction of f
+
+restricted to the inactive constraints. A similar structure is also present if g = ∥·∥ 1.IV. N UMERICAL RESULTS 
+
+We demonstrate the effectiveness of PANOC -lite against the two state-of-the-art solvers it builds upon: Z ERO FPR [21] and PANOC [19]. Experiments include two nonlinear model predictive control (MPC) problems with challenging state constraints, as well as the LIBSVM and C UTE st benchmarks. 2
+
+A. Model predictive control for collision avoidance 
+
+In this experiment we simulate MPC controllers with prediction horizon N = 32 for two problems with colli-sion avoidance constraints. The first involves the simplified quadcopter model and cylindrical object from [3, §IV]. The second models a kinematic bicycle model and an S-shaped corridor, as described in [9, §4.2]. We use the same prob-lem parameters as mentioned in these references. Optimal trajectories for both systems are visualized in Fig. 1. −0.2 0.0 0.2   
+
+> px
+> −0.3
+> −0.2
+> −0.10.00.10.20.3
+> py024
+> px
+> −202468
+> py
+> Fig. 1. Optimal trajectories of the quadcopter (left) and bicycle (right).
+
+MPC controllers solve optimal control problems (OCPs) 
+
+minimize  
+
+> z,u
+> N−1
+
+X
+
+> k=0
+
+ℓk(zk, u k) + ℓN (zN )subject to zk+1 = Γ( zk, u k), ∀k ∈ N[0 ,N −1] 
+
+u ≤ uk ≤ u, ∀k ∈ N[0 ,N −1] 
+
+c ≤ c(zk) ≤ c, ∀k ∈ N[0 ,N ].
+
+(12) Here the function Γ : Rnz × Rnu → Rnz defines the discrete-time dynamics of a system with states z ∈ Rnz and inputs 
+
+u ∈ Rnu . The loss is a sum of stage costs ℓk : Rnz ×Rnu → R
+
+and a terminal cost ℓN : Rnz → R. The control inputs uk
+
+are bounded by u, u ∈ Rnu , and general state constraints are 
+
+> 2The source code to reproduce the results in this section can be found at
+> github.com/alexanderbodard/panoc-lite-experiments .
+
+enforced through the nonlinear mapping c : Rnz → Rnc in combination with the bounds c, c ∈ Rnc . Note that this OCP minimizes over sequences of states z := ( z1, . . . , z N ) ∈
+
+Rnz·N and inputs u := ( u0, . . . u N −1) ∈ Rnu·N . Henceforth, we use instead a single-shooting formulation of the OCP that eliminates the dynamics constraint from (12). Denoting 
+
+n = nu · N and m = nc · N , this yields an NLP of the form 
+
+minimize  
+
+> u∈Rn
+
+ψ(u)subject to u ∈ C, h(u) ∈ D, (13) where both ψ : Rn → R and h : Rn → Rm are potentially nonconvex functions, the sets C and D are closed and simple to project onto. The solver library ALPAQA [12] addresses such problems with an ALM: it introduces penalties Σ ∈
+
+Rm×m and multipliers y ∈ Rm, and reformulates (13) into a sequence of (simpler) problems (P), where [12, §II] 
+
+f (u) = ψ(u)+ 12 dist 2Σ(h(u)+Σ −1y, D ), g(u) = δC (u).
+
+For both problems we run ALPAQA with default config-urations, and compare three different ALM inner solvers: 
+
+PANOC -lite, Z ERO FPR and PANOC . Convergence is declared when ∥u − ΠC (u − ∇ f (u)) ∥∞ ≤ 10 −4 and ∥c(x) −
+
+ΠD (c(x) + Σ −1y)∥∞ ≤ 10 −4. All inner solvers employ L-BFGS directions with a buffer size of 50 , and an estimated Lipschitz constant L (cfr. Remark 7), with PANOC using the improved linesearch from [12], [7]. P ANOC -lite uses 
+
+γ = 1.95 /L, the others γ = 0.95 /L (cfr. Remark 6). Figures 2 and 3 visualize the total number of function and gradient evaluations of f per MPC time step for the quadcopter and bicycle problem, respectively, for both cold (left) and warm (right) starts. Remark how PANOC -lite often-times significantly outperforms the other methods, especially during the most difficult initial MPC time steps.             
+
+> 510 15 20 25 30
+> 10 2
+> 10 3
+> 10 4
+> MPC time step Function + gradient evaluations Cold start
+> 510 15 20 25 30
+> MPC time step Warm start
+> PANOC ZERO FPR PANOC -lite
+
+Fig. 2. Performance (function + gradient calls) per MPC time step for the quadcopter with horizon N = 32 . Cold (left) and warm (right) starts. 
+
+B. Sparse logistic regression 
+
+Next, consider sparse logistic regression problems (P) with 
+
+f (x) = 
+
+> m
+
+X
+
+> i=1
+
+ln 
+
+
+
+1 + exp −bi⟨ai,x ⟩
+
+, g(x) = λ∥x∥1.
+
+Here λ > 0 is a sparsity inducing parameter, the vector 
+
+ai ∈ Rn contains the features of the i-th data point,             
+
+> 510 15 20 25 30
+> 10 2
+> 10 3
+> 10 4
+> MPC time step Function + gradient evaluations Cold start
+> 510 15 20 25 30
+> MPC time step Warm start
+> PANOC ZERO FPR PANOC -lite
+
+Fig. 3. Performance (function + gradient calls) per MPC time step for the bicycle with horizon N = 32 . Cold (left) and warm (right) starts. 
+
+and bi ∈ {− 1, 1} is the corresponding class label. Let us denote by A ∈ Rm×n the matrix with a⊤ 
+
+> i
+
+as i-th row, and by b ∈ Rm the vector with i-th component 
+
+bi. Note that the optimal solution for λ ≥ λmax :=  
+
+> 12
+
+∥A⊤b∥∞ is x⋆ = 0. We compare PANOC -lite against             
+
+> 0.01 0.02 0.05 0.1 0.2
+> 100
+> 200
+> 300
+> 400
+> 500
+> Ratio λ/λ max
+> Matrix-vector products
+> 11.25 1.51.75 2
+> 0
+> 0.25
+> 0.5
+> 0.75
+> 1
+> Performance ratio τ
+> ρ(τ )
+> PANOC ZERO FPR PANOC -lite
+
+Fig. 4. Performance comparison on a subset of the L IBSVM problems. Left: Box plot of the number of matrix-vector products ( A and A⊤) for different choices of λ. Boxes extend from the first quartile ( Q1) to the third quartile ( Q3), and the median value is indicated by the middle line. The whiskers extend to 1.5 times the interquartile range, i.e., 1.5( Q3 − Q1).Right: Performance profile of the number of matrix-vector products ( A and 
+
+A⊤) needed for λ = 0 .01 · λmax .
+
+ZERO FPR and PANOC on a subset of L IBSVM [5] (problems 
+
+a1a,...,a9a and w1a,...,w8a to be precise), and this for λ/λmax ∈ { 0.01 , 0.02 , 0.05 , 0.1, 0.2}. All algorithms use L-BFGS directions with buffer size 5. The Lipschitz constant is estimated as before. Performance is measured in terms of the total number of matrix-vector products, and all methods are terminated whenever ∥Rnat  
+
+> γ
+
+∥∞ ≤ 10 −6.Figure 4 indicates that the sparse logistic regression prob-lem becomes more difficult as λ becomes smaller. Inter-estingly, it also shows that PANOC -lite performs relatively similar to Z ERO FPR if λ is large, but outperforms Z ERO FPR when λ is large, i.e., in the more difficult setting. It also visualizes a performance profile 3 [8] for the difficult case 
+
+λ = 0 .01 · λmax . In around 95% of the problems, PANOC -lite performs best, and it always remains within a factor 1.25 of the best-performing solver. 
+
+> 3
+
+The higher and more leftward, the better the solver. τ = 1 : fraction of problems for which solver is the best; τ → ∞ : fraction of problems solved. C. CUTEst benchmark collection             
+
+> 246810
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> Performance ratio τ
+> Fraction  ρ(τ )
+> 246810
+> Performance ratio τ
+> PANOC ZERO FPR PANOC -lite
+
+Fig. 5. Comparison of different ALM subproblem solvers within ALPAQA ,applied to the CUTE ST benchmarks. Performance profiles of the total number of iterations (left), and function + gradient evaluations (right) needed to solve the NLP. 
+
+Finally, we consider problems from the CUTE ST bench-marks. These are NLPs of the form (13), so we again use 
+
+ALPAQA as described in §IV-A. Primal and dual tolerances are set to 10 −3, and all methods use L-BFGS directions with buffer size 25 .Figure 5 shows performance profiles in terms of the total number of iterations performed by the subproblem solver, and the total number of function and gradient evaluations, aggregated over the different ALM subproblems. We observe that PANOC -lite outperforms Z ERO FPR and PANOC in terms of both performance metrics. V. C ONCLUSION 
+
+This work proposed a novel merit function for composite minimization problems, which, unlike existing alternatives, can be computed without gradient evaluations of the smooth objective term. We then leveraged this merit function to design a linesearch method that improves upon state-of-the-art alternatives in the following ways: (i) additional backtracking steps require no extra gradient evaluations, and (ii) the method supports larger stepsizes, compatible to those of the standard proximal-gradient method. After establishing global subsequential and local superlinear convergence of the method, we demonstrated the proposed method’s effective-ness on nonlinear model predictive control problems with collision avoidance constraints, as well as on the LIBSVM and C UTE st benchmarks. REFERENCES [1] A. Beck and M. Teboulle, “A fast iterative shrinkage-thresholding algorithm for linear inverse problems,” SIAM J. Imaging Sci. , vol. 2, no. 1, pp. 183–202, 2009. [2] A. Bodard, M. Ahookhosh, and P. Patrinos, “Second-order methods for provably escaping strict saddle points in composite nonconvex and nonsmooth optimization,” arXiv:2506.22332 , 2025. [3] A. Bodard, P. Pas, and P. Patrinos, “PANTR: A proximal algorithm with trust-region updates for nonconvex constrained optimization,” 
+
+IEEE Control Syst. Lett. , vol. 7, pp. 2389–2394, 2023. [4] J. Bolte, S. Sabach, and M. Teboulle, “Proximal alternating linearized minimization for nonconvex and nonsmooth problems,” Math. Prog. ,vol. 146, no. 1, pp. 459–494, 2014. [5] C. Chang and C. Lin, “LIBSVM: A library for support vector machines,” ACM Trans. Intell. Syst. Technol. (TIST)) , vol. 2, no. 3, pp. 1–27, 2011. [6] A. Daniilidis, W. Hare, and J. Malick, “Geometrical interpretation of the predictor-corrector type algorithms in structured optimization problems,” Optim. , vol. 55, no. 5-6, pp. 481–503, 2006. [7] A. De Marchi and A. Themelis, “Proximal gradient algorithms under local Lipschitz gradient continuity: A convergence and robustness analysis of PANOC,” J. Optim. Theory Appl. , vol. 194, no. 3, pp. 771–794, 2022. [8] E. Dolan and J. Mor´ e, “Benchmarking optimization software with performance profiles,” Math. Prog. , vol. 91, no. 2, pp. 201–213, 2002. [9] B. Hermans, G. Pipeleers, and P. Patrinos, “A penalty method for nonlinear programs with set exclusion constraints,” Automatica , vol. 127, p. 109500, 2021. [10] A. Lewis, “Active sets, nonsmoothness, and sensitivity,” SIAM J. Optim. , vol. 13, no. 3, pp. 702–725, 2002. [11] W. Ouyang and A. Milzarek, “A trust region-type normal map-based semismooth Newton method for nonsmooth nonconvex composite optimization,” Math. Prog. , vol. 212, no. 1, pp. 389–435, 2025. [12] P. Pas, M. Schuurmans, and P. Patrinos, “Alpaqa: A matrix-free solver for nonlinear MPC and large-scale nonconvex optimization,” in 2022 Eur. Control Conf. (ECC)) , 2022, pp. 417–422. [13] P. Patrinos and A. Bemporad, “Proximal Newton methods for convex composite optimization,” in 52nd IEEE Conf. Decis. Control , 2013, pp. 2358–2363. [14] R. Poliquin and R. Rockafellar, “Generalized Hessian properties of regularized nonsmooth functions,” SIAM J. Optim. , vol. 6, no. 4, pp. 1121–1137, 1996. [15] J. Rawlings, D. Mayne, and M. Diehl, Model predictive control: theory, computation, and design . Nob Hill Publishing, 2017. [16] S. Robinson, “Normal maps induced by linear transformations,” Math. Oper. Res. , vol. 17, no. 3, pp. 691–714, 1992. [17] R. Rockafellar and R. Wets, Variational Analysis . Springer, 1998. [18] P. Sopasakis, E. Fresk, and P. Patrinos, “OpEn: Code generation for embedded nonconvex optimization,” IFAC-PapersOnLine , vol. 53, no. 2, pp. 6548–6554, 2020. [19] L. Stella, A. Themelis, and P. Patrinos, “Forward–backward quasi-Newton methods for nonsmooth optimization problems,” Comput. Optim. Appl. , vol. 67, no. 3, pp. 443–487, 2017. [20] L. Stella, A. Themelis, P. Sopasakis, and P. Patrinos, “A simple and efficient algorithm for nonlinear model predictive control,” in 2017 IEEE 56th Annual Conf. Decis. Control (CDC)) , 2017, pp. 1939–1944. [21] A. Themelis, L. Stella, and P. Patrinos, “Forward-backward envelope for the sum of two nonconvex functions: Further properties and nonmonotone linesearch algorithms,” SIAM J. Optim. , vol. 28, no. 3, pp. 2274–2303, 2018. [22] H. Zeng, W. Ouyang, and A. Milzarek, “A linesearch-type normal map-based semismooth Newton method for nonsmooth nonconvex composite optimization,” Comput. Optim. Appl. , pp. 1–38, 2026. 
+
+APPENDIX 
+
+Lemma A.1. Suppose that Assumption I holds and let x⋆
+
+be a fixed point of prox γg (id − γ∇f ) for some γ > 0. Then, for any x ∈ Rn it holds that 
+
+ψγ (x) ≤ φ(x⋆)+ 1+ γL f 
+
+> 2γ
+
+∥x− ¯x⋆∥2 − 12γ ∥x− ˆx+γ∇f (x⋆)∥2,
+
+where ψγ := φ ◦ prox γg and ¯x⋆ := x⋆ − γ∇f (x⋆).Proof. From x⋆ = prox γg (x⋆ − γ∇f (x⋆)) , it follows that 
+
+∇gγ (¯ x⋆) = 1
+
+> γ
+
+x⋆ − γ∇f (x⋆) − prox γg (x⋆ − γ∇f (x⋆)) 
+
+= −∇ f (x⋆).Then, by Lf - and γ−1-smoothness of f and gγ , respectively, 
+
+ψγ (x) = f (ˆ x) + gγ (x) − 12γ ∥x − ˆx∥2
+
+≤ f (x⋆) + ⟨∇ f (x⋆), ˆx − x⋆⟩ + Lf 
+
+> 2
+
+∥ˆx − x⋆∥2
+
++ gγ (x⋆ − γ∇f (x⋆)) − ⟨∇ f (x⋆), x − x⋆ + γ∇f (x⋆)⟩
+
++ 12γ ∥x⋆ − γ∇f (x⋆) − x∥2 − 12γ ∥x − ˆx∥2
+
+= φ(x⋆) − γ 
+
+> 2
+
+∥∇ f (x⋆)∥2 + ⟨∇ f (x⋆), ˆx − x⟩
+
++ Lf 
+
+> 2
+
+∥ˆx − x⋆∥2 − 12γ ∥x − ˆx∥2 + 12γ ∥¯x⋆ − x∥2,
+
+where the last step used gγ (x⋆ − γ∇f (x⋆)) = g(x⋆) +  
+
+> γ
+> 2
+
+∥∇ f (x⋆)∥2. The claim follows by completing the squares and from nonexpansiveness of prox γg (recall that x⋆ =prox γg (¯ x⋆)).
