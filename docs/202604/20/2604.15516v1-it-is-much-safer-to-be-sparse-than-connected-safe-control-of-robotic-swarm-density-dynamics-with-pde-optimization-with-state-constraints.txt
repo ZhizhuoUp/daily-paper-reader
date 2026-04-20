@@ -1,0 +1,1271 @@
+Title: ''It Is Much Safer to Be Sparse than Connected'': Safe Control of Robotic Swarm Density Dynamics with PDE-Optimization with State Constraints
+
+URL Source: https://arxiv.org/pdf/2604.15516v1
+
+Published Time: Mon, 20 Apr 2026 00:16:36 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+This manuscript is the peer-reviewed accepted version of an arti-cle accepted for publication in Advanced Intelligent Systems. The final published version will be available via Wiley Online Library at DOI: 10.1002/aisy.202501223. This article may be used for non-commercial purposes in accor-dance with Wiley Terms and Conditions for Use of Self-Archived Versions. This article may not be enhanced, enriched or other-wise transformed into a derivative work, without express permis-sion from Wiley or by statutory rights under applicable legislation. Copyright notices must not be removed, obscured or modified. The article must be linked to Wileys version of record on Wiley Online Library and any embedding, framing or otherwise mak-ing available the article or pages thereof by third parties from platforms, services and websites other than Wiley Online Library must be prohibited. 
+
+> arXiv:2604.15516v1 [eess.SY] 16 Apr 2026
+
+AIS Journal 
+
+ORIGINAL ARTICLE OPEN ACCESS 
+
+# “It Is Much Safer to Be Sparse than Connected”: Safe Control of Robotic Swarm Density Dynamics with PDE-Optimization with State Constraints 
+
+Longchen Niu  | Gennaro Notomista 
+
+Ecological and Resilient Autonomous roBots Lab (ERABLab), Department of Electrical and Computer Engineering, University of Waterloo, Ontario, Canada |
+
+Correspondence: Longchen Niu (l3niu@uwaterloo.ca) 
+
+Received: Revised: Accepted: Academic Editor: XXX | Guest Editor: XXX 
+
+Funding: This work has been partially supported by the NSERC Discovery Grant RGPIN-2023-03703. 
+
+Keywords: PDE Optimization-based Control | Swarm Density Control | Safety-critical Applications | Voronoi-based Methods 
+
+ABSTRACT 
+
+This paper introduces a safety-critical optimization-based control strategy that leverages control Lyapunov and control barrier functions to guide the spatial density of robotic swarms governed by the FokkerPlanck equation to a predefined target distribution. In contrast to traditional open-loop state-constrained optimal control strategies, the proposed approach operates in closed-loop, and a Voronoi-based variant further enables distributed deployments. Theoretical guarantees of safety are derived, and numerical simulations demonstrate the performance of the proposed controllers. Finally, a multi-robot experiment showcases the real-world applicability of the proposed controllers under localization and motion noises, illustrating how it is much easier for a sparse swarm to satisfy safety specifications than it is for a densely packed one. 
+
+1 Introduction 
+
+Density control in swarm robotics is essential for numerous applications, including environmental monitoring, wildfire sup-pression, search and rescue, agriculture, and medical diagnostics [1, 2, 3, 4, 5]. By guiding the spatial distribution of a robotic swarm to align with a target Probability Density Function (PDF), these systems can autonomously perform critical tasks. Examples include mapping environmental parameters such as humidity or sunlight, deploying fire suppression agents in inaccessible locations, locating survivors in complex post-disaster terrains, optimizing crop management by identifying areas with low mois-ture or insufficient sunlight, and targeting medical interventions by concentrating on infected regions within the body [6]. In many of these applications, it is paramount to be able to enforce invariance constraints, consisting of keeping the state of the sys-tem confined within a subset of the state space. This constraint is crucial, for instance, to protect both robotic assets and the surrounding environment, enhancing safety and operational ro-bustness in real-world deployments. Approaches to ensure safety constraints in the context of multi-robot systems modeled by Or-dinary Differential Equations (ODEs) are proposed, for instance, in [7, 8, 9]. Optimal control approaches have traditionally been employed to ensure the optimality of the system’s cost function over a, possi-bly infinite, time horizon. Recently developed techniques allow us to encompass state invariance constraints within optimal con-trol frameworks (e.g. [10, 11, 12]). For ODEs, optimization-based control (OBC) frameworks are becoming increasingly popular thanks to the possibility of solving optimization problems in real-time in the tight control loop. Within this category, control barrier functions (CBFs) have emerged as a powerful technique for main-taining invariance [8]. However, the extension of these safety or invariance methods to systems modeled by partial differential equations (PDEs) remains comparatively underexplored. In this paper, we propose a novel density control strategy for robotic swarms that integrates CBFs with PDE-based formula-tions to enforce safety constraints. Our approach models the spatial density of teams of robots as PDFs to leverage the Fokker-Planck equation. This allows us to capture uncertainties from sensor and motion noise, thus providing robustness and scala-bility suitable for practical deployment as seen in [13]. Building on this foundation, we develop an OBC that enforces swarm safety guarantees and introduce a computationally efficient vari-ant based on Voronoi partitions. This speed-up not only reduces   
+
+> This is an open access article under the terms of the Creative Commons Attribution-NonCommercial License, which permits use, distribution and reproduction in any medium, provided the original work is properly cited and is not used for commercial purposes. ľ 2025 The Author(s) AIChE Journal published by Wiley Periodicals LLC on behalf of American Institute of Chemical Engineers.
+
+the typical scaling issue associated with centralized control, but also challenges the common stereotypes that a swarm is more efficient with more agents working in a confined space. We fur-ther derive theoretical guarantees of state invariance for swarm safety and show through simulations that our OBC maintains safety in the presence of localization and motion noise, when the state-of-the-art optimal control (OC) fails. Finally, we validated the accelerated OBC in a six-robot experiment, confirming its practical applicability. 
+
+2 Related Work 
+
+Traditional OC methods have recently been explored for swarm density control. For instance, the authors of [14] employed an optimal control formulation based on a more general advection-diffusion-reaction PDE to achieve the desired swarm density distributions. However, this approach does not include state in-variance, allowing nonzero densities in certain task regions dur-ing transient states, potentially compromising robot safety. In contrast, the novel formulation we propose in this paper explic-itly maintains spatial state invariance throughout the control horizon, thereby ensuring consistent swarm safety conditions. OC with set invariance has also been examined in recent studies. In [15], for instance, invariance is enforced by explicitly exclud-ing designated regions from the computational domain, solving instead for optimal control fields that stabilize swarm density out-side these areas. Although computationally efficient and straight-forward to implement, this exclusion-based approach is limited to static, pre-defined environments where the invariance constraint enforces zero density in a specified area at all times. Conversely, the OC method we examine is proposed in [10] and directly im-poses state constraints over the entire domain. This allows the incorporation of time-varying constraints, such as dynamic haz-ard regions with moving obstacles or fluctuating wind conditions for drones. Additionally, it naturally accommodates time-varying target densities, facilitating a wider range of applications. As regards to OBC, control Lyapunov functions (CLFs) have been applied to PDE-governed multi-agent systems. For example, [16] utilized CLFs to achieve formation control in higher-order PDE-based systems. However, this approach relies on precise position measurements, making it vulnerable to measurement in-accuracies. To address this limitation, our formulation explicitly includes both measurement and motion noise within the Fokker-Planck equation, enhancing robustness and resilience to imper-fect position measurements and motion actuation in practical applications. Within the OBC framework, CBFs have been extensively studied to ensure robot safety in ODE-governed systems, as demonstrated in several examples mentioned in [8]. Recent extensions of CBFs to PDE-governed systems employed Finite Element Methods (FEM) for discretization, rigorously addressing discretization er-rors to achieve high precision in the critical application of flexible structure control in fusion reactors [17]. In contrast, our method uses the Finite Difference (FD) discretization of the Fokker-Planck equation for swarm density control. Although FD typi-cally exhibits larger discretization errors compared to FEM, these errors remain acceptable given the smooth density fields on a uni-form grid in our application, instead of irregular geometries in [17]. However, for applications involving robots with discontinu-ous PDFs, FEM or Finite Volume Methods might be necessary for numerical stability. Consequently, the optimization-based feed-back control we propose in this letter exhibits significantly lower computational complexity with the FD method, allowing even for an in-the-loop calculation of the control inputs. Our previous work, [13], has shown through mathematical proofs and experiments that incorporating measurement and motion noise through PDF and Fokker-Planck equation enhances robust-ness in practical applications. Building on this foundation, the work in [18] introduced a decentralized CLF-CBF OBC frame-work to enforce local safety under noise, provided formal math-ematical bounds to quantify the difference between local and global safety, and validated the approach through quadcopter ex-periments. In parallel, this current paper focuses on centralized approaches to provide guarantees of global safety under noise. In addition, we compare our method with the state-of-the-art OC and introduce a Voronoi-based variant that improves scalability and performance, with validation through both simulations and experiments. 
+
+2.1 Contributions 
+
+The main contributions of this work are as follows: 
+
+∙ We extend PDE-based swarm density control with noise by incorporating CLF-CBF constraints, and provide rigorous safety guarantees even in the presence of localization and motion uncertainties. 
+
+∙ We develop a Voronoi-based controller variant that signifi-cantly reduces the computational scaling challenge of the centralized controller, enabling scalable and real-time de-ployments. 
+
+∙ We show through both theoretical proof and simulations that, contrary to the common stereotypes of swarms being more effective in large numbers and confined spaces, safety specifications are most effectively satisfied in sparse teams. 
+
+∙ We demonstrate through simulations and a six-robot ex-periment that our controller follows a target PDF while maintaining swarm safety even with noise, where the state-of-the-art optimal control fails. 
+
+3 Mathematical Formulation 
+
+The primary objective of this work is to design a density-based controller for a team of robots whose motion is governed by stochastic dynamics. Specifically, the robots aim to match a pre-defined target PDF autonomously, representing a desired spatial distribution. To accurately capture the motion uncertainties in-herent in swarm robotic systems, we employ a continuous-time Itô stochastic differential equation as presented in [19]: 
+
+𝑑𝑋 𝑡 = 𝑏 (𝑋 𝑡 , 𝑡 ; 𝑢 ) 𝑑𝑡 + 𝜎 (𝑋 𝑡 , 𝑡 ) 𝑑𝑊 𝑡 , 𝑋 𝑡 0 = 𝑋 0, (1) where the state 𝑋 𝑡 ∈ ℝ2 denotes the robot position, the drift term 
+
+𝑏 (𝑋 𝑡 , 𝑡 ; 𝑢 ) models deterministic control input, and 𝜎 (𝑋 𝑡 , 𝑡 ) repre-sents stochastic perturbations proportional to a Wiener process 
+
+𝑊 𝑡 ∈ ℝ𝑚 with independent increments.     
+
+> 3 of 15 F I G U R E 1 |Comparison of four control strategies with 3robots (blue, orange, and green dots) with a red danger zone and a gold star target. From left to right: OC precomputes a global control field; SV-OBC generates a new control field per step, focusing on where the robot PDF is high; RV-OBC produces a separate uniform field per robot; RV-OBC-V partitions the spatial domain and optimizes uniform control fields within each cell.
+
+While equation (1) describes the noisy motion of individual robots [20], swarm density control requires a macroscopic repre-sentation of the spatial robot density. Leveraging the averaging technique from [19, 21] and employing Itô calculus, we derive the Fokker-Planck PDE for the robot density dynamics with the per-robot control fields 𝑢 f ields(i) (𝑟, 𝑡 ) ∶ ℝ2 × ℝ → ℝ2:
+
+𝜕𝜌 (𝑟, 𝑡 )
+
+𝜕𝑡 = ∑
+
+> 𝑖 ∈𝑁
+
+[ − ∇ 𝑖 (𝑢 f ields(i) (𝑟, 𝑡 ) 𝜌 𝑖 (𝑟, 𝑡 )) + 𝑇 ∆𝑖 𝜌 𝑖 (𝑟, 𝑡 )], (2) where the robot ID is the subscript 𝑖 , the diffusion constant 𝑇 
+
+represents the maximum magnitude of uniform Gaussian motion noise [13]. Here, 𝜌 (𝑟, 𝑡 ) should be interpreted as a belief-weighted physical probability mass of the swarm. Each 𝜌 𝑖 (𝑟, 𝑡 ) represents a probabilistic belief (up to normalization) of robot 𝑖 ’s true posi-tion with the inverse covariance (precision) matrix Σ( 𝑖 ), encoding the confidence in the measured position 𝑥 𝑖 . At the extreme, when measurement is perfect, Σ( 𝑖 ) → 0, 𝜌 𝑖 (𝑟, 𝑡 ) becomes a delta func-tion at the robot’s true position, and the proposed PDE-based framework is no longer applicable. Furthermore, we assume iden-tical localization uncertainty for all robots, Σ = Σ( 𝑖 )∀ 𝑖 ∈ 𝑁 , to reflect identical sensing hardware. Therefore, the swarm density 
+
+𝜌 (𝑟, 𝑡 ) at position 𝑟 and time 𝑡 can be represented by a sum over 
+
+𝑁 individual robot positions 𝑥 𝑖 :
+
+𝜌 (𝑟, 𝑡 ) = 
+
+> 𝑁
+
+∑
+
+> 𝑖 =1
+
+𝜌 𝑖 =
+
+> 𝑁
+
+∑
+
+> 𝑖 =1
+
+exp (− 12 (𝑟 − 𝑥 𝑖 )𝑇 Σ( 𝑟 − 𝑥 𝑖 )) . (3) The Gaussian kernels in (3) can be normalized by a constant factor depending only on Σ; this constant scaling can be ab-sorbed into the density and associated thresholds without af-fecting the subsequent analysis. Under this interpretation, the Fokker-Planck equation (2) describes the evolution of the collec-tive belief distribution over the robots’ position measurements. Importantly, equation (2) is deterministic, as it characterizes the swarm density distribution from a statistical perspective rather than tracking individual stochastic trajectories in (1). Having established the background knowledge on how the noise can be naturally encoded in PDF and Fokker-Planck equations, we step back to take a high-level look at the four controllers pro-posed in the remainder of this section. Figure 1 shows an example with 3 robots highlighting their distinct control strategies. 
+
+3.1 Optimal Control 
+
+We define the control objective as the cost functional: 
+
+𝐽 (𝜌, 𝑢 f ield ) = ∫
+
+> 𝑡 𝑓
+> 0
+
+∫
+
+> Ω
+
+𝛼 
+
+2 ‖𝑢 f ield (𝑟, 𝑡 )‖2𝜌 (𝑟, 𝑡 ) 𝑑𝑟 𝑑𝑡 
+
++ ∫
+
+> 𝑡 𝑓
+> 0
+
+12 ‖𝜌 𝑑 (𝑟, 𝑡 ) − 𝜌 (𝑟, 𝑡 )‖2  
+
+> 𝐿 2(Ω)
+
+𝑑𝑡 
+
++ 12 ‖𝜌 𝑑 (𝑟, 𝑡 𝑓 ) − 𝜌 (𝑟, 𝑡 𝑓 )‖2 
+
+> 𝐿 2(Ω)
+
+,
+
+(4) where 𝑡 𝑓 is the terminal time, 𝜌 𝑑 (𝑟, 𝑡 ) denotes the desired target density, Ω ⊆ ℝ2 is a 2D spatial domain, 𝑢 f ield is a single control in-put field applied identically to all robots, i.e., 𝑢 f ield = 𝑢 f ields(i) ∀𝑖 ∈
+
+𝑁 , and 𝛼 is a weight coefficient balancing density matching accu-racy and control effort. This formulation aligns with the optimal control problem described in [10], corresponding to the terms: 
+
+𝐿 = 𝛼 
+
+2 ‖𝑢 f ield (𝑟, 𝑡 )‖2, 𝐹 = 12 ‖𝜌 𝑑 (𝑟, 𝑡 ) − 𝜌 (𝑟, 𝑡 )‖2 
+
+> 𝐿 2(Ω)
+
+,𝐺 = 12 ‖𝜌 𝑑 (𝑟, 𝑡 𝑓 ) − 𝜌 (𝑟, 𝑡 𝑓 )‖2 
+
+> 𝐿 2(Ω)
+
+.
+
+(5) To employ the optimal control formulation in [10], we utilize the Hamiltonian 𝐻 , defined as the convex conjugate of 𝐿 (see [22]), 
+
+𝐻 (𝑟, 𝑝 ) = sup 𝑞 {− 𝑝 ⋅ 𝑞 − 𝐿 (𝑟, 𝑞 )} = 12𝛼 ‖𝑝 ‖2, and ∇𝑝 𝐻 (𝑟, 𝑝 ) = 1 
+
+> 𝛼
+
+𝑝 .In practical scenarios, spatial safety constraints can be mathemat-ically encoded using a state invariance constraint: 
+
+𝜓 (𝜌 ) = ∫
+
+> 𝒜
+
+𝜌 2(𝑟, 𝑡 ) 𝑑𝑟 − 𝜖 ≤ 0,
+
+where 𝒜 ⊆ Ω represents the restricted area and 𝜖 is the specified threshold on the aggregated belief mass within 𝒜 , representing an acceptable level of residual uncertainty due to localization noise. With these considerations, the corresponding optimality con-ditions, incorporating the safety constraint as derived from Theorem 2.2 in [10], can be summarized as: 
+
+𝑢 f ield = −∇ 𝑝 𝐻 (𝑟, ∇𝑤 ) = − 1
+
+𝛼 ∇𝑤, 
+
+with 𝑤 = 𝑤 (𝑟, 𝑡 ) being the adjoint state (solution of the Hamilton-Jacobi-Bellman equation in [10]), subject to the coupled PDE           
+
+> 4 of 15 AIS Journal , 2025 Plant & Measurement
+> Density & Controller
+> (run only once)
+> Plant Input: 𝑢
+> Output: 𝑥
+> Measurement Input: 𝑥
+> Output: 𝑥 meas
+> Lookup Table Parameter: 𝑢 f ield
+> Inputs: 𝑥 meas
+> Output: 𝑢
+> Controller Input: 𝜌
+> Output: 𝑢 f ield
+> Density Estimator Input: 𝑥 inital meas
+> Output: 𝜌
+> 𝑥
+> 𝑥 meas
+> 𝑥 meas
+> 𝑥 inital meas
+> 𝜌
+> 𝑢 f ield
+> 𝑢
+
+F I G U R E 2 | System diagram for OC. The control field is computed once at initialization and remains unchanged throughout the operation. 
+
+system: 
+
+⎧⎪⎪⎨⎪⎪⎩
+
+−𝜕 𝑡 𝑤 (𝑟, 𝑡 ) + 12𝛼 ‖∇𝑤 (𝑟, 𝑡 )‖2 − 𝑇 ∆𝑤 (𝑟, 𝑡 ) = 2𝜈 (𝑡 ) ∫𝒜 𝜌 (𝑟, 𝑡 ) 𝑑𝑟 − ∫Ω(𝜌 𝑑 − 𝜌 ) 𝑑𝑟, 𝜕 𝑡 𝜌 (𝑟, 𝑡 ) + ∇( 𝑢 f ield 𝜌 (𝑟, 𝑡 )) − 𝑇 ∆𝜌 (𝑟, 𝑡 ) = 0 ,𝑤 (𝑟, 𝑡 𝑓 ) = 2 𝜂 ∫𝒜 𝜌 (𝑟, 𝑡 𝑓 ) 𝑑𝑟 − ∫Ω(𝜌 𝑑 (𝑡 𝑓 ) − 𝜌 (𝑡 𝑓 )) 𝑑𝑟, 𝜌 (𝑟, 0) = 𝜌 0(𝑟 ),
+
+(6) where the Lagrange multipliers 𝜈 (𝑡 ) ≥ 0 and 𝜂 ≥ 0 enforce the safety constraint, being strictly positive when the constraint is active, i.e., when 𝜓 (𝜌 ) = 0 , and 0 otherwise. 
+
+3.2 OC vs OBC Frameworks 
+
+A fundamental difference between the two types of controllers, OC and OBC, lies in their approach to feedback: open-loop versus closed-loop control. OC exemplifies an open-loop strategy, where control inputs are predetermined and independent of real-time system outputs. Specifically, in (6), a control field is computed solely with the initial density distribution of the robots. Then, the robots navigate according to this precomputed field, as illustrated in Fig. 2. The dashed line in the diagram denotes a single commu-nication event at the initialization phase, after which the system evolves without further input from the controller. Although OC formally uses state feedback, this information is not used for op-timization but just for a static lookup table. Consequently, the controller does not adapt to any disturbances, an ability typically implied with feedback control, and can quickly lose optimality. In contrast, OBC operates within a closed-loop framework, con-tinuously adjusting the control inputs based on real-time feed-back. At each time step, the system measures the robots’ positions and uses this data to compute an updated control command for the next time step. This feedback-driven approach, depicted in Fig. 3, allows the controller to dynamically respond to any disturbances and uncertainties in the system. While the OC method possesses a theoretical guarantee for con-vergence, the numerical implementation of OC presents signifi-cant challenges. For instance, the state invariance constraint is inherently discontinuous. As the robot approaches the hazard area, the Lagrange multipliers 𝜈 (𝑡 ) and 𝜂 in (6) jump from zero to       
+
+> Plant & Measurement
+> Density & Controller
+> Plant Input: 𝑢
+> Output: 𝑥
+> Measurement Input: 𝑥
+> Output: 𝑥 meas
+> Controller Input: 𝜌
+> Output: 𝑢
+> Density Estimator Input: 𝑥 meas
+> Output: 𝜌
+> Recomputed each timestep
+> 𝑥
+> 𝑥 meas
+> 𝜌
+> 𝑢
+
+F I G U R E 3 | System diagram for OBC. The entire loop is recomputed at each timestep to achieve real-time feedback. 
+
+a finite value, leading to a sudden rise in an area where the density of the whole field was previously smooth, causing discontinuities along the boundary 𝜕 𝒜 . Compared to OC, an OBC exhibits sig-nificantly less numerical instability. This is primarily because it solves for only a single timestep at a time with a smooth resetting density field. In contrast, OC must account for the entire tempo-ral field, allowing numerical errors to accumulate and potentially destabilize the system. The remainder of this section introduces three distinct OBCs, beginning with the OC-inspired SV-OBC. 
+
+3.3 Swarm Velocity Optimization-Based Control (SV-OBC) 
+
+Due to its similarity with the well-established CLFs, CBFs can be naturally combined with CLF methods in an optimization-based framework, which has shown success in a wide range of real-time robotic applications [7, 8]. Instead of directly optimiz-ing the cost defined in (4), the approach we propose in this paper starts by formulating the control objective in terms of a CLF constraint, thereby providing explicit guarantees for stability and convergence. Specifically, we define a CLF as a measure of de-viation from the desired density, 𝐹 in (5), and reformulate the cost function (4) into an optimization problem where the primary objective is the minimization of the control field 𝑢 f ield . Notably, since 𝐹 (𝑡 𝑓 ) = 𝐺 (𝑡 𝑓 ) in (5), omitting 𝐺 in the optimization frame-work is acceptable for two reasons. First, as 𝑡 𝑓 increases, the contribution from 𝐺 diminishes compared to the running cost 𝐹 .Second, by using 𝐹 as the Lyapunov function, this formulation inherently minimizes 𝐹 and, consequently, the terminal cost 𝐺 
+
+whenever possible. The safety constraint, typically enforced via a positive barrier function ℎ, is defined as the additive inverse of the original con-straint function 𝜓 : ℎ(𝜌 ) = −𝜓 (𝜌 ) = 𝜖 − ∫𝒜 𝜌 2(𝑟 ) 𝑑𝑟 . From this point onward, we omit the explicit time dependence in the notation. Since the optimization problem is solved at the cur-rent timestep, all quantities are implicitly evaluated at the same timestep 𝑡 𝑘 . With this definition, the OBC incorporating both CLF 
+
+> 5 of 15
+
+and CBF constraints can be formulated as: 
+
+min   
+
+> 𝑢 f ield , 𝑠
+
+‖𝑢 f ield ‖2  
+
+> 𝐿 2(Ω)
+
++ 𝛾𝑠 
+
+s.t. 𝛼 𝑣 𝑉 (𝜌 ) + ̇ 𝑉 (𝜌, 𝑢 f ield ) − 𝑠 ≤ 0
+
+𝛼 ℎℎ(𝜌 ) + ̇ ℎ(𝜌, 𝑢 f ield ) ≥ 0,
+
+(7) where 𝑉 (𝜌 ) = 𝐹 = 12 ‖𝜌 𝑑 −𝜌 ‖2  
+
+> 𝐿 2(Ω)
+
+is the positive semi-definite Lya-punov function that encourages convergence toward the desired density distribution. Here, 𝛼 𝑣 , 𝛼 ℎ > 0 determine the convergence rate toward the CLF and CBF constraints, respectively. The posi-tive weighting factor 𝛾 penalizes deviation from the CLF objective through the slack variable 𝑠 ≥ 0. The CBF is imposed as a hard safety constraint, while the CLF is softened via 𝑠 to ensure the fea-sibility of the solution. The time derivatives, ̇ 𝑉 and ̇ ℎ, are given by: ̇𝑉 (𝜌, 𝑢 f ield ) = − ∫
+
+> Ω
+
+(𝜌 𝑑 − 𝜌 )𝜌 𝑡 𝑑𝑟,̇ ℎ(𝜌, 𝑢 f ield ) = − ∫
+
+> 𝒜
+
+2𝜌 𝜌 𝑡 𝑑𝑟, 
+
+where 𝜌 𝑡 (𝑢 f ield , 𝑟 ) is a one-step Fokker-Planck equation based on (2). This systematic framework easily accommodates varying numbers of robots, as the density field is constructed with any robot quantity without computational overhead. To implement the infinite-dimensional optimization problem (7), we employ a central FD scheme with periodic boundary condi-tions (see Remark 2). This means, on a uniformed 2D grid of size 
+
+𝑁 𝑥 × 𝑁 𝑦 with spacing 𝑙 , the continuous density fields 𝜌, 𝜌 𝑑 ∈
+
+𝐿 2(Ω) and control field 𝑢 f ield ∈ 𝐿 2(Ω; ℝ2) are approximated and then flatten as ̂ 𝜌,̂ 𝜌 𝑑 ∈ ℝ𝑁 𝑑 and ̂ 𝑢 ∈ ℝ2𝑁 𝑑 , respectively at grid points with 𝑁 𝑑 = 𝑁 𝑥 𝑁 𝑦 . Then, (7) becomes: 
+
+min ̂𝑢,𝑠 ̂ 𝑢 𝑇 ̂ 𝑢𝑙 2 + 𝛾𝑠 
+
+s.t. 
+
+> 𝑁 𝑑
+
+∑
+
+> 𝑖 =1
+
+[ 𝛼 𝑣 
+
+2
+
+(̂𝜌 𝑖 𝑑 −̂ 𝜌 𝑖 )2
+
+− (̂𝜌 𝑖 𝑑 −̂ 𝜌 𝑖 )̂ 𝜌 𝑖 𝑡 ] 𝑙 2 ≤ 𝑠 𝛼 ℎ𝜖 + ∑
+
+> 𝑖 ∈𝒜
+
+[
+
+− 𝛼 ℎ(̂𝜌 𝑖 )2 − 2 ̂ 𝜌 𝑖 ̂ 𝜌 𝑖 𝑡 
+
+]
+
+𝑙 2 ≥ 0̂𝑢 𝑖 ∈ [ 𝑢, 𝑢 ] ∀𝑖, 
+
+(8) where the superscript 𝑖 denote the flattened grid position. ̂ 𝜌 𝑡 is the ODE approximation of the PDE (2) using the FD method: ̂𝜌 𝑡 = 𝐴 (̂𝜌 )̂𝑢 + 𝑇 𝐵̂𝜌, where 𝐴 (̂ 𝜌 ) and 𝐵 are constant sparse ma-trices obtained from central FD, with the five-point Laplacian 
+
+𝐵 multiplied by the scalar diffusion coefficient 𝑇 . The last con-straint represents a component-wise bound on the control input with: 
+
+[𝑢, 𝑢 ] ⊇ [min (−𝐴 †(̂ 𝜌 ) 𝑇𝐵̂𝜌 ) , max (−𝐴 †(̂𝜌 ) 𝑇𝐵̂𝜌 )] ,
+
+where 𝐴 † is the MoorePenrose pseudoinverse of 𝐴 . With this, it is clear to see that system (8) is a convex quadratic cost optimiza-tion problem with affine constraints, enabling fast computational speed for real-time implementation. 
+
+Lemma 1. Using a central-difference scheme with periodic or homogeneous Neumann boundary conditions and odd grid sizes 
+
+𝑁 𝑥 , 𝑁 𝑦 , the discretized diffusion term 𝑏 = −𝑇 𝐵̂𝜌 , where 𝐵 is the standard 5-point Laplacian, lies in the image of the advection operator 
+
+𝐴 (̂𝜌 ) = [ 𝐷 𝑥 Diag( ̂𝜌 ) 𝐷 𝑦 Diag( ̂𝜌 ) ] ∈ ℝ𝑁 𝑑 ×2 𝑁 𝑑 , 𝑁 𝑑 = 𝑁 𝑥 𝑁 𝑦 .
+
+Consequently, the linear system 𝐴 (̂𝜌 )̂𝑢 = 𝑏 is consistent, and the pseudoinverse solution ̂ 𝑢 ∗ = 𝐴 †(̂𝜌 ) 𝑏 yields an exact solution. Proof. Let 𝑅 = Diag( ̂ 𝜌 ) with ̂ 𝜌 𝑖 > 0. Under periodic or homo-geneous Neumann BCs, the central-difference matrices satisfy 
+
+(𝐷 𝑥 )⊤ = − 𝐷 𝑥 , (𝐷 𝑦 )⊤ = − 𝐷 𝑦 . Thus 
+
+𝐴 ⊤𝑧 = [𝑅 (𝐷 𝑥 )⊤𝑧 𝑅 (𝐷 𝑦 )⊤𝑧 ] = 0 ⇐⇒ 𝐷 𝑥 𝑧 = 0 and 𝐷 𝑦 𝑧 = 0 ,
+
+since 𝑅 is invertible (positive and diagonal). In 1D, 𝐷𝑧 = 0 means 𝑧 𝑖 +1 = 𝑧 𝑖 −1 . With 𝑁 odd, the map 𝑖 ↦→ 𝑖 + 2 
+
+cycles through all indices, so 𝑧 has to be a constant. Applying this in both 𝑥 and 𝑦 directions yields 𝑧 = 𝑐 𝟏 . Hence ker 𝐴 ⊤ = span{ 𝟏 }
+
+and Im 𝐴 = (ker 𝐴 ⊤)⟂ = 𝟏 ⟂.For the 5-point Laplacian 𝐵 with periodic or homogeneous Neu-mann BCs, each row sums to zero, so 𝟏 ⊤𝐵 = 0 . Therefore 𝑏 =−𝑇 𝐵̂𝜌 satisfies 𝟏 ⊤𝑏 = 0 , i.e., 𝑏 ∈ 𝟏 ⟂ = Im 𝐴 . The system 𝐴 (̂𝜌 )̂𝑢 =
+
+𝑏 is thus consistent but underdetermined. The MoorePenrose so-lution ̂ 𝑢 ∗ = 𝐴 †(̂𝜌 )𝑏 then yields the unique solution minimizing 
+
+‖̂𝑢 ‖2.
+
+Remark 1. If either 𝑁 𝑥 or 𝑁 𝑦 is even, central differences 𝑖 ↦→ 𝑖 +2 
+
+cycles are broken, causing (ker 𝐴 ⊤)⟂ ≠ 𝟏 ⟂. In this case, a different operator, such as the Finite Volume Method, can be used to find the same solvability result regardless of 𝑁 𝑥 , 𝑁𝑦 . However, since the controller is designed for lightweight online applications, the simplest fix is adjusting the grid size, rather than implementing a more complex scheme. 
+
+Remark 2. Periodic and Neumann boundary conditions are used in Lemma 1 for mass preservation to ensure well-posedness of the discretized density dynamics. Periodic boundary conditions are implemented in this work to simplify the FD stencil and avoid boundary-specific complications. They do not imply that robots physically wrap around the workspace. When an explicit workspace boundary exists, Neumann boundary conditions pro-vide a physically meaningful reflective model. In practice, the target and invariance sets are chosen strictly in-side the computational domain, which can always be inflated without altering the control formulation. As a result, the swarm density mass rarely interacts with the domain boundary dur-ing operation, and the closed-loop behavior is identical between periodic and Neumann boundary conditions. Dirichlet boundary conditions, on the other hand, conflict with the swarm density mass conservation and are therefore not con-sidered. If it must be imposed, a finite-volume discretization may be employed at the cost of increased computational complexity. 
+
+Proposition 1. The constrained optimization problem (8) is al-ways feasible. Its unique solution ̂ 𝑢 ∗ guarantees the forward invari-ance of the set {̂𝜌 ∶ ℎ(̂𝜌 ) ≥ 0} .Proof. For any ℎ(̂𝜌 ) ≥ 0, Lemma 1 provides an exact solution that yields ̂ 𝜌 𝑡 = 0 , where the controlled advection term cancels out diffusion exactly. Consequently, ̇ ℎ = 0 and the CBF constraint is satisfied, ensuring forward invariance of the set {̂𝜌 ∶ ℎ(̂𝜌 ) ≥ 0} .Moreover, the CLF constraint (first constraint in (8)) is relaxed by 
+
+𝑠 and is therefore always feasible. Finally, as the optimization cost is strictly convex, the optimal solution ̂ 𝑢 ∗ is unique. 
+
+Remark 3. Since the safety CBF is enforced as a hard constraint in (8), the CLF objective may be relaxed to maintain invariance,    
+
+> 6 of 15 AIS Journal , 2025 F I G U R E 4 |SV-OBC Edge Case. The red area represents the unsafe area, the yellow star is the target center, and the red dot marks the robots position with the green PDF. The control field is shown in blue, with pur-ple as the interpolated command for robot.
+
+potentially leading ̂ 𝜌 to converge to a local minimum. This is chosen as the solution to safety-critical applications. Thanks to the discretization proposed in (8), such local minima can be characterized using the techniques developed in [23] for ODEs. While SV-OBC (8) yields a feasible solution that ensures the safety of the swarm density ̂ 𝜌 by Proposition 1, an important edge case exists. As shown in Fig. 4, sufficiently large localization errors can generate conflicting control values within a robot’s belief den-sity. Since the PDF represents localization uncertainty, and the robots cannot execute the full spatial control field, a single con-trol command is interpolated at their most probable location: the center of the PDF. As a result, the control values at the edge of the PDF may not be realized in execution, potentially leading to robot-level unsafe motion despite swarm-level invariance. This behavior does not contradict the swarm-level safety guarantee, but instead reveals a gap between density-level invariance and robot-level execution under localization uncertainty. Attempts to minimize this mismatch have been made, with addi-tional constraints on the covariance matrix of PDFs and enforcing a locally uniform control field within a robot’s PDF. Neither of these attempts proved satisfactory, even without the additional time complexity; the covariance matrix does not maintain the Gaussian structure of the belief density, and the uniform control field fails when multiple PDFs overlap. 
+
+3.4 Robot Velocity Optimization-Based Control (RV-OBC) 
+
+To avoid the aforementioned drawback, we reformulate our con-trol to avoid the OC idea of a single global control field applied to all robots, 𝑢 f ield in (4), despite its efficiency in scalability with the number of agents. Instead, to more accurately capture the robot-level execution under localization uncertainty, each agent is assigned an individual velocity control input 𝑢 𝑖 ∈ ℝ2 that de-fines a uniform control field on a per-robot basis. This gives the optimization variable 𝑢 = [ 𝑢 1, 𝑢 2, … , 𝑢 𝑁 ]𝑇 for 𝑁 agents with the following RV-OBC formulation: 
+
+min  
+
+> 𝑢, 𝑠
+
+‖𝑢 ‖2 + 𝛾𝑠 
+
+s.t. 𝛼 𝑣 𝑉 (𝜌 ) + ̇ 𝑉 (𝜌, 𝑢 ) − 𝑠 ≤ 0
+
+𝛼 ℎℎ(𝜌 ) + ̇ ℎ(𝜌, 𝑢 ) ≥ 0.
+
+(9) The main difference between RV-OBC (9) and SV-OBC (7) is that (9) calculates its density evolution in a distributed sense, rather than one velocity field for all agents: 
+
+𝜕𝜌 (𝑟, 𝑡 )
+
+𝜕𝑡 =
+
+> 𝑁
+
+∑
+
+> 𝑖 =1
+
+𝜕𝜌 𝑖 (𝑟, 𝑡 )
+
+𝜕𝑡 =
+
+> 𝑁
+
+∑
+
+> 𝑖 =1
+
+[−𝑢 𝑖 (𝑟 )∇ 𝜌 𝑖 (𝑟, 𝑡 )+ 𝑇 𝑖 ∆𝜌 𝑖 (𝑟, 𝑡 )]. (10) 
+
+Remark 4. As stated at the beginning of Section 3, the Fokker-Planck equation (2) contains a diffusion coefficient 𝑇 represent-ing the random motion noise of a robot. We define a constant 
+
+𝑇 = 𝑇 𝑖 = 0 .32𝑐𝑢 max ∕2 = 0 .045 𝑐𝑢 max , corresponding to a zero-mean Gaussian distribution whose probability mass is conserva-tively bounded such that 99% lies in [− 𝑐𝑢 max , 𝑐𝑢 max ], where the maximum admissible command 𝑢 max is scaled by a constant 𝑐 de-termined by physical hardware limits. Events outside this 99% tail are considered physically impossible in practice. This bound is in-troduced as a modeling assumption to ensure the well-posedness of the continuous PDE formulation, and reflects the bounded nature of robot actuation within hardware limits, rather than a probabilistic safety guarantee over time. A variable 𝑇 (𝑢 ) = 0 .045 𝑢 
+
+can more accurately represent the command-dependent motion noise. We decided to use a constant maximum noise for two rea-sons: it is computationally cheaper. It captures other forces, such as inertia in a quadcopter, which persists even if the command is zero. 
+
+Proposition 2. Let 𝒜 ⊂ Ω and consider isotropic Gaussian (3) 
+
+centered at robot position 𝑥 𝑖 with identical inverse covariance (pre-cision) matrices Σ = 𝜆𝐼 and swarm PDF 𝜌 = ∑𝑁 𝑖 𝜌 𝑖 . The swarm density evolves by the Fokker-Planck equation (10) with the barrier function ℎ as defined in system (9) .We show the safety conditions in a worst-case situation, namely, at time 𝑡 𝑘 −1 , all agents apply the maximum control 𝑢 ∗ 
+
+> 𝑖
+
+= 𝑢 max ̂ 𝑛 𝑖 with 
+
+𝑛 𝑖 = arg min ‖𝑢 ‖=𝑢 max −2 ∫𝐴 𝜌 𝑢 ⊤∇𝜌 𝑖 𝑑𝑟, as the solution to (9) with saturated CBF, 𝛼 ℎℎ𝑡𝑘 −1 +̇ ℎ𝑡𝑘 −1 = 0 . Then, by the motion noise definition, 𝑇 = 0.045 𝑐𝑢 max , an upper bound for the worst-case noisy motion is 𝛿 𝑖 = (1 + 𝑐 )∆ 𝑡 𝑢 max ̂ 𝑛 𝑖 = 𝜅̂𝑛 𝑖 , with timestep size ∆𝑡 .We denote 𝑒 𝑖 = 𝑟 𝑖 − 𝑥 𝑖 , and the moments at time 𝑡 𝑘 −1 :
+
+𝑀 0,𝑖 ∶= ∫
+
+> 𝐴
+
+𝜌𝜌 𝑖 𝑑𝑟, 𝑀 1,𝑖 ∶= ∫
+
+> 𝐴
+
+𝜌𝜌 𝑖 ̂ 𝑛 𝑇 𝑖 𝑒 𝑖 𝑑𝑟, 𝑀 2,𝑖 ∶= ∫
+
+> 𝐴
+
+𝜌𝜌 𝑖 ‖𝑒 𝑖 ‖2𝑑𝑟, 
+
+and the aggregates 
+
+𝑀 0 ∶= ∑
+
+> 𝑖
+
+𝑀 0,𝑖 , 𝑀 1 ∶= ∑
+
+> 𝑖
+
+𝑀 1,𝑖 , 𝑀 2 ∶= ∑
+
+> 𝑖
+
+𝑀 2,𝑖 .
+
+Then, we can define 𝛽 𝑖 ∶= exp (𝜆𝑒 𝑇 𝑖 𝛿 𝑖 − 12 𝛿 𝑇 𝑖 𝜆𝛿 𝑖 
+
+), and a weighted average 
+
+𝛽 0,𝑖,𝑗 ∶= ∫𝐴 𝛽 𝑖 (𝑟 ) 𝜌 𝑖 (𝑟 ) 𝛽 𝑗 (𝑟 )𝜌 𝑗 (𝑟 ) 𝑑𝑟 
+
+∫𝐴 𝜌 𝑖 (𝑟 ) 𝜌 𝑗 (𝑟 ) 𝑑𝑟 ,
+
+with a single agent swarm level notation: ̄𝛽 0,𝑖 ∶= 
+
+> 𝑁
+
+∑
+
+> 𝑗
+
+∫𝐴 𝛽 𝑗 (𝑟 ) 𝜌 𝑗 (𝑟 ) 𝛽 𝑖 (𝑟 )𝜌 𝑖 (𝑟 ) 𝑑𝑟 
+
+∫𝐴 𝜌 𝑗 (𝑟 ) 𝜌 𝑖 (𝑟 ) 𝑑𝑟 , (11) 
+
+> 7 of 15
+
+with the denominator sums to 𝑀 0,𝑖 , and aggregates to ̄ 𝛽 0 = ∑
+
+> 𝑖
+
+̄ 𝛽 0,𝑖 .Similarly, we define ̄ 𝛽 1,𝑖 ,̄ 𝛽 1,̄ 𝛽 2,𝑖 ,̄ 𝛽 2 as the weighted average with 
+
+𝑀 1,𝑖 , 𝑀 1, 𝑀 2,𝑖 , 𝑀 2, respectively. Then, a sufficient condition for the CBF condition 
+
+𝛼 ℎℎ𝑡𝑘 +̇ ℎ𝑡𝑘 ≥ 0
+
+to hold with a recovery command 𝑢 𝑖,𝑡𝑘 = − 𝑢 max ̂ 𝑛 𝑖 is: 
+
+(̄𝛽 1 + 1) 𝑢 max 𝑀 1 ≥ 𝑇𝜆 (̄𝛽 2 − 1) 𝑀 2 − 2 𝑇̄𝛽 1𝜆𝜅𝑀 1
+
++
+
+[̄𝛽 0
+
+[𝑇𝜆𝜅 2 + 𝑢 max 𝜅 − 2 𝑇 + 𝛼 ℎ
+
+2𝜆 
+
+] + 2 𝑇 − 𝛼 ℎ
+
+2𝜆 
+
+]
+
+𝑀 0
+
+(12) 
+
+Proof. Since the swarm is moving towards 𝒜 with a saturated CBF at the previous timestep, we have: 
+
+𝛼 ℎ(ℎ𝑡𝑘 − ℎ𝑡𝑘 −1 ) + ( ̇ ℎ𝑡𝑘 −̇ ℎ𝑡𝑘 −1 ) ≥ 0, (13) as the equivalent inequality goal for safety. By the identities in [13]: 
+
+∇𝜌 = − 𝜌 Σ( 𝑟 − 𝑥 )
+
+𝑇 ∆𝜌 = 𝑇 [ 𝜕 2
+
+𝜕𝑟 21
+
+𝜌 + 𝜕 2
+
+𝜕𝑟 22
+
+𝜌 ]
+
+= 𝑇𝜌 [(𝑟 − 𝑥 )𝑇 Σ2(𝑟 − 𝑥 ) − Tr (Σ) ],
+
+the Fokker-Planck PDE at timestep 𝑡 𝑘 can be expressed as: 
+
+𝜕 𝑡 𝜌 𝑖 = 𝜌 𝑖 (𝑢 𝑇 𝑖 Σ𝑒 𝑖 + 𝑇 (𝜆 2𝑒 𝑇 𝑖 𝑒 𝑖 − 2 𝜆 )) .
+
+This yields a swarm-level advection gain, with recovery com-mands 𝑢 𝑖,𝑡𝑘 = − 𝑢 ∗ 
+
+> 𝑖
+
+:̇ℎ𝑎𝑑𝑣 𝑡𝑘 =
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+−2 ∫
+
+> 𝒜
+
+𝜌 𝑡𝑘 𝜌 𝑖,𝑡𝑘 (− 𝑢 max ̂ 𝑛 𝑖 )𝑇 Σ( 𝑒 𝑖 − 𝛿 𝑖 ) 𝑑𝑟, 
+
+and a diffusion loss: ̇ℎ𝑑𝑖𝑓𝑓 𝑡𝑘 =
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+−2 𝑇 ∫
+
+> 𝒜
+
+𝜌 𝑡𝑘 𝜌 𝑖,𝑡𝑘 (𝜆 2(𝑒 𝑖 − 𝛿 𝑖 )𝑇 (𝑒 𝑖 − 𝛿 𝑖 ) − 2 𝜆 ) 𝑑𝑟. 
+
+Notably, as shown in Fig. 3, the PDF resets at each timestep, with new robot centers at 𝑥 𝑖 + 𝛿 𝑖 , giving: 
+
+𝜌 𝑖,𝑡𝑘 ∶= exp(− 12 (𝑒 𝑖 − 𝛿 𝑖 )𝑇 Σ( 𝑒 𝑖 − 𝛿 𝑖 )) = 𝜌 𝑖,𝑡𝑘 −1 𝛽 𝑖 .
+
+Further, by definition (11), we have 
+
+∫
+
+> 𝒜
+
+𝜌 𝑡𝑘 𝜌 𝑖,𝑡𝑘 𝑑𝑟 =̄ 𝛽 0,𝑖 ∫
+
+> 𝒜
+
+𝜌 𝑡𝑘 −1 𝜌 𝑖,𝑡𝑘 −1 𝑑𝑟 =̄ 𝛽 0,𝑖 𝑀 0,𝑖 
+
+Under the above definitions, dropping the timestep subscript as all functions are now in 𝑡 𝑘 −1 , the following advection gain for ̇ℎ𝑡𝑘 −̇ ℎ𝑡𝑘 −1 is found: 
+
+=
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+2( ̄𝛽 1,𝑖 + 1) ∫
+
+> 𝒜
+
+𝜌 𝜌 𝑖 (𝑢 max ̂ 𝑛 𝑖 )𝑇 Σ𝑒 𝑖 𝑑𝑟 − 2 ̄ 𝛽 0,𝑖 ∫
+
+> 𝒜
+
+𝜌 𝜌 𝑖 (𝑢 ∗ 
+
+> 𝑖
+
+)𝑇 Σ𝛿 𝑖 𝑑𝑟 
+
+= 2( ̄ 𝛽 1 + 1) 𝜆𝑢 max 𝑀 1 − 2 ̄ 𝛽 0𝑢 max 𝜆𝜅𝑀 0.
+
+Similarly, the diffusion penalty is: 
+
+=
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+−2 𝑇 ∫
+
+> 𝒜
+
+𝜌 (
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+𝛽 𝑖 ) 𝜌 𝑖 𝛽 𝑖 (𝜆 2(𝑒 𝑖 − 𝛿 𝑖 )𝑇 (𝑒 𝑖 − 𝛿 𝑖 ) − 2 𝜆 ) 𝑑𝑟 
+
++ 2 𝑇 ∫
+
+> 𝒜
+
+𝜌 𝜌 𝑖 (𝜆 2𝑒 𝑇 𝑖 𝑒 𝑖 − 2 𝜆 ) 𝑑𝑟 
+
+= −2 𝑇𝜆 
+
+[
+
+𝜆 (̄𝛽 2 − 1) 𝑀 2 − 2( ̄ 𝛽 0 − 1) 𝑀 0 − 2 ̄ 𝛽 1𝜆𝜅𝑀 1 +̄ 𝛽 0𝜆𝜅 2𝑀 0
+
+]
+
+.
+
+Finally, the penalty on the barrier function itself is: 
+
+= − 𝛼 ℎ ∫
+
+> 𝒜
+
+𝜌 2 
+
+> 𝑡𝑘
+
+− 𝜌 2 
+
+> 𝑡𝑘 −1
+
+𝑑𝑟 = − 𝛼 ℎ(̄𝛽 0 − 1) 𝑀 0.
+
+Substituting these into (13) yields (12). Proposition 2 guarantees the safety of the swarm under the bound (12). We look at two special cases to further understand what this bound implies. First, we consider a zero motion noise situation, 
+
+𝑐 = 0 . Then, (12) simplifies to: 
+
+(̄𝛽 1 + 1) 𝑢 max 𝑀 1 ≥
+
+[̄𝛽 0𝑢 max 𝜅 + ( ̄ 𝛽 0 − 1) 𝛼 ℎ
+
+2𝜆 
+
+]
+
+𝑀 0
+
+≈ 𝛼 ℎ
+
+2𝜆 ∆𝑡𝑢 max 𝑀 1 +̄ 𝛽 0∆𝑡𝑢 2max 𝑀 0
+
+(̄𝛽 1 + 1) 𝑀 1 ≥ 𝛼 ℎ
+
+2𝜆 ∆𝑡𝑀 1 +̄ 𝛽 0∆𝑡𝑢 max 𝑀 0,
+
+using a first-order approximation in ℎ𝑡𝑘 − ℎ𝑡𝑘 −1 . This simplified bound states that, to ensure safety, the net gain in advection needs to be greater than the safety drop and a penalty term that de-pends on the displacement from the last timestep. As a result, with ∆𝑡 → 0, the bound is always satisfied, and 4𝜆 ≥ 𝛼 ℎ∆𝑡 is a sufficient bound as 𝑢 max → 0. As expected, with perfect mo-tion, safety is easily guaranteed with smaller timestep for fast correction, smaller 𝛼 ℎ to detect CBF saturation earlier, and lower maximum command and localization noise to decrease the risk of safety violation. Then, we find an approximation of (12) to demonstrate the effects of motion noise in the system. Notice that all ̄ 𝛽 𝑖 → 1+ with small step approximations 𝛿 𝑖 → 0+ from 𝑐, ∆𝑡, or 𝑢 max , this gives: 
+
+2
+
+[
+
+1 + 0 .045 𝑐𝜆𝜅 
+
+]
+
+𝑀 1 ≥ (1 + 𝑐 )∆ 𝑡𝑢 max 
+
+[1 + 0 .045 𝑐𝜆𝜅 ]𝑀 0
+
+2𝑀 1 ≥ (1 + 𝑐 )∆ 𝑡𝑢 max 𝑀 0.
+
+This simplified bound captures each parameter’s effects on safety. A higher maximum control, 𝑢 max , increases the RHS, showing that a faster agent is harder to keep safe. Conversely, a smaller timestep ∆𝑡 reduces the RHS, indicating that quicker correction enforces safety. The geometry of 𝒜 and precision 𝜆 are encoded in 𝑀 1, 𝑀 0. As danger areas expand outwards, the weighted dis-tance term ̂ 𝑛 𝑇 𝑖 𝑒 𝑖 drives 𝑀 1 > 𝑀 0, indicating that greater weighted distance from 𝒜 improves safety. A more accurate localization means 𝜆 amplifies both 𝑀 0, 𝑀 1 by concentrating the underlying PDFs. Paradoxically, this implies that a more accurate localiza-tion can make the bound harder to satisfy, since 𝑥 𝑖 of a sharper PDF would be closer to 𝒜 , and reduce safety faster by the same motion noise. This outcome contradicts the noise free analysis, yet is consistent with the relationship between motion and lo-calization noises. Finally, as also shown in the noise-free case, a smaller motion noise coefficient, 𝑐 , relaxes the bound, making it easier to enforce safety.  
+
+> 8 of 15 AIS Journal , 2025
+
+The bound in Proposition 2 was evaluated in both simulations and experiments, and in all scenarios, the inequality (12) was satisfied. Violations were observed only under extreme, artifi-cial edge cases in which nearly all robots, under heavy motion noise, simultaneously applied large maximum magnitude 𝑢 max 
+
+directed towards 𝒜 in close distance, with ∆𝑡 ≥ 1 s. Outside of these extreme scenarios, the bound (12) was consistently held in practice. 
+
+Proposition 3. The constrained optimization problem (9) returns a unique optimal solution 𝑢 ∗, given that the initial swarm distri-bution is safe and parameters can satisfy (12) . This 𝑢 ∗ ensures the forward invariance of the set {𝜌 ∶ ℎ(𝜌 ) ≥ 0} .Proof. By Proposition 2, the CBF constraint (second constraint in (9)) is feasible under bound (12). Moreover, it ensures swarm safety recursively, since the bound depends explicitly on the pre-vious states. Additionally, the CLF constraint (first constraint in (9)) is always feasible with the slack variable 𝑠 . Finally, as the optimization cost is strictly convex, the optimal solution 𝑢 ∗ is unique. While this controller formulation ensures forward invariance un-der a safe initial distribution with conditions based on predefined parameters, the computation time increases drastically with the size of the swarm. This is because each additional agent requires computing an additional full spatial field, in addition to the two optimization variables. To improve the computation speed, we propose the following Voronoi inspired OBC. 
+
+3.5 Robot Velocity Optimization-Based Control with Voronoi Partitions (RV-OBC-V) 
+
+Voronoi-based controllers have been studied for coverage con-trol in the ODE domain thanks to their fast online computation capabilities [20, 24, 25]. In the below formulation, instead of ac-counting for an entire new field with each additional agent as seen in RV-OBC (9), a Voronoi partition step is added such that each agent only accounts for its density within its own cell. Specif-ically, we define the Voronoi cells centered at each agent position, 
+
+𝑥 𝑖 , as a disjoint partition of the spatial field: ⋃𝑁 𝑖 =1 𝐶 𝑖 = Ω , 𝐶 𝑖 ∩
+
+𝐶 𝑗 = ∅ ∀ 𝑖 ≠ 𝑗 . The resulting optimization-based controller is: 
+
+min  
+
+> 𝑢, 𝑠
+
+‖𝑢 ‖2 + 𝛾𝑠 
+
+s.t. 𝛼 𝑣 𝑉 𝑐 (𝜌 ) + ̇ 𝑉 𝑐 (𝜌, 𝑢 ) − 𝑠 ≤ 0
+
+𝛼 ℎℎ𝑐 (𝜌 ) + ̇ ℎ𝑐 (𝜌, 𝑢 ) ≥ 0,
+
+(14) with the Voronoi versions of the Lyapunov and barrier functions: 
+
+𝑉 𝐶 =
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+12 ∫
+
+> 𝐶 𝑖
+
+(𝜌 𝑑 − 𝜌 𝑖 )2 𝑑𝑟 ℎ𝐶 = 𝜖 −
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+∫ 
+
+> 𝐶 𝑖
+> ⋂𝒜
+
+𝜌 2 
+
+> 𝑖
+
+𝑑𝑟, 
+
+and their respective time derivatives. This new formulation, while avoiding the time and space scaling problem associated with increasing numbers of agents, does not account for densities outside of each agent’s cell. In the remainder of this section, we derive an upper bound to quantify this overestimated amount. First, we find the difference in the Lyapunov measurement of target density matching: 
+
+𝑉 𝑐 − 𝑉 =
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+12 ∫
+
+> 𝐶 𝑖
+
+(𝜌 𝑑 − 𝜌 𝑖 )2 𝑑𝑟 − 12 ∫
+
+> Ω
+
+(𝜌 𝑑 −
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+𝜌 𝑖 )2 𝑑𝑟 
+
+= 12
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+∫
+
+> 𝐶 𝑖
+
+(𝜌 𝑑 − 𝜌 𝑖 )2 − ( 𝜌 𝑑 −
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+𝜌 𝑖 )2 𝑑𝑟 
+
+= 12
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+∫
+
+> 𝐶 𝑖
+
+2𝜌 𝑑 (
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+𝜌 𝑖 − 𝜌 𝑖 ) + 𝜌 2 
+
+> 𝑖
+
+− ( 
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+𝜌 𝑖 )2 𝑑𝑟. 
+
+(15) The last two terms can be simplified as: 
+
+𝜌 2 
+
+> 𝑖
+
+− ( 
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+𝜌 𝑖 )2 = 𝜌 2 
+
+> 𝑖
+
+− ( 
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝜌 𝑘 + 𝜌 𝑖 )2 = −( 
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝜌 𝑘 )2 − 2 𝜌 𝑖 𝑁 
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝜌 𝑘 ,
+
+which means (15) becomes: 
+
+𝑉 𝑐 − 𝑉 = 12
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+∫
+
+> 𝐶 𝑖
+
+2𝜌 𝑑 (
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝜌 𝑘 ) − ( 
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝜌 𝑘 )2 − 2 𝜌 𝑖 𝑁 
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝜌 𝑘 𝑑𝑟 
+
+= 12
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+∫
+
+> 𝐶 𝑖
+
+−( 
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝜌 𝑘 )2 + 2( 𝜌 𝑑 − 𝜌 𝑖 )
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝜌 𝑘 𝑑𝑟. 
+
+(16) Then, to find a bound on (16), we first define a few parameters. Let 𝐶 𝑐 𝑖 = Ω ⧵𝐶 𝑖 be the complement of each cell, and 𝑆 𝑖 = ∫𝐶 𝑐 𝑖 
+
+𝜌 𝑖 𝑑𝑟 
+
+be the mass of agent 𝑖 ’s density with 𝑠 𝑖 = sup 𝑥 ∈𝐶 𝑐 𝑖 
+
+𝜌 𝑖 (𝑥 ) as the upper density bound outside each cell. By Holder’s and triangle inequality, the second term in (16) is bounded as: 
+
+∫
+
+> 𝐶 𝑖
+
+2( 𝜌 𝑑 − 𝜌 𝑖 )
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝜌 𝑘 𝑑𝑟 ≤ 2 sup 
+
+> 𝑥 ∈𝐶 𝑖
+
+|||||||
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝜌 𝑘 
+
+||||||| ∫
+
+> 𝐶 𝑖
+
+||||𝜌 𝑑 − 𝜌 𝑖 
+
+|||| 𝑑𝑟 
+
+≤ 2
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝑠 𝑘 ∫
+
+> 𝐶 𝑖
+
+||||𝜌 𝑑 − 𝜌 𝑖 
+
+|||| 𝑑𝑟. 
+
+Putting this together, (16) simplifies to: 
+
+𝑉 𝑐 − 𝑉 ≤
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+[
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝑠 𝑘 ∫
+
+> 𝐶 𝑖
+
+||||𝜌 𝑑 − 𝜌 𝑖 
+
+|||| 𝑑𝑟 ]
+
+=
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+[
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝑠 𝑘 𝐸 𝑖 ],
+
+(17) where 𝐸 𝑖 = ∫𝐶 𝑖 
+
+||||𝜌 𝑑 − 𝜌 𝑖 
+
+|||| 𝑑𝑟 represents the error in matching the target density within 𝐶 𝑖 .Similarly, for the barrier function difference, we have: 
+
+ℎ𝑐 − ℎ = − 
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+∫ 
+
+> 𝐶 𝑖
+> ⋂𝒜
+
+𝜌 2 
+
+> 𝑖
+
+𝑑𝑟 + ∫
+
+> 𝒜
+
+(
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+𝜌 𝑖 )2 𝑑𝑟 
+
+=
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+∫ 
+
+> 𝐶 𝑖
+> ⋂𝒜
+
+(
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+𝜌 𝑖 )2 − 𝜌 2 
+
+> 𝑖
+
+𝑑𝑟 
+
+=
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+∫ 
+
+> 𝐶 𝑖
+> ⋂𝒜
+
+(
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝜌 𝑘 )2 + 2 𝜌 𝑖 (
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝜌 𝑘 ) 𝑑𝑟 
+
+≤
+
+> 𝑁
+
+∑
+
+> 𝑖
+
+[
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝑠 𝑘 𝑁 
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝑆 𝑘 + 2 
+
+> 𝑁
+
+∑
+
+> 𝑘 ≠𝑖
+
+𝑠 𝑘 ∫ 
+
+> 𝐶 𝑖
+> ⋂𝒜
+
+𝜌 𝑖 𝑑𝑟 ].
+
+(18) 
+
+> 9 of 15
+
+Remark 5. It is important to note that both (17) and (18) have a loose bound that can be tightened significantly based on the size of 𝐶 𝑖 s, and 𝒜 with respect to Ω. The terms 𝑠 𝑘 , 𝑆 𝑘 can be further bounded within 𝐶 𝑖 
+
+⋂ 𝐶 𝑐 𝑘 , 𝒜 ⋂ 𝐶 𝑐 𝑘 instead of 𝐶 𝑐 𝑘 . Furthermore, for (18), many of the integral terms vanish in practice since 𝒜 is typ-ically not covered by all Voronoi cells. As shown in Section 4, the difference between the barrier functions is trivial compared to Lyapunov functions, and can be added as an additional 𝜖 𝑐 for the CBF constraint if needed. Therefore, it is clear to see from (17) and (18) that the Voronoi cell approach converges towards the true measurements in (9) as 
+
+𝑠 𝑖 and 𝑆 𝑖 decrease. Both of which are achieved by agents work-ing together but further apart. Although the term 𝐸 𝑖 in (17) can increase with larger 𝐶 𝑖 , it converges towards a constant bounded by the target and agent’s total density mass in an additive fash-ion through the integral. Its multiplier, 𝑠 𝑖 , decreases exponentially with respect to the increase of 𝐶 𝑖 and dominates 𝐸 𝑖 such that (17) converges to zero. At the extreme, where all agents’ PDFs are dis-joint, the Voronoi cell approach has the same values as (9) while computing at a much faster rate. Additionally, this formulation also becomes more accurate with a smaller number of agents as a result of the summations in the bounds and sizes of 𝐶 𝑖 s. We conclude that our proposed algorithm RV-OBC-V does scale with respect to the swarm size, with minimal overhead due to the computation of the Voronoi partition. Contrary to a common swarm stereotype, however, it works best with sparse swarms, where the lack of connectivity among the agents makes the satisfaction of invariance constraints more effective. In other words, it is much safer to be sparse than connected .
+
+4 Simulation Results and Analysis 
+
+To test the proposed controller, we conducted simulations within a square domain with side length 4 m, discretized at a spatial res-olution of 0.1 m, resulting in a grid of 41 × 41 = 1681 points. A periodic boundary condition is applied to improve the stability of OC. The target PDF is a Gaussian centered at (0 .5, −0 .5) , with a standard deviation of 1.5. Simulations were conducted over a total duration of 4 s, with ∆𝑡 = 0 .01 s. 
+
+4.1 Single-robot Study 
+
+The comparison in the following is conducted using a single-robot setup to highlight the distinct behaviors of the two con-trollers, OC (6) and SV-OBC (8), with the simulation setup in Fig. 5. Multi-robot simulations are discussed in the next sub-section to validate the controllers’ performance in a team of robots. To replicate real-world noisy behavior, we implemented both localization and motion noise in all controllers according to Algorithm 1. To achieve statistically reliable results, the simula-tions were performed 100 times, and the averaged performance metrics were computed. An interesting aspect revealed by OC is the reshaping of the robot PDF under the state invariance constraint, defined as maintain-ing the total density within a circular region below a threshold. Though intuitively reasonable, this constraint led the controller to adopt the classic optimal transport behavior of allowing the PDF to flatten itself by diffusion to save control cost, only later   
+
+> F I G U R E 5 |Simulation setup: the red circle represents the unsafe area, the blue dot marks the robots position with the black dashed contour as its PDF, and the yellow star is the target center with green PDF.
+
+Algorithm 1 Simulation Flow 
+
+Initialize 𝑥 𝑡𝑟𝑢𝑒 𝑖 , 𝑥 𝑚𝑒𝑎𝑠 𝑖 for each agent 
+
+for each timestep 𝑡 𝑘 do 
+
+draw 𝑥 𝑚𝑒𝑎𝑠 𝑖 from a Gaussian distribution around 
+
+𝑥 𝑡𝑟𝑢𝑒 𝑖 
+
+compute 𝑢 ∗ 
+
+> 𝑖
+
+from 𝑥 𝑚𝑒𝑎𝑠 𝑖 using one of (6) , (8) , (9) ,or (14) .update 𝑥 𝑡𝑟𝑢𝑒 𝑖 with 𝑢 ∗ 
+
+> 𝑖
+
+with added Gaussian motion noise 
+
+end for 
+
+reshaping it into the desired Gaussian-like form, seen by the spreading effect in the left column of Fig. 6. As a result, the final peak reaches only about 10% of the initial Gaussian peak de-spite maintaining the correct shape. This behavior arises because OC interprets the swarm probability density as a continuously evolving belief governed solely by the Fokker-Planck equation, whereas in practice, the robots PDF is repeatedly reset by new localization measurements. As seen in Fig. 3, a new location mea-surement is taken at each timestep, effectively re-centering the robot’s PDF at the measured location. In contrast, Fig. 2 show-cases that OC evolves only with the initial density, omitting this unavoidable PDF reset in applications. Consequently, OC pre-dicts much lower density inside 𝒜 than reality, since the PDF is not continuously re-centered at the robot’s location. This leads to a false sense of safety near 𝜕 𝒜 , as shown in dark green in the middle left plot of Fig. 6, where the true PDF mass would be much higher. Reducing the constraint tolerance 𝜖 seems intuitive, yet numerical experiments reveal that very small values of 𝜖 in-crease numerical instability with limited improvements, as the reshaping effect grows with time. In contrast, the OBCs adopt a fundamentally different strategy, as they optimize the control input for just one time step ahead. Specifically, SV-OBC generates a control field that is nearly zero everywhere except in the region immediately around the robot, where it radially pushes the PDF outward to flatten it towards the target, as seen in the right column of Fig. 6. This approach yields lower commanded control effort by interpolating around the agent location. RV-OBC, by design, uses uniform control fields characterized by 𝑢 ∗ 
+
+> 𝑖
+
+∈ ℝ2. This formulation provides a    
+
+> 10 of 15 AIS Journal , 2025 F I G U R E 6 |Time sequence of OC (left column) and SV-OBC (right column). Star is the mean of the target, blue is the control field, the red cir-cle represents the unsafe area, and green is robot density (darker is higher) with a red dot as the robot position.
+
+more accurate description of the noisy system and ensures safety at the tradeoff of potentially higher control magnitude. The distinction between the three approaches in control efforts is shown in the top plot of Fig. 7. OC has the lowest control cost with a globally Lipschitz-continuous control field [10], while SV-OBC applies aggressive, discontinuous control commands. It also has a lower steady-state control effort than RV-OBC by interpolating within radially outwards control fields. Notably, RV-OBC’s near-constant control effort after 1 s is the result of oscillation near the target center. At this stage, RV-OBC is expected to invest more effort as moving the entire PDF achieves greater CLF reductions than SV-OBC. The second plot in Fig. 7 shows the performance in maintaining area invariance, measured by the barrier function ℎ. As suggested by the control effort plot, SV-OBC employs the most discontinu-ous, aggressive adjustments in control directions, rapidly pushing the agent towards the invariance boundary if beneficial in the CLF. As a result, it has the lowest safety value out of the three          
+
+> F I G U R E 7 |Single agent performance plots averaged with 100 sim-ulations. Top: Control effort ‖𝑢 ‖, lower means less energy spent. Middle: Safety barrier ℎ, higher means further from the danger area. Bottom: Lya-punov function ‖𝜌 𝑑 −𝜌 ‖2
+> 𝐿 2(Ω) , lower means matching target better.
+
+controllers. However, with a smaller localization noise based PDF, it never violated the ℎ ≥ 0 criteria for forward invariance. Conversely, OC, while having a higher average safety measure, violated the safety constraint in 19 out of 100 simulations. Most violations are from the agents located too close to the boundary of 𝒜 . As noted earlier, OC treats an agent at the boundary of 𝒜 as safe, but the safety of the measured position does not guarantee the safety of the true position due to resetting PDFs. Finally, since RV-OBC is designed with the most accurate relationship between measurement and true position, it has the highest average safety score with zero violations even in the presence of noise. Lastly, the final plot in Fig. 7 highlights the density matching error with a predefined target. Unsurprisingly, both OBCs out-performed OC with their more expensive control efforts spent. RV-OBC, while it converges to the target slightly slower, has the benefit of less aggressive control input and higher safety values than SV-OBC. Therefore, just from single-agent behavior alone, we can con-clude that OC is unsuitable for real-life safety-critical applications with resetting localization noise. While SV-OBC satisfied the safety threshold in these tests, it failed when the noise gets larger,          
+
+> 11 of 15 F I G U R E 8 |Six agent performance plots averaged with 100 simu-lations. Top: Control effort ‖𝑢 ‖, lower means less energy spent. Middle: Safety barrier ℎ, higher means further from the danger area. Bottom: Lya-punov function ‖𝜌 𝑑 −𝜌 ‖2
+> 𝐿 2(Ω) , lower means matching target better.
+
+as predicted in Fig. 4. Therefore, in the next section, multi-robot simulations are run only for the safer and more accurate models, RV-OBC and RV-OBC-V. 
+
+4.2 Multi-robot Study 
+
+The proposed controllers are validated using multi-robot simu-lations to demonstrate their effectiveness in maintaining safety constraints while trying to match a target PDF. We take a closer look at a 6-robot system, whose averaged performance evaluation over 100 runs is shown in Fig. 8. It is important to remember that RC-OBC-V is a Voronoi-based variant of the RC-OBC model aimed to increase computation speed with a trade-off for pre-cise Lyapunov and barrier function evaluations, as discussed in Section 3.5. From these plots, it is clear to see that RC-OBC-V applies slightly larger aggregated control magnitude over 6 robots than the origi-nal RC-OBC, though in a less aggressive fashion, to achieve nearly identical safety results. In all 100 simulations, both controllers never violated the ℎ ≥ 0 safety constraint, even under localiza-tion and motion noises. As expected, the difference, 𝑉 𝑐 − 𝑉 , is higher when the robots are closer together after converging to the target, causing a slightly higher equilibrium cost. In contrast, as stated in Remark 5, the effect of the barrier function differences is negligible in comparison since fewer cells intersect with 𝒜 .Then, we examine a simulation out of the 100 runs, as shown in the time sequence plots in Fig. 9 and Supplementary Video 1.These plots are set up with the target PDF in green and its mean at the gold star, 𝒜 in red, the measured positions as blue dots, and the true position trails in blue with black contour PDFs. The top row displays the RV-OBC result, while the bottom row shows the RV-OBC-V variant with cells partitioned in black lines. The RV-OBC converges smoothly towards the target, with the two top robots avoiding the danger area regardless of the noisy mea-surements. The robots quickly reach equilibrium near the target, with minor numerical oscillations. In contrast, the RV-OBC-V controller only considers the mass density of agents within its cell. With only noisy measurements available, the Voronoi partitions are often inaccurate, with cell boundaries crossing the PDFs, as seen in most plots. However, both of the top agents avoided the danger area and successfully converged towards the target, since they are sufficiently apart and cover 𝒜 with only two cells. After 
+
+1 s, the robots cluster closely, and the inaccuracy in 𝑉 𝑐 began to affect the performance, as reflected in Fig. 8. 
+
+Remark 6. The safety performance of the RV-OBC-V controller is affected by the relation between cell size and the localization error defined by Σ. One disruptive behavior arises when the cell boundary intersects with an agent’s PDF, causing a nonzero prob-ability that the measured position falls outside of the true cell. Moreover, in some cases, where two agents are so close together, their measured positions appear in each other’s cells, effectively flipping the cell assignment and applying controls in the opposite directions, e.g., time 2.20 s in Fig. 9. While this effect might cause safety failures, it is only possible when agents are so close that their PDFs overlap and cover 𝒜 with a non-trivial amount. This further supports our claim that RV-OBC-V performs better when agents are further apart, challenging the stereotype that swarms are more effective in close proximity. Finally, the runtimes of the two controllers are compared to validate the claim that RV-OBC-V significantly improves com-putation efficiency. Simulations with 6, 10 , 15 and 20 robots are repeated for 100 times to obtain the average runtime per timestep with an AMD Ryzen 5 5600 6 -core processor, using the MOSEK Fusion API for Python [26]. Based on Fig. 10, with fewer agents, the overhead of Voronoi partition causes the RV-OBC-V to run slightly slower than RV-OBC. However, as the swarm size in-creases, the runtime for RV-OBC-V stays nearly constant while RV-OBC grows rapidly. This difference arises from the structure of the controllers: RV-OBC must compute the full 𝑁 𝑥 × 𝑁 𝑦 field for each new agent, whereas RV-OBC-V performs a light-weight partition step and optimizes in a single field regardless of swarm sizes. In summary, the simulations demonstrated that both controllers are able to maintain the safety constraint under localization and motion noise, with RC-OBC-V achieving comparable re-sults with significantly reduced computational requirements. In the next section, we test the RC-OBC-V with physical robots to demonstrate its practical applicability, as it offers scalability over RC-OBC.          
+
+> 12 of 15 AIS Journal , 2025 F I G U R E 9 |Time sequence of RV-OBC (top row) and RV-OBC-V (bottom row). The star indicates the mean of the target, green is the target density (darker is higher), red is the invariance area, dark black line represents Voronoi cell boundaries, and blue represents robots’ measured positions, with the true positions’ trajectory trails and black PDF contour.
+> F I G U R E 10 |Runtime plot of RV-OBC and RV-OBC-V. The experi-ments were conducted on a 81 × 81 grid and averaged over 100 runs each.
+
+5 Experiment 
+
+The proposed RC-OBC-V controller is implemented in a team of 6
+
+DJI omnidirectional robots, [27], in a square field with side length 
+
+4 m. The setup inherently includes real-world uncertainties: local-ization is achieved by a Vicon system, [28], subject to sensor noise, while the robots themselves are imperfect actuators, with friction and rapid directional changes introducing motion noise. The ex-periment was run for 27 .5 s and the resulting time sequence is shown in Fig. 11 and Supplementary Video 2.As shown in the plots, the 6 robots are initially spread around the field, with the invariance area blocking half of the robots’ direct paths to the target. Robots start converging towards the tar-get directly for the first 7 s, guided by the CLF, as robots are not close to 𝒜 . As the top left three robots approach 𝒜 , the resulting CBF-dominated control enforces their safe movement around the danger zone while approaching the target. Finally, as all robots are past the danger zone, some numerical oscillations are seen in the last few seconds as they converge towards an equilibrium distribution at the target location. The corresponding performance evaluations are shown in Fig. 12. As expected, the density matching error starts high as robots are distributed around the map, and decreases as they converge to-wards the target PDF. The safety function decreases slightly as the three robots approach the danger area on their path to the target. As they maneuver around and past 𝒜 , the safety measure-ment returns to its initial values. Notably, the controller only has access to the Voronoi cell version of measurements, 𝑉 𝑐 and ℎ𝑐 , for computation efficiency. The post-processed true measurements, 
+
+𝑉 and ℎ, have slightly lower values. The gap between the two Lya-punov measurements increases as robots are in closer proximity near the end, and the difference in safety is negligible, as stated in Remark 5. In this section, we demonstrated the practical applicability of our proposed controller, RC-OBC-V, with a 6 robot experiment. The results prove the effectiveness of the controller with real-world sensor and motion noises. 
+
+6 Conclusion 
+
+In this paper, we introduced a safety-critical optimization-based control strategy employing control Lyapunov and control bar-rier functions to guide swarm density dynamics governed by the FokkerPlanck equation. The proposed RV-OBC formulates a systematic framework that ensures accurate danger avoidance while following a predefined target, even under localization and motion noise. The RV-OBC-V variant further improves the com-putational efficiency and supports large-scale applications with both swarm and field size. Interestingly, our mathematical analy-sis and simulations reveal that the controller RV-OBC-V is more effective and safer in a sparse swarm, contrary to the common assumption that controllers work better in dense swarms. Comparative simulations highlighted that the current state-of-the-art constrained OC method is unsuitable for safe-critical applications with sensor and motion noises. In contrast, both RV-OBC and RV-OBC-V controllers are tested in simulations with consistent success, and a 6 robot experiment further demon-strates the real-world applicability of RV-OBC-V. Therefore, we 
+
+> 13 of 15
+
+F I G U R E 11 | Time sequence of the robot experiment. The star indicates the mean of the target, green is the target density (darker is higher), red is the invariance area, dark black line represents Voronoi cell boundaries, and blue represents robots’ measured positions, with trajectory trails and black PDF contour.       
+
+> 14 of 15 AIS Journal , 2025 F I G U R E 12 |Experiment performance plots. Left: Lyapunov func-tion 𝑉, 𝑉 𝑐 , lower means matching the target better. Right: Safety barrier
+> ℎ, ℎ 𝑐 , higher means further from the danger area.
+
+envision these two controllers, especially RV-OBC-V, for large-scale swarm-robotic applications such as wildfire suppression, search-and-rescue missions, and large-scale agriculture manage-ment. 
+
+References 
+
+1. Carpentiero, M., L. Gugliermetti, M. Sabatini, and G. B. Palmerini (2017). A swarm of wheeled and aerial robots for environmen-tal monitoring. In 2017 IEEE 14th International Conference on Networking, Sensing and Control (ICNSC) , pp. 90–95. 2. Alsammak, I. L. H., M. A. Mahmoud, H. Aris, M. AlKil-abi, and M. N. Mahdi (2022). The use of swarms of un-manned aerial vehicles in mitigating area coverage challenges of forest-fire-extinguishing activities: A systematic literature review. 
+
+Forests 13 (5), 811. 3. Din, A., M. Jabeen, K. Zia, A. Khalid, and D. K. Saini (2018). Behavior-based swarm robotic search and rescue using fuzzy con-troller. Computers & Electrical Engineering 70 , 53–65. 4. Albani, D., J. IJsselmuiden, R. Haken, and V. Trianni (2017). Monitoring and mapping with robot swarms for agricultural appli-cations. In 2017 14th IEEE International Conference on Advanced Video and Signal Based Surveillance (AVSS) , pp. 1–6. 5. al Rifaie, M. M., A. Aber, and R. Raisys (2011). Swarming robots and possible medical applications. In Proceedings of the 17th In-ternational Symposium on Electronic Art (ISEA 2011) , Istanbul, Turkey. 6. Li, H., C. Feng, H. Ehrhard, Y. Shen, B. Cobos, F. Zhang, K. Elam-vazhuthi, S. Berman, M. Haberland, and A. L. Bertozzi (2017). Decentralized stochastic control of robotic swarm density: Theory, simulation, and experiment. In 2017 IEEE/RSJ International Con-ference on Intelligent Robots and Systems (IROS) , pp. 4341–4347. 7. Wang, L., A. D. Ames, and M. Egerstedt (2017). Safety barrier cer-tificates for collisions-free multirobot systems. IEEE Transactions on Robotics 33 (3), 661–674. 8. Ames, A. D., S. Coogan, M. Egerstedt, G. Notomista, K. Sreenath, and P. Tabuada (2019). Control barrier functions: Theory and ap-plications. In 2019 18th European Control Conference (ECC) , pp. 3420–3431. 9. Origane, Y., Y. Hattori, and D. Kurabayashi (2021). Control input design for a robot swarm maintaining safety distances in crowded environment. Symmetry 13 (3), 478. 10. Daudin, S. (2023). Optimal control of the fokker-planck equation under state constraints in the wasserstein space. Journal de Mathématiques Pures et Appliquées 175 , 37–75. 11. Cannarsa, P. and R. Capuani (2018). Existence and uniqueness for mean field games with state constraints. pp. 49–71. 12. Hoppe, F. and I. Neitzel (2022). Optimal control of quasilinear parabolic pdes with state-constraints. SIAM Journal on Control and Optimization 60 (1), 330–354. 13. Niu, L. and G. Notomista (2025). Decentralized density control of multi-robot systems using pde-constrained optimization. IEEE Robotics and Automation Letters 10 (4), 4045–4052. 14. Elamvazhuthi, K. and S. Berman (2015). Optimal control of stochastic coverage strategies for robotic swarms. In 2015 IEEE International Conference on Robotics and Automation (ICRA) , pp. 1822–1829. 15. Sinigaglia, C., A. Manzoni, F. Braghin, and S. Berman (2025). Ro-bust optimal density control of robotic swarms. Automatica 176 ,112218. 16. Yamaguchi, K., T. Endo, and F. Matsuno (2022). Formation con-trol of multiagent system based on higher order partial differential equations. IEEE Transactions on Control Systems Technology 30 (2), 570–582. 17. Park, Y. and C. Sloth (2023). Discretization-robust safety bar-rier of partial differential equation. In 2023 11th International Conference on Control, Mechatronics and Automation (ICCMA) , pp. 49–54. 18. Niu, L. and G. Notomista (2025). Safe decentralized density control of multi-robot systems using pde-constrained optimization with state constraints. Presented at the IEEE International Sympo-sium on Multi-Robot and Multi-Agent Systems (MRS), 2025. 19. Annunziato, M. and A. Borzì (2013). A fokkerplanck control framework for multidimensional stochastic processes. Journal of Computational and Applied Mathematics 237 (1), 487–507. 20. Schwager, M., D. Rus, and J.-J. Slotine (2009). Decentralized, adaptive coverage control for networked robots. The International Journal of Robotics Research 28 (3), 357–375. 21. Archer, A. J. and M. Rauscher (2004). Dynamical density functional theory for interacting brownian particles: stochastic or deterministic? Journal of Physics A 37 , 9325–9333. 22. Briani, A. and P. Cardaliaguet (2018). Stable solutions in poten-tial mean field game systems. Nonlinear Differential Equations and Applications NoDEA 25 (1), 1. 23. Reis, M. F., A. P. Aguiar, and P. Tabuada (2020). Control barrier function-based quadratic programs introduce undesirable asymptotically stable equilibria. IEEE Control Systems Letters 5 (2), 731–736. 24. Teruel, E., R. Aragues, and G. López-Nicolás (2019). Adistributed robot swarm control for dynamic region coverage. 
+
+Robotics and Autonomous Systems 119 , 51–63. 25. Elamvazhuthi, K. and S. Berman (2019, Nov). Mean-field mod-els in swarm robotics: A survey. Bioinspiration & Biomimetics 15 (1), 015001. 26. MOSEK ApS (2024). MOSEK Fusion API for Python 10.2.16 .27. DJI (2020). RoboMaster S1 User Manual . DJI. Accessed: 2025-09-26. 28. Vicon Motion Systems Ltd. (2024). Vicon Nexus User Guide .Vicon Motion Systems Ltd. Accessed: 2025-09-26.

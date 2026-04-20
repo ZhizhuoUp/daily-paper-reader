@@ -1,0 +1,606 @@
+Title: Verification of Autonomous Systems with Optimal Controllers
+
+URL Source: https://arxiv.org/pdf/2604.15659v1
+
+Published Time: Mon, 20 Apr 2026 00:24:58 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Verification of Autonomous Systems with Optimal Controllers 
+
+Dylan Le †, Joel McCandless †, Carlos A. Varela, Radoslav Ivanov 
+
+Abstract — This paper considers the problem of reachability analysis of control systems with optimal controllers, as a first step towards verifying the safety and correctness of such systems. Despite their appeal in guaranteeing task satisfac-tion through cost minimization, optimal controllers are often challenging to assure. In particular, as system dynamics grow in complexity, solving the resulting optimization problem may be difficult, especially given time and computation constraints on real platforms. Thus, it is essential to verify that, even if the optimal solution is not always found, such controllers still accomplish the high-level control objective. In this paper, we focus on gradient descent algorithms and design a reachability algorithm by treating gradient descent as a separate (digital) dynamical system, embedded in the original (physical) dynam-ical system, with controls as part of the state. We evaluate the feasibility of the proposed method on two control systems, a two-dimensional quadrotor and a cartpole. 
+
+I. I NTRODUCTION 
+
+Modern autonomous systems, such as self-driving cars, air taxis, and food delivery robots [1], [2], [3], are increasingly sophisticated, both in terms of the tasks they can accomplish and the hardware they use. This development underlines the need for powerful optimal control algorithms that can execute long-horizon tasks, planned over complex, and possibly data-driven, system models. In fact, optimal control has been used in a number of high-profile applications involving data-driven models, including quadrotor landing [4], quadruped control [5] and autonomous drifting [6]. Despite their great promise, however, optimal controllers are challenging to assure, which is an essential requirement for many of the safety-critical systems described above. In particular, complex tasks specifications and system dynamics result in large, non-convex optimization problems that are difficult to solve optimally, especially given computation constraints at runtime. As a practical solution, developers often utilize approximations such as gradient descent [4] or sampling-based methods [5], which provide fast performance at the expense of optimality. In this paper, we aim to design a verification approach for autonomous systems with optimal controllers. As a first step, we focus on approaches based on gradient descent, which have proven to be very effective and are easier to analyze than more sophisticated techniques such as second-order or relaxation-based methods.  
+
+> This work has been submitted to the IEEE for possible publication. Copyright may be transferred without notice, after which this version may no longer be accessible. The authors are with the Department of Computer Science, Rensselaer Polytechnic Institute, 110 8th St, Troy, NY 12180, USA
+> †These authors contributed equally to this work.
+
+Verification of autonomous systems has received a lot of attention over the last two decades [7]. A number of reachability approaches have been proposed, based on dif-ferent computationally-convenient approximations such as ellipsoids [8], polytopes [9], zonotopes [10] or Taylor models (TMs) [11], [12]. Stochastic [13] and simulation-based [14] verification methods have also been developed, as well as methods based on satisfiability modulo theories [15], [16]. Furthermore, a range of dynamical system classes have been considered, including linear [17], non-linear [18], hybrid [12] and transition systems [19]. In terms of control algorithms, a large class of methods is based on Hamilton-Jacobi reachability, which aims to design controllers which are safe by design [20]. Moreover, a lot of work has been done on verifying safety of neural network controllers [21], [22], [23], [24], [25], including the authors’ Verisig approach [21], [26], [27], [28]. However, we know of no prior work on reachability analysis of gradient-descent-based control for non-linear systems. Our main idea is to treat gradient descent as a (digital) dynamical system, embedded in the original (physical) dy-namical system. This results in an augmented system, which contains both the physical and the digital states, i.e., future controls, used in gradient descent. While this approach is intuitively appealing, it introduces significant challenges in terms of (1) the dimensionality of the system, (2) the verifica-tion horizon (essentially the product of physical control loops and digital gradient descent loops), and (3) the complexity of the functions involved in gradient calculations. To address the above challenges, we propose a reachability method based on TMs. To alleviate the high-dimensional state space challenge, we propose a digital TM shrink wrapping approach that aims to reduce the approximation error in digital TMs. Specifically, we decouple physical and digital TMs through a new shrink wrapping and unwrapping iteration that allows us to treat the problem as two lower-dimensional problems. Furthermore, we also introduce a method for symbolic propagation of remainder terms in digital states, which reduces error growth over long horizons and complex function approximations. We evaluate the proposed method on two control plat-forms, a two-dimensional quadrotor and a cartpole. These systems illustrate different reachability challenges, such as higher control dimensions and longer planning horizons. In both cases, we design optimal controllers that aim to take the system to the origin and verify that these systems converge to a box around the origin, for a range of initial conditions. In summary, this paper makes three contributions: 1) a verification paradigm for autonomous systems with optimal 
+
+> arXiv:2604.15659v1 [eess.SY] 17 Apr 2026
+
+controllers; 2) a reachability analysis approach for gradient descent controllers based on TMs; 3) two case study evalu-ations on systems with optimal controllers. II. P ROBLEM STATEMENT 
+
+We consider a discrete-time system 1 where the state 
+
+xk ∈ Rd at step k is determined by a known state evolution function f : Rd × Rc → Rd
+
+xk+1 = f (xk, u k) uk = h(xk) (1) where uk ∈ Rc is the vector of optimal control over a cost function J : Rc×H × Rd → R up-to some horizon H. The optimal control uk is found by minimizing J:
+
+h(xk) = arg min  
+
+> uk:uk+H−1
+
+J(uk : uk+H−1, x k) (2) where h(xk) = [ uk, u k+1 , . . . , u k+H−1] consists of the en-tire horizon of controls, such that h(xk) = h1(xk). A larger horizon H allows the cost function to account for longer-term effects, at the cost of a higher-dimensional optimization problem. Note that the optimal control at time k may be dependent on the controls and states up-to k + H. In this work, we consider J to be the quadratic cost function 
+
+J(uk : uk+H−1, x k) = 
+
+> H−1
+
+X
+
+> i=0
+
+x⊺
+
+> k+1+ i
+
+Qxk+1+ i + u⊺
+
+> k+i
+
+Ruk+i
+
+(3) where xk+1 : xk+H can be found by propagating controls through (1). 2
+
+In general, the optimization problem (2) over the cost function (3) may not have a closed-form solution due to non-linearity or non-convexity in f . A common strategy then is to use an optimization algorithm such as gradient descent to get an approximate solution. We consider the fixed step-size 
+
+α gradient descent algorithm to optimize (2) with T gradient updates. 3 We define zi to be iterate i of gradient descent for the controls h(xk). The gradient update for zi+1 is 
+
+zi+1 = zi − α∇zi J(·) (4) where we initialize z0 = 0c×H and the final gradient step T
+
+results in the controls h(xk) = zT . We use zero initialization for consistency and ease of verification; further discussion on this choice is provided in Section VIII. We now state the problem considered in this paper. 
+
+Problem. Given an initial set of states X0 and a dynamical system with optimal control, as defined in (1–3), the problem is to find tight over-approximations for the reachable sets 
+
+X1, X2, . . . , XK for all times k ∈ { 1, . . . , K }.Remark. Reachability analysis enables verification, as one could verify a safety property using intersection or union with the reachable sets.               
+
+> 1Although the dynamics in the case studies are in continuous time we can view them as discrete-time systems because the controls are time-triggered.
+> 2The cost function may also have discounting where Qand Rmay not be the same matrix for all i∈[0 , H −1] . We also note that uk+Hcannot contribute to the final state x.
+> 3In our running examples, our models use a decaying αlearning rate. This is helpful for designing controllers that are easier to verify.
+
+III. B ACKGROUND 
+
+The reachability approach described in this paper uses TMs as an approximation method [11]. This section provides the relevant background on TMs as it pertains to reachability analysis of dynamical systems. At a high level, a TM for a function f is a polynomial approximation of f as well as worst-case error bounds over a domain of interest D. In particular, we say a polynomial p
+
+of degree j is a j-degree polynomial approximation of f ,around a point x, written p(x) ≡j f (x), if all partial deriva-tives, up to order j, of f and p coincide at x. Furthermore, let I be the set of all closed intervals I = [ a, b ], with a, b ∈ R.Then, a TM is defined as follows. 
+
+Definition 1 (Taylor Model) . Let f : D → R be a j-times differentiable function of n variables defined over a domain D ∈ In. Then a Taylor model of f over D of degree 
+
+j is a pair (p, I ) of a polynomial approximation p and an error bound I (also known as a remainder) such that 
+
+1) f (c) ≡j p(c), where c is the center of D, 
+
+2) ∀x ∈ D, f (x) ∈ { p(x) + e | e ∈ I}.
+
+Definition 2 (Taylor Model Range) . We define the range of T M = (p, I ) over domain D as 
+
+R(T M ) = {p(x) + e | x ∈ D, e ∈ I}.
+
+Thus, a TM can be thought of as a Taylor series approx-imation along with bounds on the remainder term. TMs are appealing due to their approximation power (given a high enough polynomial order) as well as their computational scalability on most systems considered in the literature. In particular, prior work [11] has introduced standard TM operations, including addition and multiplication, that allow one to perform arithmetic operations while preserving the conservative approximation of the resulting TM. 
+
+Definition 3 (Taylor Model Arithmetic) . Consider two TMs, 
+
+T M 1 = ( p1, I 1) and T M 2 = ( p2, I 2), defined over a do-main D. TM addition and multiplication are defined as follows [11], [29]: 
+
+T M 1 + T M 2 = ( p1 + p2, I 1 + I2)
+
+T M 1 × T M 2 = ( p1 × p2, I M ),
+
+where IM = Int (p1)I2 + Int (p2)I1 + I1 × I2, and Int (p)
+
+is an interval bound of p over D.
+
+The benefit of Definition 3 is that TMs can now be used to conservatively approximate the reachable sets of dynamical systems such as the one in (1), through repeated application of TM arithmetic. Furthermore, TMs are readily available for a number of analytic functions, such as exponentials and trigonometric functions [11], which allows us to cal-culate reachable sets for a variety of systems encountered in practice. Finally, TMs can also be used for reachability analysis of continuous-time systems, e.g., through Picard iteration [29], as well as for hybrid systems, e.g., by calculat-ing intersections of reachable sets with guards and invariants using the concept of domain contraction [29]. TMs for dynamical systems. For reachability analysis of dynamical systems such as the one in (1), TMs are typically defined in terms of the initial conditions. Specifically, each polynomial is a function of the initial states x0 over domain 
+
+X0. Thus, the reachable set at time step k is represented as a vector of TMs, where each polynomial (of order j) has the form: 
+
+pxi,k = c +
+
+> N
+
+X
+
+> n=1
+
+ci,n xq1n 
+
+> 1,0
+
+· · · xqdn  
+
+> d, 0
+
+,
+
+where N is the number of all monomials of order up to j,the c’s are constants, the qmn ∈ { 0, . . . , j } are power terms satisfying P 
+
+> m
+
+qmn ≤ j and xi, 0 denotes element i of state vector x0. Note that the domain is typically normalized to be 
+
+D = [ −1, 1] d, as that tends to result in better approximation performance [11]. 
+
+TMs for non-polynomial functions. For functions com-posed of multiple non-polynomial functions, e.g., 1/ cos 2(θ),the standard approach is to start with TMs of known func-tions, e.g., cosine and division, and apply TM arithmetic to obtain a TM for the full function. Note that this approach may result in large approximation error as remainder terms are propagated through multiple TMs. We investigate meth-ods to alleviate this challenge in Section VI. IV. R UNNING EXAMPLES 
+
+In this section we present two different dynamical systems that we use as running examples. While the dynamics of both models are continuous, the control is time-triggered which allows us to treat them as discrete-time systems. This is possible since existing reachability tools can provide reach-able sets at the time-triggered control steps. Both systems have time-triggered control of 10Hz and the controllers are designed with the high-level objective to be within a small box of the origin. We aim to verify this by approximating the reachable sets up to five seconds of system execution time. 
+
+A. Planar Quadcopter 
+
+Consider a simplification of the common quadrotor model in two dimensions with a rigid body, named the planar quadcopter [30, Chapter 3]. We modify the original model to also include saturation on controls as follows: 
+
+m¨phk = −F (tanh( u1
+
+> k
+
+) + tanh( u2
+
+> k
+
+)) sin θk (5) 
+
+m¨pvk = F (tanh( u1
+
+> k
+
+) + tanh( u2
+
+> k
+
+)) cos θk − mg (6) 
+
+I ¨θk = rF (tanh( u1
+
+> k
+
+) − tanh( u2
+
+> k
+
+)) (7) where m = 0.486kg is the craft’s mass, F = 9.81N 
+
+is the maximum thrust of one propeller, g = 9.81m /s2
+
+is the gravitational acceleration, I = 0.00383kg · m2 is the moment of inertia, and r = 0.25m is the length from a propeller to the axis of rotation. phk , p vk, θ k are the horizontal and vertical positions in space and the rotation. Succinctly, we define the state and control at time k to be xk = ph pv θ ˙ph ˙pv ˙θ⊺ , u k = u1 u2⊺. The predicted states are propagated in the cost function using an Euler approximation with a step size of 0.1s.We use five gradient steps, and a decaying learning rate αi = 0.095(0 .51 i) for each gradient descent iterate 
+
+i ∈ [0 , 4] . The finite cost-function horizon is H = 4.For the state and control costs in the cost (3), set 
+
+Q = diag([1 .45e −1, 1.95 , 5e −3, 7.8e −3, 1.15e −3, 1e −4]) .and R = [1 .2e −4, 6.0e −5; 6 .0e −5, 1.2e −4] . The cost parameters were obtained through manual inspection so as to achieve the objective with minimum horizon length. To demonstrate the complexity of the gradients, for il-lustrative purposes, consider the first control in uk for this problem. We write its gradient as a summation 
+
+∂J ∂u 1,k 
+
+=
+
+> 75
+
+X
+
+> i=1
+
+gi(uk, x k) (8) where each gi(·) is a non-linear term. The leading term g1(·)
+
+for u1,k is g1(uk, x k) = Cx k+1 sin( θk) tanh( uk, 1)2 where 
+
+C is a constant term consisting of a subset of the model parameters. In g1(·), there is a product of transcendental functions and the predicted states, which creates significant challenges for reachability analysis; other gi(·) terms can be similarly nonlinear and have even higher power. 
+
+B. Cartpole 
+
+The second case study is the cartpole system [31], con-sisting of a pole hinged to a cart on a frictionless track, with the goal of balancing the pole upright. via horizontal forces. We use the corrected frictionless dynamics of Florian [32], with state x = [ p, ˙p, θ, ˙θ]⊤ where p is the cart position in meters, θ is the pole angle from vertical in radians, and u is the applied horizontal force in Newtons. Letting β = ( F u +mpl ˙θ2 sin θ) / (mc +mp), the dynamics are ˙p = ˙ p, ˙θ = ˙θ, ¨p = ( β − mpl¨θ cos θ)/(mc + mp), and 
+
+¨θ = g sin θ − β cos θl
+
+ 43 − mp cos 2 θmc+mp
+
+ (9) where mc = 1kg is the cart mass, mp = 0 .1kg is the pole mass, l = 0 .5m is the half-pole length, g = 9 .8m /s2 is gravitational acceleration, and F = 10 is the force scalar. The cost function design follows the previous example. We use eight gradient steps and a decaying learning rate 
+
+αi = 0 .01(0 .8i) for each gradient step i ∈ [0 , 7] . The cost function horizon is H = 6 , using an Euler step of 0.2s. For the state costs, Qk = 1 .1765 kdiag ([1 .17647 , 0, 1, 0]) for each predicted state in the cost function k ∈ [0 , 5] and 
+
+R = [0 .00075] . All parameters were found using grid search over the parameter space. Note that cartpole is more challenging to verify than the quadcopter, as it requires planning over a longer horizon to reach the origin and also has more complex dynamics. Again, consider the first control in uk as a summation 
+
+∂J ∂u 1,k 
+
+=
+
+> 31158
+
+X
+
+> i=1
+
+ni(uk, x k)
+
+!  486 X
+
+> i=1
+
+di(uk, x k)
+
+!
+
+(10) where each ni(·) and di(·) are non-linear terms. The leading terms, n1(·) and d1(·) for u1,k are P1 P2                      
+
+> Plant
+> GD TGD 2
+> . . . GD 1
+> init
+> Gradient Descent
+> x:= f(x, u )z:= [ z0, . . . , z H] := 0
+> z:= z−α∇J(x, z )z:= z−α∇J(x, z )
+> z:= z−α∇J(x, z )u:= z1
+
+Fig. 1: System dynamics as a transition system. The tran-sition system states are shown with circles. The transition system is divided into two parts: the physical plant dynamics and the digital gradient descent. 
+
+n1(uk, x k) = C1pk+6 uk+1 uk+3 sin( θk+2 ) sin( θk+4 )
+
+· cos( θk+1 ) cos( θk+4 )
+
+d1(uk, x k) = C2 cos( θk+1 )2 (11) where C1 and C2 are constant terms consisting of the model parameters. In (11), the numerator and denominator each consist of products of predicted states, future controls, and transcendental functions. The significant increase in terms and their complexity in comparison to the previous example reflects the compounding effect of a longer horizons and complicated dynamics. V. A PPROACH OVERVIEW 
+
+This section outlines our approach to over-approximating the reachable sets of the full system by translating the system into a transition system with an augmented state. We begin by giving a formal description of the augmented system. 
+
+A. Augmented Physical-Digital System 
+
+In this section we define the augmented dynamical sys-tem’s state which we use to compose gradient descent with the plant dynamics. To do this we consider the system in two parts: the physical dynamical system and the digital control system. Intuitively, each gradient descent update could be considered as part of the digital dynamics update. We define the augmented system. 
+
+Definition 4 (Augmented System) . The augmented system consists of the physical state, xk ∈ Rd, at time step k and the digital state, zki ∈ Rc×H , which denotes the matrix of future controls up-to the horizon H for iterate i of gradient descent at time k. The gradient descent algorithm produces a sequence of iterates zk 
+
+> 1
+
+, z k 
+
+> 2
+
+, . . . , z kT . The iterates evolve according to the gradient update rule given in (4) .
+
+The augmented system allows us to track how gradient descent affects the approximation at each iterate rather than as a single transition black-box. Because the augmented system is a combination of both the physical and digital systems, we use a standard modeling framework for digital system model checking, namely transition systems [19]. 
+
+B. Augmented Transition System 
+
+For verification purposes, we map the augmented dynam-ical system into an equivalent transition system. We first 
+
+Algorithm 1 Reachability Analysis of Control Systems with Optimal Controllers 
+
+Input: TM vector T M 0 for initial set X0, controller cost function J, physical horizon K, gradient horizon T ,gradient step α 
+
+> 1:
+
+T M x ← T M 0 
+
+> 2:
+
+all reach sets ← { T M x} 
+
+> 3:
+
+for each k in {1, . . . , K } do  
+
+> 4:
+
+//gradient descent loop (Algorithm 2)  
+
+> 5:
+
+T M u ← reach gradient descent (T M x, J, T, α ) 
+
+> 6:
+
+//physical system progress  
+
+> 7:
+
+T M f ← tm f or dynamics (T M x, T M u) 
+
+> 8:
+
+T M x ← T M f ◦ [T M x, T M u] 
+
+> 9:
+
+//physical state shrink wrapping  
+
+> 10:
+
+if large remainder (T M x) then  
+
+> 11:
+
+T M x ← shrink wrapping (T M x) 
+
+> 12:
+
+end if  
+
+> 13:
+
+all reach sets ← all reach sets ∪ T M x 
+
+> 14:
+
+end for  
+
+> 15:
+
+return all reach sets 
+
+provide a general definition of transition systems, followed by the augmented transition system considered in this paper. 
+
+Definition 5 (Transition System) . A transition system is a tuple (S, T ) where S is a set of states and T is the set of transitions where T ⊆ S × S.
+
+Definition 6 (Transition System for Augmented Physi-cal-Digital System) . The transition system for the augmented dynamical system in Definition 4 is a transition system with states S = S × X × Z , where S are the discrete states 
+
+S = {P1, P 2, init, GD 1, . . . , GD T }, X is the physical state space and Z is the digital state space. The transitions are visualized in Figure 1. 
+
+The system cycles through a deterministic sequence of states: starting with the plant evolution ( P1 → P2), followed by zeroing of the gradient vector at ( init ), and a fixed sequence of gradient steps ( GD 1 → · · · → GD K ) that determine the next control input. Using this formulation, we can perform reachability anal-ysis directly over the augmented transition system. To do this we use TMs to over-approximate the reachable sets efficiently. 
+
+C. Taylor Models for Reachability 
+
+The high-level reachability analysis algorithm is sum-marized in Algorithm 1. Intuitively, we approximate each transition with a TM, as follows. We can obtain a TM, T M f ,for the dynamics using standard TM arithmetic, as described in Section III. Obtaining a TM for the controls (in T M u), as the output of gradient descent, is discussed Section VI. Algorithm 1 is a standard reachability iteration for a dynamical system, with the exception that the controls are the output of a gradient descent algorithm, which requires the novel algorithm for reachability analysis of gradient descent. Using these TMs, we can conservatively approximate the full optimization-in-the-loop system. While standard TM Fig. 2: Illustration of shrink wrapping. arithmetic is sufficient to approximate the physical plant dynamics T M f , the digital propagation of T M u through gradient descent presents some considerable challenges. 
+
+D. Technical Challenges 
+
+While formulating the problem as an augmented transition system and approximating conservative bounds using TMs is intuitively appealing, finding the reachable sets is very challenging due to the coupled nature of the augmented system. We discuss here three challenges that arise with verification over gradient descent.  
+
+> •
+
+Dimensionality : the augmented system has a much higher state dimension, proportional to the horizon of the cost function, than the physical system. This presents significant challenges for reachability methods, which often suffer from the curse of dimensionality.  
+
+> •
+
+Horizon length : the augmented system has a signif-icantly longer horizon than the original system – the horizon is essentially the product of the physical system and the digital system horizons. In turn, longer horizons lead to compounding approximation error.  
+
+> •
+
+Gradient complexity : computing the TM of the cost gradient may require repeated applications of TM arith-metic to obtain the full function as evidenced in (8) and (10). This leads to a poor approximation due to growing remainder bounds. In the following section we propose a TM-based reacha-bility approach that alleviates these challenges, through using digital shrink wrapping and symbolic remainders. VI. R EACHABILITY ANALYSIS OF GRADIENT DESCENT USING TAYLOR MODELS 
+
+This section presents the proposed approach for reacha-bility analysis of dynamical systems with optimal controllers using TMs. As noted in the previous section, gradient descent poses significant challenges in terms of dimensionality, hori-zon length, and gradient complexity. This section describes the proposed techniques to alleviate these challenges, namely digital shrink wrapping and symbolic remainder propagation, as summarized in Algorithm 2. 
+
+A. Shrink Wrapping for Gradient Descent 
+
+Shrink wrapping is a popular tool for reachability analysis using TMs as it provides great benefits for long-horizon problems [28], [33], [34]. Shrink wrapping aims to slow down TM remainder growth: keeping the remainders small is essential since if the remainders grow large, then TM arith-metic devolves into interval analysis, and the approximation error begins to accumulate rapidly. As illustrated in Figure 2, shrink wrapping works by replacing the large-remainder TM vector with a new TM vector that is a super set of the original 
+
+Algorithm 2 Reachability Analysis of Gradient Descent 
+
+Input: TM vector T M x for physical states, controller cost function J, gradient horizon T , gradient step α 
+
+> 1:
+
+//initialize gradient descent variables to 0  
+
+> 2:
+
+T M z ← 0 
+
+> 3:
+
+for each t in {1, . . . , T } do  
+
+> 4:
+
+//TMs for predicted states xk+i in J 
+
+> 5:
+
+T M p ← tms predicted (J, T M x, T M z ) 
+
+> 6:
+
+if large remainder (T M p) then  
+
+> 7:
+
+T M p ← symbolic remainders (T M p) 
+
+> 8:
+
+end if  
+
+> 9:
+
+//Stack all TMs in augmented system state  
+
+> 10:
+
+T M f ull ← [T M x, T M z , T M p] 
+
+> 11:
+
+//TM approximation of ∇J 
+
+> 12:
+
+T M ∇J ← tm f or cost (T M f ull ) 
+
+> 13:
+
+//Gradient update  
+
+> 14:
+
+T M z ← T M z − αT M ∇J ◦ T M f ull  
+
+> 15:
+
+//Digital shrink wrapping (and unwrapping)  
+
+> 16:
+
+if large remainder (T M z ) then  
+
+> 17:
+
+T M z ← shrink unwrapping (T M z ) 
+
+> 18:
+
+T M z ← digital shrink wrapping (T M z ) 
+
+> 19:
+
+end if  
+
+> 20:
+
+end for  
+
+> 21:
+
+//Collect the first c elements of gradient vector (i.e., uk), to be applied (unwrapped) as control input to the plant  
+
+> 22:
+
+T M u ← shrink unwrapping (T M z,c ) 
+
+> 23:
+
+return T M u
+
+one, but with no remainder. Although the new TM vector may temporarily result in increased approximation error, in the long run the error is reduced significantly since reachable sets are once again propagated symbolically. In the literature, shrink wrapping approaches range from simple box approximations [28] (as shown in Figure 2) to more sophisticated methods that obtain conservative new polynomials through bounding the Jacobian of the original TM [11], [34]. Unfortunately, existing techniques suffer from the curse of dimensionality – the approximation error in the new TM vector increases dramatically for high-dimensional systems. Since the number of states in the augmented physical-digital system grows rapidly with the horizon length, effective reachability analysis now requires a new approach to alleviate the curse of dimensionality. In this paper, we propose a modified shrink wrapping approach that performs separate shrink wrapping for physical and digital states. This approach not only alleviates the curse of dimensionality but it also results in faster computation as the plant polynomials only contain the physical states as variables, as opposed to the entire augmented vector of states. Despite its apparent simplicity, this approach requires careful consideration of the physical/digital TMs, since we are only refactoring part of the full TM vector at each time. For simplicity, for the remainder of this paper we will assume shrink wrapping performs box shrink wrapping (as illustrated in Figure 2), though we note that the proposed approach can be used with other existing methods as well. Definition 7 (Shrink Wrapping) . Consider a TM vec-tor, T M V = [ T M 1, . . . , T M d], defined over variables 4
+
+x1, . . . , x d and over domain D = [ −1, 1] d. The TM vector 
+
+T M V sw = [ T M sw  
+
+> 1
+
+, . . . , T M sw d ] is a shrink wrapping of 
+
+T M V if (i) T M V sw has no remainder, i.e., T M sw i = ( psw i , 0) , ∀i;
+
+(ii) R(T M i) ⊆ R(T M sw i ), ∀i. 
+
+Proposition 1 (Box Shrink Wrapping [28]) . Consider a TM vector, T M V = [ T M 1, . . . , T M d], defined over vari-ables x1, . . . , x d and over domain D = [ −1, 1] d. Suppose 
+
+Int (T M i) = [ ai, b i] is an interval bound of each T M i over 
+
+D. The TM vector T M V IN T = [ T M IN T  
+
+> 1
+
+, . . . , T M IN T d ]
+
+where T M IN T i = ( pi, 0) , such that 
+
+pi = bi + ai
+
+2 + bi − ai
+
+2 xi,
+
+is a box shrink wrapping of T M V .
+
+Intuitively, box shrink wrapping replaces all TMs with intervals, where each interval is represented as a linear function of the corresponding initial state dimension. As noted above, box shrink wrapping is only beneficial for low-dimensional systems as it tends to introduce significant error in high dimensions. To avoid performing box shrink wrapping on the augmented system, we propose to perform separate shrink wrapping for the physical and digital systems. At the same time, this step requires resolving the interdepen-dencies between these subsystems, as explained next. 
+
+Definition 8 (Digital Shrink Wrapping) . Consider a digital 
+
+TM vector, T M V = [ T M 1, . . . , T M c×H ], defined over phys-ical variables x1, . . . , x d and over domain D = [ −1, 1] d. The TM vector T M V dsw = [ T M dsw  
+
+> 1
+
+, . . . , T M dsw c×H ] is a digital shrink wrapping of T M V if (i) T M V dsw has no remainder, i.e., T M dsw i = ( pdsw i , 0) , ∀i;
+
+(ii) R(T M i) ⊆ R(T M dsw i ), ∀i;
+
+(iii) each pdsw i may also contain variables z1, . . . , z c×H .
+
+Note that digital shrink wrapping means we can use digital variables in the polynomials as well. This is needed because if the digital TMs are only functions of physical states, then we cannot shrink wrap the digital TMs without also shrink wrapping the physical TMs, as in doing so we would lose the dependencies between their corresponding reachable sets. Given this definition, we can now perform box shrink wrapping in a similar fashion to Definition 7. 
+
+Proposition 2 (Box Digital Shrink Wrapping) . Consider a digital TM vector, T M V = [ T M 1, . . . , T M c×H ], defined over variables x1, . . . , x d and over domain D = [ −1, 1] d,with T M i = (pi, I i), with Ii = [ai, b i]. The TM vector T M V dIN T = [ T M dIN T  
+
+> 1
+
+, . . . , T M dIN T c×H ] where each 
+
+T M dIN T i = ( pdIN T i , 0) , such that 
+
+pdIN T i = pi + bi + ai
+
+2 + bi − ai
+
+2 zi, 
+
+> 4Although, as explained in Section III, the TMs are defined over the states at time 0, xi, 0, for simplicity we drop the 0 subscript in this section.
+
+is a digital shrink wrapping of T M V .Proof. Parts (i) and (iii) follow from the definition of 
+
+T M V dIN T . To show part (ii), notice that the terms (bi +
+
+ai)/2 + ( bi − ai)zi/2 range between [ai, b i] for zi ∈ [−1, 1] ,which is exactly the range of the original remainder of 
+
+T M i. Thus, the range of pdIN T i is the same as the range 
+
+T M i.Intuitively, box digital shrink wrapping moves each digital TM’s remainder into a new digital variable zi. This means that in order to maintain the separation between physical and digital TMs, the TM for the output of gradient descent (i.e., the control TM), has to contain only physical variables. Thus, we propose the new concept of shrink unwrapping ,i.e., conservatively removing a variable from a TM. 
+
+Definition 9 (Shrink Unwrapping) . Consider an aug-mented TM vector, T M V = [ T M 1, . . . , T M N ], defined over both physical and digital variables x1, . . . , x d, z 1, . . . , z c×H
+
+and over domain D = [ −1, 1] d+c×H . The TM vector 
+
+T M V su = [ T M su  
+
+> 1
+
+, . . . , T M su N ], with T M su i = ( psu i , I su i ),is a shrink unwrapping of T M V if (i) R(T M i) ⊆ R(T M su i ), ∀i;
+
+(ii) each psu i only contains variables x1, . . . , x d.
+
+As a first step, we propose a conservative shrink unwrap-ping method by bounding all monomial terms that depend on the digital variables and moving them into the remainder, as shown in the following proposition. 
+
+Proposition 3 (Box Shrink Unwrapping) . Consider an aug-mented TM vector, T M V = [ T M 1, . . . , T M N ], defined over both physical and digital variables x1, . . . , x d, z 1, . . . , z c×H
+
+and over domain D = [ −1, 1] d+c×H . Denote each TM as 
+
+T M i = ( pi, I i), where pi is decomposed as pi = pxi + pzi ,where pxi is a function of only physical variables and pzi
+
+is a function of both physical and digital variables. The TM vector T M V bsu = [ T M bsu  
+
+> 1
+
+, . . . , T M bsu N ] where each 
+
+T M bsu i = ( pbsu i , I bsu i ), such that 
+
+pbsu i = pxi Ibsu i = Ii + Int (pzi ),
+
+is a digital shrink wrapping of T M V .Proof. Part (ii) follows from the definition of T M V bsu . To show part (i), notice that any value of pzi is contained in 
+
+Int (pzi ), hence R(T M i) ⊆ R(T M bsu i ).Thus, by performing both digital shrink wrapping and shrink unwrapping, we can ensure that the physical and digital states can be shrink wrapped separately. Finally, note that shrink unwrapping is also needed in between repeated digital shrink wrappings, to avoid adding a new set of digital variables after each gradient descent iteration. 
+
+B. Symbolic Remainders for Predicted States 
+
+In addition to the digital states z, we note that the gradient descent iteration also contains the predicted xk+i variables. While not directly modeled as states since they are functions of xk and zki , they also greatly affect the approximation (a) Planar Quadcopter Reachable Sets (b) Cartpole Reachable Sets 
+
+Fig. 3: Reachability analysis of the running examples. Reachable sets are shown in colored boxes. Simulation steps are plotted with X connected with a dashed gray line. In the planar quadcopter, the system starts in the bottom left and goes towards the origin. In cartpole, the system begins in the indicated initial set and first balances the pole before moving towards the origin. For clarity, later reachable sets in the cartpole figure have higher opacity. In both examples, using both of the techniques discussed greatly reduces the reachable set approximation error. error since they essentially constitute a smaller reachability problem inside each gradient step. To alleviate the error accumulation caused by predicted states, we propose the notion of symbolic remainders for digital variables. Propagating remainders symbolically is a well-known idea from the TM literature: at a high level, remainders are temporarily represented as variables that are propagated symbolically, thereby reducing the error caused by interval analysis [35]. In this paper, we build on this idea by augmenting the variable set even further, this time opportunistically including predicted states as described next. Consider the TM for variable xk+i, call it T M px = ( p, I ).If the magnitude of remainder I exceeds a certain threshold, we reformulate T M px into a new TM by adding a new variable, xk+i, whose range is exactly the magnitude of the remainder. While this idea is reminiscent of digital shrink wrapping in Definition 8, the main difference is that the predicted variables serve as temporary remainder placeholders in case the remainders grow large. The symbolic remainders are shrink unwrapped from the digital states z as well, so that the newly accumulated remainders can also be propagated symbolically. 
+
+Implementation. We implemented the proposed tech-niques as part of our Verisig tool [21], which is based on the original TM implementation of the Flow* tool [29]. The augmented transition system is implemented as a general hy-brid system, with no continuous dynamics in digital modes. VII. E XPERIMENTS 
+
+In this section we demonstrate the reachable set compu-tation for the running examples in Section IV. 
+
+Experiment Setup. In the planar quadcopter, we use the initial set (pv 
+
+> 0
+
+, p h 
+
+> 0
+
+) ∈ [−1 ± 1e −5] × [−1 ± 1e −5] , with zero initial rotation and velocity. In the cartpole, we use the initial set p0 ∈ [−0.0101 , −0.01] , θ 0 = −0.001 , with zero velocity and angular velocity. For both systems, we simulate 50 trajectories, sampled randomly from the initial set to provide an intuitive under-approximation of the reach sets. For both examples, we evaluate the performance of the combined techniques of shrink wrapping and symbolic remainders, shrink wrapping without symbolic remainders, and symbolic remainders without shrink wrapping. We note that because there has been no prior work on this problem, we evaluate different ablations of the proposed techniques in Section VI and compare their importance for finding the reachable sets. All experiments were run on a single core of an AMD EPYC 7413 24-Core Processor. We can see in Figure 3 that the reachable sets when using symbolic remainders and digital shrink wrapping remain the smallest throughout the trajectory. The figure also demon-strates the strength of our proposed techniques. While in the planar quadcopter the reachable sets with no symbolic remainder remain relatively tight, cartpole demonstrates the importance of symbolic remainders in combination with shrink wrapping. The reachability bounds of the system beyond the reversal point, where the velocity and angular velocity of the cartpole flip signs, diverge without shrink wrapping or symbolic remainders. To describe the compu-tational requirements of the proposed method, calculating reachable sets took 4237s for the planar quadcopter and 19570s for the cartpole. From our experiments, it is evident that digital shrink wrapping has an immense effect on how conservative the reach sets become. Without shrink wrapping, verification would not be possible due to overly conservative approxi-mation bounds. Using symbolic remainders we can further tighten the bounds, even more so in systems with long horizons. Together, symbolic remainders and digital shrink wrapping consistently produce tighter reachable sets across both systems. VIII. D ISCUSSION AND CONCLUSION 
+
+This paper presented a TM-based approach for reachability analysis of systems with optimal controllers using gradient descent. We modeled gradient descent as a digital dynamical system embedded in the physical one. To alleviate the chal-lenges introduced by the increased dimensionality, horizon and complexity of the augmented system, we proposed mod-ifications to existing TM techniques, namely digital shrink wrapping and symbolic propagation of digital remainders. We evaluated our method on two control systems, a two-dimensional quadrotor and a cartpole. The complexity of this problem has revealed several directions for improvement in verification methodology. First of all, new verification techniques are needed to mitigate the curse of dimensionality, especially over long horizons. While shrink wrapping and symbolic remainders provide substantial benefits for the systems considered in this paper, new approaches are needed for more complex dynamics, such as data-driven models. Furthermore, there is a need for co-design of control and verification – it is imperative to simplify both the cost function (e.g., through shorter horizons or fewer terms) and the optimization algorithm (e.g., through reducing the number of gradient steps and resetting gradient variables at the end of each control loop) so as to keep the approximation error low. Finally, it is important to consider other optimization strategies as well, such as sampling-based control and second-order methods. REFERENCES [1] Waymo, “Waymo: The World’s Most Experienced Driver,” https://waymo.com/. [2] VoloCity, “VoloCity:The air taxi that’s a cut above,” https://www.volocopter.com/en/solutions/volocity. [3] S. Robotics, “Serve robotics,” https://www.serverobotics.com/, 2025, accessed: 2025-10-13. [4] G. Shi, X. Shi, M. O’Connell, R. Yu, K. Azizzadenesheli, A. Anand-kumar, Y. Yue, and S.-J. Chung, “Neural lander: Stable drone landing control using learned dynamics,” in 2019 international conference on robotics and automation (icra) . IEEE, 2019, pp. 9784–9790. [5] H. Xue, C. Pan, Z. Yi, G. Qu, and G. Shi, “Full-order sampling-based mpc for torque-level locomotion control via diffusion-style annealing,” 
+
+arXiv preprint arXiv:2409.15610 , 2024. [6] F. Djeumou, J. Y. Goh, U. Topcu, and A. Balachandran, “Autonomous drifting with 3 minutes of data via learned tire models,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2023, pp. 968–974. [7] M. Althoff, G. Frehse, and A. Girard, “Set propagation techniques for reachability analysis,” Annual Review of Control, Robotics, and Autonomous Systems , vol. 4, pp. 369–395, 2021. [8] O. Botchkarev and S. Tripakis, “Verification of hybrid systems with linear differential inclusions using ellipsoidal approximations,” in Hybrid Systems: Computation and Control: Third International Workshop, HSCC 2000 Pittsburgh, PA, USA, March 23–25, 2000 Proceedings 3 . Springer, 2000, pp. 73–88. [9] A. Chutinan and B. H. Krogh, “Computational techniques for hybrid system verification,” IEEE Transactions on Automatic Control , vol. 48, no. 1, pp. 64–75, 2003. [10] M. Althoff, O. Stursberg, and M. Buss, “Computing reachable sets of hybrid systems using a combination of zonotopes and polytopes,” 
+
+Nonlinear Analysis: Hybrid Systems , vol. 4, no. 2, pp. 233–249, 2010. [11] K. Makino and M. Berz, “Taylor models and other validated func-tional inclusion methods,” International Journal of Pure and Applied Mathematics , vol. 6, pp. 239–316, 2003. [12] X. Chen, E. Abraham, and S. Sankaranarayanan, “Taylor model flowpipe construction for non-linear hybrid systems,” in 2012 IEEE 33rd Real-Time Systems Symposium . IEEE, 2012, pp. 183–192. [13] A. Abate, S. Amin, M. Prandini, J. Lygeros, and S. Sastry, “Com-putational approaches to reachability analysis of stochastic hybrid systems,” in International Workshop on Hybrid Systems: Computation and Control . Springer, 2007, pp. 4–17. [14] P. S. Duggirala, S. Mitra, M. Viswanathan, and M. Potok, “C2e2: A verification tool for stateflow models,” in TACAS 2015, Held as Part of ETAPS 2015, London, UK, Proceedings 21 . Springer, 2015, pp. 68–82. [15] S. Gao, S. Kong, and E. M. Clarke, “dreal: An smt solver for nonlinear theories over the reals,” in 24th International Conference on Automated Deduction, Lake Placid, NY, USA Proceedings 24 .Springer, 2013, pp. 208–214. [16] S. Kong, S. Gao, W. Chen, and E. Clarke, “dreach: δ-reachability analysis for hybrid systems,” in TACAS 2015, Held as Part of ETAPS 2015, London, UK, April 11-18, 2015, Proceedings 21 . Springer, 2015, pp. 200–205. [17] G. Frehse, C. Le Guernic, A. Donz´ e, S. Cotton, R. Ray, O. Lebeltel, R. Ripado, A. Girard, T. Dang, and O. Maler, “Spaceex: Scalable ver-ification of hybrid systems,” in International Conference on Computer Aided Verification . Springer, 2011, pp. 379–395. [18] M. Althoff, “An Introduction to CORA 2015.” ARCH@ CPSWeek ,vol. 34, pp. 120–151, 2015. [19] C. Baier and J.-P. Katoen, Principles of model checking . MIT press, 2008. [20] S. Bansal, M. Chen, S. Herbert, and C. J. Tomlin, “Hamilton-jacobi reachability: A brief overview and recent advances,” in 56th Conference on Decision and Control . IEEE, 2017, pp. 2242–2253. [21] R. Ivanov, J. Weimer, R. Alur, G. J. Pappas, and I. Lee, “Verisig: verifying safety properties of hybrid systems with neural network controllers,” in Proceedings of the 22nd ACM International Conference on Hybrid Systems: Computation and Control , 2019, pp. 169–178. [22] C. Huang, J. Fan, W. Li, X. Chen, and Q. Zhu, “Reachnn: Reachability analysis of neural-network controlled systems,” ACM Transactions on Embedded Computing Systems (TECS) , vol. 18, no. 5s, pp. 1–22, 2019. [23] S. Dutta, X. Chen, and S. Sankaranarayanan, “Reachability analysis for neural feedback systems using regressive polynomial rule inference,” in Proceedings of the 22nd ACM International Conference on Hybrid Systems: Computation and Control . ACM, 2019, pp. 157–168. [24] X. Sun, H. Khedr, and Y. Shoukry, “Formal verification of neural network controlled autonomous systems,” in Proceedings of the 22nd ACM International Conference on Hybrid Systems: Computation and Control . ACM, 2019, pp. 147–156. [25] H. Tran, F. Cai, D. M. Lopez, P. Musau, T. T. Johnson, and X. Koutsoukos, “Safety verification of cyber-physical systems with reinforcement learning control,” ACM Transactions on Embedded Computing Systems , vol. 18, no. 5s, p. 105, 2019. [26] R. Ivanov, T. J. Carpenter, J. Weimer, R. Alur, G. J. Pappas, and I. Lee, “Verifying the safety of autonomous systems with neural network controllers,” ACM Transactions on Embedded Computing Systems (TECS) , vol. 20, no. 1, pp. 1–26, 2020. [27] ——, “Case study: verifying the safety of an autonomous racing car with a neural network controller,” in Proceedings of the 23rd Inter-national Conference on Hybrid Systems: Computation and Control ,2020, pp. 1–7. [28] ——, “Verisig 2.0: Verification of neural network controllers using taylor model preconditioning,” in International Conference on Com-puter Aided Verification . Springer, 2021, pp. 249–262. [29] X. Chen, E. ´ Abrah´ am, and S. Sankaranarayanan, “Flow*: An analyzer for non-linear hybrid systems,” in Int. Conference on Computer Aided Verification , 2013. [30] R. Tedrake, Underactuated Robotics: Algorithms for Walking, Running, Swimming, Flying, and Manipulation . Course Notes for MIT 6.832, 2023. [Online]. Available: https://underactuated.csail.mit. edu [31] A. G. Barto, R. S. Sutton, and C. W. Anderson, “Neuronlike adaptive elements that can solve difficult learning control problems,” IEEE Transactions on Systems, Man, and Cybernetics , vol. SMC-13, no. 5, pp. 834–846, 1983. [32] R. V. Florian, “Correct equations for the dynamics of the cart-pole system,” Center for Cognitive and Neural Studies (Coneural), Romania , vol. 63, 2007. [33] K. Makino and M. Berz, “Suppression of the wrapping effect by taylor model-based verified integrators: Long-term stabilization by preconditioning,” International Journal of Differential Equations and Applications , vol. 10, no. 4, pp. 353–384, 2005. [34] F. B¨ unger, “Shrink wrapping for taylor models revisited,” Numerical Algorithms , vol. 78, no. 4, pp. 1001–1017, 2018. [35] X. Chen, “Reachability analysis of non-linear hybrid systems using taylor models,” Ph.D. dissertation, Fachgruppe Informatik, RWTH Aachen University, 2015.
