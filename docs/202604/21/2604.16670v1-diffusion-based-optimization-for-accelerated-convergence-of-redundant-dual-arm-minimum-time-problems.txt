@@ -1,0 +1,461 @@
+Title: Diffusion-Based Optimization for Accelerated Convergence of Redundant Dual-Arm Minimum Time Problems
+
+URL Source: https://arxiv.org/pdf/2604.16670v1
+
+Published Time: Tue, 21 Apr 2026 00:17:07 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Diffusion-Based Optimization for Accelerated Convergence of Redundant Dual-Arm Minimum Time Problems 
+
+Jushan Chen ∗, Jonathan Fried, and Santiago Paternain 
+
+Abstract — We present a framework leveraging a novel vari-ant of the model-based diffusion algorithm to minimize the time required for a redundant dual-arm robot configuration to follow a desired relative Cartesian path. Our prior work proposed a bi-level optimization approach for the dual-arm problem, where we derived the analytical solution to the lower-level convex sub-problem and solved the high-level nonconvex problem using a primal-dual approach. However, the gradient-based nature leads to a large computation overhead, and it prohibits directly imposing an L∞ Cartesian error constraint along the joint trajectory due to the sparsity of the gradient. In this work, we propose a diffusion-based framework that relies on probabilistic sampling to tackle the aforementioned challenges in the nonconvex high-level problem, leading to a 35x reduction in the runtime and 34% less Cartesian error compared to our prior work. 
+
+I. INTRODUCTION Redundancy resolution is a fundamental aspect of tra-jectory planning and control for robotic manipulators. In several industrial tasks, the end-effector’s Cartesian path is described with fewer degrees of freedom than the manipu-lator possesses, either because the robot has more than six joints [1], [2] or the task itself is lower-dimensional [3], [4]. For instance, in applications like spray coating and additive manufacturing [5]–[7], rotation around the tool center point is often a free axis. The use of a single robot in geometric complex curves is generally insufficient since it may force the robot to operate in unfavorable joint positions or near sin-gularities [8]. Thus, manufacturers are increasingly adopting dual-arm systems, which increases the redundancy. The main advantage of kinematically redundant systems is the capability to optimize multiple metrics, such as velocity and acceleration norms [9], [10], tracking error [11], or fault and singularity avoidance [12], [13]. On the other hand, the disadvantage of kinematically redundant systems is the increasing complexity of finding an optimal trajectory - a problem that has a finite number of solutions for a non-redundant robot, but has infinite solutions for a redundant system. A key industrial objective is minimizing the time to complete a given trajectory [14], [15], subject to joints position, velocity, and acceleration limitations. Additionally, path speed is often used as a proxy for material deposition in additive manufacturing [7], [16]–[18], requiring a constant path speed to ensure a uniform deposition [19]. From a motion planning perspective [20], traditional solutions utilize   
+
+> ∗Corresponding author. The authors are with the Department of Elec-trical, Computer, and Systems Engineering, Rensselaer Polytechnic Insti-tute, 110 8th St, Troy, NY 12180, USA.
+
+{chenj72, friedj2, paters }@rpi.edu 
+
+general inverse kinematics methods [21], [22] to separate redundancy from trajectory optimization. This typically leads to non-convex problems due to non-linear forward kine-matics, forcing reliance on generic solvers (e.g., [23]–[26]) that cannot exploit the specific structure of path traversal optimization. Current research in dual arm systems addresses these metrics through adaptive control [27] to optimize contact force, bimanual asymmetry inspired by human motion [28] to split tasks in coarse motion and fine control categories for each arm, or motion planning using quadratic programming with inequality constraints [29] for Cartesian error reduction. Particularly, efforts to minimize execution time in dual-arm tasks include combining Bi-directional RRT with LSTM net-works [30], MILP-based pick-and-place optimization [31], and time-optimal control for force manipulation [32]. How-ever, these methods often focus on trajectory generation or task assignment rather than fully exploiting joint redundancy for precision and speed. We address dual-arm motion planning by minimizing traversal time under strict accuracy constraints. [33] de-scribes a bi-level approach that separates the optimization of the system dynamics (related to path speed) from the kinematics (related to the geometric path and the redundancy resolution). Given a fixed set of joint trajectories, the result-ing low-level problem is convex, and the optimal path speed can be efficiently computed in closed form. The remaining high-level problem aims to change the set of joint trajectories in order to improve the maximum path speed. This high-level problem is still non-convex, albeit benefiting from a reduced set of constraints. In previous works [33]–[36], this structure is leveraged in gradient-based algorithms that obtain locally optimal solutions. In the years since 2020, the robot learning research com-munity has witnessed a surge in the application of foundation models. In particular, variants of Diffusion Models [37], [38] have been proposed and validated on various task domains such as manipulation [39], [40], trajectory planning [41]– [46], and control tasks [47], [48]. The backbone of diffusion lies in probabilistic sampling, and it has shown robust performance to mitigate sub-optimality issues in nonconvex optimization. Inspired by diffusion models, in this work, we improve the solutions of the nonconvex high-level problem in the dual-arm motion planning problem by utilizing the low-level subproblem as a cost function for the remaining non-linear high-level problem, which is then solved via a model-based diffusion optimization approach. This solution is still locally 
+
+> arXiv:2604.16670v1 [cs.RO] 17 Apr 2026
+
+optimal, but it obtains an order of magnitude faster and with less Cartesian error than previous methods. Further-more, this approach simplifies the implementation of non-differentiable constraints, a problem often faced in gradient-based approaches [33], [35]. This work is organized as follows. In Section II, we formulate the redundant dual-arm minimum time constant path speed problem, showcasing the bi-level structure. Its lower-level problem has been shown to have a closed-form solution, yet the remaining high-level problem is still non-linear. Section III introduces the necessary background on model-base diffusion and Section IV presents the proposed algorithm. Other than concluding remarks (Section VI), the paper finishes with numerical experiments in Section V, where we compare the proposed algorithm to the bi-level approach in our previous work [33] in an experiment inspired by a cold spraying application. Comparisons with general off-the-shelf nonlinear solvers (CasADi, ipopt) have been a subject of our previous paper and are not included here for brevity. II. PROBLEM FORMULATION Consider the problem of optimizing the joint motion of two redundant robot manipulators to trace a desired Cartesian path. To be formal, let si, where s0 = 0 and sN = 1 with 
+
+i = 0 , . . . , N denote the path length and (χdi )F ∈ Rm with 
+
+i = 0 , . . . N the Cartesian path to trace in some frame of reference F.Let nA and nB be the number of joints of each robot. The robotic system (shown in Figure 1) is redundant with respect to the task, so n = nA + nB > m . Denote by FbA , FtA the Manipulator A base frame and TCP frame, respectively, and 
+
+FbB , FtB those of Manipulator B (see Figure 1). Without loss of generality, it is possible to describe the relative pose between the two end effectors as one single kinematic chain FtB → F bB → F bA → F tA [49]. The single-chain forward kinematics k : Rn → Rm maps joint space to Cartesian space, i.e., 
+
+(χ)FtB = k(q), (1) where qT = [ qTB , q TA]T is the vector containing the joint pose of both robots. The manipulator’s differential kinematics, which maps joint velocity to Cartesian velocity, is given by 
+
+( ˙ χ)FtB = J(q) ˙ q. (2) Representing the pose in FtB provides benefits twofold. (i) The desired Cartesian path (χd)FtB is agnostic to the robot’s joint pose; and (ii) the relative Jacobian, J, defined in (2) can be calculated from the Jacobian of each manipulator, generally provided by robot manufacturers. For brevity, we forgo writing the reference frame ( )FtB for the remainder of the text. The dual-arm robot system is redundant, hence multiple trajectories in joint space result in the same relative Cartesian path. Among these, we are interested in finding one with the minimum traversal time and constant path velocity. Let ˙s
+
+> Fig. 1: Setup example consisting of two arms with 6 degrees of freedom. Transformations between the frames of the dual arm robotic system.
+
+denote the path velocity; then the path completion time is given by 
+
+tf = 1˙s . (3) Each joint of the combined manipulator j = 1 , . . . , n op-erates under position, velocity, and acceleration constraints, given by 
+
+qj ≤ qij ≤ qj , ˙qj ≤ ˙qij ≤ ˙qj and ¨qj ≤ ¨qij ≤ ¨qj , (4) where qij is the manipulator’s joint j-th position at path point 
+
+si, ∀ j = {1, . . . , n } and ∀ i = {0, . . . , N }, and ˙qj , ¨qj < 0,
+
+˙qj , ¨qj > 0. This assumption implies that revolute joints can rotate clockwise or counterclockwise, or move forward and backward for prismatic joints. We approximate the joints’ trajectory qij linearly with respect to vectors of parameters 
+
+θj ∈ Rd for all j = 1 , . . . n so that the position, velocity, and acceleration of each joint can be described as 
+
+qij = p(si)θj , (5) 
+
+˙qij = q′ 
+
+> ij
+
+(si) ˙ si = p′(si)θj ˙si. (6) 
+
+¨qj = q′′  
+
+> ij
+
+˙s2 
+
+> i
+
+= p′′ (si)θj ˙s2. (7) where p(si) ∈ R1×d is a twice differentiable vector basis in s; in this work, a monomial basis for simplicity. We use the fact that ¨si = 0 since we are interested in trajectories with constant path velocity to simplify the second derivative. It is worth pointing out that linear parameterization as-sumptions are common in the literature (see e.g., [50]–[52]) Furthermore, we define the following notation pi=p(si), p ′
+
+> i
+
+=
+
+p′(si), p ′′  
+
+> i
+
+= p′′ (si), which we will use for the remainder of this work. It is important to note that since p′ and p′′ are not constant, the joint velocities and accelerations are not constant despite ˙s being so. Thus, the joint limits must still be considered. Finally, define the L∞ error between the desired and the manipulator’s relative Cartesian path as 
+
+E(θ) = χd(θ) − χ(θ) ∞ (8) where we have written the Cartesian path as a function of the joint parameters with a slight abuse of notation. With this, we are now able to formalize the minimum time joint optimization problem: 
+
+tf ⋆ = min 
+
+> ˙s≥0,θ∈Rnd
+
+1˙s
+
+s.t. E(θ) ≤ ϵ, qj ≤ piθj ≤ qj ,
+
+˙qj ≤ p′
+
+> i
+
+θj ˙s ≤ ˙qj ,
+
+¨qj ≤ p′′  
+
+> i
+
+θj ˙s2 ≤ ¨qj
+
+(9) where E(θ) is the error on the Cartesian as defined in (8) and ϵ a tolerance on it. In the previous expressions, we have omitted that the constraints need to hold for all 
+
+i = {0, . . . , N }, j = {1, . . . , n }.The kinematic and dynamic constraints involving the products of different decision variables and the nonlinear relationship between joints and Cartesian paths (which makes the function E(θ) nonconvex) make problem (9) a non-convex optimization problem. However, as established in [33], it is possible to reduce the dimensionality of this problem by first solving its dynamic constraints. Let 
+
+V (θ)= max  
+
+> j∈{ 1,...,n }
+> i∈{ 0,...,N }
+
+ max 
+
+(
+
+p′
+
+> i
+
+θj
+
+˙qj
+
+, p′
+
+> i
+
+θj
+
+˙qj
+
+)!2
+
+, max 
+
+(
+
+p′′  
+
+> i
+
+θj
+
+¨qj
+
+, p′′  
+
+> i
+
+θj
+
+¨qj
+
+) .
+
+(10) Then, problem (9) can be rewritten as 
+
+(tf ⋆)2 = min θ∈Rn×d V (θ)s.t. E(θ) ≤ ϵ, qj ≤ piθj ≤ qj
+
+(11) where in the previous expressions the constraints need to hold for i = 0, . . . , N , j = 1, . . . , n . The challenge in solving (9) is therefore reduced to solving what we term the high-problem (11). In contrast, the lower-level problem refers to the solution of ˙smax in terms of θ and the evaluation of V (θ), see [33]. In particular, V (θ) is the square of the optimal traverse time for a given path defined by θ, as seen in [33, Theorem 1]. Thus, the maximum path velocity (see (3)) can be computed as 
+
+˙smax (θ) = 1
+
+pV θ ) . (12) The high-level problem (11), albeit with fewer constraints than the original problem (9), still presents a non-convex feasible set, particularly related to nonlinear forward kine-matics when computing the Cartesian error constraint -the objective V (θ) itself is convex with respect to θ. In [33], a primal-dual method was implemented to solve the leftover problem, where the solutions obtained were local and dependent on the initial joint configurations. In [34], an off-the-shelf NLP solver (SNOPT) is used to minimize a similar, kinematic high-level subproblem. [35] uses an adaptive backtracking line search routine, albeit their method establishes the kinematics as the low-level problem and the dynamics as the high-level problem. These gradient-based solutions are limited when solving non-convex, non-differentiable problems. In [33], we approximate the infinity norm of the Cartesian error by a two-norm approximation. Although this choice makes the problem more tractable, we are unable to make guarantees about the correlation between the feasibility of the two different norms. In the next section, we leverage the closed-form solution of the low-level problem, which contains the problem dy-namics and can be efficiently solved, as a reward function to iteratively solve the high-level problem (kinematics) using a model-based diffusion method, constrained directly with the infinity norm of the Cartesian error. This framework allows us to obtain results comparable to [33], with 35x reduction in the runtime and 34% less Cartesian error on average. III. B ACKGROUND 
+
+Unlike most diffusion-based planners, which learn a de-noising model from large demonstration datasets, Model-Based Diffusion (MBD) [42] performs trajectory optimiza-tion directly via probabilistic sampling based on known in-formation about the underlying problem without any training data. For example, we aim to minimize the objective function 
+
+R(·). For a given objective function R(·), we transform it into a probability distribution P (·) following a Boltzmann distribution (energy-like function), given by PR(·) ∝ e −R (·) 
+
+> τ
+
+,where τ is a temperature constant. In summary, model-based diffusion means that one can evaluate PR(·) for arbitrary samples in (·).While other sampling-based optimization methods already exist, such as Markov Chain Monte Carlo (MCMC) sampling and Cross-Entropy Method (CEM) [53], the novelty in MBD is that it does not assume the R(·) or g(·) to be smooth or convex. In MBD, an iterative reverse diffusion procedure is derived that gradually denoises the samples of Gaussian noise into the samples from the target distribution. This is structurally similar to the well-known Denoising Diffusion Probabilistic Models (DDPM) [37], where the score function aggregates samples toward a region of high probability. In contrast, the score function in MBD is not learned from data; instead, it is analytically estimated using Monte Carlo sampling and parallel evaluation of the underlying objective function. To adapt MBD to our problem in (9), the decision variable is θ, which parametrizes the entire joint trajectory ,for all i = {0, . . . , N } and j = {1, . . . , n }. We denote the reverse diffusion time step as t, where t = { ˜N , ˜N −1, . . . , 1},with initialization following θ ˜N ∼ N (0 , I )nd . While MBD proposes a trajectory optimization method for dynamical systems, our problem domain is a kinematic trajectory op-timization problem. Thus, the reverse update adapted from [42] is given as 
+
+θt−1 = 1
+
+√αt
+
+ θt + (1 − ¯αt)∇θt log Pt(θt) , (13) where ¯αt = Qtk=1 αk and αt = 1 − βt. In addition, βt is chosen such that it linearly and uniformly increases from 
+
+β0 ≪ 1 to βN ≪ 1. Furthermore, {Pt(·)}Nt=0 denotes the intermediate probability distributions obtained by gradually corrupting some target distribution P0 with Gaussian noise. At each reverse step t, MBD estimates the score function 
+
+∇θt log Pt(θt) by first drawing a batch of Ns candidate samples of θ around the current iterate using a Gaussian probability distribution N (·):
+
+θtNs ∼ N 
+
+ θt
+
+√¯αt
+
+,
+
+ 1¯αt
+
+− 1
+
+
+
+I
+
+
+
+. (14) Then, each sampled polynomial coefficient vector θt ∈ θtNs
+
+is then used to reconstruct the joint trajectory following (5) to evaluate the relevant cost functions R(·) in parallel. Next, samples drawn from (14) are weighted according to the target probability distribution, through the combination of the Boltzmann-like energy distribution PR(θ) ∝ exp( −R /λ ).We obtain the following weighted average of the Ns samples at reverse step t as 
+
+¯θ t =
+
+P
+
+> θ∈θtNs
+
+θ P R(θ)
+
+P
+
+> θ∈θtNs
+
+PR(θ) . (15) Using this weighted mean, the score function is finally given as 
+
+∇θt log Pt(θt) ≈ − θt − √¯αt ¯θ t
+
+1 − ¯αt
+
+. (16) Intuitively, the reverse diffusion process gradually aggregates samples around a manifold of high probability defined by the underlying target distribution to be minimized, PR(·). During this process, the current iterate of the denoised polynomial coefficient vector θt is gradually shifted until the target distribution PR(·) is minimized. At the end of the iterative reverse diffusion process, we obtain the final denoised vector of polynomial coefficients θ∗. We refer readers to [42] for the complete derivation of the score function as well as the proof of convergence guarantee. IV. M ODEL -B ASED DIFFUSION FOR THE OUTER 
+
+SUBPROBLEM 
+
+A. Parameterization of diffusion latent state 
+
+We apply reverse diffusion in the space of polynomial coefficients θ ∈ Rnd , which are then mapped to joint trajectories using a set of polynomial basis functions. Recall that the joint trajectory is parameterized as qij = p(si)θj ,for i = 0 , . . . , N and j = 1 , . . . , n , and each θj ∈ Rd.Without loss of generality, we assume a set of monomial basis functions with degree d − 1:
+
+pk(s) = sd−ki , k = 0 , . . . , d − 1. (17) The reverse diffusion process iteratively generates the refined polynomial coefficients θt vector until we obtain 
+
+θ∗, the solution to (11) after ˜N reverse diffusion steps. For numerical stability, we first introduce an auxiliary diffusion variable 
+
+y ∈ [−1, 1] nd . (18) By denoting ◦ as the element-wise product, we then relate 
+
+y to the polynomial coefficients through the following affine mapping 
+
+θ(y) = θ0 + σ ◦ y, (19) where θ0 denotes some nominal polynomial coefficient vec-tor that we initialize, σ ∈ R+ controls the exploration range in the space of polynomial coefficients. Let ¯qj > 0 denote the magnitude of the joint limit for joint j. We choose the element-wise σ at joint j using the following expression (see details in Proposition 1) 
+
+|θ0
+
+> j,k
+
+|+σj,k ≤ ¯qj
+
+d , (20) for k = 0 , . . . , d − 1, since a polynomial of degree d − 1
+
+has d distinct terms. This choice of σj,k scales the coeffi-cient explorations in (19) relative to the given joint limits 
+
+¯qj . Intuitively, by limiting the exploration in the space of polynomial coefficients, we can also limit the joint angle at all path index i along the resulting joint trajectory qij . This choice results in the joint position constraint of problem (11) being satisfied. This is the subject of the next proposition. 
+
+Proposition 1. With the condition in (20) , the resulting joint trajectory qij is always upper bounded by the given joint limit ¯qj .Proof. Since each joint is parameterized independently, we prove the result for a single joint j ∈ { 0, 1, . . . , n }. We omit the index j in the remainder of the proof to avoid overloading the notation. Recalling the monomial parametrization in (5), write the position of a joint at path point si as 
+
+qi =
+
+> d−1
+
+X
+
+> k=0
+
+θTk sd−ki (21) where the coefficients are parameterized as 
+
+θk = θ0 
+
+> k
+
++ σk yk, yk ∈ [−1, 1] . (22) Substituting (22) into (21), we obtain 
+
+qi =
+
+> d−1
+
+X
+
+> k=0
+
+ θ0 
+
+> k
+
++ σkyk
+
+T sd−ki . (23) Note that for all si ∈ [0 , 1] , sd−ki ≤ 1 and that |yk|≤ 1
+
+during the reverse diffusion updates. Leveraging these facts, and applying the triangle inequality to (23) yields 
+
+|qi| =
+
+> d−1
+
+X
+
+> k=0
+
+ θ0 
+
+> k
+
++ σkyk
+
+ sd−ki (24) 
+
+≤
+
+> d−1
+
+X
+
+> k=0
+
+|θ0
+
+> k
+
+|+σk ≤ ¯qj
+
+d · d = ¯ qj , (25) where the last inequality follows from (20). This completes the proof the result. It is worth noting that according to Proposition 1, the exploration size in the space of polynomial coefficients is limited. This choice is intentional due to the fact that the space of polynomial coefficients spans all real numbers. Empirically, we validate that this choice of σ leads to superior performance in the following sense: one may choose a larger exploration parameter σ by solving an optimization problem to find the exact largest exploration bound in the space of θ without violating joint limit constraints, but might need to sacrifice performance in the runtime. Qualitatively, a larger exploration parameter σ means that it takes longer for diffusion to converge to a high-quality solution. 
+
+B. Reverse Diffusion Loop for the High-Level Subproblem 
+
+We adapt the model-based diffusion algorithm [42] to the high-level problem defined in (11). We summarize our model-based diffusion algorithm for the high-level problem as shown in Algorithm 1. While the original MBD algorithm [42] applies to trajectory optimization of dynamical systems that evolve over time, our diffusion-based algorithm applies to static kinematic trajectory optimization. For our particular problem, instead of applying a static cost function as pro-posed in [42] or the quadratic augmented Lagrangian cost function proposed in [44], we propose a novel adaptive cost function for the high-level problem at each reverse diffusion update step t (Line 12, Algorithm 1). First, we map y to θ
+
+according to (19). Then, at the reverse update step t, the cost function is given as 
+
+R
+
+
+
+θ  yt , ˜λt
+
+= V  θ  yt + ˜λt  E  θ  yt − ϵ , (26) where ˜λt is an adaptive weight, and V (·) is obtained by evaluating (10), while E(·) is obtained by evaluating (8). As discussed in Section III, our diffusion algorithm is model-based since we first draw samples around the current iterate 
+
+θt and then weigh the samples by evaluating the known objective distribution PR(·) over these samples. The adaptive weight ˜λ at the next reverse diffusion step is updated as 
+
+˜λt−1 = max  0, λ t − γ  E  θ  yt−1 − ϵ , (27) where γ ∈ (0 , 1) is a fixed step size across all t. This resembles the primal-dual optimization method [54], but in our approach, there is no gradient information. We find that this choice of adaptive weighting provides a stable balance between the penalty on the Cartesian error E(·) and the final time V (·).V. R ESULTS 
+
+In this section, we present numerical experiments to vali-date the superior optimization performance of our Algorithm 1 in Section IV. First, we apply Algorithm 1 as a local optimization solver to compare against the results reported by the bi-level optimization approach proposed in [33], using the same numerical setup. Comparisons with general off-the-shelf nonlinear solvers (CasAdi, ipopt) have been a subject of our previous paper, where the superior performance of the bi-level solution [33] has been demonstrated. As such, these are omitted in this section for brevity. The simulation models a cold spraying task using two planar 3R manipulators, where one of the robots holds the spray, while the other holds the workpiece. The curve χd to 
+
+Algorithm 1: Model-Based Diffusion for Dual-Arm Minimum-Time Optimization 
+
+Input : Noise schedule parameters {αt, ¯αt} ˜Nt=1 ,number of samples per reverse step Ns,temperature 0s < τ < 1,desired relative Cartesian path (χdi )F ,high-level problem cost J(y),
+
+Output : Optimized diffusion state y⋆
+
+1 Initialize nominal θ0 via inverse kinematics and polynomial fit 
+
+2 Set t ← ˜N
+
+3 Initialize diffusion state yt ∼ N (0 , I )
+
+4 while t ≥ 1 do 5 Sample a batch of size Ns in parallel: 
+
+ytNs ∼ N 
+
+ yt
+
+√¯αt−1
+
+,
+
+ 1¯αt−1
+
+− 1
+
+
+
+I
+
+
+
+6 Clip values for numerical stability: 
+
+ytNs ← clip( ytNs , −1, 1) 
+
+7 Evaluate the objective for all samples in parallel (26): 
+
+cNs ← −R (θ(ytNs ), ˜λt)
+
+8 Normalize and compute softmax weights: 
+
+ˆcNs ← cNs − mean( cNs )std( cNs ) τ , wNs ← eˆcNs 
+
+PNs 
+
+> ℓ=1
+
+eˆcℓ
+
+9 Compute weighted mean: 
+
+¯yt ← PNs 
+
+> ℓ=1
+
+wℓ ytℓ
+
+10 Estimate the score function: 
+
+st ← −yt + √¯αt ¯yt
+
+1 − ¯αt
+
+11 Reverse update step: 
+
+yt−1 ← 1
+
+√αt
+
+ yt + (1 − ¯αt) st
+
+12 Apply adaptive penalty weight ˜λt−1 (27) 
+
+be followed represents the leading edge of a 2D fan blade mock-up, discretized into N + 1 = 500 uniformly spaced points. A Cartesian error tolerance of ±5 mm is set per industry standards. The length of each manipulator’s links are a1 = 2 m, a2 =1.5m, a3 = 1 m and their joint limits are given by ˙q = − ˙q =[1 .75 1 .57 1] rad/s and ¨q = −¨q = [35 31 .4 20] rad/s 2.These values are based on the FANUC M-1000iA industrial robot to handle the reach and size of the fanblade 1. The simulation setup can be seen in Figure 1. The forward kinematics mapping for each 3R planar robot manipulator is given as follows 
+
+ xyϕ
+
+ =
+
+ a1c1 + a2c12 + a3c123 
+
+a1s1 + a2s12 + a3s123 
+
+q1ℓ + q2ℓ + q3ℓ
+
+ , (28) 
+
+> 1The typical industrial robot of this size would usually have at least 6 degrees of freedom. We have reduced it to a 3R manipulator for the purposes of this numerical demonstration.
+
+TABLE I: Results from our diffusion solver for different ϕ                                    
+
+> ϕ(rad) Optimized tf(s) Max Cart. Err. (mm) Runtime (s) 5.12 0.73 2.83 13.77 0.00 1.17 4.39 10.47 1.04 0.79 2.94 11.62 0.56 1.01 2.19 11.08 4.76 0.90 3.87 11.66 1.22 0.70 3.54 12.01 4.98 0.78 2.94 11.01 6.01 1.06 4.06 10.83 Avg 0.89 3.35 11.56
+> Std 0.16 0.69 0.96
+
+TABLE II: Results from the bi-level optimization solver for differ-ent orientation angle ϕ                                    
+
+> ϕ(rad) Optimized tf(s) Max Cart. Err. (mm) Runtime (s) 5.12 0.77 11.01 1232.91 0.00 0.99 5.36 625.28 1.04 0.80 2.52 204.39 0.56 0.95 4.42 198.74 4.76 0.91 2.04 217.72 1.22 0.73 2.42 196.65 4.98 0.82 4.71 474.38 6.01 0.72 8.24 156.98 Avg 0.84 5.09 413.38
+> Std 0.09 2.93 346.59
+
+where cijk = cos( qiℓ + qjℓ + qkℓ ), sijk = sin( qiℓ + qjℓ + qkℓ )
+
+and ℓ ∈ { A, B } indicates the individual robot arm. We have a total of n = 6 joints and our desired Cartesian trajectory is given by (x, y ) ∈ R2. We calculate initial conditions by computing analytical inverse kinematics, after solving the redundancy with a heuristic. In this case, we consider a baseline single-arm scenario. The manipulator holding the blade initially holds the piece at the center of the path s with ϕ = π, constant, which fixes its three joints. This leaves one degree of freedom, determined by ϕ of the spray-holding arm. For those, we sample values uniformly at random in [0 , 2π] and held constant along the trajectory. We initialize the polynomial coefficients by first solving the analytic inverse kinematics from 8 randomly chosen orientation angles ϕ, and then parameterizing the resulting joint trajectory qij with θ0 
+
+> j
+
+using polynomial fitting, similar to [33]. We adopt a 9th-order polynomial, consistent with [33]. While the bi-level optimization approach solves the high-level problem (11) using a gradient-based primal-dual approach, our solver applies model-based diffusion. We run 
+
+˜N = 200 steps. We show the numerical results from our diffusion solver in Table I, and show the numerical results from the bi-level optimization solver [33] in Table II. We run all our simulations in Python on a PC with an Intel 8th Gen CPU and 16GB of RAM, without any GPU accelerations. The Maximum Cartesian Error is the point-wise maximum Cartesian error from the optimized trajectory. In practice, due to the gradient-free nature of our diffusion solver we can directly optimize for the Maximum Cartesian Error (27), whereas the bi-level optimization solver [33] or a well-known Interior Point solver [55] struggles with the Maximum Cartesian Error metric due to its gradient-based nature – evaluating the gradient of infinity norm associated with the Maximum Cartesian Error yields a very sparse vector. Thus, in the bi-level optimization solver, a 2-norm weighted error is used as a surrogate. Based on these results, we observe that our diffusion solver is able to achieve approximately 34% lower Maximum Cartesian Error on average, with over 35x reduction in runtime. In addition, our diffusion solver leads to a small standard deviation in the runtime due to its gradient-free nature ( ∼ 8% of the average), whereas the bi-level opti-mization solver leads to a standard deviation of over 80% of the average runtime. A tradeoff we observe is that the optimized tf from our diffusion solver (Table I) is, on average, approximately 5% larger than that of the bi-level optimization solver (Table II). However, in several trials, the optimized tf from our diffusion solver outperforms the bi-level optimization solver. VI. C ONCLUSION 
+
+In summary, to tackle the remaining challenges in our prior work [33], we have proposed a novel diffusion-based framework that does not depend on gradient information. As a result, our method achieves a 35x reduction in the runtime and 34% less Cartesian error. In a future study, we would like to further investigate how the size of exploration in the space of polynomial coefficients affects the final outcome of our diffusion algorithm when applied to various robotic arm motion planning problems. REFERENCES [1] S. Bai, J. Guo, Y. Jiang, H. Yokoi, and S. Togo, “Automatic control system for reach-to-grasp movement of a 7-dof robotic arm using ob-ject pose estimation with an rgb camera,” in 2023 IEEE International Conference on Robotics and Biomimetics (ROBIO) , pp. 1–6, 2023. [2] A. J. Elias and J. T. Wen, “Redundancy parameterization and inverse kinematics of 7-dof revolute manipulators,” Mechanism and Machine Theory , vol. 204, p. 105824, 2024. [3] E. S. Conkur and R. Buckingham, “Clarifying the definition of redundancy as used in robotics,” Robotica , vol. 15, p. 583–586, 1997. [4] J. L´ eger and J. Angeles, “Off-line programming of six-axis robots for optimum five-dimensional tasks,” Mechanism and Machine Theory ,vol. 100, pp. 155–169, 2016. [5] Y. Xu, S. Tong, Z. Ju, Z. Wang, Y. Zhao, J. Yao, and Y. Zhao, “Research on motion algorithm for intelligent operation of rock drill with eight degrees of freedom,” in 2018 IEEE ISR , pp. 61–65, 2018. [6] S. Chen, Z. Wang, A. Chakraborty, M. Klecka, G. Saunders, and J. Wen, “Robotic deep rolling with iterative learning motion and force control,” IEEE Robotics and Automation Letters , vol. 5, no. 4, pp. 5581–5588, 2020. [7] F. Coutinho, N. Lizarralde, M. Mendes, R. Bostrom, T. Silva, M. Couto, and F. Lizarralde, “iwaam: An automated system for monitoring and control of wire-arc additive manufacturing,” IFAC-PapersOnLine , vol. 56, no. 2, pp. 6576–6581, 2023. 22nd IFAC World Congress. [8] B. Siciliano, “Kinematic control of redundant robot manipulators: A tutorial,” Journal of Intelligent and Robotic Systems , vol. 3, pp. 201– 212, 09 1990. [9] A. M. Jasour and M. Farrokhi, “Path tracking and obstacle avoidance for redundant robotic arms using fuzzy nmpc,” in 2009 American Control Conference , pp. 1353–1358, 2009. [10] L. Jin, F. Zhang, M. Liu, and S. S.-D. Xu, “Finite-time model predictive tracking control of position and orientation for redundant manipulators,” IEEE Trans. on Industrial Electronics , vol. 70, no. 6, pp. 6017–6026, 2023. [11] F. Zhang, L. Jin, and X. Luo, “Error-summation enhanced newton algorithm for model predictive control of redundant manipulators,” 
+
+IEEE Trans. on Ind. Electronics , vol. 70, no. 3, pp. 2800–2811, 2023. [12] Z. Li, C. Li, S. Li, and X. Cao, “A fault-tolerant method for motion planning of industrial redundant manipulator,” IEEE Transactions on Industrial Informatics , vol. 16, no. 12, pp. 7469–7478, 2020. [13] Z. Kemeny, “Redundancy resolution in robots using parameterization through null space,” IEEE Transactions on Industrial Electronics ,vol. 50, no. 4, pp. 777–783, 2003. [14] Q. Zhang, S.-R. Li, and X.-S. Gao, “Practical smooth minimum time trajectory planning for path following robotic manipulators,” in 2013 American Control Conference , pp. 2778–2783, 2013. [15] H. Wang, M. Yuan, J. Huang, X. Zhang, and F. Liu, “Minimum-time trajectory planning of a dual-manipulator ct system with synchroniza-tion and task constraints,” IEEE Robotics and Automation Letters ,vol. 10, no. 8, pp. 8475–8482, 2025. [16] J. Xiong and Z. Fu, “Simulation and trajectory generation of dual-robot collaborative welding for intersecting pipes,” International Journal of Advanced Manufacturing Technology , vol. 111, 12 2020. [17] A. W.-Y. Tan, W. Sun, Y. P. Phang, M. Dai, I. Marinescu, Z. Dong, and E. Liu, “Effects of traverse scanning speed of spray nozzle on the microstructure and mechanical properties of cold-sprayed ti6al4v coatings,” Journal of Thermal Spray Technology , vol. 26, pp. 1484– 1497, Oct 2017. [18] R. A. Seraj, A. Abdollah-zadeh, S. Dosta, H. Canales, H. Assadi, and I. G. Cano, “The effect of traverse speed on deposition efficiency of cold sprayed stellite 21,” Surface and Coatings Technology , vol. 366, pp. 24–34, 2019. [19] H. He, C. lung Lu, Y. Wen, G. Saunders, P. Yang, J. Schoonover, A. Julius, and J. T. Wen, “High-speed high-accuracy spatial curve tracking using motion primitives in industrial robots,” 2023. [20] A. Reiter, A. M¨ uller, and H. Gattringer, “Inverse kinematics in minimum-time trajectory planning for kinematically redundant ma-nipulators,” in IECON 2016 - 42nd Annual Conference of the IEEE Industrial Electronics Society , pp. 6873–6878, 2016. [21] D. E. Whitney, “Resolved motion rate control of manipulators and human prostheses,” IEEE Transactions on Man-Machine Systems ,vol. 10, no. 2, pp. 47–53, 1969. [22] C. Wampler, “Inverse kinematic functions for redundant manipulators,” in Proceedings. 1987 IEEE International Conference on Robotics and Automation , vol. 4, pp. 610–617, 1987. [23] R. H. Byrd, J. C. Gilbert, and J. Nocedal, “A trust region method based on interior point techniques for nonlinear programming,” Math-ematical programming , vol. 89, pp. 149–185, 2000. [24] R. A. Waltz, J. L. Morales, J. Nocedal, and D. Orban, “An interior algorithm for nonlinear optimization that combines line search and trust region steps,” Mathematical programming , vol. 107, no. 3, pp. 391–408, 2006. [25] P. E. Gill, W. Murray, and M. H. Wright, Practical optimization .SIAM, 2019. [26] J. A. E. Andersson, J. Gillis, G. Horn, J. B. Rawlings, and M. Diehl, “CasADi – A software framework for nonlinear optimization and optimal control,” Mathematical Programming Computation , 2018. [27] Y. Jiang, Y. Wang, Z. Miao, J. Na, Z. Zhao, and C. Yang, “Composite-learning-based adaptive neural control for dual-arm robots with rela-tive motion,” IEEE Transactions on Neural Networks and Learning Systems , vol. 33, no. 3, pp. 1010–1021, 2022. [28] J. Lee and P. H. Chang, “Redundancy resolution for dual-arm robots inspired by human asymmetric bimanual action: Formulation and experiments,” in 2015 IEEE International Conference on Robotics and Automation (ICRA) , pp. 6058–6065, 2015. [29] T. Chaki and T. Kawakami, “Quadratic programming based inverse kinematics for precise bimanual manipulation,” in 2024 IEEE Inter-national Conference on Robotics and Automation (ICRA) , pp. 16024– 16030, 2024. [30] K.-C. Ying, P. Pourhejazy, C.-Y. Cheng, and Z.-Y. Cai, “Deep learning-based optimization for motion planning of dual-arm assembly robots,” 
+
+Computers & Industrial Engineering , vol. 160, p. 107603, 2021. [31] J. Kurosu, A. Yorozu, and M. Takahashi, “Simultaneous dual-arm motion planning for minimizing operation time,” Applied Sciences ,vol. 7, no. 12, 2017. [32] R. Di Leva, H. Gattringer, A. M¨ uller, and M. Carricato, “Force and time-optimal trajectory planning for dual-arm unilateral cooperative grasping,” Mechanism and Machine Theory , vol. 201, p. 105729, 2024. [33] J. Fried and S. Paternain, “A bi-level optimization method for re-dundant dual-arm minimum time problems,” IEEE Control Systems Letters , vol. 9, pp. 1321–1326, 2025. [34] G. Tang, W. Sun, and K. Hauser, “Time-optimal trajectory generation for dynamic vehicles: A bilevel optimization approach,” in 2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , pp. 7644–7650, 2019. [35] W. Sun, G. Tang, and K. Hauser, “Fast uav trajectory optimization us-ing bilevel optimization with analytical gradients,” IEEE Transactions on Robotics , vol. 37, no. 6, pp. 2010–2024, 2021. [36] J. Fried and S. Paternain, “Joint trajectory optimization for redundant manipulators with constant path speed,” in 2024 American Control Conference (ACC) , pp. 3833–3840, 2024. [37] J. Ho, A. Jain, and P. Abbeel, “Denoising diffusion probabilistic models,” ArXiv , vol. abs/2006.11239, 2020. [38] J. Song, C. Meng, and S. Ermon, “Denoising diffusion implicit models,” ArXiv , vol. abs/2010.02502, 2020. [39] C. Chi, Z. Xu, S. Feng, E. Cousineau, Y. Du, B. Burchfiel, R. Tedrake, and S. Song, “Diffusion policy: Visuomotor policy learning via action diffusion,” The International Journal of Robotics Research ,p. 02783649241273668, 2023. [40] Y. Wu, H. Wang, Z. Chen, J. Pang, and D. Xu, “On-device diffusion transformer policy for efficient robot manipulation,” in Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV) ,October 2025. [41] W. Xiao, T.-H. Wang, C. Gan, R. Hasani, M. Lechner, and D. Rus, “Safediffuser: Safe planning with diffusion probabilistic models,” in 
+
+The Thirteenth International Conference on Learning Representations ,2023. [42] C. Pan, Z. Yi, G. Shi, and G. Qu, “Model-based diffusion for trajectory optimization,” 2024. [43] J. Zhang, L. Zhao, A. Papachristodoulou, and J. Umenberger, “Con-strained diffusers for safe planning and control,” 2025. [44] V. Kurtz and J. W. Burdick, “Equality constrained diffusion for direct trajectory optimization,” 2024. [45] S. Jiang, X. Fang, N. Roy, T. Lozano-P´ erez, L. P. Kaelbling, and S. An-cha, “Streaming flow policy: Simplifying diffusion/flow-matching policies by treating action trajectories as flow trajectories,” arXiv preprint arXiv:2505.21851 , 2025. [46] J. Chen and S. Paternain, “Pad-tro: Projection-augmented diffusion for direct trajectory optimization,” ArXiv , vol. abs/2510.04436, 2025. [47] V. Kurtz and J. W. Burdick, “Generative predictive control: Flow matching policies for dynamic and difficult-to-demonstrate tasks,” in 
+
+Proceedings of the IEEE International Conference on Robotics and Automation (ICRA) , 2026. To appear. [48] G. S. Zhou, S. Swaminathan, R. V. Raju, J. S. Guntupalli, W. Lehrach, J. Ortiz, A. Dedieu, M. L´ azaro-Gredilla, and K. Murphy, “Diffusion model predictive control,” in Proceedings of the International Confer-ence on Learning Representations (ICLR) , 2026. Generative Models for Robot Learning workshop. [49] R. S. Jamisola and R. G. Roberts, “A more compact expression of relative jacobian based on individual manipulator jacobians,” Robotics and Autonomous Systems , vol. 63, pp. 158–164, 2015. [50] A. Kouibia, M. Pasadas, and M. Rodr´ ıguez, “Optimization of parame-ters for curve interpolation by cubic splines,” J. of Computational and Applied Mathematics , vol. 235, no. 14, pp. 4187–4198, 2011. [51] S. Zhu, J. Yuan, J. Xiao, Y. Wang, Z. Pan, P. Zhao, and K. Feng, “Obstacle-avoidance path planning of unmanned vehicles based on polynomial optimization,” in 2022 China Automation Congress (CAC) ,pp. 6988–6992, IEEE, 2022. [52] K. R. Embry, D. J. Villarreal, R. L. Macaluso, and R. D. Gregg, “Modeling the kinematics of human locomotion over continuously varying speeds and inclines,” IEEE Transactions on Neural Systems and Rehabilitation Engineering , vol. 26, no. 12, pp. 2342–2350, 2018. [53] Z. I. Botev, D. P. Kroese, R. Y. Rubinstein, and P. L’Ecuyer, “Chapter 3 – the cross-entropy method for optimization,” in Handbook of Statistics 
+
+(C. R. Rao and V. Govindaraju, eds.), vol. 31, pp. 35–59, Elsevier, Jan. 2013. [54] S. Boyd and L. Vandenberghe, Convex optimization . Cambridge university press, 2004. [55] J. A. E. Andersson, J. Gillis, G. Horn, J. B. Rawlings, and M. Diehl, “CasADi – A software framework for nonlinear optimization and optimal control,” Mathematical Programming Computation , vol. 11, no. 1, pp. 1–36, 2019.

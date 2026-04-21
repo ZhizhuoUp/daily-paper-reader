@@ -6,63 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-04-20
-- 运行时间：2026-04-20 19:46:53 UTC
+- 最新运行日期：2026-04-21
+- 运行时间：2026-04-21 20:48:09 UTC
 - 运行状态：成功
-- 本次总论文数：14
-- 精读区：3
+- 本次总论文数：17
+- 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日聚焦机器人集群密度控制与灵巧手抓取，深度解析了基于 PDE 优化的安全自主系统。
-重点突破了利用偏微分方程约束优化实现集群机器人的安全避障与长效能耗
-- 详情：[/202604/20/README](/202604/20/README)
+今日深度研读17篇机器人前沿成果，重点聚焦液体操作安全制动与双臂冗余系统的时间最优控制。
+扩散模型在双臂协同路径优化中实现极速收敛，而针对液体搬运的紧急停机算法为复杂作业提供了关键的安全保障。
+建议关注物理动力学约束与深度学习融合的控制趋势，以提升机器人在非线性环境下的执行精度。
+- 详情：[/202604/21/README](/202604/21/README)
 
 ### 精读区论文标签
-1. [''It Is Much Safer to Be Sparse than Connected'': Safe Control of Robotic Swarm Density Dynamics with PDE-Optimization with State Constraints](/202604/20/2604.15516v1-it-is-much-safer-to-be-sparse-than-connected-safe-control-of-robotic-swarm-density-dynamics-with-pde-optimization-with-state-constraints)  
-   标签：评分：8.0/10、query:q2
-   evidence：基于优化的机器人集群安全关键控制
-2. [Safe and Energy-Aware Multi-Robot Density Control via PDE-Constrained Optimization for Long-Duration Autonomy](/202604/20/2604.15524v1-safe-and-energy-aware-multi-robot-density-control-via-pde-constrained-optimization-for-long-duration-autonomy)  
+1. [Emergency Stopping for Liquid-manipulating Robots](/202604/21/2604.16667v1-emergency-stopping-for-liquid-manipulating-robots)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：基于优化避障且具有实时性约束的机械臂运动规划
+2. [Diffusion-Based Optimization for Accelerated Convergence of Redundant Dual-Arm Minimum Time Problems](/202604/21/2604.16670v1-diffusion-based-optimization-for-accelerated-convergence-of-redundant-dual-arm-minimum-time-problems)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：冗余双臂操作臂轨迹优化
+3. [Neural Network-Based Adaptive Event-Triggered Control for Dual-Arm Unmanned Aerial Manipulator Systems](/202604/21/2604.17048v1-neural-network-based-adaptive-event-triggered-control-for-dual-arm-unmanned-aerial-manipulator-systems)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：双臂无人机机械臂系统的控制
+4. [DART: Learning-Enhanced Model Predictive Control for Dual-Arm Non-Prehensile Manipulation](/202604/21/2604.17833v1-dart-learning-enhanced-model-predictive-control-for-dual-arm-non-prehensile-manipulation)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：基于优化的控制和双臂操作的MPC
+5. [Real-Time Algorithms for Model Predictive Control of Hybrid Dynamical Systems](/202604/21/2604.18432v1-real-time-algorithms-for-model-predictive-control-of-hybrid-dynamical-systems)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：非线性混合系统的实时MPC算法
+6. [Intent-aligned Autonomous Spacecraft Guidance via Reasoning Models](/202604/21/2604.17176v1-intent-aligned-autonomous-spacecraft-guidance-via-reasoning-models)  
    标签：评分：8.0/10、query:profile-1
-   evidence：用于避障和实时实现的PDE约束优化
-3. [Contact-Aware Planning and Control of Continuum Robots in Highly Constrained Environments](/202604/20/2604.15638v1-contact-aware-planning-and-control-of-continuum-robots-in-highly-constrained-environments)  
-   标签：评分：8.0/10、query:q4
-   evidence：机器人的接触感知规划与控制
+   evidence：通过推理模型进行安全的航天器轨迹优化
 
 ### 速读区论文标签
-1. [Motion planning and approximate controllability of a moving cantilever beam with a tip-mass](/202604/20/2604.10750v1-motion-planning-and-approximate-controllability-of-a-moving-cantilever-beam-with-a-tip-mass)  
+1. [From Kinematics to Dynamics: Learning to Refine Hybrid Plans for Physically Feasible Execution](/202604/21/2604.12474v2-from-kinematics-to-dynamics-learning-to-refine-hybrid-plans-for-physically-feasible-execution)  
+   标签：评分：8.0/10、query:q3
+   evidence：物理可行的连续轨迹优化
+2. [NaviFormer: A Deep Reinforcement Learning Transformer-like Model to Holistically Solve the Navigation Problem](/202604/21/2604.16967v1-naviformer-a-deep-reinforcement-learning-transformer-like-model-to-holistically-solve-the-navigation-problem)  
+   标签：评分：8.0/10、query:q3
+   evidence：整体导航模型中的轨迹预测和避障
+3. [Semi-definite programs for online control of nonlinear systems with stability guarantees](/202604/21/2604.16991v1-semi-definite-programs-for-online-control-of-nonlinear-systems-with-stability-guarantees)  
+   标签：评分：8.0/10、query:q2
+   evidence：使用半正定规划的非线性系统在线控制
+4. [Planning Smooth and Safe Control Laws for a Unicycle Robot Among Obstacles](/202604/21/2604.17212v1-planning-smooth-and-safe-control-laws-for-a-unicycle-robot-among-obstacles)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：障碍物间安全导航和光滑控制律的QP公式
+5. [CLAW: Composable Language-Annotated Whole-body Motion Generation](/202604/21/2604.11251v3-claw-composable-language-annotated-whole-body-motion-generation)  
    标签：评分：7.0/10、query:q4
-   evidence：移动悬臂梁的运动规划问题
-2. [PAINT: Partner-Agnostic Intent-Aware Cooperative Transport with Legged Robots](/202604/20/2604.12852v1-paint-partner-agnostic-intent-aware-cooperative-transport-with-legged-robots)  
+   evidence：类人机器人的全身运动生成和运动学规划器
+6. [Learning-Based Sparsification of Dynamic Graphs in Robotic Exploration Algorithms](/202604/21/2604.16509v1-learning-based-sparsification-of-dynamic-graphs-in-robotic-exploration-algorithms)  
+   标签：评分：7.0/10、query:q1
+   evidence：机器人探索中的动态路径规划和图稀疏化
+7. [Autonomous Vehicle Collision Avoidance With Racing Parameterized Deep Reinforcement Learning](/202604/21/2604.16702v1-autonomous-vehicle-collision-avoidance-with-racing-parameterized-deep-reinforcement-learning)  
+   标签：评分：7.0/10、query:q1
+   evidence：具有高频和计算效率的避障系统
+8. [LongBench: Evaluating Robotic Manipulation Policies on Real-World Long-Horizon Tasks](/202604/21/2604.16788v1-longbench-evaluating-robotic-manipulation-policies-on-real-world-long-horizon-tasks)  
    标签：评分：7.0/10、query:q6
-   evidence：足式机器人的协作运输
-3. [HRDexDB: A Large-Scale Dataset of Dexterous Human and Robotic Hand Grasps](/202604/20/2604.14944v1-hrdexdb-a-large-scale-dataset-of-dexterous-human-and-robotic-hand-grasps)  
-   标签：评分：7.0/10、query:q6
-   evidence：机器人手抓取轨迹与操作
-4. [Trajectory Planning for Safe Dual Control with Active Exploration](/202604/20/2604.15507v1-trajectory-planning-for-safe-dual-control-with-active-exploration)  
-   标签：评分：7.0/10、query:q3
-   evidence：具有主动探索的安全双重控制轨迹规划
-5. [VADF: Vision-Adaptive Diffusion Policy Framework for Efficient Robotic Manipulation](/202604/20/2604.15938v1-vadf-vision-adaptive-diffusion-policy-framework-for-efficient-robotic-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：视觉驱动的高效机器人操作框架及实时推理
-6. [Real-Time Solution-Seeking for Game-Theoretic Autonomous Driving via Time-Distributed Iterations](/202604/20/2604.16184v1-real-time-solution-seeking-for-game-theoretic-autonomous-driving-via-time-distributed-iterations)  
-   标签：评分：7.0/10、query:q2
-   evidence：博弈论模型预测控制的实时解法
-7. [AnySlot: Goal-Conditioned Vision-Language-Action Policies for Zero-Shot Slot-Level Placement](/202604/20/2604.10432v1-anyslot-goal-conditioned-vision-language-action-policies-for-zero-shot-slot-level-placement)  
-   标签：评分：6.0/10、query:q6
-   evidence：通用机器人操纵与视觉-语言-动作策略
-8. [Adaptive Tuning of Online Feedback Optimization for Process Control Applications](/202604/20/2604.12863v1-adaptive-tuning-of-online-feedback-optimization-for-process-control-applications)  
-   标签：评分：6.0/10、query:q5
-   evidence：控制中在线反馈优化的自适应调整
-9. [Self-adaptive Multi-Access Edge Architectures: A Robotics Case](/202604/20/2604.13542v1-self-adaptive-multi-access-edge-architectures-a-robotics-case)  
+   evidence：评估机器人操作策略
+9. [Trajectory-Restricted Optimization Conditions and Geometry-Aware Linear Convergence](/202604/21/2604.17067v1-trajectory-restricted-optimization-conditions-and-geometry-aware-linear-convergence)  
+   标签：评分：6.0/10、query:q3
+   evidence：轨迹受限优化收敛性的理论框架
+10. [Trajectory-Based Optimization for Air Traffic Control in the Terminal Maneuvering Area](/202604/21/2604.17776v1-trajectory-based-optimization-for-air-traffic-control-in-the-terminal-maneuvering-area)  
+   标签：评分：6.0/10、query:q3
+   evidence：空中交通管制的轨迹优化
+11. [Driving risk emerges from the required two-dimensional joint evasive acceleration](/202604/21/2604.17841v1-driving-risk-emerges-from-the-required-two-dimensional-joint-evasive-acceleration)  
    标签：评分：6.0/10、query:q1
-   evidence：机器人主动路径规划与人员安全
-10. [World-Value-Action Model: Implicit Planning for Vision-Language-Action Systems](/202604/20/2604.14732v1-world-value-action-model-implicit-planning-for-vision-language-action-systems)  
-   标签：评分：6.0/10、query:q4
-   evidence：视觉-语言-动作系统的隐式规划
-11. [Verification of Autonomous Systems with Optimal Controllers](/202604/20/2604.15659v1-verification-of-autonomous-systems-with-optimal-controllers)  
-   标签：评分：6.0/10、query:q2
-   evidence：带约束的最优控制器控制系统可达性分析
+   evidence：避障风险量化的二维范式
 
 
 <div class="dpr-home-promo-card">
