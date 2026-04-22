@@ -1,0 +1,266 @@
+Title: Novel Algorithms for Smoothly Differentiable and Efficiently Vectorizable Contact Manifold Construction
+
+URL Source: https://arxiv.org/pdf/2604.17538v1
+
+Published Time: Tue, 21 Apr 2026 01:30:24 GMT
+
+Number of Pages: 5
+
+Markdown Content:
+# Novel Algorithms for Smoothly Differentiable and Efficiently Vectorizable Contact Manifold Construction 
+
+Onur Beker, A. René Geist, Anselm Paulus, Georg Martius, University of Tübingen 
+
+Abstract — Generating intelligent robot behavior in contact-rich settings is a research problem where zeroth-order meth-ods currently prevail. Developing methods that make use of first/second order information about the dynamics holds great promise in terms of increasing the solution speed and computational efficiency. The main bottleneck in this research direction is the difficulty in obtaining useful gradients and Hessians, due to pathologies in all three steps of a common simulation pipeline: i) collision detection, ii) contact dynamics, iii) time integration. This abstract proposes a method that can address the collision detection part of the puzzle in a manner that is smoothly differentiable and massively vectorizable. This is achieved via two contributions: i) a highly expressive class of analytical SDF primitives that can efficiently represent complex 3D surfaces, ii) a novel contact manifold generation routine that makes use of this geometry representation. 
+
+I. I NTRODUCTION AND RELATED WORK 
+
+Our exposition proceeds as follows. We first briefly describe how existing collision detection pipelines based on convex primitive decomposition work, which are em-ployed as the de-facto standard by all commonly used (non-differentiable) simulators in robotics [ 1 , 2, 3]. We then outline existing approaches for making such convex primitive based routines smoothly differentiable. Finally, we list the reasons why such approaches still fall short of providing a satisfactory, generally applicable solution to differentiable collision detection. The standard non-differentiable process employed by commonly used simulators to generate a contact manifold (i.e., a properly distributed set of contact points) between two surfaces can be abstracted into the following steps [4, 5]: (i) Converting each non-convex surface into a mesh with well-distributed faces using a computational geometry algorithm [ 6, 7, 8 ], and then decomposing it into a set of convex meshes [ 9 ]. All of the remaining steps operate on pairs of these convex meshes. (ii) Running standard collision detection routines like GJK+EPA [ 10 , 11 , 12 ] or SAT [ 13 ] to obtain information such as a pair of “witness points” (the end-points of the largest penetration distance) or closest mesh facets. (iii) Building a contact manifold that sufficiently represents the entire volume/area of intersection between surfaces. The last step of going from two witness points to a manifold is needed to stabilize simulations in pathological settings such as completely parallel faces (e.g. two boxes stacked on top of each other). Alternative ways of implementing it are [5]: 
+
+• Incrementally building it across simulation time-steps by maintaining a buffer of witness points based on distance heuristics about when to add or remove from the buffer. 
+
+• Building a contact manifold from scratch every time-step (i.e. “one-shot”) by: i) running GJK+EPA to identify the 
+
+> *Accepted for publication at the ICRA 2026 Workshop on Contact-Rich Control and Representation.
+
+penetration vector and tangential axes to it, and ii) inducing small rotations on the two geometries multiple times around the tangential axes and re-running GJK+EPA each time. 
+
+• Building a contact manifold one-shot by applying polygon clipping algorithms [14] to the closest mesh-facets. Approaches for obtaining smoothed gradients for the witness point positions between two convex primitives can be grouped in two: analytical smoothing and randomized smoothing. A prominent example of the former is the work of Tracy et al. [15] , which solves for the growth distance [ 16 ]between pairs of a representative set of convex primitives (including convex meshes) by formulating them as cone-constrained convex programs. Gradients through this convex program are then obtained via implicit differentiation and smoothed via modulating the log-barrier coefficient of the underlying interior-point solver [ 17 ]. A prominent example of the randomized smoothing approach is the work by Montaut et al. [18] , which operates by: i) sampling M deviations around a nominal kinematic configuration, ii) running GJK and EPA algorithms [ 10 ] M times to get separation distances, iii) getting a zeroth-order estimate of the gradient via the score function estimator [ 19 ]. While both methods can robustly generate useful gradients for the witness point positions between two convex primitives, we argue that the underlying convex primitive based paradigm itself is pathological for differentiable contact simulation, as we elaborate on next. The first pathology of the convex primitive based formula-tion is that witness points are conceptually not well defined (i.e. non-unique) for configurations that involve parallel con-tacts between planar faces, which are very common in contact simulations since they often constitute stable points for the dynamics (e.g. a box on a plane). For the analytical smoothing approach, this means in such pathological configurations (where the non-smoothed witness point optimization problem is not strictly convex), the uniqueness comes from the (strictly convex) log-barrier term, which needs to be sufficiently flat for the gradients to remain physically plausible, thus leading to slow convergence. For the randomized smoothing approach, this means the estimator has large variance at such configurations, since witness points can jump drastically in arbitrary directions based on the sampled deviation. The second pathology is that a single witness points pair is not sufficient for stable simulation, and only addressing the differentiability of the convex-convex witness point routine is therefore insufficient. For the subsequent step of building a contact manifold from witness points, maintaining a buffer couples gradients across timesteps which is unsuitable for optimal control, and making polygon clipping routines differentiable in a computationally efficient manner is non-trivial (due to branching code and non-smooth operations such as top-K selection) [ 20 ] and remains an open problem. The 
+
+> arXiv:2604.17538v1 [cs.RO] 19 Apr 2026
+
+most commonly used option is therefore inducing incremental rotations along tangential axes and re-running the convex-convex routine to build a manifold. The main problem is that there is currently no standard, mathematically principled way to pick the tangential axes uniquely (since they are only defined up to a rotation along the normal direction), in a way that is guaranteed to change smoothly across timesteps. A third and final pathology is that in the absence of a broad-phase routine for filtering primitive pairs without running the complete convex-convex routine, the convex primitive based formulation is inefficient. This is because for two surfaces decomposed into N and M primitives each, N × M convex-convex checks are required. Therefore only addressing the narrow-phase convex-convex routine is insufficient since the broad-phase routine can still create jumps in the gradient (due to primitive pairs activating and deactivating). All of these considerations motivate us to design a collision detection routine from scratch with differentiability and vectorizability as the primary concern (which constitutes the main contribution of this paper), inspired by the analogous routines of barrier-based contact simulation approaches [ 21 ]. We opt for this approach rather than trying to make existing routines differentiable, because these standard routines were conceived within a computer graphics, video game design, or computational science and engineering context with speed and minimal memory footprint as the primary concern (rather than differentiability and vectorization). II. M ETHODS 
+
+A. Smooth Approximations to Non-Smooth Operators 
+
+The proposed framework extensively uses smooth approxi-mations of operators such as comparisons and clipping, im-plemented by the SoftJAX library [ 22 ]. The sigmoid function 
+
+σ (x) = ( 1 + exp (−x)) −1 can smoothly approximate a binary comparison operator Jx > aK : R → { 0, 1} via σ (( x − a)/τ).The softplus function s+(x) = τ log (1+exp (x/τ)) can approx-imate the relu function, two of which can be combined to ap-proximate the clip function. Finally, the softmax and logsum-exp functions can smoothly approximate the argmax and max functions, notated as sargmax (x)i = exp (xi/τ)/ ∑Dj=1 exp (x j/τ)
+
+and LSE (x) = τ log [∑Di=1 exp (xi/τ)] .
+
+B. XPSQ: A Novel Analytical SDF Primitive 
+
+This section introduces the proposed “extruded plane-superquadric intersection” (XPSQ) primitive, used for ef-ficiently representing complex 3D surfaces in a smoothly differentiable manner. It extends the line of work by [ 23 ], in particular on the superquadric (SQ) primitive. At a high-level, the XPSQ primitive analytically solves for the SDF associated with the volume traced by sweeping a superquadric (potentially intersected with N half-spaces) along a quadratic spline. This enables describing geometries such as the handle of a cup with a single primitive, which would not be possible via convex decomposition [9] or an SQ decomposition [24]. 
+
+1) Superquadrics. Superquadrics (SQ) are a family of surfaces that subsume basic shape primitives such as cubes, cylinders, and ellipsoids. An SQ in its canonical form is defined by the unit level set the level set f (x) = 1 of an 1.8        
+
+> 2.5 2.1 0.92 0.02 0.06
+> Fig. 1: The SDF of the XPSQ primitive is evaluated by: (i) analytically projecting a point xonto a spline p(t), (ii) transforming the PSQ SDF expression such that the surface is moved to coincide with each of the three projection points, and (iii) obtaining the SDF for xvia the smooth-minimum of the three transformed PSQ SDFs.
+
+inside–outside implicit function f : R3 → R [24]: 
+
+f (x) = 
+
+ xax
+
+ 2
+
+> ε2
+
++
+
+ yay
+
+ 2
+
+> ε2
+
+! ε2
+
+> ε1
+
++
+
+ zaz
+
+ 2
+
+> ε1
+
+(1) where ε1 controls the shape’s “roundness”, ε2 adjusts the shape’s “pointedness”, and ax scales the x-dimension. In total there are 11 parameters: 6 for 3D pose, 3 for per axis scales, 2 for roundness and pointedness. 
+
+2) Differentiable Combinations of SDFs. Any two SDFs 
+
+φ1(x), φ2(x) : R3 → R (e.g. representing a half space, SQ, or XPSQ) can be combined through union φ3 =
+
+min (φ1, φ2), intersection φ3 = max (φ1, φ2), or subtraction 
+
+φ3 = max (φ1, −φ2) operations. Smoothly differentiable ver-sions of these operations are obtained through the use of the logsumexp operator [25, 26]: 
+
+φ∪(x) = −LSE ([ −φ1(x), −φ2(x)]) (smooth union) , (2) 
+
+φ∩(x) = LSE ([ φ1(x), φ2(x)]) (smooth intersection) , (3) 
+
+φ⊖(x) = LSE (φ+(x), −φ−(x)) (smooth subtraction) . (4) 
+
+3) PSQ: Combining Half Spaces with SQs. The SDF of a half-space is defined as φN = x · n + h, where n denotes the plane normal and h the offset from the origin. Through the smooth intersection (3) of an SQ and a single half space, most of the geometric primitives provided by common simulation frameworks can be defined, including boxes, ellipsoids, cylinders, elliptic cones, square pyramids, and tetrahedrons (although our framework and software implementation does not assume any restrictions on the number of half spaces intersecting an SQ). We refer to the primitive obtained by intersecting N half spaces P ∈ RN×4 (3 parameters for n and 1 for h) and an SQ as a “plane-SQ intersection” (PSQ). 
+
+4) XPSQ: Tracing a Spline with a PSQ. The XPSQ primitive represents the volume obtained by tracing a PSQ along a 3D quadratic spline. A quadratic spline admits a 1D parameterization using t ∈ [0, 1] and three control points p1:3 :
+
+p(t) = ( 1 − t)2p1 + 2t(1 − t)p2 + t2p3. (5) The data-structure that represents an XPSQ primitive therefore maintains the following information: i) a quadratic spline 
+
+p(t), ii) a smooth function R(t) ∈ SO(3) that prescribes the rotational pose of the PSQ as it traces the spline (e.g. the Frenet frame associated with the spline [ 27 ]), iii) smooth functions ε{1,2}(t) and a{x,y,z}(t) that prescribe the shape and scale parameters of the SQ part of the PSQ, iii) P(t) ∈ RN×4
+
+that prescribes the plane normal (expressed in the PSQ base frame) and shift for the N half spaces within the PSQ. 
+
+4) The SDF Associated with an XPSQ. To evaluate the SDF of the XPSQ for a given point x, one first projects it onto the spline to obtain the projection point p(t∗), and then evaluates the SDF of the PSQ at that point (as prescribed by 
+
+R(t∗), ε{1,2}(t∗), a{x,y,z}(t∗), P(t∗)). As was also noted by [ 28 ], this projection can be obtained by minimizing ∥x − p(t)∥2,which is a fourth order polynomial in t. Taking its gradient and setting it to zero in turn gives a cubic equation in t, which can be solved analytically via Cardano’s formula [ 29 ]. The solution is not unique in general, as for some constellations there are multiple points on the spline with equally minimal distance to x, e.g. when the spline is wrapped around x. In Cardano’s formula, these cases are distinguished by the sign of the discriminant ∆ ∈ R, which is a function of the control points, and the computation of the roots branches depending on it. This branching leads to a discontinuity, which we soften by always treating both branches simultaneously and merging the results. In the negative branch we use the negative projected discriminant ∆− = −s+(−∆) ∈ R− to obtain the unique real root t− of the cubic. In the positive branch, we use the positive projected discriminant ∆+ = s+(∆) ∈ R+,yielding three real roots (t+ 
+
+> 1
+
+,t+ 
+
+> 2
+
+,t+ 
+
+> 3
+
+). Note that in both cases we apply a soft clipping operation to keep the roots in the range (0, 1), as Cardano’s formula can return roots outside of this range. Next, we always return three roots as the convex combination t∗ ∈ R3 of the two root sets: 
+
+t∗ = J∆ < 0K ∗ [t−,t−,t−] + J∆ > 0K ∗ [t+ 
+
+> 1
+
+,t+ 
+
+> 2
+
+,t+ 
+
+> 3
+
+] (6) where the brackets are smoothed as described in S.II-A. Then, we get the PSQs prescribed at all three roots using R(t∗ 
+
+> i
+
+), x∗ 
+
+> i
+
+,
+
+ε{1,2}(t∗ 
+
+> i
+
+), a{x,y,z}(t∗ 
+
+> i
+
+), and P(t∗ 
+
+> i
+
+) with i ∈ { 1, 2, 3}. The associ-ated SDFs for the three PSQs are {φ (x∗
+
+> 1
+
+), φ (x∗
+
+> 2
+
+), φ (x∗
+
+> 3
+
+)},and we finally return their smooth-minimum φ∪(x) = 
+
+−LSE ([ −φ1(x), −φ2(x), −φ3(x)]) as shown in Fig.1. 
+
+C. A Novel Contact Manifold Generation Routine 
+
+Given that the XPSQ primitive provides an efficient way to represent SDFs of complex surfaces, the next step is using such SDFs to create contact manifolds between two colliding surfaces in a differentiable and efficiently vectorizable manner. In the proposed framework, one of the surfaces is represented by an SDF and the other by a mesh, and contact points are created on the surface represented by the mesh (if symmetry is desired, one can simply run the same routine again with the roles transposed). There are two main steps involved in this: i) finding the intersections between all edges of the mesh and the SDF, ii) using these per-edge intersection points to transcribe per face contact depths, normals, and Jacobians. 
+
+1) Finding Edge-SDF Intersection Points. Points e on an edge between corners vI , vII ∈ R3 can be parameterized as 
+
+e(α) = vI + αet with et = vII −vI   
+
+> ∥vII −vI∥
+
+and 0 ≤ α ≤ ∥ vII − vI ∥.This means the maximal penetration point between the edge e
+
+and any SDF φ can hypothetically be found via min α φ (e(α)) 
+
+subject to 0 ≤ α ≤ ∥ vII − vI ∥. One can then obtain smooth gradients through this constrained optimization problem by employing log barrier smoothing and applying the implicit                              
+
+> Fig. 2: Intersection points pIand pII between the SDF φ(x)of one surface and the edge v1−v2of the other surface are determined via sphere tracing. At every sphere tracing step, the current intersection point candidate xis moved towards the SDF by ±Jφ(x)>0Kφ(x)et.The Jφ(x)>0Kterm ensures that if v1or v2already lie inside the surface, they are not moved by sphere tracing.
+
+function theorem to the resulting KKT conditions [ 15 , 17 ]. That being said, there are a number of pathologies associated with employing such an edge-SDF collision routine: 
+
+• The optimization problem is non-linear, meaning the solu-tion and its gradients obtained via implicit differentiation would still exhibit jumps when the problem switches from one local optimum to another as parameters are varied. 
+
+• Unrolling the solver steps (e.g. Newton’s method in 1D) and applying automatic differentiation is also not an option since it is computationally expensive. This is because: i) computing Hessians is expensive, and ii) the number of Newton iterations needs to be large (empirically ≥ 10). 
+
+• As shown in [ 23 ], such procedures are inefficient for vectorization, because a vectorized iterative solver applied to a batch of problems will only finish as quickly as the slowest-converging problem in the batch. 
+
+2) Collision Detection with Sphere Tracing. Therefore, we devise a custom edge-SDF collision routine based on sphere-tracing [ 30 ]. Given an initial point p0 and a ray direction n,sphere-tracing is an algorithm to find ray-SDF intersections (widely considered to be the most efficient way of doing so even for very complex surfaces [ 31 ]). It proceeds via updates of the form pk+1 = pk + Jφ (x) > 0Kφ (x)n. The proposed edge-SDF routine then proceeds as follows: 
+
+• Sphere trace the edge corners vI and vII along et and −et
+
+respectively to obtain pI and pII . We have empirically found three iterations to be more than sufficient for convergence. 
+
+• Clip pI and pII within the edge boundaries via a soft-clip operation, and return the midpoint pe = ( pI + pII )/2. This process is illustrated in Figure 2. Naturally, it is guaranteed to succeed only in cases when an edge penetrates the SDF only once or never. We argue that this is sufficient, because if there exists an edge that penetrates an SDF more than once, this indicates that the mesh tessellation is not at a density adequate for the complexity of the surfaces involved in the collision, and should hence be increased. 
+
+3) Computing Per-Face Contact Information. In a triangle mesh, every face has three edges (each with one edge-SDF intersection point obtained in the previous step), and three vertices. This means every face has 6 potential contact points on it, which we denote as p f
+
+> 1:6
+
+. Technically, one can create a contact point for every edge and every vertex in a mesh, resulting in V + E contact points in total (where V and E
+
+denote the number of vertices and edges respectively). Given that E ≈ 3V for most meshes [ 32 ], this creates approximately 4V contact points. If desired, this number can be reduced to F (i.e. the number of faces) as follows: 
+
+• Compute the penetration depths di = φ (p fi ), activity indi-cators γi = Jdi < 0K, contact normals ni = ∇ϕ(p fi ), and contact Jacobians Ji for all 6 points. 
+
+• Obtain softmax weights zi = sargmax (−d)i based on the penetration distances di, and fuse the normals and Jacobians via n = ∑i ziγini and J = ∑i ziγiJi, as proposed by [33]. Note that the fusion of the contact normals and Jacobians means whenever any subset of the 6 potential contact points of a face have nearly equal penetration distances (e.g. a cube lying on a plane), the effect of the per face contact force (i.e. returned by the subsequent contact dynamics solver that consumes the contact manifold) is distributed nearly equally across them. This results in more stable contact interactions compared to first fusing p = ∑i ziγipi and then computing the contact normal and Jacobian at this single fused point. III. E XPERIMENTS XPSQ ( ✕3) 
+
+> CP ( ✕36)
+> Armadillo Mesh
+> Armadillo SDF
+
+Fig. 3: Examples that demonstrate the expressivity of XPSQs. 
+
+1) Expressivity of the XPSQ Primitive. The top part of Fig.3 illustrates how a cup can be represented with only 3 XPSQ primitives (i.e. one cylinder subtracted from another, combined with a handle obtained by sweeping a box along a spline). In contrast, convex decomposition using CoACD [ 9] results in 36 primitives, which, in the absence of a differentiable broad-phase routine, is highly inefficient. The bottom part shows how an armadillo can be efficiently represented with 18 SQs, obtained using the method of [ 24 ]. 
+
+2) Behavior of the Contact Manifold. Fig.4 illustrates the qualitative behavior of the contact manifold compared to the polygon clipping routine employed in Mujoco [ 1], on an example with two boxes stacked on top of each other. It can be seen that polygon clipping results in non-smooth behavior of the contact points, whereas the proposed edge-SDF contact points adapt smoothly to the surface, adequately sampling the volume of intersection between the colliding surfaces. From this perspective, the proposed routine can be Proposed Mujoco 
+
+Fig. 4: An example illustrating the behavior of the contact manifold. 
+
+interpreted as a middle ground between polygon clipping and the hydroelastic contact model [ 34 ], without needing to explicitly re-mesh the intersection volume like the latter (which is a non-differentiable and non-vectorizable routine). 5 10 15         
+
+> Geometry Complexity (# SQ)
+> 10 1
+> 10 0
+> 10 1
+> Runtime [ms]
+> Efficiency Benchmark
+> 0200 400 600 800 1000
+> # Batch Size
+> 10 0
+> 10 1
+> 10 2
+> Vectorizability Benchmark
+> MJX Ours Ours-5
+> Ours-18
+> Ours-5 (Grad)
+> Ours-18 (Grad)
+> MJX-5
+> MJX-18
+
+Fig. 5: A benchmark characterizing computational efficiency. 
+
+3) Computational Efficiency. Fig.5 contains plots showing the speed and vectorizability of the proposed contact manifold generation routine, compared to the analogous routine of the well-established MJX simulator. The setup involves collisions between two non-convex armadillo geometries across 100 random configurations per-trial. Surfaces are represented with up to 18 SQs each, which is a controlled variable characterizing the effects of geometry complexity on the runtime. The second controlled variable is the vectorization batch size. Notice the logarithmic scale and the order of magnitude improvement compared to MJX. The experiment does not contain any broad-phase routine to filter out edges without needing to execute the full edge-SDF collision routine. Another order of magnitude improvement can potentially be gained by employing any existing differentiable broadphase routine for edge filtering, such as the soft topK selection approach of [ 23 ], or the approach of [ 35 ] that utilizes spatial hashing and distance barrier functions that are smoothly mollified to zero to deactivate non-penetrating contact points. IV. L IMITATIONS AND CONCLUSION 
+
+We have presented two contributions: i) XPSQ primitives that can efficiently represent SDFs associated with highly complex surfaces, ii) a differentiable and vectorizable routine that generates a contact manifold between a mesh and an SDF. The main limitation of the proposed method is the lack of an established routine to automatically decompose a mesh into XPSQ primitives, which we leave to future work. REFERENCES 
+
+[1] E. Todorov, T. Erez, and Y. Tassa, “Mujoco: A physics engine for model-based control,” in 2012 IEEE/RSJ International Conference on Intelligent Robots and Systems . IEEE, 2012, pp. 5026–5033. 1, 4 [2] R. Tedrake and the Drake Team, “Drake: Model-based design and verification for robotics,” 2019. 1 [3] E. Coumans and Y. Bai, “Pybullet, a python module for physics simulation for games, robotics and machine learning,” 2016. 1 [4] K. Erleben, “Methodology for assessing mesh-based contact point methods,” ACM Transactions on Graphics (TOG) , vol. 37, no. 3, pp. 1–30, 2018. 1 [5] D. Gregorius, “Robust contact creation for physics simulations,” in GDC , 2015. 1 [6] W. Jakob, M. Tarini, D. Panozzo, and O. Sorkine-Hornung, “Instant field-aligned meshes,” in ACM Trans-actions on Graphics (Proceedings of SIGGRAPH ASIA) ,vol. 34, no. 6, Nov. 2015. 1 [7] E. Corman and K. Crane, “Rectangular surface parame-terization,” ACM Trans. Graph. , vol. 44, 2025. 1 [8] S. Oh, X. Yuan, X. Wei, R. Shi, F. Xiang, M. Liu, and H. Su, “Pamo: Parallel mesh optimization for intersection-free low-poly modeling on the gpu,” in 
+
+Computer Graphics Forum . Wiley Online Library, 2025, p. e70267. 1 [9] X. Wei, M. Liu, Z. Ling, and H. Su, “Approximate convex decomposition for 3d meshes with collision-aware concavity and tree search,” ACM Transactions on Graphics (TOG) , vol. 41, no. 4, pp. 1–18, 2022. 1, 2, 4 [10] E. G. Gilbert, D. W. Johnson, and S. S. Keerthi, “A fast procedure for computing the distance between complex objects in three-dimensional space,” IEEE Journal on Robotics and Automation , vol. 4, pp. 193–203, 1988. 1 [11] L. Montaut, Q. L. Lidec, V. Petrik, J. Sivic, and J. Carpentier, “Collision detection accelerated: An opti-mization perspective,” arXiv preprint arXiv:2205.09663 ,2022. 1 [12] G. Van Den Bergen, “Proximity queries and penetration depth computation on 3d game objects,” in GDC , vol. 170, 2001, p. 209. 1 [13] D. Gregorius, “The separating axis test between convex polyhedra,” in GDC , 2013. 1 [14] I. E. Sutherland and G. W. Hodgman, “Reentrant polygon clipping,” Communications of the ACM , vol. 17, no. 1, pp. 32–42, 1974. 1 [15] K. Tracy, T. A. Howell, and Z. Manchester, “Differen-tiable collision detection for a set of convex primitives,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2023, pp. 3663–3670. 1, 3 [16] C. J. Ong and E. G. Gilbert, “Growth distances: New measures for object separation and penetration,” IEEE Transactions on Robotics and Automation , vol. 12, no. 6, pp. 888–903, 1996. 1 [17] K. Tracy and Z. Manchester, “On the differentiability of the primal-dual interior-point method,” 2024. 1, 3 [18] L. Montaut, Q. Le Lidec et al. , “Differentiable colli-sion detection: a randomized smoothing approach,” in 
+
+2023 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2023, pp. 3240–3246. 1 [19] R. J. Williams, “Simple statistical gradient-following algorithms for connectionist reinforcement learning,” 
+
+Machine learning , vol. 8, pp. 229–256, 1992. 1 [20] A. Paulus, A. R. Geist, P. Schumacher, V. Musil, and G. Martius, “Hard contacts with soft gradients: Refining differentiable simulators for learning and control,” arXiv preprint arXiv:2506.14186 , 2025. 1 [21] M. Li, Z. Ferguson, T. Schneider, T. Langlois, D. Zorin, D. Panozzo, C. Jiang, and D. M. Kaufman, “Incre-mental potential contact: Intersection- and inversion-free large deformation dynamics,” ACM Trans. Graph. (SIGGRAPH) , vol. 39, no. 4, 2020. 2 [22] A. Paulus, A. R. Geist, V. Musil, S. Hoffmann, O. Beker, and G. Martius, “SoftJAX & SoftTorch: Empowering automatic differentiation libraries with informative gra-dients,” arXiv preprint , 2026. 2 [23] O. Beker, A. R. Geist, A. Paulus, N. Gürtler, J. Shi, S. Calinon, and G. Martius, “Smoothly differentiable and efficiently vectorizable contact manifold generation,” 
+
+arXiv preprint arXiv:2602.20304 , 2026. 2, 3, 4 [24] W. Liu, Y. Wu, S. Ruan, and G. S. Chirikjian, “Marching-primitives: Shape abstraction from signed distance function,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2023, pp. 8771–8780. 2, 4 [25] I. Quilez, “Signed distance functions,” 2013. 2 [26] ——, “Smooth minimum,” 2013. 2 [27] M. Spivak, A Comprehensive Introduction to Differential Geometry , 3rd ed. Publish or Perish, Inc., 1999, vol. 2, ch. Curves In the Plane and In Space (The Serret–Frenet formulas), pp. 34–36. 2 [28] Y. Li and S. Calinon, “From movement primitives to distance fields to dynamical systems,” IEEE Robotics and Automation Letters (RA-L) , vol. 10, no. 9, pp. 9550– 9556, 2025. 3 [29] M. Artin, Algebra , 2nd ed. Pearson, 2013, ch. 16 – Galois Theory, pp. 501–502. 3 [30] J. C. Hart, “Sphere tracing: A geometric method for the antialiased ray tracing of implicit surfaces,” The Visual Computer , vol. 12, no. 10, pp. 527–545, 1996. 3 [31] K. Crane, “Ray tracing quaternion julia sets on the gpu,” 2005. 3 [32] ——, “Discrete differential geometry: An applied intro-duction.” 3 [33] O. Beker, N. Gürtler, J. Shi, R. Geist, A. Razmjoo, G. Martius, and S. Calinon, “A smooth analytical for-mulation of collision detection and rigid body dynamics with contact,” in 2025 IEEE International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2025. 4[34] R. Elandt, E. Drumwright, M. Sherman, and A. Ruina, “A pressure field model for fast, robust approximation of net contact force and moment between nominally rigid objects,” in 2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE Press, 2019, p. 8238–8245. 4 [35] Z. Ferguson et al. , “IPC Toolkit,” 2020. 4
