@@ -1,0 +1,156 @@
+Title: Wrench-Aware Admittance Control for Unknown-Payload Manipulation
+
+URL Source: https://arxiv.org/pdf/2604.19469v1
+
+Published Time: Wed, 22 Apr 2026 01:07:20 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Wrench-Aware Admittance Control for Unknown-Payload Manipulation 
+
+Hossein Gholampour ∗ Logan E. Beaver ∗∗ Department of Mechanical & Aerospace Engineering, Old Dominion University, Norfolk, VA 23529, USA (e-mail: {mghol004, lbeaver }@odu.edu). 
+
+Abstract: Unknown payloads can strongly affect compliant robotic manipulation, especially when the payload center of mass is not aligned with the tool center point. In this case, the payload generates an offset wrench at the robot wrist. During motion, this wrench is not only related to payload weight, but also to payload inertia. If it is not modeled, the compliant controller can interpret it as an external interaction wrench, which causes unintended compliant motion, larger tracking error, and reduced transport accuracy. This paper presents a wrench-aware admittance control framework for unknown-payload pick-and-place using a UR5e robot. The method uses force-torque measurements in two different roles. First, a three-axis translational excitation term is used to reduce payload-induced force effects during transport without making the robot excessively stiff. Second, after grasping, the controller first estimates payload mass for transport compensation and then estimates the payload CoM offset relative to the TCP using wrist force-torque measurements collected during the subsequent translational motion. This helps improve object placement and stacking behavior. Experimental results show improved transport and placement performance compared with uncorrected placement while preserving compliant motion. 
+
+Keywords: Adaptive Control, Robot manipulators, Force Control, Center of Mass Estimation, Admittance Control 1. INTRODUCTION Compliant control is important in robotic manipulation when the robot operates in uncertain environments or interacts physically with objects. Admittance control is widely used in such cases because it modifies robot motion according to measured external wrench, making it suitable for compliant manipulation on position-controlled indus-trial robots (Hogan, 1985; Keemink et al., 2018; Suoma-lainen et al., 2022). This is useful in tasks such as material handling, packaging, bin-to-shelf transfer, and warehouse automation, where the robot must follow a motion plan while remaining responsive to contact even in the presence of modeling uncertainty. A major difficulty arises when the robot manipulates an unknown payload. If the payload mass and mass distribution are not included in the nominal model, the wrench measured by the wrist-mounted force-torque (FT) sensor includes both the payload-induced wrench and the true interaction wrench, which cannot be separated directly. In compliant control, this uncompensated wrench influences the commanded motion, which can produce unintended compliant behavior and larger tracking error during transport. This issue becomes more pronounced when the payload center of mass (CoM) is not aligned with the tool center point (TCP). In that case, the payload generates an offset wrench at the wrist. Under motion, this is not limited to a static gravity moment; it also includes inertial force and moment components that can further disturb compliant motion if unmodeled or uncompensated (Gholampour et al., 2025; Wen et al., 2025). Accurate trajectory tracking under disturbance is also important in manipulation tasks, since deviations during transport can propagate to the final task outcome (Gholampour and Beaver, 2025). Increasing virtual stiffness is one way to limit payload-induced sag, but this weakens compliance and reduces the practical benefit of compliant manipulation. Recent work has studied adaptive and variable admittance strategies for uncertain interaction, including online parameter adapta-tion and improved disturbance handling (Keemink et al., 2018; Siciliano and Khatib, 2016). Our previous work ad-dressed part of this problem by estimating unknown pay-load mass online and using an excitation force to reduce vertical sag during waypoint tracking (Gholampour et al., 2025). That approach improved transport performance but was primarily concerned with payload-force effects and used objects with approximately symmetric mass distribu-tion. In many practical tasks, the object CoM is offset from the TCP, so both transport and placement are affected by the resulting wrist wrench. The CoM offset also matters in placement and stacking tasks. Even when the robot reaches the nominal placement pose, an off-centered object may not be placed in abalanced way after release. Recent work has shown that force-torque sensing can improve placement robustness under geometric or sensing uncertainty (Lerner et al., 2024; Park et al., 2025), and that wrist wrench information can be used to estimate object mass and CoM for manipulation 
+
+> arXiv:2604.19469v1 [cs.RO] 21 Apr 2026
+
+tasks (Wang et al., 2021; Wen et al., 2025). These results motivate using wrist wrench measurements not only for compliant transport, but also for placement correction. This paper presents a wrench-aware admittance control framework for compliant pick-and-place of unknown pay-loads. Force-torque measurements serve two roles. First, during transport, a three-axis translational excitation term reduces payload-induced force effects within the admit-tance loop without increasing virtual stiffness. Second, af-ter grasping, the controller first estimates payload mass for transport compensation and then estimates the payload CoM offset relative to the TCP using wrist force-torque measurements collected during the subsequent transla-tional motion. The filtered offset estimate is then used to correct the horizontal placement waypoint so that the object, rather than just the TCP, is placed closer to its equilibrium location on the support surface.Unlike ap-proaches that estimate payload properties in a separate static or dedicated identification stage, the present method performs CoM-offset estimation during the manipulation task itself. The method is implemented on a UR5e manipulator with Cartesian admittance control and waypoint-based motion. The main contribution is a task-embedded wrench-aware manipulation framework that estimates the payload CoM offset online during a translational admittance-motion seg-ment and uses that estimate directly for object-level place-ment correction, while also compensating payload-induced transport forces within the same compliant control loop. Repeated placement and stacking trials serve as additional validation of the estimated payload offset. The rest of the paper is organized as follows. Section 2 presents the problem formulation. Section 3 presents the mass-estimation and transport-compensation model and develops the payload offset-estimation framework used for placement correction. Section 4 presents the experimental setup and results. Section 5 concludes the paper. 2. PROBLEM FORMULATION We consider a Cartesian admittance control framework for a robotic manipulator equipped with a wrist-mounted FT sensor. Let pa ∈ R3 denote the position generated by the admittance model, and let pref ∈ R3 denote the reference position trajectory. We write the standard translational admittance model as 
+
+F = Ma( ¨ pa − ¨pref )+ Ba( ˙ pa − ˙pref )+ Ka(pa −pref )−Fexc ,
+
+(1) where Ma, B a, K a ∈ R3×3 are the virtual inertia, damping, and stiffness matrices, respectively, and Fexc ∈ R3 is an excitation or compensation term. For waypoint-level motion, the reference is piecewise con-stant within each segment, so ˙pref = 0 and ¨pref = 0. Solving (1) for the admittance acceleration gives ¨pa = M −1 
+
+> a
+
+(F − Ba ˙pa − Ka(pa − pref ) + Fexc ) , (2) and we obtain the commanded Cartesian velocity by integrating, ˙pa(t) = ˙ pa(t0) + 
+
+Z tt0
+
+¨pa(τ ) dτ. (3) Although the admittance model in (1) is translational, unknown payloads can still affect transport performance because the measured wrist force includes payload-induced force components in addition to the true interaction force. When the payload CoM is offset from the TCP, the measured wrist moment also contains information about that offset, which we later use in the payload-wrench model for placement correction. 
+
+Assumption 1. During the transport and CoM-estimation segments, the payload remains rigidly attached to the TCP and the end effector undergoes translational motion with negligible angular velocity and angular acceleration, so that 
+
+ω ≈ 0, α ≈ 0.
+
+Assumption 2. During the CoM-estimation segment, the measured wrist wrench is sufficiently accurate, and the translational samples collected over that segment are suf-ficiently diverse that the stacked offset-estimation system has rank 3.
+
+3. MASS ESTIMATION AND TRANSPORT COMPENSATION 
+
+3.1 Mass Estimation and Transport Compensation 
+
+Building on the dynamic payload-mass estimate in Gho-lampour et al. (2025), we model the measured wrist force during translational motion as the sum of true interaction force and payload-induced force. We write 
+
+F = Fint + Fp, (4) where Fint ∈ R3 is the true interaction force and Fp ∈ R3
+
+is the payload-induced translational force. Substituting (4) into (2) gives ¨pa = M −1 
+
+> a
+
+(Fint + Fp − Ba ˙pa − Ka(pa − pref ) + Fexc ) .
+
+(5) The purpose of transport compensation is to reduce the effect of Fp without increasing virtual stiffness. Defining the residual payload force ˜Fp := Fp − Fexc , (6) gives ¨pa = M −1
+
+> a
+
+
+
+Fint + ˜Fp − Ba ˙pa − Ka(pa − pref )
+
+
+
+. (7) Thus, if Fexc approximates Fp, the admittance response is driven mainly by the true interaction force. Following Gholampour et al. (2025), we estimate the payload mass during translational motion as ˆmu(k) = fp,z (k)
+
+aT CP,z (k) − g , (8) where fp,z (k) denotes the payload-induced vertical force component and aT CP,z (k) is the measured TCP linear acceleration in the same direction. We then form the translational payload-force estimate as 
+
+Fexc = ˆFp, ˆFp(k) = ˆ mu(k) aT CP (k) − g. (9) Equation (9) is the payload-force model used in the transport-compensation law. 
+
+3.2 Payload Offset Estimation from Wrist Wrench 
+
+Under Assumption 1, Let f ∈ R3 and τ ∈ R3 denote the measured force and moment at the wrist. When the payload CoM is not aligned with the TCP, the measured moment is influenced both by the CoM offset and by the payload rotational dynamics. The CoM linear acceleration satisfies 
+
+aC = aT CP + α × r + ω × (ω × r), (10) where aT CP is the TCP linear acceleration, r ∈ R3 is the CoM offset relative to the TCP, and ω, α ∈ R3 are the angular velocity and angular acceleration. The rigid-body wrench relation can then be written as 
+
+f = m(aC − g), (11) 
+
+τ = r × f + IC α + ω × IC ω, (12) where m is the payload mass, g is gravity, and IC is the payload inertia tensor about the CoM. Equation (11) shows that the CoM offset affects the trans-lational payload force during motion, while (12) shows its effect on the wrist moment. Under Assumption 1, the rotational inertia term 
+
+τrot := IC α + ω × IC ω (13) is negligible, so (12) reduces to 
+
+τ ≈ r × f . (14) 
+
+Lemma 1. For a nonzero force sample f ∈ R3, (14) does not uniquely determine r.Proof. Assume that r is one solution of (14). For any scalar λ ∈ R, define ˜r = r + λf .
+
+Then ˜r × f = ( r + λf ) × f = r × f + λ(f × f ) = r × f = τ .
+
+This completes the proof. Any component of r parallel to f is therefore unobserv-able from the single wrench sample, so the full three-dimensional offset is not uniquely determined. 
+
+Proposition 1. Under Assumption 1, consider measured wrench samples 
+
+{(fk, τk)}Nk=1 
+
+collected over a translational segment. Then 
+
+τk ≈ r × fk = −[fk]×r, k = 1 , . . . , N, (15) 
+
+defines an approximate linear system in the unknown offset vector r, where [fk]× denotes the skew-symmetric matrix associated with fk. The offset is identifiable from the stacked samples if the coefficient matrix 
+
+A := 
+
+
+
+−[f1]×
+
+...
+
+−[fN ]×
+
+ (16) 
+
+has rank 3.Proof. Under Assumption 1, (12) reduces to (14). Ap-plying (14) to each sample gives (15). Stacking these equations yields a linear system in r. The solution is unique when the stacked coefficient matrix has rank 3. This completes the proof. Lemma 1 shows that a single wrench sample does not uniquely determine r. Proposition 1 shows that samples collected during translational motion can be combined to estimate the payload offset vector from measured force-torque data. 
+
+Fig. 1. Task schematic and planned waypoints in the X-Z plane. 4. EXPERIMENTAL SETUP AND RESULTS 
+
+4.1 Experimental Setup 
+
+Figure 1 shows the designed pick-and-place sequential task in the X-Z plane. The robot first approaches the object through Waypoints 1 and 2, grasps it at Waypoint 3, and then moves toward Waypoint 4. During this post-grasp translational motion, the controller first estimates payload mass for transport compensation and then estimates the payload CoM offset relative to the TCP. The robot then moves through Waypoint 5 and places the object at Waypoint 6 on the equilibrium bar. The schematic also shows that the object CoM is offset from the geometric center along the object length. Therefore, the nominal placement point, which would align the object length center with the support location, is not sufficient for balanced placement. Instead, the controller corrects the release point using the measured offset so that the final placement aligns the support location with the object CoM. We implement the method on a UR5e manipulator equipped with a wrist-mounted FT sensor and a Robo-tiq 2F-140 gripper. A Linux PC communicates with the robot through RTDE and sends the Cartesian velocity commands generated by the translational admittance con-troller. Our code is available online 1 .The validation task is a waypoint-based pick-and-place ex-periment using off-centered objects and a narrow support bar that defines the desired equilibrium line. We design the payload offset along the x direction, so the controller applies the placement correction in x while the task geom-etry sets the vertical placement coordinate. After grasping, the robot executes a translational measurement segment before placement. During this segment, the controller col-lects force-torque samples at the wrist and computes the payload offset estimate from the reduced wrench model developed in Section 3.2. The filtered estimate then shifts the commanded TCP release position according to (17). In this way, the corrected command targets the object equilibrium location on the support, rather than only the nominal TCP placement point.  
+
+> 1https://github.com/Hossein-ghd/ur5e-com-aware-admittance
+
+We designed the experiments to validate the estimated offset through the final object placement outcome, rather than only through TCP positioning accuracy. If the esti-mate is accurate, the corrected TCP release position places the object so that its CoM lies closer to the equilibrium line after release. This is important for off-centered objects because the TCP can reach a nominal placement point while the object itself still lands in an unbalanced position. We therefore use trials with different grasp locations on the same object, as well as repeated placement and stacking trials, to evaluate the consistency of the estimated offset and the corrected placement command. The green tape markers show the physical CoM location only as an offline reference for validation and plotting; the controller does not use them. A practical issue in these experiments is grasp quality. The theoretical model assumes that the object remains rigidly attached to the gripper during the measurement and transport stages. In practice, however, off-centered grasps can generate a large moment at the fingertip-object interface and cause torque-induced micro-slip even when the payload weight is supported. This effect becomes more pronounced for larger CoM offsets and during robot motion. To reduce it, we added friction-enhancing material at the fingertip-object contact surfaces. This improves grasp repeatability and reduces wrench corruption caused by relative motion between the object and the gripper. Figure 2 shows the experimental setup used for the place-ment and stacking validation tasks. 
+
+Fig. 2. Experimental setup used for placement and stack-ing validation. 
+
+4.2 Offset Estimation and TCP Response 
+
+We next examine a representative trial during the short translational segment used for payload-offset estimation. Figure 3 shows the x-direction time histories for this stage. The top plot shows the estimated CoM offset in the x direction, together with its filtered value and the reference offset used for validation over the gripping interval. A noticeable initial spike appears at the gripping moment. This transient corresponds to the pickup event, before the object settles in the gripper, and can reflect short grasp-induced motion, local contact effects, and payload sag before the transport-compensation estimate becomes effective. After this initial transient, and before the CoM measurement window begins, the controller uses this in-terval to estimate the payload mass and apply force com-pensation. Once the CoM measurement stage starts, the estimated x-offset converges toward the reference value and remains close to it over the rest of the plotted interval. For this representative trial, the x-offset RMSE, computed from the start of the measurement window to the end of the plotted interval, is 3.5 mm. The bottom plot shows the TCP motion in the x direction over the same gripping interval, together with the ideal admittance trajectory. The measured TCP motion remains close to the ideal motion during the estimation stage. For this representative trial, the corresponding TCP x-position RMSE over the same interval is 1.2 mm. These results show that the controller can estimate the CoM offset during translational motion, without requiring a separate rotational or static measurement step, while keeping the TCP motion close to the desired response. 
+
+Fig. 3. Representative gripping-interval response in the x direction. Top: estimated CoM offset. Bottom: TCP motion. 
+
+4.3 Placement Validation 
+
+The CoM offset also affects the final placement stage. Let pplace ,nom ∈ R3 denote the nominal TCP placement position. If the controller moves the TCP to pplace ,nom 
+
+without accounting for the payload offset, the object itself may not reach the desired support location. This can lead to placement error, loss of equilibrium, or less reliable repeated placements, even when the transport trajectory is tracked reasonably well. To account for this effect, the controller corrects the placement command using the estimated horizontal offset. Let ˆ r = [ˆ rx, ˆry , ˆrz ]T denote the estimated payload offset relative to the TCP. We define the corrected placement command as 
+
+pplace ,cmd = pplace ,nom − [ˆ rx, ˆry , 0] T . (17) In this study, we apply the correction only in the horizontal plane, while the task geometry fixes the vertical placement coordinate. We next evaluate the final placement result for a represen-tative trial. Figure 4 shows the geometry in the support Fig. 4. Placement geometry for a representative trial. plane. The blue cross marks the desired equilibrium point on the support. The controller does not move the TCP to that point directly. Instead, it shifts the TCP release position by the estimated correction vector so that, after release, the object lies closer to its equilibrium location on the support. The same figure compares the desired object pose with the final implemented pose. The green circle and dashed rectangle mark the desired corrected release position and the corresponding desired object pose. The red circle and solid rectangle mark the final release position and object pose after the controller applies the estimated correction and executes the placement command. The two poses remain close, which shows that the corrected release point is consistent with the desired object placement on the support. The remaining gap reflects both the correction-command error from the estimated CoM offset and a smaller execution error during the final placement motion. Figure 5 shows the estimated horizontal CoM offset in the TCP frame for the same representative trial. This figure is plotted in the TCP-relative offset coordinates (rx, r y ) and is not a zoom of the placement geometry in Fig. 4. The orange circles show the sample-by-sample offset estimates over the measurement window, the red circle shows the filtered offset estimate, and the green circle shows the reference offset used for validation. The remaining difference between the filtered estimate and the reference value represents the offset-estimation error. Because the placement command uses the negative of the estimated offset in (17), the relative shift between the filtered and reference points in Fig. 5 appears with the opposite sign in the placement positions shown in Fig. 4. Table 1 reports the representative placement values for this trial in the correction convention used for the TCP placement shift. The table lists the target equilibrium point, the ideal correction vector from the manual refer-ence offset, the corresponding ideal corrected TCP point, the estimated correction vector obtained from the mea-surement stage, and the commanded TCP release position computed from that estimate. The difference between the ideal and estimated quantities is consistent with the offset-estimation error shown in Fig. 5. To show the effect of the correction more directly, we also compare the corrected case with a nominal placement case in which the controller does not apply the estimated CoM correction. Figure 6 shows this nominal case. The 
+
+Fig. 5. Estimated horizontal CoM offset in the TCP frame for the representative trial. Table 1. Representative placement geometry for one trial.                   
+
+> Quantity Value [mm] Target equilibrium point ( x, y )(−300 .00 ,300 .00) Ideal correction vector ( cx, c y)(85 .00 ,0.00) Ideal corrected TCP ( x, y )(−215 .00 ,300 .00) Estimated correction vector ( cx, c y)(82 .84 ,−1.66) Commanded TCP release position ( x, y )(−217 .16 ,298 .34) Correction-command error 2.73 Actual TCP release position ( x, y )(−218 .12 ,298 .69) Actual release error relative to ideal 3.38 Execution error relative to command 1.03
+
+black cross marks the target equilibrium point, the red circle marks the final TCP position, and the red rectangle shows the final object pose after placement. The blue cross marks the actual CoM location. In this trial, the robot places the object body near the nominal target, but the object CoM remains displaced from the equilibrium line by the payload offset. The arrow from the TCP position to the CoM location shows this offset, and the separation between the CoM location and the equilibrium line shows the resulting alignment error. This result shows that the nominal placement can keep the object body near the commanded position while still failing to satisfy the object-level equilibrium condition. 
+
+Fig. 6. Nominal placement without CoM correction. 
+
+4.4 Repeated Placement and Stacking Validation 
+
+For repeated validation trials, we extend the corrected placement command across successive layers as p(n)place ,cmd = pplace ,nom − [ˆ rx, ˆry , 0] T + [0 , 0, nh ]T , (18) where n is the layer index and h is the object height or effective layer spacing. We use these repeated placements only to validate the con-sistency of the offset estimate and the corrected placement command. We finally evaluate repeated placement and stacking using the corrected placement rule in (18). We designed this task to validate the estimated correction across successive layers rather than only for a single placement. Before the trials, we manually measured the physical CoM location of each object and marked it with the same green ribbon as an offline reference. During each task cycle, the controller estimated the CoM offset from wrist force-torque data during the translational measurement segment and used that estimate to compute the corrected release position. Figure 7 shows a representative three-layer stacking result in the x-z plane. The dashed vertical line denotes the equi-librium line, and the green markers denote the projected CoM locations of the placed blocks. For all three layers, the projected CoM locations remain close to the equilibrium line after release, and the stacked blocks remain balanced. Table 2 summarizes the stacking-validation results. The table lists the manual CoM x-location as the reference value, the estimated CoM x-location from the measure-ment stage, and the implemented CoM x-location after placement. The agreement among these values shows that the estimated correction remains effective across repeated placements and stacking steps. 
+
+Fig. 7. Repeated placement and stacking validation in the x-z plane. Table 2. Stacking validation summary across repeated placements.             
+
+> Object Actual CoM Estimated CoM Implemented CoM Object 1 -57.00 -56.44 -56.20 Object 2 0.00 -0.57 -0.61 Object 3 -85.00 -81.91 -81.60
+
+5. CONCLUSIONS This paper presented a wrench-aware admittance control framework for unknown-payload pick-and-place using a UR5e manipulator. The method used force-torque mea-surements in two roles within the same framework. First, a three-axis translational excitation term reduced payload-induced force effects during transport without increasing stiffness. Second, a short translational measurement stage after grasping provided a payload-offset estimate from wrench samples, and the controller used the filtered es-timate to correct the horizontal placement command. The experiments showed that the controller could esti-mate the payload offset during translational motion while keeping the TCP response close to the desired admittance behavior. In a representative trial, the x-offset RMSE over the post-measurement interval was 3.5 mm, the corre-sponding TCP x-position RMSE was 1.2 mm, and the corrected placement achieved a final TCP release error of 3.38 mm. The nominal trial further showed that accurate TCP placement alone does not guarantee balanced object placement when the payload CoM is offset from the TCP. Repeated stacking trials also supported the consistency of the estimated offset and the corrected placement command across successive layers. Overall, the results show that force-based transport com-pensation and wrench-based placement correction can be integrated in a single admittance-control framework for unknown-payload manipulation. A natural next step is to relax the pure-translation assumption and extend the framework to rotational admittance, so that the controller can account for both translational and rotational payload effects during more general manipulation tasks. REFERENCES Gholampour, H. and Beaver, L.E. (2025). Trajectory tracking with reachability-guided quadratic program-ming and freeze-resume. IEEE Control Systems Letters ,9, 2795–2800. Gholampour, H., Slightam, J.E., and Beaver, L.E. (2025). Mass-adaptive admittance control for robotic manipu-lators. IFAC-PapersOnLine , 59, 988–993. Hogan, N. (1985). Impedance control: An approach to manipulation: Part ii—implementation. Journal of dy-namic systems, measurement, and control , 107, 8–16. Keemink, A.Q., Van der Kooij, H., and Stienen, A.H. (2018). Admittance control for physical human–robot interaction. The International Journal of Robotics Re-search , 37, 1421–1444. Lerner, O., Tam, Z., and Equi, M. (2024). Precise object placement using force-torque feedback. arXiv arXiv:2404.17668 .Park, J., Kim, J.J., and Koh, D.Y. (2025). Experimental evaluation of precise placement with pushing primitive based on cartesian force control. Applied Sciences , 15, 387. Siciliano, B. and Khatib, O. (eds.) (2016). Springer Handbook of Robotics . Springer. Suomalainen, M., Karayiannidis, Y., and Kyrki, V. (2022). A survey of robot manipulation in contact. Robotics and Autonomous Systems , 156, 104224. Wang, C., Zang, X., Zhang, X., Liu, Y., and Zhao, J. (2021). Parameter estimation and object gripping based on fingertip force/torque sensors. Measurement , 179, 109479. Wen, D., Xiao, J., Xie, Y., Luo, T., Zhang, J., and Zhou, W. (2025). A universal tool interaction force estimation approach for robotic tool manipulation. Sensors , 25, 6619.

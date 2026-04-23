@@ -6,73 +6,64 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-04-22
-- 运行时间：2026-04-22 20:34:42 UTC
+- 最新运行日期：2026-04-23
+- 运行时间：2026-04-23 20:40:26 UTC
 - 运行状态：成功
-- 本次总论文数：17
-- 精读区：6
+- 本次总论文数：14
+- 精读区：3
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 17 篇前沿成果，重点聚焦 Diffusion 模型在无人机安全规划与轨迹优化中的突破性应用。
-结合 CBF 引导与 Sobolev 训练的扩散模型显著提升了复杂环境下的规划安全性与计算效率。
-建议关注扩散模型在具身智能与航天控制领域的跨界融合，探索更高效的实时优化方案。
-- 详情：[/202604/22/README](/202604/22/README)
+今日精选 14 篇前沿论文，深度解析了低推力多目标交会轨道优化与基于库普曼动力学的非线性机器人强化学习。
+核心结论指出，解析海森矩阵能显著提升非线性规划效率，而线性化动力学建模则是解决复杂机器人控制难题的关键。
+建议重点关注具身智能在未知负载及高精度接触任务中的演化与优化策略。
+- 详情：[/202604/23/README](/202604/23/README)
 
 ### 精读区论文标签
-1. [Safer Trajectory Planning with CBF-guided Diffusion Model for Unmanned Aerial Vehicles](/202604/22/2604.17527v1-safer-trajectory-planning-with-cbf-guided-diffusion-model-for-unmanned-aerial-vehicles)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：基于CBF引导优化的实时避障轨迹规划
-2. [Accelerating trajectory optimization with Sobolev-trained diffusion policies](/202604/22/2604.19011v1-accelerating-trajectory-optimization-with-sobolev-trained-diffusion-policies)  
-   标签：评分：9.0/10、query:q3
-   evidence：利用学习到的扩散策略加速轨迹优化求解器
-3. [GenerativeMPC: VLM-RAG-guided Whole-Body MPC with Virtual Impedance for Bimanual Mobile Manipulation](/202604/22/2604.19522v1-generativempc-vlm-rag-guided-whole-body-mpc-with-virtual-impedance-for-bimanual-mobile-manipulation)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：双臂移动操作的全身模型预测控制及安全裕度
-4. [AnchorRefine: Synergy-Manipulation Based on Trajectory Anchor and Residual Refinement for Vision-Language-Action Models](/202604/22/2604.17787v1-anchorrefine-synergy-manipulation-based-on-trajectory-anchor-and-residual-refinement-for-vision-language-action-models)  
+1. [Nonlinear Programming of Low-Thrust Multi-Rendezvous Trajectories Using Analytical Hessian](/202604/23/2604.19573v1-nonlinear-programming-of-low-thrust-multi-rendezvous-trajectories-using-analytical-hessian)  
+   标签：评分：8.0/10、query:q3
+   evidence：用于多交会轨迹优化的快速非线性规划
+2. [Efficient Reinforcement Learning using Linear Koopman Dynamics for Nonlinear Robotic Systems](/202604/23/2604.19980v1-efficient-reinforcement-learning-using-linear-koopman-dynamics-for-nonlinear-robotic-systems)  
+   标签：评分：8.0/10、query:q2
+   evidence：利用Koopman动力学进行非线性机器人系统的策略优化
+3. [Cortex 2.0: Grounding World Models in Real-World Industrial Deployment](/202604/23/2604.20246v1-cortex-20-grounding-world-models-in-real-world-industrial-deployment)  
    标签：评分：8.0/10、query:profile-1
-   evidence：机械臂操作的全局轨迹组织与局部执行修正
-5. [Multi-UAV Path Following using Vector-Field Guidance](/202604/22/2604.17995v1-multi-uav-path-following-using-vector-field-guidance)  
-   标签：评分：8.0/10、query:q1
-   evidence：分布式无碰撞路径跟踪
-6. [Multi-UAV Path Following using Vector-Field Guidance](/202604/22/2604.17995v2-multi-uav-path-following-using-vector-field-guidance)  
-   标签：评分：8.0/10、query:q1
-   evidence：多无人机路径跟随的分布式无碰撞框架
+   evidence：为工业机器人操作生成候选未来轨迹
 
 ### 速读区论文标签
-1. [SpaceDex: Generalizable Dexterous Grasping in Tiered Workspaces](/202604/22/2604.17888v1-spacedex-generalizable-dexterous-grasping-in-tiered-workspaces)  
-   标签：评分：8.0/10、query:q6
-   evidence：受限3D环境下的灵巧操作与机械臂导航
-2. [Formulation and Analysis for Integrated Spacecraft Routing and Trajectory Design Problem](/202604/22/2604.18826v1-formulation-and-analysis-for-integrated-spacecraft-routing-and-trajectory-design-problem)  
-   标签：评分：8.0/10、query:q7
-   evidence：卫星服务任务中的航天器轨迹优化
-3. [AI-Enabled Image-Based Hybrid Vision/Force Control of Tendon-Driven Aerial Continuum Manipulators](/202604/22/2604.18961v1-ai-enabled-image-based-hybrid-visionforce-control-of-tendon-driven-aerial-continuum-manipulators)  
-   标签：评分：8.0/10、query:q6
-   evidence：空中连续体机械臂的视觉/力混合控制
-4. [Multimodal embodiment-aware navigation transformer](/202604/22/2604.19267v1-multimodal-embodiment-aware-navigation-transformer)  
-   标签：评分：8.0/10、query:q1
-   evidence：使用扩散模型生成轨迹的避障导航
-5. [Online Reinforcement Learning for Safe Gain Scheduling in Nonlinear Quadrotor Control](/202604/22/2604.16819v1-online-reinforcement-learning-for-safe-gain-scheduling-in-nonlinear-quadrotor-control)  
-   标签：评分：7.0/10、query:q5
-   evidence：用于安全实时增益调度的在线强化学习
-6. [Novel Algorithms for Smoothly Differentiable and Efficiently Vectorizable Contact Manifold Construction](/202604/22/2604.17538v1-novel-algorithms-for-smoothly-differentiable-and-efficiently-vectorizable-contact-manifold-construction)  
-   标签：评分：7.0/10、query:profile-1
-   evidence：用于高效机器人行为生成的微分碰撞检测
-7. [A Hamilton-Jacobi Reachability-Guided Search Framework for Efficient and Safe Indoor Planar Robot Navigation](/202604/22/2604.17679v1-a-hamilton-jacobi-reachability-guided-search-framework-for-efficient-and-safe-indoor-planar-robot-navigation)  
-   标签：评分：7.0/10、query:q5
-   evidence：利用HJ可达性在动态环境中进行实时规划
-8. [SYMBOLIZER: Symbolic Model-free Task Planning with VLMs](/202604/22/2604.17830v1-symbolizer-symbolic-model-free-task-planning-with-vlms)  
+1. [Evolvable Embodied Agent for Robotic Manipulation via Long Short-Term Reflection and Optimization](/202604/23/2604.13533v2-evolvable-embodied-agent-for-robotic-manipulation-via-long-short-term-reflection-and-optimization)  
+   标签：评分：7.0/10、query:q6
+   evidence：使用视觉语言模型进行机器人操作的策略规划
+2. [Wrench-Aware Admittance Control for Unknown-Payload Manipulation](/202604/23/2604.19469v1-wrench-aware-admittance-control-for-unknown-payload-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：未知负载机器人操作的导纳控制
+3. [Learning Hybrid-Control Policies for High-Precision In-Contact Manipulation Under Uncertainty](/202604/23/2604.19677v1-learning-hybrid-control-policies-for-high-precision-in-contact-manipulation-under-uncertainty)  
+   标签：评分：7.0/10、query:q6
+   evidence：用于高精度操作的混合位置-力控制策略
+4. [Bimanual Robot Manipulation via Multi-Agent In-Context Learning](/202604/23/2604.20348v1-bimanual-robot-manipulation-via-multi-agent-in-context-learning)  
+   标签：评分：7.0/10、query:q6
+   evidence：通过多智能体主从控制进行双臂机器人操作
+5. [Lexicographic Minimum-Violation Motion Planning using Signal Temporal Logic](/202604/23/2604.20428v1-lexicographic-minimum-violation-motion-planning-using-signal-temporal-logic)  
    标签：评分：7.0/10、query:q4
-   evidence：将 VLM 与经典规划结合用于任务与运动规划
-9. [Temporal Logic Resilience for Continuous-time Systems](/202604/22/2604.14714v1-temporal-logic-resilience-for-continuous-time-systems)  
-   标签：评分：6.0/10、query:q2
-   evidence：连续时间系统韧性的场景优化方法
-10. [FLASH: Fast Learning via GPU-Accelerated Simulation for High-Fidelity Deformable Manipulation in Minutes](/202604/22/2604.17513v1-flash-fast-learning-via-gpu-accelerated-simulation-for-high-fidelity-deformable-manipulation-in-minutes)  
-   标签：评分：6.0/10、query:q6
-   evidence：GPU加速的柔性物体操作模拟
-11. [DAG-STL: A Hierarchical Framework for Zero-Shot Trajectory Planning under Signal Temporal Logic Specifications](/202604/22/2604.18343v1-dag-stl-a-hierarchical-framework-for-zero-shot-trajectory-planning-under-signal-temporal-logic-specifications)  
+   evidence：具有冲突规范的运动规划的词典优化方法
+6. [Multi-stage Planning for Multi-target Surveillance using Aircrafts Equipped with Synthetic Aperture Radars Aware of Target Visibility](/202604/23/2604.16962v1-multi-stage-planning-for-multi-target-surveillance-using-aircrafts-equipped-with-synthetic-aperture-radars-aware-of-target-visibility)  
    标签：评分：6.0/10、query:q3
-   evidence：时序逻辑约束下的轨迹规划
+   evidence：实时操作中的飞机轨迹优化
+7. [StableIDM: Stabilizing Inverse Dynamics Model against Manipulator Truncation via Spatio-Temporal Refinement](/202604/23/2604.17887v1-stableidm-stabilizing-inverse-dynamics-model-against-manipulator-truncation-via-spatio-temporal-refinement)  
+   标签：评分：6.0/10、query:q6
+   evidence：在部分可观测性下稳定机械臂控制的逆动力学模型
+8. [Chatting about Conditional Trajectory Prediction](/202604/23/2604.18126v1-chatting-about-conditional-trajectory-prediction)  
+   标签：评分：6.0/10、query:q1
+   evidence：为避障和路径规划建模社交互动
+9. [Geometric Trajectory Optimization for TRACON Arrivals: An NLP Approach with ATC Vectoring Maneuver Modeling](/202604/23/2604.18454v1-geometric-trajectory-optimization-for-tracon-arrivals-an-nlp-approach-with-atc-vectoring-maneuver-modeling)  
+   标签：评分：6.0/10、query:q3
+   evidence：使用非线性规划的轨迹优化
+10. [Tropical low-rank approximation and application to optimal control of N-body systems](/202604/23/2604.18785v1-tropical-low-rank-approximation-and-application-to-optimal-control-of-n-body-systems)  
+   标签：评分：6.0/10、query:q3
+   evidence：基于轨迹的热带低秩近似用于最优控制
+11. [JoyAI-RA 0.1: A Foundation Model for Robotic Autonomy](/202604/23/2604.20100v1-joyai-ra-01-a-foundation-model-for-robotic-autonomy)  
+   标签：评分：6.0/10、query:q6
+   evidence：通用机器人操作的基础模型
 
 
 <div class="dpr-home-promo-card">
