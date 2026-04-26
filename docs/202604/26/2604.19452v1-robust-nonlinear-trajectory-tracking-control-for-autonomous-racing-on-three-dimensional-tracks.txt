@@ -1,0 +1,733 @@
+Title: Robust Nonlinear Trajectory Tracking Control for Autonomous Racing on Three-Dimensional Tracks
+
+URL Source: https://arxiv.org/pdf/2604.19452v1
+
+Published Time: Wed, 22 Apr 2026 01:06:13 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Robust Nonlinear Trajectory Tracking Control for Autonomous Racing on Three-Dimensional Tracks 
+
+Joscha F. Bongard 1,3,∗, Georg Jank 2,3,∗, Simon Sagmeister 1,4, Boris Lohmann 3
+
+Abstract — We propose a robust nonlinear model predictive control (MPC) scheme for trajectory-tracking control of au-tonomous vehicles at the limits of handling on non-planar road surfaces. We derive the dynamics from first principles and selectively omit terms with negligible dynamic influence to maintain real-time capability. The resulting MPC with a three-dimensional (3D) dynamic single-track model integrates relevant dynamic effects directly into the prediction model and leverages them to improve prediction accuracy and therefore control performance. Even if the influence of terrain-induced vertical loads on the total acceleration potential is modeled, tire-road interactions are subject to uncertainty and disturbance. The uncertainty-aware constraint tightening scheme introduces a margin to constraint bounds to keep the vehicle controllable and stable in this environment. To validate our proposed ap-proach, we perform high-fidelity dynamic double-track vehicle dynamics simulations on a model of a real circuit. We find that our algorithm can improve trajectory-tracking accuracy while maintaining low computation times. 
+
+I. P RELIMINARIES 
+
+A. Introduction 
+
+Autonomous racing series like the A2RL and the IAC 
+
+(see Figure 1) push algorithms for Autonomous Driving (AD) to the limits in pursuit of lap times and competitive racing maneuvers as shown by expert drivers [1, 2]. This paper focuses on the trajectory tracking module, developed to accurately follow a pre-planned path and velocity while maintaining vehicle stability and adherence to path and dynamics constraints. Model Predictive Control (MPC) offers a powerful, optimization-based control framework that bal-ances competing objectives and handles coupled constraints typical in AD applications. However, the effectiveness of MPC relies on the accuracy of the prediction model in determining how current and future inputs influence future states. Model mismatch degrades performance and can result in a loss of closed-loop stability [3]. While a Constraint Tightening (CT) can help to avoid constraint violations from model mismatch, it is usually only feasible for simple models that offer poor predictive quality at the limits [4]. While the effects of the Three-Dimensional (3D) geometry of road                      
+
+> * Authors have contributed equally, and names are in alphabetical order.
+> 1funded by the Deutsche Forschungsgemeinschaft (DFG, German Re-search Foundation) - 469341384
+> 2Corresponding Author
+> 3Chair of Automatic Control, Department of Engineering Physics and Computation, Technical University of Munich, Boltzmannstraße 15, 85748 Garching bei M¨ unchen, Germany
+
+{joscha.bongard,georg.jank,lohmann }@tum.de                    
+
+> 4Chair of Automotive Technology, Department of Engineering Physics and Computation, Technical University of Munich, Boltzmannstraße 15, 85748 Garching bei M¨ unchen, Germany
+
+simon.sagmeister@tum.de 
+
+Fig. 1: Autonomous vehicles Dallara AV24 of TUM Au-tonomous Motorsport and Unimore in a banked turn at the 
+
+IAC .surfaces are often neglected in the design of tracking control modules, their explicit consideration has proven advanta-geous in related AD modules, such as trajectory planning [5] and state estimation [6]. Therefore, this paper studies the potential benefits of integrating dynamic 3D effects in the prediction model for robust MPC. 
+
+B. Related Work 
+
+MPC has emerged as the de facto standard for high-performance trajectory tracking in AD applications, particu-larly racing, offering a flexible framework for approximately optimal control of nonlinear dynamics under constraints [3, 4, 7]. The prediction model is one of the fundamental com-ponents defining the behavior of an MPC [8]. Linear time invariant [9], linear time-varying [10], and linear parameter-varying [11] prediction models are computationally light and can be simple to parametrize. Conversely, nonlinear models allow utilization of more dynamic potential through better predictive quality at the dynamic limits [12, 13]. While more computationally demanding, MPC schemes based on the Dynamic Single Track Model (DSTM) have become widely adopted for AD in recent years for driving at the dynamic limits due to their accurate representation of tire and vehicle nonlinearities [4]. While several works have demonstrated the effectiveness of this model formulation in high-speed racing, most rely on simplified planar models that neglect the influence of 3D racetrack geometry entirely [13] or only treat banking and slope as static disturbances [12]. Recent works in the adjacent field of raceline planning have shown that explicitly considering the accelerations from 
+
+> ©2026 EUCA. Accepted for publication at the 24th European Control Conference (ECC), Reykjav´ ık, Iceland.
+> arXiv:2604.19452v1 [eess.SY] 21 Apr 2026
+
+the rotating vehicle reference frame on the uneven racetrack can reduce lap times by making the prediction of vertical forces and therefore acceleration potential in turns more accurate [5, 14, 15]. A similar improvement was observed for the state estimation of autonomous race cars, where inclusion of the rotating reference frame in the dynamics of the Extended Kalman Filter led to a significant reduction in positional error on banked oval tracks [6]. Despite these advances, many MPC designs for AD show performance degradation on 3D racetracks by neglecting the dynamic effects of 3D road geometries in their prediction models. Some MPC schemes account for roll dynamics on banked surfaces [16] or roll- and pitch from compliant suspension on planar surfaces [17]. However, terrain-induced combined roll- and pitch dynamics are mostly unexplored in MPC plant models for autonomous racing and AD in general. CT is a common method to enhance the robustness of constraint satisfaction under model mismatch by forcing a predictive back-off from constraint bounds. While this back-off is necessary for safety, it is detrimental to AD tracking performance by reducing the available path or acceleration potential. The closer the prediction model is to the real vehicle, the smaller the back-off can be. Tightening constraints by propagating uncertainties through prediction models is a challenging task to do non-conservatively and requires approximations, mostly explored for linear time-invariant models [18]. A computationally efficient uncertainty-aware CT was previously proposed for a purely Two-Dimensional (2D) prediction, but its impact on 3D schemes was not explored [13]. 
+
+C. Contribution 
+
+This paper presents a robust MPC scheme that exploits 3D racetrack geometry to improve stability and tracking performance. Compared to previous work [13], the main contributions are:  
+
+> •
+
+Dynamic 3D model: We combine uncertainty-aware CT with an extended DSTM defined in a rotating reference frame, enabling prediction of terrain-induced dynamics.  
+
+> •
+
+Tire force modeling: We extend the tire model to a load-dependent combined Pacejka formulation to capture terrain-induced dynamics and longitudinal load-transfer.  
+
+> •
+
+System-level validation: We implement the controller within a C++ /ROS2 autonomous racing software stack and benchmark it in high-fidelity simulation against two relevant baselines, demonstrating improved tracking accuracy and robustness on a 3D racetrack. 
+
+D. Notation 
+
+We write derivatives of x in time t and path progress s as 
+
+˙x = dx 
+
+> dt
+
+and x′ = dx 
+
+> ds
+
+. Prefix subscripts indicate the reference frame, e. g., AωBC is the angular velocity of B relative to C
+
+denoted in A. We abbreviate sin x by sx (not to be confused with progress s) and cos x by cx where appropriate. For discrete-time dynamics, the signal x at prediction step k is written as xk. I[a, b ] is the set of integers in the closed interval between a and b.
+
+yT
+
+xT
+
+zT
+
+zV
+
+yV
+
+xV
+
+ϕθ
+
+Planner Trajectory 
+
+∆ψyI
+
+xI
+
+zI
+
+d
+
+v
+
+v
+
+Road Plane View: 
+
+yV
+
+zV βFyF FyR 
+
+FxR 
+
+FxF 
+
+δxV
+
+˙ψ mg 
+
+zV
+
+lF
+
+lR
+
+xV
+
+∆lmg h
+
+Side View: 
+
+FzR FzF 
+
+Fl
+
+Fd
+
+∆h yV
+
+Fig. 2: Vehicle on banked and slope racetrack with relevant frames: Inertial frame I, trajectory frame T , and vehicle frame V. Note, the path deviation d is shown negative (positive is to the left of the reference line). II. M ETHODOLOGY 
+
+A. Vehicle Model 
+
+The prediction model extends the Dynamic Single Track Model (DSTM) of [12, 13] with 3D racetrack rotations and a simplified load-dependent combined-slip Pacejka Magic Formula (MF) tire model. The DSTM lumps the wheels of each axle into one virtual wheel. Compared to the double-track vehicle model, with roll dynamics and individual tires, this simplified model reduces complexity while retaining the dominant lateral and longitudinal dynamics. 
+
+1) 3D-DSTM: To describe the motion of the vehicle on a 3D surface, we employ three reference frames, shown in Figure 2: the inertial frame I, the trajectory frame T , and the body-fixed vehicle frame V.
+
+T is defined with the x-axis xT in the direction of the planner reference velocity vref and the z-axis zT facing upwards, perpendicular to the road plane. V is fixed to the Center of Gravity (COG) of the vehicle with xV pointing towards the center of the front axle, and zV parallel to zT .
+
+a) Relative kinematics: The orientation of T relative to 
+
+I is defined by three angles: heading χ (yaw), slope θ (pitch), and banking ϕ (roll). A position vector in the inertial frame 
+
+I is transformed to the trajectory frame via:  
+
+> T
+
+r = Rx(ϕ)Ry (θ)Rz (χ) I r + T rIT , (1) where Rx(·), Ry (·), Rz (·) are rotation matrices about the 
+
+x, y, z axes respectively, and T rIT is the translation offset of the trajectory frame origin in I. The rotation rate over path progress T ΩT I can be evaluated in the T -frame as  
+
+> T
+
+ΩT I =  ˆϕ′ ˆθ′ ˆχ′⊤
+
+=
+
+
+
+ϕ′
+
+00
+
+ + Rx(ϕ)
+
+
+
+0
+
+θ′
+
+0
+
+ + Ry (θ)
+
+
+
+00
+
+χ′
+
+ . (2) This is derived from the three successive frame rotations: yaw ( χ′ in z), pitch ( θ′ in y), and then roll ( ϕ′ in x). The values ϕ, θ, χ, ˆϕ′, ˆθ′, ˆχ′ are properties of the reference trajectory, provided by the planning module [5]. The vehicle V is positioned at a lateral offset d from the trajectory reference line (positive to the left) and a heading offset ∆ψ from the racetrack heading. Thus, the angular velocity of the vehicle in the inertial frame is:  
+
+> V
+
+ωVI = V ωVT + Rz (∆ ψ) T ΩT I ˙s, (3) where ˙s is the rate of progress along the path. For small heading deviations ( ∆ψ ≪ 1) and using ˙ψ = ∆ ˙ψ + ˆ χ′ ˙s, this simplifies to:  
+
+> V
+
+ωVI ≈  ˆϕ′ ˙s ˆθ′ ˙s ˙ψ⊤ . (4) For compact notation we define V ωVI = ˆωx ˆωy ˆωz
+
+⊤.
+
+b) Rigid-body dynamics: The law of conservation of angular and linear momentum applied to the system yields  
+
+> V
+
+I V ˙ωVI + V ˙ωVI × (V I V ωVI ) = X
+
+> i
+
+Mi (5) 
+
+m(V ˙v + V ˙ωVI × V v) = X
+
+> i
+
+Fi (6) with vehicle moment of inertia V I = diag(0 , I y , I z ), mass 
+
+m and velocities vx, v y , v z of the COG projected in the road plane, i. e. V v = vx + ˆ ωy h vy − ˆωxh vz
+
+⊤. We neglect roll dynamics and, therefore, the rolling moment of inertia. Substituting (2) into (5) and evaluating the torque balance with the forces from Figure 2, we obtain 
+
+
+
+(Iz − Iy )ˆ ωz ˆωy
+
+Iy ˙ˆωy − Iz ˆωz ˆωx
+
+Iz ˙ˆωz + Iy ˆωx ˆωy
+
+ =
+
+−lR
+
+0
+
+−h
+
+ ×
+
+FxR 
+
+FyR 
+
+FzR 
+
+
+
++
+
+ lF
+
+0
+
+−h
+
+ ×
+
+FxF cδ − FyF sδ
+
+FyF cδ + FxF sδ
+
+FzF 
+
+ +
+
+−∆l
+
+0∆h
+
+ ×
+
+−Fd
+
+0
+
+Fl
+
+ .
+
+(7) Evaluating the force balance (6) yields 
+
+m
+
+
+
+ˆax
+
+ˆay
+
+ˆaz
+
+ =
+
+
+
+m( ˙ vx + ˙ˆωy h + ˆ ωy vz − ˆωz vy )
+
+m( ˙ vy − ˙ˆωxh + ˆ ωz vx − ˆωxvz )
+
+m( ˙ vz + ˆ ωxvy − ˆωy vx)
+
+ (8a) 
+
+=
+
+
+
+FxR 
+
+FyR 
+
+FzR 
+
+ +
+
+
+
+FxF cδ − FyF sδ
+
+FyF cδ + FxF sδ
+
+FzF 
+
+ +
+
+
+
+−Fd
+
+0
+
+Fl
+
+
+
++ Rz (∆ ψ)Rx(ϕ)Ry (θ)Rz (χ)( −mg )ez .
+
+(8b) Based on Table I, we neglect the gray-marked terms in (5) and (6). These are approximately three to four orders smaller than the dominant terms over the considered operating range. Hence, removing these terms has a minor impact on the dynamics while reducing model complexity.                                                                                                  
+
+> Quantities Order of Magnitude
+> ˆωx,ˆωy,˙ˆωx,˙ˆωy, h, ∆h, ∆l, δ, ∆ψ, θ, ϕ 10 −1
+> ˆωz,˙ˆωz, v y, v z, l F, l R, d, ˙d10 0
+> vx, I y10 2
+> m, I z, F l, F d10 3
+> FxF , F xR , F yF , F yR , F zF , F zR 10 4
+> Conservation of angular momentum (5) Term OoM in N m Term OoM in N m
+> Iy˙ˆωy10 1Iz˙ˆωz10 3
+> Izˆωzˆωx10 2Iyˆωxˆωy10 0
+> l{F,R }Fz, {F,R }10 4l{F,R }Fy, {F,R }10 4
+> hF x, {F,R }10 3∆lF l,∆hF d10 2
+> Conservation of linear momentum (6) Term OoM in NTerm OoM in N
+> m˙vx10 4m˙vy10 4
+> m˙vz=m( ˙ˆωxd+ ˆ ωx˙d)10 2m˙ˆωyh10 1
+> m˙ˆωxh10 1mˆωyvz10 2
+> mˆωzvx10 5mˆωxvy10 2
+> mˆωzvy10 3mˆωxvz10 2
+> mˆωyvx10 4mg cθs∆ψ10 3
+> mg cθsϕs∆ψ10 2mg sθs∆ψ10 2
+> mg cθsϕc∆ψ10 3mg cθcϕ10 4
+
+TABLE I: Order of magnitude of terms in (5) and (6) 
+
+c) Equations of motion: The equations of motion are given by the state and input vectors 
+
+x = d ∆ψ vx vy ˙ψ δ T B⊤ , (9a) 
+
+u = udδ udT udB
+
+⊤ , (9b) and state dynamics 
+
+˙d = vxs∆ψ + vy c∆ψ , (10a) 
+
+∆ ˙ψ = ˙ψ − ˆχ′ ˙s, (10b) 
+
+˙vx = ˜ ax + gsθ c∆ψ − gcθ sϕs∆ψ − ˆθ′ ˙sv z + ˙ψv y , (10c) 
+
+˙vy = ˜ ay − gsθ s∆ψ − gcθ sϕc∆ψ − ˙ψv x + ˆϕ′ ˙sv z , (10d) 
+
+¨ψ = 1
+
+Iz
+
+(lF FyF cδ + lF FxF sδ − lRFyR ), (10e) 
+
+˙δ = udδ , ˙T = udT , ˙B = udB , (10f) where δ is the steering angle, T ∈ [0 , 1] is the normalized throttle, and B ∈ [0 , 1] is the normalized brake. The progress rate ˙s is approximated as ˙s ≈ vxc∆ψ −vy s∆ψ  
+
+> 1−dˆχ′
+
+, which follows from Frenet-frame kinematics: the numerator is the vehicle velocity projected onto the trajectory tangent, while the denominator accounts for the vehicle position relative to path curvature. vz is given by vz ≈ d ˆϕ′ ˙s, as V is offset by d in the ϕ-banked T -frame. Fl and Fd are aerodynamic lift and drag forces, respectively, that are quadratically proportional to vx. The apparent accelerations in the body frame are given by 
+
+˜ax = 1
+
+m (FxF cδ − FyF sδ + FxR − Fd) , (11a) 
+
+˜ay = 1
+
+m (FyF cδ + FxF sδ + FyR ) . (11b) The longitudinal FxF , F xR , lateral FyF , F yR , and vertical 
+
+FzF , F zR tire forces depend on the vehicle state x, orien-tation, and rotation on the uneven racetrack, as outlined in section II-A.2. 2) Tire forces: In the following, we describe the calcula-tion of longitudinal and vertical tire loads, and how they affect the lateral traction force via a load-dependent slip angle formulation of the Pacejka MF tire model. 
+
+a) Longitudinal and vertical load: To represent rear-wheel drive with braking on both axles, we utilize normalized throttle and brake inputs T, B ∈ [0 , 1] that determine the longitudinal tire forces on the front and rear axles via the throttle CT , brake CBF , C BR , and rolling resistance Crr 
+
+constants [12] 
+
+FxF = −CBF B − mgC rr lR
+
+lwb 
+
+, (12) 
+
+FxR = CT T − CBR B − mgC rr lF
+
+lwb 
+
+, (13) with wheelbase lwb = lF + lR.The vertical axle load is given by the balance of angular momentum in yV and the balance of linear momentum in 
+
+zV with the assumption δ ≪ 1. The small-angle assumption is used only to remove lateral-force dependence from the load-transfer expression in (14a). This simplification avoids an algebraic loop, as lateral force also depends on vertical load. The full steering dependence is retained in the main prediction dynamics and lateral-tire-force computation. Ver-tical load is given by 
+
+FzF = Fz, tot 
+
+lR
+
+lwb 
+
++ ∆ Fz , (14a) 
+
+FzR = Fz, tot 
+
+lF
+
+lwb 
+
+− ∆Fz , (14b) with 
+
+Fz, tot = m( ˙ vz + ˆϕ′ ˙sv y − ˆθ′ ˙sv x + gcθ cϕ − Fl), (15) 
+
+∆Fz = 1
+
+lwb 
+
+(−Iz ˙ψ ˆϕ′ ˙s + ∆ hF d + h(FxF + FxR )) , (16) where ˙vz is approximated by ˙vz = ˙d ˆϕ′ ˙s + d ˆϕ′′ ˙s2 + d ˆϕ′ ¨s and 
+
+¨s is approximated by 
+
+¨s ≈ 1
+
+m (Teff CT − B(CBF + CBR ) − mgC rr − Fd), (17) which is valid for ∆ψ, d ˆχ′, δ ≪ 1.The coupling of longitudinal and vertical tire loads creates a problematic incentive: when the rear tire sideslip angle saturates, increasing the throttle raises the predicted rear axle vertical load and thus apparent lateral capability. While this is plausible for the idealized rigid DSTM (10a), the real vehicle includes a suspension and thus pitch dynamics. This means the system reacts more slowly than the prediction model anticipates. In practice, the vertical load on the rear axle cannot increase quickly enough to offset the loss in lateral stiffness caused by longitudinal slip. Thus, increasing the throttle does not raise rear axle traction but triggers wheel spin and traction control intervention. To avoid optimistic load transfer prediction in this situation, we define Teff =
+
+T in (17) for body sideslip angle β = arctan( vy 
+
+> vx
+
+) ∈
+
+[−0.06 , 0.06] rad but set Teff = 0 for sideslip values outside this range. While including pitch dynamics in the prediction model would be a more physical and less heuristic solution, it introduces additional states (body pitch) and parameters (pitch stiffness, inertia). Thus, the presented solution with 
+
+Teff targets a pragmatic trade-off between complexity and accuracy. 
+
+b) Pacejka model and lateral force: The lateral accel-eration is generated by the front and rear axle slip angles αi
+
+given by 
+
+αF = − arctan vy + lF ˙ψvx
+
+!
+
++ δ, (18) 
+
+αR = − arctan vy − lR ˙ψvx
+
+!
+
+. (19) We use a modification of the MF tire force law by Pacejka [19] to describe how axle sideslip angle generates lateral force, dependent on vertical and longitudinal load: 
+
+Di = ( pDy 1,i + pDy 2,i dF zi )λμ,i , (20) 
+
+Fyi = DiGyκ,i sin( Ci arctan( Biαi − Ei(Biαi
+
+− arctan( Biαi)))) , (21) where i ∈ { F, R }, and dF zi = Fzi −Fz0,i  
+
+> Fz0,i
+
+with nominal load 
+
+Fz0,i . Gyκ,i = cos(arctan( CGy,i Fxi )) couples longitudinal force to lateral dynamics. pDy 1,i and pDy 2,i represent the affine dependence on the axle load, and λμ,i is an overall scaling factor. Bi, Ci and Ei are empirical shape parameters. 
+
+B. Control Design 1) MPC Setup: The Nonlinear Program (NLP) solved at each controller update step is given in (22). It is similar to [13], with a cost that balances tracking and time optimality, prioritizes vehicle stability, and accounts for unmodeled dynamics. 
+
+min x0,..., xN     
+
+> u0,..., uN−1
+> ∫0,..., ∫N−1
+> N−1
+
+X
+
+> k=0
+
+y⊤ 
+
+> k
+
+Qy k + u⊤ 
+
+> k
+
+Ru k + ρ(∫ k) + y⊤ 
+
+> N
+
+QN yN
+
+(22a) s. t. xk+1 = fd(xk, uk, pk), (22b) 
+
+dlb − ∫ 1 
+
+> k
+
+≤ dk ≤ dub + ∫ 2 
+
+> k
+
+, (22c) 
+
+δlb − ∫ 3 
+
+> k
+
+≤ δk ≤ δub + ∫ 4 
+
+> k
+
+, (22d) 
+
+0 ≤ Tk ≤ 1 + ∫ 5 
+
+> k
+
+, 0 ≤ Bk ≤ 1 + ∫ 6 
+
+> k
+
+, (22e) 
+
+ulb − ∫ 7 
+
+> k
+
+≤ uk ≤ uub + ∫ 8
+
+> k
+
+, (22f) 
+
+˜ax,k + mr,k ˜ay,k ≤ Cr,k + ∫ 9,r k r ∈ I[1 , 8] , (22g) 
+
+αi, lb − ∫ 10 ,i k ≤ αi,k ≤ αi, ub + ∫ 11 ,i k i ∈ { F, R },
+
+(22h) 
+
+0 ≤ ∫ k, (22i) 
+
+vN ≤ vref ,N (22j) The constraints (22b) to (22i) are imposed for k ∈
+
+I[0 ,N −1] .The cost terms in (22a) are given by 
+
+yk =
+
+h
+
+dk, ˙dk, ∆vk, T kBk, ˙ay, kin ,k , vk
+
+> ˙sk
+
+i⊤
+
+, (23a) 
+
+ρ(∫ k) = 
+
+> n∫
+
+X
+
+> i=1
+
+qi
+
+> 1
+
+∫ ik + qi
+
+> 2
+
+∫ ik
+
+> 2
+
+. (23b) 
+
+yN = [ ˙dN ]. (23c) The NLP (22) uses reference trajectory information pk
+
+comprised of velocity vref ,k, banking, slope, curvature, and acceleration limits (in the form of mr,k , Cr,k as in (22g)) provided by the higher-level planning module. The reference trajectory signals are treated as purely time-varying under the assumption that the reference is tracked closely enough. The stage cost (23a) is chosen such that d, ˙d, and 
+
+∆v = vk − vref ,k incentivize tracking of the reference path and velocity. By including ˙d, we penalize lateral motion relative to the reference line, not just the absolute offset 
+
+d. As a result, the controller is incentivized to minimize heading errors, especially at higher speeds, which improves tracking performance and stability. The product T B penal-izes simultaneous braking and throttle application, which is possible in the model but not intended in our overall hierarchical controller concept. Adding costs on the kine-matic jerk ˙ay, kin = ddt 
+
+ δv 2
+
+> x
+
+ ≈ ˙δv 2 
+
+> x
+
++ 2 δ˜axvx incentivizes smooth lateral acceleration especially at higher velocities which helps to account for unmodeled dynamics. The terminal cost term in (23c) penalizes lateral path error velocity at the end of the horizon. By driving ˙dN → 0, the predicted terminal state approaches motion parallel to the longer-term planner trajectory. Thus, we improve recursive feasibility for the short-term MPC prediction horizon. For computational efficiency, the coupled acceleration envelope is represented as an octagon in the apparent-acceleration plane. Compared to an elliptic formulation, this yields eight linear inequalities in (˜ ax, ˜ay ) and simpler derivatives, while also being compatible with the message interface between planning and control modules. Note that the resulting constraints (22g) are still nonlinear in the opti-mization variables through the mapping (x, u) 7 → (˜ ax, ˜ay ).The axle slip angle constraints (22h) are imposed as additional stability constraints. They discourage excessive tire sideslip angles by restricting the controller from using the nonlinear tire curve beyond its lateral traction force peak. The constraints (22i) on the slacks ∫ k ∈ Rn∫ represent element-wise non-negativity constraints ensuring slacks only relax selected constraints, which improves NLP feasibil-ity under unforeseen circumstances. Meanwhile, linear and quadratic costs (23b) on the slacks keep the NLP close to the constrained solution when it is feasible. The terminal constraint (22j) incentivizes keeping below the terminal target velocity, intended for recursive feasibility and safety. 
+
+2) Constraint Tightening (CT): In autonomous racing, it is critical not to stress tires beyond their capabilities of lon-gitudinal and lateral traction. Exceeding these limits results in excessive slip, a drop-off of tire forces, and ultimately a loss of vehicle stability in the form of critical over- or under-steer. Stability constraints in the form of coupled acceleration bounds at the center of mass can be added to the optimization problem as a proxy for tire friction potential [4]. However, a nominal MPC with stability constraints does not consider that real-world vehicle behavior, especially tire-road interac-tion, is inherently uncertain. Robust tube-MPC approaches extend nominal MPC by considering the propagation of uncertainty through the prediction model and introducing a margin to constraint bounds, with the aim of keeping the vehicle controllable and stable. In the following, we recall the previously introduced dynamic CT approach based on Control Contraction Metric (CCM) analysis for a two-dimensional single-track model under bounded uncertainty [13]. The constraints (22c) to (22g) as well as the terminal speed constraint (22j) are formulated as one-sided constraints of the form hj (x, u) ≤ 0 (ignoring slack variables for notational ease). Constraint Tightening (CT) is applied with a time-dependent scalar tube size σ(t) and corresponding tightening constant cj
+
+hj (x, u) + cj σ ≤ 0. (24) The dynamics of the tube size σ is then given as a function of nominal state and input 
+
+˙σ = − (β − LE − C σ ) σ + fσ (x, u). (25) Thus, the tube size σ, characterizing our uncertainty around the nominal state and input, effectively becomes a state variable in the MPC prediction model. For notational clarity, we keep the robustification scheme with the tube dynamics (25) separate from our nominal NLP defined in (22). In the tube dynamics (25), β and LE are constants related to the achievable contraction of the uncertain model under external disturbances. Cσ is a constant related to the unknown but bounded parameter error vector. The state- and input-dependent uncertainty fσ (x, u) is a worst-case bound over the vertices of the uncertain but bounded parameter and external disturbance vertices according to the CCM analysis [13]. By design, fσ increases with the states relevant to vehicle stability: vx, vy , ˙ψ, and the longitudinal forces via 
+
+T and B. These states drive the uncertainty dynamics (25). We refer to [13] for the computation of these expressions, which is performed offline. The tightening of path deviation constraints (22c) and acceleration constraints (22g) leads to a safety distance from path bounds and withheld acceleration potential later in the MPC horizon, respectively. The coupling of con-straint and nominal dynamics (24) allows the controller to consider uncertainties within the optimization. This enables the controller to automatically balance the tradeoff between trajectory tracking and vehicle stability [13]. The proposed CT (24), (25) is intended to assist in keeping problem (22) recursively feasible under uncertainty by covering the assumed set of uncertain trajectories within an uncertainty-dependent tube , and using this tube as a back-off from constraint bounds [20]. The CT is dependent on ˜ay
+
+˜ax˜ay
+
+˜axFig. 3: Side-by-side illustration of progressive tightening of acceleration constraints (22g) along the MPC horizon for two different (static) regimes of apparent gravity due to 3D racetrack geometry: Higher apparent gravity on the left, lower on the right. Shading indicates the horizon index, with low saturation at the start and high saturation at the end. North 
+
+Lesmo I & II 
+
+−5
+
+0
+
+5
+
+> Elevation in m
+
+Fig. 4: Layout of the Autodromo Nazionale di Monza circuit overlaid on a 500 m grid. Track elevation is represented by a color gradient. The curves Lesmo I & II , used later, are highlighted. the uncertainty in order to tightly cover the set of uncertain trajectories and therefore induce the right amount of caution while avoiding unnecessary conservatism. In practice, the tube dynamics (25) grow during aggressive maneuvers and tend to contract as the vehicle returns to nominal operating conditions. The limited number and interpretability of con-stants in (24) make the CT tuneable by hand. The MPC stability constraints (22g) on the apparent accel-erations (11a), provided by the planning module, are strongly influenced by 3D racetrack geometry [5]. While the CT leads to a more conservative behavior, the withheld acceleration potential is invariant under vertical loads. Instead, 3D race-track geometry is indirectly considered through its impact on acceleration limits (see Fig. 3). III. R ESULTS 
+
+For real-time capability, the presented controller is im-plemented with C-Code generated by the acados MPC framework [21]. The C-Code is integrated within a C++ 
+
+node for the ROS2-based software stack used by TUM Au-tonomous Motorsport [22, 1]. In this architecture, the refer-ence trajectory with 3D geometry information and constraints is generated by a sampling-based planning algorithm [23]. The prediction model (22b) is discretized using a Runge-
+
+2.0 1.8 1.6 1.4 Error in  m
+
+Maximum tracking error max |d| across scenarios 
+
+Dynamic 3D Static 3D Plane 2D Failure 0.80 0.82 0.84 0.86 0.88 0.90 0.92 0.94 0.96 0.98 1.00 Planner trajectory acceleration limit scale Fig. 5: Maximum absolute path deviation across two laps driven at various levels of planner trajectory aggressiveness, specified by the scaling value of the acceleration limits. −0.5
+
+0
+
+Lesmo I Lesmo II 
+
+> d in m
+
+4
+
+5
+
+> FzF  in kN
+
+0 2 4 6 8 10 12 14 
+
+4
+
+5
+
+6
+
+Time in s 
+
+> FzR  in kN
+
+Dynamic 3D Static 3D Plane 2D 
+
+Simulation Prediction 
+
+Fig. 6: Path deviation d and vertical loads FzF , FzR in the turns Lesmo I and II for the scenario at 0.98 planner acceleration limit scale. The solid lines in the second and third plots show the loads assumed by the MPC prediction model. The dashed lines show the simulation ground-truth axle load values, calculated as the sum of the left and right tire forces. Kutta method of order 4 with a step size of 60 ms and a horizon length of 36 steps, giving a prediction horizon of 
+
+2.16 s . To minimize latency, we use the Real-Time Iteration (RTI) scheme [24]: for each control update, the NLP (22) is linearized once around a warm start from the previous solution, one QP subproblem is solved, and the control input is extracted from the result. We employ HPIPM [25] with a fixed number of iterations for solving the resulting Quadratic Program (QP) in the intermediate speed setting BALANCE .The controller is running at an update frequency of 100 Hz .The normalized throttle and brake forces optimized in NLP (22) are converted to an acceleration request for the low-level longitudinal controller [26]. Conversely, the measured longitudinal acceleration is approximately converted to nor-malized throttle and brake forces as acceleration feedback. To test the impact of the proposed changes, we evaluate three controller variants on a set of 20 scenarios in a high-fidelity dynamic double-track vehicle simulation [27]. The 
+
+Plane 2D variant neglects all 3D effects. The Static 3D 
+
+variant considers static banking and slope effects as in [12]. The Dynamic 3D variant considers all 3D acceleration outlined in II-A. All variants are parameterized with the same set of cost and slack weights. Figure 4 shows the Autodromo Nazionale di Monza race-track, which is used for all 20 evaluation scenarios. The track’s unique topology, with an elevation change of 13 m ,a maximum slope of 2.6% , and speeds up to 255 km h −1,makes it a suitable testing ground for investigating the influ-ence of dynamic acceleration. In this environment, vertical acceleration changes are mainly induced by the rotation of the vehicle traveling at high velocity on a curved road surface, rather than the absolute orientation (i.e., banking and slope). Each scenario consists of two laps, one out-lap and one race lap. The different scenarios are characterized by the scaling of the acceleration constraints used to generate the planner trajectories and the MPC acceleration limits (22g). Figure 5 demonstrates the benefit of using the 3D-DSTM in the MPC across the different scenarios. The proposed control algorithm with the 3D-DSTM outperforms the plane 2D and static 3D variants by giving lower maximum absolute path errors. The Dynamic 3D variant is also able to stabilize the vehicle at higher acceleration limits. To illustrate how the lower tracking error can be achieved with the Dynamic 3D variant, we plot the lateral error and predicted vertical tire load in the corners Lesmo I and II 
+
+(Figure 4). In the first corner ( Lesmo I ), the racetrack slopes down and then levels for the apex of the corner. As a result of this change in slope, the ground-truth simulation vertical forces on the front and rear axles are significantly higher compared to the predictions of the Plane 2D and Static 3D 
+
+variants (Figure 6 center and bottom). The Dynamic 3D 
+
+approach with a rotating reference frame captures terrain dynamics more accurately, resulting in tire loads closer to the ground-truth values. Thus, the Dynamic 3D approach ultimately achieves superior tracking-performance on non-planar racetrack pieces (Figure 6 top). A similar effect can be observed to a lesser extent in the second corner ( Lesmo 3 4 5 6
+
+0
+
+10 
+
+20 
+
+30 
+
+40 
+
+Solve time in ms 
+
+> Number Occurring
+
+Dynamic 3D Static 3D Plane 2D 
+
+Fig. 7: Overlaid histograms of MPC solve times for different prediction model levels of detail. 
+
+II ). Figure 7 compares the distribution of solve times for the three controller variants. The tests were performed on an AMD Ryzen 7 PRO 7840U CPU with AVX2/AVX-512 support, rated to 2.7 GHz . Across 60 s of runtime, we observe a similar average solve time of approximately 3.4 ms for all three variants. Peak solve time is slightly higher in the 
+
+Dynamic 3D variant compared to 5.3 ms in the Static 3D 
+
+and 5.6 ms in the Plane 2D variants. The solve time median is 3.3 ms for the Dynamic 3D , 3.4 ms for the Static 3D ,and 3.3 ms for the Plane 2D variants. The distribution of solve times for all three variants indicates that the solve times remain feasible. IV. D ISCUSSION 
+
+The presented MPC scheme addresses two prominent problems in trajectory-tracking control for autonomous rac-ing, especially on highly 3D racetracks. The first is that performance is heavily dependent on the predictive quality of the plant model in the controller. This problem is ameliorated by incorporating the dominant forces from racetrack geometry directly into the prediction model. By thus improving the prediction quality (Fig. 6), the MPC is able to exploit road topography to increase tracking performance and vehicle stability (Fig. 5) while keeping solving times feasible (Fig. 7). The second problem is addressing the inevitable model mismatch under uncertainty and constraints, which can lead to constraint violations and, consequently, crashes. The pre-sented CT provides an uncertainty-aware dynamic safety margin around constraints and reacts to varying overall normal forces via acceleration limits. However, the design is inherently 2D, and does not incorporate dynamic load changes. This simplification enables a fast update rate while still allowing the controller to incorporate dynamic, state-dependent uncertainty into the prediction. The consideration of load transfer effects touches on both problems. Longitudinal load transfer significantly influences the tire forces and is thus used by human race drivers [28]. Its consideration is beneficial for control performance, as it im-proves the prediction of vertical load and, consequently, tire-ground dynamics. However, in edge cases, it can introduce adverse incentives, such as increasing throttle near the over-steer threshold. A more detailed coupled lateral/longitudinal tire force model [29] with pitch dynamics could reduce this incentive, but would also be more computationally complex. The presented controller is developed for racing in the context of the TUM Autonomous Motorsport project [1]. V. A CKNOWLEDGMENTS 
+
+Author Contributions: Joscha F. Bongard: Conceptualiza-tion, Methodology, Software, Writing – original draft. Georg Jank: Conceptualization, Methodology, Software, Visualiza-tion, Writing – original draft. Simon Sagmeister: Software, Methodology, Writing – review & editing. Boris Lohmann: Supervision, Writing – review & editing, Funding acquisi-tion, Project administration. REFERENCES 
+
+[1] Simon Hoffmann et al. “Head-to-Head Autonomous Racing at the Limits of Handling in the A2RL Challenge”. Submit-ted to Sci. Robot. 2025. [2] Johannes Betz et al. “TUM autonomous motorsport: An autonomous racing software for the Indy Autonomous Chal-lenge”. In: J. Field Robot. 40 (4 June 2023), pp. 783–809. [3] James B Rawlings et al. Model Predictive Control: Theory, Computation, and Design 2nd Edition . Tech. rep. 2020. [4] P. Stano et al. “Model predictive path tracking control for automated road vehicles: A review”. In: Annu. Rev. Control 
+
+55 (January 2023 2023), pp. 194–236. [5] Matthias Rowold et al. “Online Time-Optimal Trajectory Planning on Three-Dimensional Race Tracks”. In: 2023 IEEE Intell. Veh. Symp. (IV) . IEEE, June 2023, pp. 1–8. [6] Sven Goblirsch et al. “Three-Dimensional Vehicle Dynamics State Estimation for High-Speed Race Cars under varying Signal Quality”. In: 2024 IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS) . IEEE, Oct. 2024, pp. 3371–3378. [7] Johannes Betz et al. “Autonomous Vehicles on the Edge: A Survey on Autonomous Vehicle Racing”. In: IEEE Open J. Intell. Transp. Syst. 3 (Feb. 2022), pp. 458–488. [8] Max Schwenzer et al. Review on model predictive control: an engineering perspective . Nov. 2021. [9] A. Wischnewski et al. “Tube model predictive control for an autonomous race car”. In: Vehicle Syst. Dyn. (2021). [10] Zejiang Wang et al. “Autonomous Vehicle Trajectory Fol-lowing: A Flatness Model Predictive Control Approach With Hardware-in-the-Loop Verification”. In: IEEE Trans. Intell. Transp. Syst. 22.9 (Sept. 2021), pp. 5613–5623. [11] Eugenio Alcal´ a et al. “Autonomous racing using Linear Parameter Varying-Model Predictive Control (LPV-MPC)”. In: Control Eng. Pract. 95 (Feb. 2020), p. 104270. [12] Ayoub Raji et al. “Motion Planning and Control for Multi Vehicle Autonomous Racing at High Speeds”. In: IEEE Int. Conf. Intell. Transp. Syst. (ITSC) . IEEE, Oct. 2022, pp. 2775–2782. [13] Joscha F. Bongard et al. “Dynamic Constraint Tightening for Nonlinear MPC for Autonomous Racing via Contraction Analysis”. In: IEEE Intell. Veh. Symp. (IV) . IEEE, June 2025, pp. 2288–2295. [14] S. Lovato and M. Massaro. “A three-dimensional free-trajectory quasi-steady-state optimal-control method for minimum-lap-time of race vehicles”. In: Vehicle Syst. Dyn. 
+
+60 (5 May 2022), pp. 1512–1530. [15] D. J.N. Limebeer and G. Perantoni. “Optimal Control of a Formula One Car on a Three-Dimensional Track - Part 2: Optimal Control”. In: Journal of Dynamic Systems, Mea-surement and Control, Transactions of the ASME 137 (5 May 2015). [16] Kai Liu et al. “Model Predictive Stabilization Control of High-Speed Autonomous Ground Vehicles Considering the Effect of Road Topography”. In: Applied Sciences 8 (2018), p. 822. [17] Hamid Taghavifar. “Neural Network Autoregressive With Exogenous Input Assisted Multi-Constraint Nonlinear Pre-dictive Control of Autonomous Vehicles”. In: IEEE Trans. Veh. Technol. 68.7 (2019), pp. 6293–6304. [18] Alexander Wischnewski et al. “A Tube-MPC Approach to Autonomous Multi-Vehicle Racing on High-Speed Ovals”. In: IEEE Trans. Intell. Veh. (2022). [19] Hans B. Pacejka. Tire and Vehicle Dynamics . Elsevier, 2012, pp. 1–58. [20] Andr´ as Sasfi et al. “Robust adaptive MPC using control contraction metrics”. In: Automatica 155 (September Sept. 2023), p. 111169. [21] Robin Verschueren et al. “acados—a modular open-source framework for fast embedded optimal control”. In: Math. Program. Comput. 14 (1 Mar. 2022), pp. 147–183. [22] Johannes Betz et al. “A Software Architecture for an Au-tonomous Racecar”. In: 2019 IEEE 89th Vehicular Tech-nology Conference (VTC2019-Spring) . IEEE, Apr. 2019, pp. 1–6. [23] Levent ¨ Ogretmen et al. “Sampling-Based Motion Planning with Online Racing Line Generation for Autonomous Driv-ing on Three-Dimensional Race Tracks”. In: IEEE Intell. Veh. Symp. (IV) . IEEE, June 2024, pp. 811–818. [24] Moritz Diehl et al. “Real-time optimization and nonlin-ear model predictive control of processes governed by differential-algebraic equations”. In: J. Process Contr. 12 (4 June 2002), pp. 577–585. [25] Gianluca Frison and Moritz Diehl. “HPIPM: a high-performance quadratic programming framework for model predictive control”. In: IFAC-Pap. 53 (2 Mar. 2020), pp. 6563–6569. [26] Phillip Pitschi et al. “Longitudinal Control for Autonomous Racing with Combustion Engine Vehicles”. In: IEEE Intell. Veh. Symp. (IV) . IEEE, June 2025, pp. 1070–1077. [27] Simon Sagmeister et al. “Analyzing the Impact of Simu-lation Fidelity on the Evaluation of Autonomous Driving Motion Control”. In: IEEE Intelligent Vehicles Symposium, Proceedings . Institute of Electrical and Electronics Engi-neers Inc., 2024, pp. 230–237. [28] Efstathios Velenis et al. “Modeling aggressive maneuvers on loose surfaces: The cases of Trail-Braking and Pendulum-Turn”. In: 2007 European Control Conference (ECC) . IEEE, July 2007, pp. 1233–1240. [29] Trey P. Weber et al. “Human-Inspired Autonomous Racing in Low Friction Environments”. In: IEEE Trans. Intell. Veh. 
+
+(2024), pp. 1–14.

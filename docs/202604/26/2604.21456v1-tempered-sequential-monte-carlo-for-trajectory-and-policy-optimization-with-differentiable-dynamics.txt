@@ -1,0 +1,1201 @@
+Title: Tempered Sequential Monte Carlo for Trajectory and Policy Optimization with Differentiable Dynamics
+
+URL Source: https://arxiv.org/pdf/2604.21456v1
+
+Published Time: Fri, 24 Apr 2026 00:44:20 GMT
+
+Number of Pages: 20
+
+Markdown Content:
+# Tempered Sequential Monte Carlo for Trajectory and Policy Optimization with Differentiable Dynamics 
+
+Heng Yang Harvard University 
+
+Abstract —We propose a sampling-based framework for finite-horizon trajectory and policy optimization under differentiable dynamics by casting controller design as inference. Specifically, we minimize a KL-regularized expected trajectory cost, which yields an optimal “Boltzmann-tilted” distribution over controller parameters that concentrates on low-cost solutions as tempera-ture decreases. To sample efficiently from this sharp, potentially multimodal target, we introduce tempered sequential Monte Carlo 
+
+(TSMC): an annealing scheme that adaptively reweights and resamples particles along a tempering path from a prior to the target distribution, while using Hamiltonian Monte Carlo rejuvenation to maintain diversity and exploit exact gradients 
+
+obtained by differentiating through trajectory rollouts. For policy optimization, we extend TSMC via (i) a deterministic empir-ical approximation of the initial-state distribution and (ii) an extended-space construction that treats rollout randomness as auxiliary variables. Experiments across trajectory- and policy-optimization benchmarks show that TSMC is broadly applicable and compares favorably to state-of-the-art baselines. 
+
+I. I NTRODUCTION 
+
+Consider a discrete-time dynamical system 
+
+xt+1 = f (xt, u t), t ∈ N (1) where xt ∈ Rn is the state and ut ∈ Rm is the control input. We focus on deterministic dynamics for clarity of exposition and discuss extensions to stochastic dynamics in Remark 3. For a finite horizon T , we denote a state-control trajectory by 
+
+τ = ( x0, u 0, x 1, u 1, . . . , x T −1, u T −1, x T ), with total cost 
+
+J(τ ) =  
+
+> T−1
+
+X
+
+> t=0
+
+ℓt(xt, u t) + ℓT (xT ). (2) Here ℓt for t = 0 , . . . , T − 1 are stage costs and ℓT is a terminal cost. Let μ denote a distribution over initial states 
+
+x0, and let θ ∈ Rd parameterize a (state-feedback) controller 
+
+πθ : Rn → Rm. Under πθ , the control input is ut = πθ (xt),which together with the dynamics induces a trajectory rollout 
+
+τ (x0, θ ). For simplicity, we focus on deterministic controllers. We then consider the unified objective 
+
+min 
+
+> θ∈Rd
+
+Ex0∼μ [J(τ (x0, θ ))] . (3) Problem (3), henceforth referred to as trajectory and policy optimization (TPO), subsumes two fundamental settings in optimal control and reinforcement learning:  
+
+> •
+
+Trajectory Optimization (TO) [81, 16, 21, 55, 78]: fix the initial state by setting μ = δx0 (a Dirac measure), and choose an open-loop parameterization θ = ( u0, . . . , u T −1)
+
+(equivalently, πθ (xt) ≡ ut). Then (3) reduces to optimiz-ing a single control sequence for a given x0. 
+
+> •
+
+Policy Optimization (PO) [92, 86, 88, 53, 35]: let μ rep-resent a distribution over initial conditions ( e.g., uniform over a region in the state space), and parameterize πθ
+
+as a state-feedback policy ( e.g., with a neural network). Then (3) becomes the problem of minimizing expected trajectory cost over the initial-state distribution. Motivated by the recent efforts in differentiable physics simulation—particularly contact solvers [60, 47, 89, 29, 77, 74, 46]—and in learning differentiable world models [79, 63, 111, 3, 7, 2, 107], we assume the dynamics f (xt, u t)
+
+is differentiable in both xt and ut. This enables gradient-based approaches that “exploit” differentiability: in TO, non-linear programming techniques (single or multiple shooting) optimize an open-loop control sequence [81, 9, 101]; in PO, recent “first-order” methods [20, 108, 7, 8, 104] leverage differentiability to compute policy gradients more efficiently and improve sample efficiency. A drawback, however, is that gradient-based optimization can get trapped in undesirable local minima, and gradients from differentiable simulators can be uninformative in the presence of nonsmooth dynamics [91]. In contrast, sampling-based methods such as model predictive path integral control (MPPI) [105, 106] “explore” the control space and use the dynamics model only to evaluate trajectory costs; they can be less sensitive to poor local minima but often require many samples. This motivates our central question: 
+
+can we design a unified and principled algorithm for TPO that combines the benefits of sampling and gradient-based optimization under differentiable dynamics? 
+
+From Optimization to Inference. Towards this, instead of optimizing a single parameter θ in (3), we consider optimizing a distribution p over θ ∈ Rd. Let p0 be a prior distribution with 
+
+full support on Rd (i.e., with density p0(θ) > 0 for all θ ∈ Rd;
+
+e.g., a Gaussian). We study the KL-regularized problem 
+
+min  
+
+> p
+
+Ex0∼μ,θ ∼p [J(τ (x0, θ ))] + λD KL (p∥p0), (4) where DKL (p∥p0) := R 
+
+> Rd
+
+p(θ) log p(θ) 
+
+> p0(θ)
+
+dθ is the Kullback– Leibler (KL) divergence and λ > 0 controls the strength of regularization (equivalently, a “temperature”). At λ = 0 ,problem (4) is equivalent to the TPO problem (3): they have the same optimal value and any distribution supported on the optimal solution set of (3) is optimal for (4). As λ → 0+, the optimal p⋆ concentrates its mass on minimizers of (3). A key advantage of (4) is that it admits a closed-form solution. 
+
+> arXiv:2604.21456v1 [cs.LG] 23 Apr 2026
+
+Theorem 1 (Optimal Distribution) . Assume ℓt(·, ·) ≥ 0 for 
+
+t = 0 , . . . , T − 1 and ℓT (·) ≥ 0. Define the energy function 
+
+E(θ) = Ex0∼μ [J(τ (x0, θ ))] , (5) 
+
+then the optimal distribution p⋆ of (4) is given by 
+
+p⋆(θ) = 1
+
+Z p0(θ) exp 
+
+
+
+− 1
+
+λ E(θ)
+
+
+
+, (6) 
+
+where 
+
+Z =
+
+Z
+
+> Rd
+
+p0(θ) exp 
+
+
+
+− 1
+
+λ E(θ)
+
+
+
+dθ (7) 
+
+is the normalizing constant (partition function). 
+
+A proof is provided in the Supplementary Material. The-orem 1 reframes optimization as inference: the optimal so-lution of (4) is obtained by Boltzmann-tilting the prior p0
+
+with the energy E(θ), namely p⋆(θ) ∝ p0(θ) exp( −E(θ)/λ )
+
+(a.k.a. the Gibbs posterior [67, 52]). Intuitively, this tilt exponentially upweights controller parameters θ that incur lower energy, i.e., lower expected trajectory cost. Thus, if we can efficiently sample from the corresponding (unnormalized) density—especially at low temperature λ—then samples con-centrate near minimizers of the original TPO objective (3). This “control-as-inference” characterization is not new: closely related forms appear in information-theoretic optimal control [97, 56, 106, 105] and reinforcement learning [86, 35, 62, 66]. While Theorem 1 gives a closed-form solution to the KL-regularized TPO problem, sampling from the Boltzmann-tilted distribution (6) remains challenging. At low temperature, the target distribution can be sharply concentrated and highly multimodal, reflecting the nonconvexity of the underlying TPO objective (3). To the best of our knowledge, sampling from such hard targets has received limited attention in the optimal control and reinforcement learning literature. Existing approaches are typically based on importance sampling ( e.g., 
+
+MPPI and the cross-entropy method [23]) or on Markov chain Monte Carlo (MCMC) ( e.g., Bayesian motion planning [113, 58] and energy-based RL policies [34, 85]). For sharp, multimodal targets, the former often requires many samples, while the latter can suffer from long mixing times. 
+
+Contribution. We develop an algorithm for sampling from the Boltzmann-tilted distribution (6) that combines sampling-based exploration with gradient-based optimization, and ap-plies to both TO and PO. Our approach builds on tempered sequential Monte Carlo (TSMC), a state-of-the-art tool for multimodal, low-temperature targets in Bayesian inference [71, 27, 26, 22]. TSMC introduces a tempering path that gradually deforms an easy-to-sample prior into the desired Boltzmann tilt ( cf. Fig. 1); at each tempering level, it reweights and resamples particles to focus computation on low-energy regions, then applies Hamiltonian Monte Carlo (HMC) rejuve-nation to restore diversity and enable local exploration while preserving the tempered target. We show that TSMC can be ap-plied directly to TO, where ∇θ E(θ) is available via automatic differentiation through rollouts. For PO, we introduce practical variants based on (i) a deterministic approximation of E(θ)
+
+and (ii) an extended-space construction that augments each particle with a batch of initial conditions. Experiments across TO and PO benchmarks demonstrate robust performance and improved results relative to existing methods. 
+
+Outline. Section II provides a tutorial-style introduction to TSMC. Sections III and IV apply TSMC to trajectory optimization and policy optimization, respectively, with exper-imental results in Sections V and VI. Section VII concludes with limitations and future directions. Supplementary Material contains proofs, additional results, and related work. II. T EMPERED SEQUENTIAL MONTE CARLO 
+
+Recall that our goal is to sample from the Boltzmann-tilted distribution (6), where the energy function E(θ) is differen-tiable in θ. This section introduces the key ingredients of tempered sequential Monte Carlo (TSMC). For concreteness, we use the following running example. 
+
+Example 1 (Shekel-tilted Distribution) . Let θ ∈ R2 and consider the energy function defined by the negative Shekel function [90] with three centers: 
+
+E(θ) = −
+
+> 3
+
+X
+
+> i=1
+
+1
+
+∥θ − ci∥2+si
+
+, (8) 
+
+where c1 = (2 , 2) , c2 = ( −2, 2) , and c3 = (0 , −2.5) are the centers, and s1 = s2 = 0 .5, s3 = 1 .2 are the widths. This nonconvex landscape has three local minima at the three centers, with c1 and c2 being global minima. Let p0 be the standard Gaussian, and define the Shekel-tilted distribution by 
+
+p(θ) ∝ exp 
+
+
+
+−
+
+ 12 ∥θ∥2+ 1
+
+λ E(θ)
+
+ 
+
+. (9) 
+
+The lowest surface in Fig. 1(a) plots the negative log-density  
+
+> 12
+
+∥θ∥2+ 1 
+
+> λ
+
+E(θ) with λ = 0 .1, revealing multimodality of p(θ).A. Tempered Importance Sampling 
+
+To address multimodality of the Boltzmann-tilted distribu-tion (6), TSMC introduces a tempering path that gradually deforms the prior p0 into the target p⋆. Concretely, choose an increasing sequence of scalars 0 = β0 < β 1 < · · · < β K = 1 
+
+and define intermediate distributions 
+
+pk(θ) ∝ p0(θ) exp 
+
+
+
+− βk
+
+λ E(θ)
+
+
+
+, k = 1 , . . . , K. (10) Clearly, p0 coincides with the prior, and pK coincides with the target p⋆. Fig. 1(a) plots the negative log-density of pk(θ)
+
+for the Shekel-tilted distribution at different values of β. As 
+
+β increases, the nonconvex Shekel term is weighted more heavily relative to the convex quadratic, smoothly deform-ing the landscape from convex to strongly nonconvex. To tractably sample from pk, we maintain a weighted particle approximation {(θk(i), w k(i)) }Ni=1 with normalized weights PNi=1 wk(i) = 1 . Here k indexes the tempering step and i
+
+indexes the i-th particle (and its weight). 
+
+Importance Sampling. Suppose we have a weighted par-ticle approximation {(θk−1(i), w k−1(i)) }Ni=1 for pk−1. To β = 0.00  β = 0.31  β = 0.62  β = 0.70  β = 0.76                      
+
+> β=0.82 β=0.90 β=0.98 β=1.00
+> Initial particles
+> Before HMC
+> After HMC
+> Shekel centers
+> Negative log-density
+> β=0.0
+> β=0.1
+> β=0.3
+> β=0.6
+> β=1.0
+
+(a) (b)Fig. 1. Tempered Sequential Monte Carlo samples from the Shekel-tilted distribution in Example 1. (a) Negative log-density of the Shekel-tilted distribution at different tempering values. (b) Particle locations before and after HMC rejuvenation on contours of the Shekel-tilted negative log-density. 
+
+update it to approximate pk, we reweight each particle by the 
+
+incremental likelihood ratio 
+
+∆wk(i) = exp 
+
+
+
+− βk − βk−1
+
+λ E(θk−1(i)) 
+
+
+
+(11) and then renormalize, 
+
+wk(i) = wk−1(i) · ∆wk(i)
+
+PNj=1 wk−1(j) · ∆wk(j) , i = 1 , . . . , N. (12) The factor ∆wk(i) is (up to a constant) the ratio 
+
+pk(θ(i)) /p k−1(θ(i)) , so particles with lower energy E(θ) are exponentially favored (upweighted) as β increases. 
+
+Adaptive Tempering. As βk increases, weight disparity grows and the particle approximation may degenerate, com-monly tracked by the effective sample size (ESS), 
+
+ESS k ≜ 1
+
+PNi=1 (wk(i)) 2 ∈ [1 , N ], (13) where the bounds correspond to complete degeneracy (one par-ticle has all weight) and uniform weights ( wk(i) = 1 /N, i =1, . . . , N ), respectively. In practice, we use ESS to choose the next temperature βk adaptively: given particles from pk−1, we pick βk ∈ (βk−1, 1] (e.g., using bisection) so that the ESS after 
+
+reweighting by (12) hits a target level, such as ESS k ≈ ρN for a fixed ρ ∈ (0 , 1) . This yields an adaptive tempering schedule that prevents abrupt weight collapse. For the Shekel-tilted distribution, Fig. 1(b) shows the resulting adaptive schedule 
+
+{βk}Kk=0 obtained by targeting ESS k ≈ ρN with ρ = 0 .9.
+
+Resampling. After selecting βk and computing the updated weights via (12), the particle approximation of pk is weighted .Resampling converts this weighted set into an approximately unweighted one, which (i) prevents gradual accumulation of weight disparity across steps and (ii) focuses computation on particles that have non-negligible mass under pk. Concretely, we draw ancestor indices a1, . . . , a N i.i.d. from the categor-ical distribution with probabilities (wk(1) , . . . , w k(N )) , set 
+
+θk(i) ← θk−1(ai), and reset weights to wk(i) = 1 /N .Repeated reweighting and resampling can reduce particle diversity: the population may collapse onto a small number of distinct particles that carry most of the mass. Moreover, with-out additional moves, the particle locations remain restricted to the initial sample {θ0(i)}Ni=1 and cannot explore new parameter values. Next, we incorporate MCMC transitions to rejuvenate the particle set and enable local exploration while preserving the tempered target distribution. 
+
+B. MCMC Rejuvenation 
+
+At each tempering level k and after resampling, we apply a Markov transition kernel Tk(θ′ | θ) to each particle. The key requirement is that Tk leaves pk invariant , meaning that if θ ∼ pk and θ′ ∼ T k(· | θ), then θ′ ∼ pk. Equivalently, 
+
+Z
+
+pk(θ) Tk(θ′ | θ) dθ = pk(θ′). (14) Thus, rejuvenation can be viewed as a “move” step that improves diversity without biasing the particle approximation. For illustration, Fig. 1(b) overlays particle locations before and after MCMC rejuvenation on contours of the Shekel-tilted negative log-density. The rejuvenation step proposes distant moves, enabling exploration of the parameter space. 
+
+Hamiltonian Monte Carlo. There are many MCMC ker-nels that can be used for rejuvenation. Here we focus on Hamiltonian Monte Carlo (HMC) [28, 73, 14], which is a popular choice for its ability to propose distant moves (and hence improve particle diversity). For each tempering level k,define the (unnormalized) negative log-density (potential) 
+
+Vk(θ) ≜ βk
+
+λ E(θ) − log p0(θ), (15) so that pk(θ) ∝ exp( −Vk(θ)) (cf. the definition in (10)). HMC augments θ with an auxiliary momentum r ∈ Rd drawn from a Gaussian r ∼ N (0 , M ), where M ≻ 0 is a mass matrix, and defines the Hamiltonian Hk(θ, r ) ≜ Vk(θ) + 0 .5r⊤M −1r.HMC proposes distant moves by approximately simulating Hamiltonian dynamics under Hk using a symplectic leapfrog integrator [36]. In particular, given step size ε > 0 and number of steps L, a single HMC transition proceeds as follows:  
+
+> •
+
+Refresh momentum: sample r0 ∼ N (0 , M ); set θ0 = θ.• Leapfrog integration: for s = 0 , . . . , L − 1,
+
+rs+ 12 = rs − ε
+
+2 ∇θ Vk(θs),θs+1 = θs + ε M −1rs+ 12 ,rs+1 = rs+ 12 − ε
+
+2 ∇θ Vk(θs+1 ).
+
+(16)  
+
+> •
+
+Metropolis correction: Define (θ′, r ′) = ( θL, −rL) and accept the proposal with probability 
+
+min {1, exp( − Hk(θ′, r ′) + Hk(θ0, r 0)) } . (17) Otherwise set θ′ = θ0. Return the new position θ′.Intuitively, invariance follows because leapfrog defines a re-versible, volume-preserving proposal map for the Hamiltonian dynamics [73], and the Metropolis–Hastings accept/reject step corrects the discretization error to enforce detailed balance with respect to the target density pk [82]. Detailed balance implies that Tk leaves pk invariant, i.e., (14) holds. 
+
+Parameter Tuning. The HMC kernel has three key param-eters: the mass matrix M , the step size ε, and the number of leapfrog steps L. Ideally, M matches the local scaling/-correlation structure of the target (so different coordinates evolve on comparable time scales), ε is as large as possible while maintaining a reasonable acceptance probability, and the trajectory length Lε is long enough to make a substantive move without wasting computation by retracing the trajectory. In our implementation, we set M = I since estimating a well-conditioned, geometry-adapted mass matrix requires additional tuning/curvature information [42, 14, 31, 103]. We manually select ε, and use the NUTS sampler [42] to adaptively determine the effective number of integration steps 
+
+L on the fly. Intuitively, this avoids hand-tuning L: it extends the Hamiltonian trajectory until further integration would start to reverse direction in parameter space, yielding long proposals when beneficial while preventing redundant trajectories. 
+
+Summary. TSMC tackles the multi-modal, low-temperature target (6) by introducing a tempering path that gradually deforms the easy-to-sample prior into the desired Boltzmann tilt. At each tempering level, we (i) reweight particles by importance sampling (using ESS to adaptively choose the next temperature), (ii) resample to control weight degeneracy, and (iii) apply HMC rejuvenation to restore diversity and explore the parameter space while preserving the tempered target distribution. Fig. 1(b) shows that TSMC successfully samples from the Shekel-tilted distribution: the final particles are well-distributed across the two global minima, with a small number of particles exploring the third local minimum. In Supplementary Material, we provide the asymptotic theoretical guarantees offered by TSMC. Next, we apply TSMC to trajectory optimization (TO) and policy optimization (PO). III. TSMC FOR TRAJECTORY OPTIMIZATION 
+
+Recall from (5) the energy E(θ) = Ex0∼μ[J(τ (x0, θ ))] . For trajectory optimization (TO), μ = δx0 , so E(θ) = J(τ (x0, θ )) 
+
+and ∇θ E(θ) can be computed exactly by differentiating through the trajectory rollout, using the adjoint method. 
+
+Theorem 2 (Exact Gradients for TO) . Assume the dynamics 
+
+f (x, u ) is differentiable in (x, u ), the controller πθ (x) is differ-entiable in (x, θ ), the stage cost functions {ℓt}T −1 
+
+> t=0
+
+are differ-entiable in (x, u ), and the terminal cost ℓT is differentiable in 
+
+x. Starting from an initial state x0, let τ = ( x0, u 0, . . . , x T ) be a trajectory rollout generated by the controller πθ (x). Define 
+
+At ≜ ∂f ∂x (xt, u t) ∈ Rn×n, Bt ≜ ∂f ∂u (xt, u t) ∈ Rn×m,Lt ≜ ∂π θ
+
+∂x (xt) ∈ Rm×n, Gt ≜ ∂π θ
+
+∂θ (xt) ∈ Rm×d,ℓx,t ≜ ∂ℓ t
+
+∂x (xt, u t) ∈ Rn, ℓu,t ≜ ∂ℓ t
+
+∂u (xt, u t) ∈ Rm,ℓx,T ≜ ∂ℓ T
+
+∂x (xT ) ∈ Rn
+
+(18) 
+
+and the costate (adjoint) recursion backward in time: 
+
+φT = ℓx,T , and for t = T − 1, . . . , 0 : 
+
+gt = ℓu,t + B⊤ 
+
+> t
+
+φt+1 , φt = ℓx,t + L⊤ 
+
+> t
+
+gt + A⊤ 
+
+> t
+
+φt+1 . (19) 
+
+Then the gradient of the trajectory cost with respect to θ is 
+
+∇θ J(τ (x0, θ )) =  
+
+> T−1
+
+X
+
+> t=0
+
+G⊤ 
+
+> t
+
+gt. (20) The result follows by repeated application of the chain rule (equivalently, reverse-mode automatic differentiation) and we omit the proof for brevity. In practice, when f , πθ , {ℓt}T −1 
+
+> t=0
+
+,and ℓT are implemented in modern autodiff frameworks ( e.g., 
+
+PYTORCH or JAX), the adjoint recursion is computed effi-ciently by backpropagation through the differentiable rollout. In the TO setting with open-loop parameterization θ =(u0, . . . , u T −1) ∈ RT m and πθ (xt) = ut (no state feedback),  
+
+> ∂π θ
+> ∂x
+
+(xt) = 0 , hence Lt = 0 . Moreover, ∂π θ 
+
+> ∂θ
+
+(xt) simply selects the t-th control block, i.e., Gt = [0 , . . . , I m, . . . , 0] ∈ Rm×T m ,where the only nonzero block is the t-th m × m identity. IV. TSMC FOR POLICY OPTIMIZATION 
+
+For policy optimization (PO), the energy E(θ) is an expecta-tion over random rollouts (through x0 ∼ μ), and is generally intractable to evaluate exactly under nonlinear dynamics. In practice, both E(θ) and ∇θ E(θ) are approximated using Monte Carlo rollouts, yielding stochastic estimates. This raises a natural question: when only stochastic estimates of E(θ) and 
+
+∇θ E(θ) are available, can we still use TSMC to sample from the optimal Boltzmann-tilted distribution p⋆ in (6)? A first idea is to replace the deterministic HMC rejuvenation kernel from Section II with a stochastic-gradient variant ( e.g., 
+
+stochastic gradient HMC [18]). While this can address the 
+
+move (MCMC) step, it does not resolve the weighting step: the TSMC incremental weights (11) depend on factors of the form exp( −c E (θ)) (and ratios thereof) for a constant c > 0,and an unbiased estimator bE(θ) does not in general yield an unbiased estimator of exp( −c E (θ)) . A principled route would be to construct a nonnegative unbiased estimator cW (θ) ≥ 0
+
+such that E[cW (θ)] = exp( −c E (θ)) , and then plug cW (θ) into the incremental weights. Unfortunately, nonnegative unbiased estimation of nonlinear functionals such as ϕ(z) = exp( −z) is highly nontrivial and, in general, impossible without additional structure; see [48]. Even when such estimators exist, they typically rely on specialized “factory” constructions and can require elaborate randomized procedures; see, e.g., [59]. Due to these challenges, we use two practical alternatives: (i) a deterministic approximation of E(θ) and (ii) an extended-space TSMC variant. 
+
+A. Deterministic Approximation 
+
+A simple way to recover a deterministic energy is to approx-imate the initial-state distribution μ by an empirical measure supported on a fixed set of B initial conditions {x0(b)}Bb=1 :
+
+μB = 1
+
+B
+
+> B
+
+X
+
+> b=1
+
+δx0(b). (21) This yields the surrogate energy 
+
+EB (θ) := Ex0∼μB [J(τ (x0, θ ))] = 1
+
+B
+
+> B
+
+X
+
+> b=1
+
+J(τ (x0(b), θ )) (22) and the corresponding Boltzmann-tilted target p⋆B (θ) ∝
+
+p0(θ) exp( −EB (θ)/λ ) (and similarly for the intermediate tempered targets along the TSMC path). Crucially, once 
+
+{x0(b)}Bb=1 is fixed, both EB (θ) and ∇θ EB (θ) are deter-ministic and can be computed by differentiating through each rollout using Theorem 2 and averaging. Therefore, the TSMC algorithm from Section II does not need to be modified: incremental weights are evaluated using EB (θ), and the HMC rejuvenation kernel uses ∇θ EB (θ) as usual. 
+
+B. Extended-space TSMC 
+
+Pseudo-marginal methods address intractable expectations by augmenting the state space with auxiliary random variables, and then sampling the desired marginal by running a standard sampler on the extended space [11, 10, 19, 6]. Here we adopt this idea for PO by treating the rollout randomness (initial conditions) as part of the particle state. 
+
+Extended-space Tempered Targets. Let each particle carry controller parameters θ ∈ Rd and a batch of B i.i.d. ini-tial conditions x0(1) , . . . , x 0(B) ∼ μ. We shorthand x0 ≜
+
+(x0(1) , . . . , x 0(B)) . Define the empirical average rollout cost 
+
+¯JB (θ, x0) ≜ 1
+
+B
+
+> B
+
+X
+
+> b=1
+
+J(τ (x0(b), θ )) . (23) We then define a sequence of tempered distributions, for k =0, . . . , K , on the extended space (θ, x0) ∈ Rd × (Rn)B :
+
+˜pk(θ, x0) ∝ p0(θ)
+
+> B
+
+Y
+
+> b=1
+
+μ(x0(b)) exp 
+
+
+
+− βk
+
+λ ¯JB (θ, x0)
+
+
+
+. (24) Running TSMC on {˜pk} yields samples (θ, x0) ∼ ˜pK ;discarding x0 returns θ distributed according to the marginal 
+
+˜pK (θ) ∝ p0(θ) Ex0∼μ⊗B
+
+
+
+exp 
+
+
+
+− 1
+
+λ ¯JB (θ, x0)
+
+ 
+
+. (25) This marginal differs from the original Boltzmann tilt p⋆(θ) ∝
+
+p0(θ) exp( −E(θ)/λ ): it is a risk-sensitive (exponential util-ity) objective [49], reflecting that in general E[exp( −Z)] ̸ =exp( −E[Z]) . As B increases, the batch average ¯JB con-centrates and the discrepancy between (25) and p⋆ di-minishes under standard concentration/regularity assumptions (e.g., bounded or sub-Gaussian costs). 
+
+TSMC on the Extended Space. We maintain weighted particles {(θk(i), x0,k (i), w k(i)) }Ni=1 approximating ˜pk as in (24), where x0,k (i) ≜ (x0,k (i, 1) , . . . , x 0,k (i, B )) . The TSMC steps mirror those in Section II:  
+
+> •
+
+Initialize: sample θ0(i) ∼ p0 and x0,0(i, b ) ∼ μ i.i.d. for 
+
+b = 1 , . . . , B ; set w0(i) = 1 /N . 
+
+> •
+
+Importance weight update: given particles for ˜pk−1, up-date weights using the incremental ratio 
+
+∆wk(i) = exp 
+
+
+
+− βk − βk−1
+
+λ ¯JB (θk−1(i), x0,k −1(i)) 
+
+
+
+, (26) and normalize as in (12).  
+
+> •
+
+Resample: resample ancestor indices according to wk(i)
+
+and reset weights to 1/N , as in Section II.  
+
+> •
+
+HMC rejuvenation (move θ, hold x0 fixed): for each particle, apply an HMC move targeting the conditional density ˜pk(θ | x0) ∝ p0(θ) exp( − βk 
+
+> λ
+
+¯JB (θ, x0)) . Define the unnormalized negative log-density (potential) 
+
+˜Vk(θ) ≜ βk
+
+λ ¯JB (θ, x0) − log p0(θ), (27) and Hamiltonian ˜Hk(θ, r ) ≜ ˜Vk(θ)+0 .5r⊤M −1r, where 
+
+r ∼ N (0 , M ). The gradient of the potential is 
+
+∇θ ˜Vk(θ) = βk
+
+λB 
+
+> B
+
+X
+
+> b=1
+
+∇θ J(τ (x0(b), θ )) −∇ θ log p0(θ), (28) where each ∇θ J(τ (x0(b), θ )) is obtained by Theorem 2. One HMC move then proceeds by (i) sampling r0 ∼N (0 , M ), (ii) applying the leapfrog integrator (16) with 
+
+Vk replaced by ˜Vk to obtain (θL, r L), and (iii) accepting 
+
+θ′ = θL with probability (17) where Hk is replaced by 
+
+˜Hk or otherwise keeping θ′ = θ0. 
+
+> •
+
+Refresh initial states (move x0, hold θ fixed): to avoid restricting x0 to a finite set of initial samples, we update the auxiliary batch using a Metropolis–Hastings refresh that targets ˜pk(x0 | θ). For each b = 1 , . . . , B , propose 
+
+x′
+
+> 0
+
+(b) ∼ μ(·) and accept with probability 
+
+min 
+
+
+
+1, exp 
+
+
+
+− J(τ (x′
+
+> 0
+
+(b), θ )) −J(τ (x0(b), θ )) 
+
+λB/β k
+
+ 
+
+. (29) Otherwise, keep x0(b).The rejuvenation kernel at level k is defined as the compo-sition of (i) an HMC move on θ targeting ˜pk(θ | x0) with x0
+
+held fixed, and (ii) an MH refresh of x0 targeting ˜pk(x0 | θ)
+
+with θ held fixed. Each sub-step leaves its corresponding conditional invariant, hence their composition leaves the joint extended target ˜pk(θ, x0) invariant. Remark 3 (Extension to Stochastic Dynamics) . A natural extension of our framework is to stochastic dynamics of the form xt+1 = f (xt, u t) + wt, where wt is a random disturbance. In that case, the energy becomes E(θ) =
+
+Ex0,w 0: T −1 [J(τ (x0, θ ; w0: T −1))] . Thus, at the level of the tar-get distribution, TSMC carries over directly by redefining the energy to average over both initial-state and disturbance ran-domness. Moreover, the extended-space construction also gen-eralizes naturally by augmenting the auxiliary variables with sampled disturbance trajectories. The resulting θ-marginal is again a risk-sensitive surrogate of the exact Boltzmann target. 
+
+V. E XPERIMENTS : T RAJECTORY OPTIMIZATION 
+
+We evaluate TSMC for trajectory optimization against base-line methods. All experiments run on a Lambda workstation with an AMD Ryzen Threadripper PRO 5975WX (32 cores) and two NVIDIA Ada6000 GPUs. 
+
+Implementation. We implement the dynamical systems and TSMC in JAX [15] to leverage automatic differentiation and GPU acceleration. We use BLACK JAX [17] to implement TSMC; specifically, its adaptive TSMC framework with NUTS as the HMC rejuvenation kernel. We set the ESS threshold for selecting the next tempering parameter to ρ = 0 .8.
+
+Baselines. We compare TSMC with:  
+
+> •Parallel-NUTS
+
+. TSMC starts from particles sampled from 
+
+p0. Parallel-NUTS uses the same initialization, but for each particle runs an independent MCMC using NUTS in BLACK JAX , targeting the optimal distribution p⋆ directly.  
+
+> •Parallel-MALA
+
+. Same as Parallel-NUTS , but using the Metropolis-adjusted Langevin algorithm (MALA) [12] in BLACK JAX . Since MALA is cheaper per iteration than NUTS, we run MALA for 100 × more steps.  
+
+> •Parallel-MPPI
+
+. Starting from the same initial particles as 
+
+> TSMC
+
+, we run 64 MPPI planning steps per particle. We treat each particle as the nominal control, sample 64 noise perturbations, evaluate their trajectory costs, and update by an exp( − 1 
+
+> λ
+
+cost )-weighted average.  
+
+> •Parallel-IPOPT
+
+. Starting from the same initial particles, we run IPOPT using C AS AD I [9] with single shooting, ini-tialized at each particle. We keep the C AS AD I dynamics consistent with the JAX implementation so the trajectory gradients with respect to controls match. Since IPOPT can be slow, we run it in parallel across CPU cores (25 workers). We set the maximum number of iterations to 200 and the stopping tolerance to 10 −6.Comparing TSMC with Parallel-NUTS and Parallel-MALA isolates the role of tempering for sampling from sharp, multimodal targets. Comparing with Parallel-MPPI highlights the benefit of combining importance sampling with gradient-based op-timization. Finally, Parallel-IPOPT serves as a simple hybrid baseline: gradient-based optimization from multiple random initializations. Across all methods, we use N = 100 particles. 
+
+Prior. We use a first-order autoregressive prior [37] over the open-loop control sequence to encourage smoothness: ut =
+
+γu t−1 + ϵt, where ϵt ∼ N (0 , σ 2I), with γ = 0 .9 and σ = 0 .3.
+
+A. Inverted Pendulum 
+
+Setup. The goal is to swing up the pendulum to the upright configuration under control limits. We discretize the dynamics using a variational integrator [61, 55, 95]. Thanks to its favorable energy behavior, this discretization permits a relatively large time step and a shorter horizon. We follow [55, Section E.1]; in particular, we use a time step ∆t = 0 .1
+
+seconds and planning horizon T = 30 . Since the control is one-dimensional, this yields θ ∈ R30 .
+
+Certified Lower Bound. We use the semidefinite program-ming (SDP) relaxations in [55, 54] to compute a certified lower bound on the optimal cost, providing a reference for assessing whether TSMC (and baselines) reach global optimality. 
+
+Results. Fig. 2(a) shows boxplots of the trajectory costs across the final particles for each method, along with the certified lower bound. We make three observations. (i) TSMC ,
+
+> Parallel-NUTS
+
+, and Parallel-IPOPT achieve similarly strong per-formance: their final particles attain costs close to the SDP lower bound, suggesting near-global solutions. (ii) Parallel-MALA performs reasonably, but exhibits a heavier tail: while the best cost is near the lower bound, some particles remain far from optimality. (iii) Parallel-MPPI outperforms Parallel-MALA but underperforms TSMC , Parallel-NUTS , and Parallel-IPOPT , high-lighting the benefit of combining importance sampling with gradient-based optimization under differentiable dynamics. 
+
+B. Acrobot 
+
+Setup. The goal is to swing up the acrobot (two-link pendulum) to the upright configuration using a single control at the elbow joint (Fig. 2(d)). We discretize the continuous-time dynamics using fourth-order Runge–Kutta (RK4) with time step ∆t = 0 .025 seconds and planning horizon T = 200 .Since the control is one-dimensional, this yields θ ∈ R200 .
+
+Results. Fig. 2(b) shows boxplots of the trajectory costs across the final particles for each method. Here, TSMC signifi-cantly outperforms all baselines. Fig. 2(d) visualizes the best-cost trajectories from each method (final state highlighted in thick black): TSMC is the only method that achieves a success-ful swing-up close to the upright configuration. Numerically, the best trajectory cost from TSMC is 2389 , while the best costs from the baselines are 2967 for Parallel-NUTS , 2967 for Parallel-MALA , 2694 for Parallel-MPPI , and 2562 for Parallel-IPOPT .
+
+C. Pusher Slider 
+
+Setup. We consider the planar pusher–slider problem, which features nonsmooth contact dynamics [70, 65, 43]. Inspired by [54], we model the pusher–slider dynamics only during contact between the pusher (a circular disc) and the slider (a rectan-gular box), see Fig. 2(e); any free-space motion of the pusher is assumed to be planned separately. The state is the planar pose of the slider in world coordinates, x = [ bx, b y , α ] ∈ R3,where (bx, b y ) is the box center and α is the box orientation. We use a 4D contact-mode control u = [ e, s, v x, v y ] ∈ R4:
+
+e ∈ { 1, 2, 3, 4} selects the contacted edge, s ∈ [−smax , s max ]
+
+selects the contact location along that edge (with s = ±1
+
+corresponding to corners and smax ∈ (0 , 1] as a safety margin), (a) (b) (c)
+
+# (d )
+
+# (e)         
+
+> Inverted Pendulum Acrobot Pusher Slider
+> TSMC Parallel-NUTS Parallel-MALA Parallel-MPPI Parallel-IPOPT Fig. 2. Trajectory optimization results. (a)–(c): boxplots of final-particle trajectory costs for TSMC and baselines. (d)–(e): best-cost trajectories for Acrobot and pusher–slider, respectively. The colormap indicates progression from initial to final states.
+
+and vx, v y are pusher velocity commands expressed in the slider frame and bounded componentwise by |vx|, |vy |≤ umax .Given (e, s, v x, v y ), we use the quasi-static model in [65] to compute the slider twist and update the slider pose. This model is differentiable except for the discrete edge variable 
+
+e. To obtain an end-to-end differentiable pipeline, we relax e
+
+by introducing a continuous variable ˆe ∈ [1 , 4] , computing its distances to the integers in {1, 2, 3, 4}, mapping these distances to a categorical distribution via a softmax, and then using the Gumbel–Softmax trick [51] to sample e through a differentiable relaxation. The trajectory cost includes per-stage pose error to the goal pose and a terminal pose error, together with a temporal-smoothness penalty that discourages frequent contact-mode switches. We use a planning horizon T = 200 ,which yields θ ∈ R800 . For C AS AD I+IPOPT, we cannot use Gumbel–Softmax; instead, we use a soft mixture model that forms a contact normal direction as a weighted combination of per-edge normals using the softmax weights. Since this mixture is not physically realistic, after IPOPT we round the edge variables to the nearest integers and forward simulate to obtain physically valid trajectories for cost evaluation. 
+
+Results. Fig. 2(c) shows boxplots of trajectory costs across the final particles for each method. Here, TSMC significantly outperforms all baselines and is the only method that reaches the goal pose. Fig. 2(e) visualizes the best-cost trajectories. VI. E XPERIMENTS : P OLICY OPTIMIZATION 
+
+We next turn to policy optimization benchmarks. We ini-tially aimed to evaluate on MuJoCo locomotion tasks ( e.g., 
+
+HalfCheetah and Ant), which involve contact dynamics. While both MuJoCo JAX (MJX) [98] and Brax [29] provide JAX-based implementations, we found MJX’s contact solver relies on a while loop that prevents reverse-mode differentiation, as documented in GitHub issues [1, 96]. Brax supports dif-ferentiable contact, but for HalfCheetah we observed gradient norms as large as 10 9 to 10 13 , which makes it unsuitable for our framework. We therefore benchmark on classical control tasks without contact—where we can already compare against strong RL baselines—and leave contact-rich tasks to future work as differentiable contact solvers in JAX mature. 
+
+Implementation. We use the same implementation details as in Section V, except that for the extended-space TSMC variant in Section IV-B we implement adaptive tempering from scratch, since B LACK JAX ’s built-in adaptive TSMC routine does not support alternating two block moves over θ and x0.
+
+Policy Architecture. We parameterize πθ as a multi-layer perceptron (MLP) with two hidden layers of 32 units each. 
+
+Baselines. We compare against two policy optimization al-gorithms for RL: proximal policy optimization ( PPO ) [88] and soft actor-critic ( SAC ) [35]. We wrap each dynamical system as a Gymnasium environment [99] and run PPO and SAC 
+
+using Stable-Baselines3 [80] with default hyperparameters, 
+
+10 6 timesteps, and 32 parallel environments. 
+
+A. Inverted Pendulum with Sparse Rewards 
+
+Setup. Following Section V-A, we use a time step ∆t =0.1 seconds and planning horizon T = 32 . To make the task challenging, we use a terminal cost only formulation. TSMC:D 
+
+> TSMC:E
+
+# (a)
+
+# (b)
+
+# (c)Fig. 3. Policy optimization results. Left to right: episode returns of PPO and SAC w.r.t. interaction steps; distribution of particle energies w.r.t. tempering levels in TSMC ; trajectory rollouts of the policy learned by TSMC . (a) Inverted pendulum with sparse rewards; (b) Acrobot; (c) Double pendulum on a cart. 
+
+Let (xT, pos , x T, vel ) ∈ R4 denote the pendulum’s position and velocity at time T , and let (xg, pos , x g, vel ) be the goal state. Define the goal distance dist = p∥xT, pos − xg, pos ∥2 +0.5p∥xT, vel − xg, vel ∥2, and set the terminal cost to ℓT =1 − σ (( ε − dist )/ϵ ), where σ(·) is the sigmoid function, 
+
+ε = 0 .1, and ϵ = 0 .02 (the sparse reward is 1 − ℓT ). The policy parameters satisfy θ ∈ R1184 . We set the initial-state distribution to be uniform over the 2D box [−π, π ] × [−π, π ].For both TSMC:D (deterministic approximation) and TSMC:E 
+
+(extended-space), we use B = 3000 and N = 32 .
+
+Results. Fig. 3(a) (left) shows learning curves for PPO and 
+
+> SAC
+
+. PPO does not reliably improve within the allotted budget, whereas SAC attains strong returns, consistent with the benefits of off-policy learning and experience replay. Fig. 3(a) (middle) shows the distribution of particle energies across tempering levels in TSMC . Both variants achieve similar performance as 
+
+> SAC
+
+. Fig. 3(a) (right) visualizes representative rollouts. 
+
+B. Acrobot 
+
+Setup. We follow Section V-B and use a time step ∆t =0.04 seconds with planning horizon T = 100 , which yields θ ∈
+
+R1184 . We use a single-state initial distribution, i.e., μ = δx0 ,with x0 corresponding to the bottom-right configuration. We focus on a single initial state because Acrobot is substantially more challenging; as we show below, this setting is already difficult for both PPO and SAC . Under μ = δx0 , the TSMC 
+
+variants coincide; we use a large particle count N = 16000 for  
+
+> TSMC
+
+(smaller particle sets did not yield a successful policy). 
+
+Results. Fig. 3(b) (left) shows learning curves for PPO and 
+
+> SAC
+
+. Neither method reliably reaches a successful swing-up. Fig. 3(b) (middle) shows the distribution of particle energies across tempering levels in TSMC . The final-step best-cost particle attains a trajectory cost of 1338 .15 , which improves over the average trajectory cost over the final 50 episodes of 2311 .14 for PPO and 2482 .44 for SAC . Fig. 3(b) (right) visualizes the resulting swing-up trajectory from TSMC . To investigate whether the performance gap is due to limited training budget, we run PPO and SAC for 10 9 environment steps. Fig. 4 shows the learning curves. Neither method reaches a successful swing-up. 
+
+C. Double Pendulum on a Cart 
+
+Setup. We consider swinging up a two-link double pen-dulum mounted on a cart to the upright configuration [32]. This task is similar to Acrobot but has a higher-dimensional state, x ∈ R6. We discretize the continuous-time dynamics using RK4 with a time step ∆t = 0 .06 seconds and planning horizon T = 100 , yielding θ ∈ R1248 . We use a single-state initial distribution, with x0 corresponding to the bottom-right configuration. We use N = 14000 particles for TSMC .
+
+Results. Fig. 3(c) (left) shows learning curves for PPO and 
+
+> SAC
+
+. The average trajectory costs over the final 50 episodes 0.0 0.2 0.4 0.6 0.8 1.0  
+
+> timesteps 1e9
+> 4000
+> 3800
+> 3600
+> 3400
+> 3200
+> 3000
+> 2800
+> 2600
+> episode return
+> SAC (episode return)
+> PPO (episode return)
+> SAC moving avg (window=50)
+> PPO moving avg (window=50)
+
+Fig. 4. Running PPO and SAC on Acrobot for 10 9 environment steps. 
+
+are 1713 .00 for PPO and 3121 .77 for SAC . Fig. 3(c) (middle) shows particle energy distributions across tempering levels in TSMC ; the best cost among the final particles is 1350 .50 ,improving over both PPO and SAC . Fig. 3(c) (right) visualizes the resulting swing-up trajectory from TSMC .VII. C ONCLUSION 
+
+We introduced TSMC, a sampling-based framework for trajectory and policy optimization that exploits differentiable dynamics, and demonstrated its robustness and versatility across TO and PO benchmarks. 
+
+Limitations. While TSMC is naturally parallelizable across particles, it can be computationally and memory intensive: differentiating through rollouts can be slow, and maintaining many particles can be demanding on GPU memory, potentially requiring multi-GPU training. 
+
+Future work. (i) Integrate TSMC with differentiable con-tact solvers and evaluate it on training RL policies for contact-rich tasks. (ii) Accelerate TSMC via customized low-level GPU kernels and hardware acceleration. ACKNOWLEDGMENTS 
+
+We thank Sitan Chen for discussions on sampling from the Boltzmann-tilted distribution, and Shucheng Kang and Haoyu Han for helpful conversations throughout the project and for proofreading early drafts. We acknowledge funding from the Office of Naval Research grant N00014-25-1-2322. Supplementary Material 
+
+Outline. We provide a self-contained proof to Theorem 1 in Section S-VIII. We provide theoretical asymptotic consistency results for TSMC in Section S-IX. We give supplementary results and discussion on the trajectory optimization and policy optimization experiments in Section S-X. We conclude with related work in Section S-XI. S-VIII. P ROOF OF THEOREM 1
+
+Proof. Recall the definition of the energy function E(θ) = Ex0∼μ[J(τ (x0, θ ))] as in (5). We can write the KL-regularized objective in (4) as 
+
+F(p) = 
+
+Z
+
+> Rd
+
+p(θ)E(θ) dθ + λ
+
+Z
+
+> Rd
+
+p(θ) log p(θ)
+
+p0(θ) dθ. 
+
+The feasible set of distributions is given by 
+
+P =
+
+n
+
+p ≥ 0 : 
+
+Z
+
+> Rd
+
+p(θ) dθ = 1 
+
+o
+
+.
+
+Strict Convexity. F(p) is strictly convex in p, due to the first term being linear and the second KL term being strictly convex. The feasible set P is clearly a convex set. Therefore, if a minimizer exists, it is unique. 
+
+Optimality Condition. Due to convexity, we can use the method of Lagrange multipliers to find the minimizer. Introduce a scalar Lagrange multiplier α ∈ R for the constraint R p = 1 and consider the Lagrangian functional 
+
+L[p, α ] := 
+
+Z 
+
+p(θ)E(θ) + λp (θ) log p(θ)
+
+p0(θ)
+
+
+
+dθ + α
+
+ Z
+
+p(θ) dθ − 1
+
+
+
+.
+
+Let p be an interior point of P (so p(θ) > 0 a.e.) and let δp be an arbitrary perturbation with R δp = 0 and such that 
+
+p + εδp ∈ P for small ε. Compute the first variation: 
+
+ddε ε=0 
+
+Z
+
+(p + εδp )E dθ =
+
+Z
+
+δp (θ)E(θ) dθ, 
+
+and using ddt (t log t) = log t + 1 for t > 0,
+
+ddε ε=0 
+
+Z
+
+(p + εδp ) log( p + εδp ) dθ =
+
+Z
+
+δp (θ)( log p(θ) + 1) dθ, 
+
+while ddε ε=0 
+
+Z
+
+(p + εδp ) log p0 dθ =
+
+Z
+
+δp (θ) log p0(θ) dθ, ddε ε=0 
+
+α
+
+Z
+
+(p + εδp ) dθ = α
+
+Z
+
+δp dθ. 
+
+Therefore 
+
+δL =
+
+Z
+
+δp (θ)
+
+h
+
+E(θ) + λ(log p(θ) + 1 − log p0(θ)) + α
+
+i
+
+dθ. (S30) A stationary point must satisfy δL = 0 for all admissible δp , which forces the bracketed term in (S30) to vanish a.e.: 
+
+E(θ) + λ( log p(θ) + 1 − log p0(θ)) + α = 0 a.e. (S31) Rearranging (S31) gives 
+
+log p(θ) = log p0(θ) − 1
+
+λ E(θ) − 1 − αλ .
+
+Exponentiating yields 
+
+p(θ) = C p 0(θ) exp 
+
+
+
+− 1
+
+λ E(θ)
+
+
+
+, C := exp 
+
+
+
+− 1 − αλ
+
+
+
+> 0.
+
+Imposing R p = 1 gives 
+
+1 = C
+
+Z
+
+p0(θ) exp 
+
+
+
+− 1
+
+λ E(θ)
+
+
+
+dθ = CZ, 
+
+so C = 1 /Z and the candidate optimizer is exactly (6). 
+
+Well-definedness under a Lower Bound on J. Assume J(·) ≥ − M is lower bounded for some constant M > 0. It follows that E(θ) ≥ − M for all θ. Then for all θ,
+
+exp 
+
+
+
+− 1
+
+λ E(θ)
+
+
+
+≤ exp 
+
+ Mλ
+
+
+
+,hence 
+
+Z =
+
+Z
+
+p0(θ) exp 
+
+
+
+− 1
+
+λ E(θ)
+
+
+
+dθ ≤ eM/λ 
+
+Z
+
+p0(θ) dθ = eM/λ < ∞.
+
+Moreover, since the integrand is nonnegative and p0 > 0 a.e., we have Z > 0. Thus p⋆ in (6) is a well-defined probability density. Note that in the main Theorem, we assumed that J(·) ≥ 0. Here, we have shown that it can be relaxed to J(·) ≥ − M
+
+for some constant M > 0.In summary, we have shown that the optimal distribution p⋆ is given by (6) and is a well-defined probability density. Because 
+
+F is strictly convex on the convex feasible set P, any feasible stationary point is the unique global minimizer (a.e.). Since p⋆
+
+is feasible and satisfies the first-order condition derived above, it is the unique minimizer. S-IX. T HEORETICAL GUARANTEES 
+
+In Section II, we introduced the tempered sequential Monte Carlo (TSMC) algorithm for sampling from the Boltzmann-tilted distribution (6). The interested reader may be curious about the theoretical guarantees of TSMC. In this section, we provide a standard consistency result for TSMC. 
+
+Theorem S4 (Consistency of TSMC (law of large numbers)) . Let p0 be a probability density on Rd. Fix a tempering schedule 
+
+0 = β0 < β 1 < · · · < β K = 1 and a measurable energy E : Rd → R. For each k = 0 , 1, . . . , K , define the intermediate target 
+
+pk(θ) := 1
+
+Zk
+
+p0(θ) exp 
+
+
+
+− βk
+
+λ E(θ)
+
+
+
+, Zk := 
+
+Z
+
+> Rd
+
+p0(θ) exp 
+
+
+
+− βk
+
+λ E(θ)
+
+
+
+dθ, (S32) 
+
+and assume Zk ∈ (0 , ∞) for all k (e.g., it suffices that E is lower bounded). Consider the TSMC algorithm producing particles {θk(i)}Ni=1 at each level k via: (i) reweighting by the incremental weight function 
+
+Gk(θ) := pk(θ)
+
+pk−1(θ) ∝ exp 
+
+
+
+− βk − βk−1
+
+λ E(θ)
+
+
+
+, k = 1 , . . . , K, (S33) 
+
+(ii) resampling using an unbiased resampling scheme ( e.g., using typical resampling schemes such as systematic resampling offered by BLACK JAX ), and (iii) an optional move step using any Markov kernel Tk(· | · ) that leaves pk invariant. No mixing/ergodicity assumption on Tk is required (the identity kernel is allowed). Assume furthermore that for each k = 1 , . . . , K there exists q > 1 such that 
+
+Eθ∼pk−1 [Gk(θ)q ] < ∞. (S34) 
+
+Let the empirical measure at level k be 
+
+ηNk := 1
+
+N
+
+> N
+
+X
+
+> i=1
+
+δθk (i).
+
+Then for every bounded measurable test function φ : Rd → R and every k = 0 , 1, . . . , K ,
+
+ηNk (φ) := 1
+
+N
+
+> N
+
+X
+
+> i=1
+
+φ(θk(i)) P
+
+−−−−→  
+
+> N→∞
+
+pk(φ) := 
+
+Z
+
+> Rd
+
+φ(θ) pk(θ) dθ. (S35) 
+
+In particular, ηNK converges weakly in probability to pK .
+
+Remark S5 (Sufficient Condition for the Moment Assumption) . If E is bounded below, i.e., E(θ) ≥ − M for some M > 0,then Gk(θ) ≤ exp(( βk − βk−1)M/λ ), so Epk−1 [Gk(θ)q ] < ∞ for all q > 0 in (S34) .
+
+This is a standard law of large numbers for SMC samplers / Feynman–Kac particle systems. See, e.g., [25], or [26], which specializes the Feynman–Kac theory to static targets with MCMC move steps. The above theorem is stated for a predefined tempering schedule. Analogous convergence results also hold under adaptive tempering schemes ( e.g., ESS-based); see [13]. While Theorem S4 provides a consistency guarantee for TSMC, it is asymptotic in the number of particles and may therefore be of limited practical value at finite N . Beyond the choice of N , practical performance depends critically on the MCMC kernel, in particular its mixing and its ability to maintain particle diversity. In practice, we monitor diagnostics such as the effective sample size (ESS) and the MCMC acceptance rate; and we tune the parameters of the MCMC kernel to achieve good performance. S-X. S UPPLEMENTARY RESULTS AND DISCUSSION 
+
+A. Hyperparameters of TSMC 
+
+Table S-I summarizes three key hyperparameters used by TSMC in our trajectory optimization (TO) and policy optimization (PO) experiments. Hyperparameters not shown in the table can be found in the code repository. We discuss tuning considerations below.  
+
+> •
+
+Temperature ( λ): The temperature controls how sharply the tempered distribution concentrates. Higher temperature produces a more diffuse distribution, while lower temperature concentrates mass more strongly near global minimizers. Two factors primarily determine the choice of λ:1) Scale of the energy. When energies are on the order of hundreds to thousands ( e.g., Pendulum, Acrobot, and pusher– slider in TO experiments), a temperature of 0.1 is usually sufficient. For inverted pendulum with sparse rewards in the PO experiments, the terminal reward is normalized to [0 , 1] , so we use a smaller temperature to obtain sufficient concentration. 2) Landscape sharpness. For Acrobot and double pendulum on a cart in the PO experiments, we empirically found that larger temperatures work better: at low temperature, TSMC often gets trapped in poor local minima, suggesting a sharp landscape that benefits from additional smoothing.  
+
+> •
+
+NUTS step size ( ε): A larger step size tends to increase exploration and particle movement, improving diversity. However, too large a step size can cause numerical instability in leapfrog integration and lead to near-zero Metropolis–Hastings acceptance. We tune ε by monitoring the MCMC acceptance rate, and note that feasible step sizes depend on the smoothness/sharpness of the energy landscape. In our TO experiments we can use larger step sizes, whereas in PO we use smaller step sizes to maintain stable acceptance.  
+
+> •
+
+Number of particles ( N ): Increasing N improves Monte Carlo accuracy ( cf. Theorem S4) at the cost of additional computation. In JAX, particle operations are heavily vectorized; in practice, we can often increase N up to GPU memory limits without a proportional slowdown. For TO, we intentionally used N = 100 to demonstrate that TSMC remains effective with a relatively small particle set. For PO, we used larger particle counts to ensure the algorithm can sample from the entire distribution. Overall, PO tends to be “harder” than TO in our experiments: it typically requires higher temperatures, smaller NUTS step sizes, and larger particle counts. Section S-X.D further discusses the TO–PO distinction.                             
+
+> TABLE S-I THREE KEY HYPERPARAMETERS USED BY TSMC FOR TRAJECTORY OPTIMIZATION AND POLICY OPTIMIZATION EXPERIMENTS .Trajectory Optimization Policy Optimization Parameters Inverted Pendulum Acrobot Pusher Slider Inverted Pendulum (w/ Sparse Rewards) Acrobot Double Pendulum on a Cart Temperature ( λ)0.10.10.20.0005 100 200
+> NUTS Step Size ( ε)0.20.02 0.01 0.001 0.001 0.001
+> Number of Particles ( N)100 100 100 3000 16000 14000
+
+B. Runtime of TSMC and Baselines 
+
+Table S-II reports the runtime of TSMC and the baselines for trajectory optimization. Parallel-MPPI is the fastest method since it does not differentiate through rollouts. TSMC is slower than Parallel-NUTS and Parallel-MALA due to the tempering procedure.  
+
+> Parallel-IPOPT
+
+is reasonably fast on the low-dimensional inverted pendulum problem, but becomes prohibitively slow on pusher– slider due to high dimensionality and nonsmooth dynamics. Overall, TSMC trades additional compute for lower-cost solutions, consistent with Fig. 2 in the main paper. Table S-III reports runtime for policy optimization. TSMC is generally comparable to the baselines, though in many cases it is about 3× slower. Nevertheless, Fig. 3 in the main paper shows that TSMC attains better policies. Finally, compared with  
+
+> PPO
+
+and SAC , TSMC does not learn a value function, which simplifies the overall pipeline. In summary, TSMC can be slower than standard baselines due to its algorithmic complexity, but this overhead can be worthwhile given its robust performance. 
+
+C. Energy Distributions across Tempering Steps 
+
+Fig. 3 in the main paper reports energy distributions across tempering steps for the policy optimization experiments. Fig. S5 shows the analogous plots for trajectory optimization. As tempering progresses, the distributions concentrate and shift toward lower energies, indicating convergence to good solutions of the original problems. TABLE S-II RUNTIME OF TSMC AND BASELINES (IN SECONDS ) FOR TRAJECTORY OPTIMIZATION EXPERIMENTS .Methods Inverted Pendulum Acrobot Pusher Slider                                   
+
+> TSMC 140 .64 1627 .47 2033 .36
+> Parallel-NUTS 24 .69 109 .15 1248 .52
+> Parallel-MALA 12 .44 543 .72 526 .79
+> Parallel-MPPI 1.86 5.09 12 .10
+> Parallel-IPOPT 15 .97 1998 .14 55391 .26
+> TABLE S-III RUNTIME OF TSMC AND BASELINES (IN SECONDS )FOR POLICY OPTIMIZATION EXPERIMENTS .Methods Inverted Pendulum (w/ Sparse Rewards) Acrobot Double Pendulum on a Cart
+> TSMC TSMC:D :1514 .19 TSMC:E :2035 .97 554 .55 1080 .07
+> PPO 414 .45 719 .26 303 .83
+> SAC 304 .56 347 .61 224 .02
+
+# (a) 
+
+> Inverted Pendulum Acrobot (log scale)
+
+# (b)
+
+> Pusher Slider
+
+# (c)    
+
+> Fig. S5. Energy distributions across tempering steps of TSMC for the trajectory optimization experiments. (a) inverted pendulum, (b) acrobot, (c) pusher slider. Note that the x-axis for the acrobot results is in log scale for better visualization.
+
+D. Discussion: Trajectory Optimization vs. Policy Optimization 
+
+The interested reader may have noticed that, in the policy optimization experiments for Acrobot and double pendulum on a cart, we use a single-point initial-state distribution. This matches the trajectory optimization setup, except that we now optimize a parameter vector θ (the weights of a neural network policy) rather than an open-loop control sequence. As noted in Section S-X.A, this seemingly minor change makes PO empirically harder than TO. What is the explanation? The key lies in Theorem 2 in the main paper. From (20), the gradient of the trajectory cost with respect to θ depends on two terms, Gt and gt. These terms behave very differently in the TO and PO settings.  
+
+> •
+
+Gt: Recall the definition of Gt in (18). For TO, Gt simply selects the t-th control block, i.e., Gt = [0 , . . . , I m, . . . , 0] ∈
+
+Rm×T m . For PO, by contrast, Gt captures the sensitivity of the control prediction with respect to the policy parameters 
+
+θ. While Gt is well conditioned in TO, it can become ill conditioned in PO if the policy has a large Lipschitz constant (i.e., a small perturbation in θ induces a large change in ut).  
+
+> •
+
+gt: Recall the definition of gt in (19). The TO and PO recursions differ only through the term Lt in (18). In TO, Lt = 0 
+
+because the control is not a function of the state. In PO, Lt measures the sensitivity of the control prediction with respect to the state xt. This sensitivity can be extremely large when the optimal policy is nonsmooth ( e.g., bang-bang), as in inverted pendulum and Acrobot, where a small change in state can flip the control from −umax to +umax ; see, e.g., [40]. In summary, both Gt and gt can attain large magnitudes in PO, whereas they are well conditioned in TO. This can amplify 
+
+∇θ J in PO and lead to a sharper energy landscape than in TO. For this reason, we used higher temperatures in PO to smooth out the energy landscape ( cf. Table S-I). This analysis also sheds light on why PPO and SAC perform poorly on Acrobot and double pendulum on a cart. A recent result [39] relates the variance of policy-gradient estimators to terms like gt: when gt has large magnitude, gradient estimates can have high variance. In these tasks, gt can indeed be large due to the nonsmoothness of near-optimal policies, which can make learning unstable within a finite interaction budget. S-XI. R ELATED WORK 
+
+We briefly review related work on trajectory optimization, policy optimization, sampling from the Boltzmann-tilted distribution, and annealing and tempering. 
+
+A. Trajectory Optimization 
+
+Optimization-based Methods. Nonlinear programming (NLP) methods [75]—in either single-shooting or multiple-shooting form—are among the most widely used approaches to trajectory optimization in control and robotics. Notable examples include interior-point methods [102], sequential quadratic programming [30], sequential convex programming [68, 64], and augmented Lagrangian methods [45, 50]. These are local methods that refine an initial guess and can get trapped in undesirable local minima. In contrast, global solvers avoid dependence on a good initialization but are typically far more computationally expensive; common approaches include mixed-integer programming (branch-and-bound/cut) [24, 69] and convex relaxations [55, 54, 38, 109]. Most optimization-based methods assume that the dynamics are analytically specified or that accurate gradients are available. 
+
+Sampling-based Methods. Sampling-based methods draw many candidate control sequences from a proposal distribution and then aggregate them to minimize trajectory cost. The simplest strategy is to select the best sample (predictive sampling) [44, 79]. Model predictive path integral control (MPPI) [106, 105] instead uses an exponential weighting of trajectory costs, which can be viewed as importance sampling for the Boltzmann-tilted distribution. The cross-entropy method (CEM) [23] iteratively refines the proposal by fitting it to elite samples. More recently, [76] learns a score function from rollouts to enable model-based sampling. These methods are naturally parallelizable and can be applied with black-box dynamics, but often require many samples to achieve strong performance. TSMC differs from both strands by combining global exploration from sampling-based methods with gradient-based local refinement from optimization-based methods. 
+
+B. Policy Optimization 
+
+Zero-order Methods. At the heart of modern policy optimization in reinforcement learning lies the policy gradient lemma [92, 93], which enables gradient-based learning of policy parameters directly from sampled trajectories without requiring an explicit model of the environment. Despite their generality, policy-gradient methods can be unstable and converge to poor solutions. Prior work has identified multiple sources of this instability. One is the high variance of stochastic policy-gradient estimators, which can cause updates to poorly track the true ascent direction; this motivates variance-reduction techniques such as baselines, generalized advantage estimation, and actor–critic methods [93, 33, 87, 35]. Another is overly aggressive policy updates, motivating methods that explicitly constrain update size, e.g., via Kullback–Leibler trust regions in TRPO [86] or clipping in PPO [88]. In contrast to optimizing a single parameter vector θ, evolution strategies [84] optimize a distribution over policy parameters, often approximated by a Gaussian whose mean is updated. 
+
+First-order Methods. In contrast to zero-order methods that estimate policy gradients from sampled trajectories, first-order methods exploit differentiability of the dynamics/simulator to compute gradients more efficiently. Notable examples include [20, 108, 7, 8, 104]. While these methods are receiving increasing attention in robotics, a key challenge remains contact-rich tasks, where computing or approximating useful dynamics gradients is nontrivial. TSMC is related to both lines of work. Like evolution strategies, it optimizes a distribution over parameters rather than a single θ. Like first-order methods, it leverages differentiable dynamics within its MCMC rejuvenation steps. The key difference is that TSMC adopts principled machinery from Bayesian computation—sampling from a Boltzmann-tilted distribution via tempering—to better handle sharp, multimodal targets. Moreover, TSMC provides a unified framework for both trajectory optimization and policy optimization. 
+
+C. Sampling from the Boltzmann-tilted Distribution 
+
+Sampling from a Boltzmann tilt has a long history in statistical physics (Gibbs measures) and enters control via the “control-as-inference” viewpoint, where optimal control is posed as inference in an exponential-family model and the solution takes the form of exponentiated-cost reweighting of a prior over actions, trajectories, or policy parameters. Beyond importance sampling, Markov chain Monte Carlo (MCMC) and its tempered/sequential variants [71, 27, 26, 22] are widely used for such targets because they help maintain diversity and mitigate particle degeneracy. We use B LACK JAX [17], a JAX library that implements these methods. In parallel, there is growing interest in neural samplers (a.k.a. learned samplers, amortized MCMC, or neural transport) that replace some or all of the sampling machinery with trainable maps. Representative examples include normalizing flows [5], denoising diffusion samplers [100], path integral sampler [112], iterated denoising energy matching [4], and adjoint sampling [41]. In this work, we apply classical TSMC to trajectory and policy optimization. A natural future direction is to investigate whether neural samplers can outperform classical TSMC in these settings. 
+
+D. Annealing and Tempering 
+
+Annealing and tempering address the challenge of sharp and/or multimodal objectives by introducing a temperature schedule that gradually deforms an easy distribution into a target distribution. In nonconvex optimization, this viewpoint underlies simulated annealing [57] and deterministic annealing [83], which start from smooth, high-temperature (or entropy-regularized) objectives and progressively sharpen them, often improving robustness to poor local minima. In robotics and computer vision, graduated non-convexity [110] similarly solves a sequence of problems that deform from a convex surrogate to a nonconvex, outlier-robust objective. In sampling, tempering improves mixing across modes: parallel tempering (replica exchange) runs chains at multiple temperatures and swaps states [94], while tempered transitions build global proposals by traversing a temperature ladder [72]. For population-based estimators, annealed importance sampling bridges from a tractable base distribution to a target to reduce variance and estimate normalizing constants [71], and sequential Monte Carlo samplers strengthen this idea via resampling and MCMC move steps in the canonical reweight–resample–move template [26]. REFERENCES 
+
+[1] [MJX] jax.lax.while_loop in solver.py prevents computation of backward gradients (#2259) . https://github. com/google-deepmind/mujoco/issues/2259. 2024. [2] Niket Agarwal, Arslan Ali, Maciej Bala, Yogesh Balaji, Erik Barker, Tiffany Cai, Prithvijit Chattopadhyay, Yongxin Chen, Yin Cui, Yifan Ding, et al. “Cosmos world foundation model platform for physical ai”. In: arXiv preprint arXiv:2501.03575 (2025). [3] Bo Ai, Stephen Tian, Haochen Shi, Yixuan Wang, Tobias Pfaff, Cheston Tan, Henrik I Christensen, Hao Su, Jiajun Wu, and Yunzhu Li. “A review of learning-based dynamics models for robotic manipulation”. In: Science Robotics 10.106 (2025), eadt1497. [4] Tara Akhound-Sadegh, Jarrid Rector-Brooks, Avishek Joey Bose, Sarthak Mittal, Pablo Lemos, Cheng-Hao Liu, Marcin Sendera, Siamak Ravanbakhsh, Gauthier Gidel, Yoshua Bengio, et al. “Iterated denoising energy matching for sampling from boltzmann densities”. In: arXiv preprint arXiv:2402.06121 (2024). [5] Michael S Albergo, Gurtej Kanwar, and Phiala E Shanahan. “Flow-based generative models for Markov chain Monte Carlo in lattice field theory”. In: Physical Review D 100.3 (2019), p. 034515. [6] Johan Alenlöv, Arnaud Doucet, and Fredrik Lindsten. “Pseudo-Marginal Hamiltonian Monte Carlo”. In: Journal of Machine Learning Research 22.141 (2021), pp. 1–45. [7] Joseph Amigo, Rooholla Khorrambakht, Elliot Chane-Sane, Nicolas Mansard, and Ludovic Righetti. “First order model-based rl through decoupled backpropagation”. In: Conference on Robot Learning (CoRL) . 2025. [8] Brandon Amos, Samuel Stanton, Denis Yarats, and Andrew Gordon Wilson. “On the model-based stochastic value gradient for continuous reinforcement learning”. In: Annual Learning for Dynamics and Control Conference (L4DC) .PMLR. 2021, pp. 6–20. [9] Joel AE Andersson, Joris Gillis, Greg Horn, James B Rawlings, and Moritz Diehl. “CasADi: a software framework for nonlinear optimization and optimal control”. In: Mathematical Programming Computation 11.1 (2019), pp. 1–36. [10] Christophe Andrieu, Arnaud Doucet, and Roman Holenstein. “Particle Markov Chain Monte Carlo Methods”. In: 
+
+Journal of the American Statistical Association 105.491 (2010), pp. 1541–1554. [11] Christophe Andrieu and Gareth O. Roberts. “The Pseudo-Marginal Approach for Efficient Monte Carlo Computations”. In: The Annals of Statistics 37.2 (2009), pp. 697–725. [12] Julian Besag. “Comments on "Representations of knowledge in complex systems" by U. Grenander and M. I. Miller”. In: Journal of the Royal Statistical Society Series B: Statistical Methodology (1994). [13] Alexandros Beskos, Ajay Jasra, Nikolas Kantas, and Alexandre Thiery. “On the convergence of adaptive sequential Monte Carlo methods”. In: The Annals of Applied Probability 26.2 (2016), pp. 1111–1146. [14] Michael Betancourt. “A conceptual introduction to Hamiltonian Monte Carlo”. In: arXiv preprint arXiv:1701.02434 
+
+(2017). [15] James Bradbury, Roy Frostig, Peter Hawkins, Matthew James Johnson, Chris Leary, Dougal Maclaurin, George Necula, Adam Paszke, Jake VanderPlas, Skye Wanderman-Milne, and Qiao Zhang. JAX: composable transformations of Python+NumPy programs . Version 0.3.13. 2018. [16] Arthur E. Bryson and Yu-Chi Ho. Applied Optimal Control: Optimization, Estimation, and Control . Waltham, MA: Blaisdell Pub. Co., 1969. [17] Alberto Cabezas, Adrien Corenflos, Junpeng Lao, Rémi Louf, Antoine Carnec, Kaustubh Chaudhari, Reuben Cohn-Gordon, Jeremie Coullon, Wei Deng, Sam Duffield, et al. “BlackJAX: composable Bayesian inference in JAX”. In: 
+
+arXiv preprint arXiv:2402.10797 (2024). [18] Tianqi Chen, Emily Fox, and Carlos Guestrin. “Stochastic gradient hamiltonian monte carlo”. In: International Conference on Machine Learning (ICML) . PMLR. 2014, pp. 1683–1691. [19] Nicolas Chopin, Pierre E. Jacob, and Omiros Papaspiliopoulos. “SMC 2: An Efficient Algorithm for Sequential Analysis of State Space Models”. In: Journal of the Royal Statistical Society: Series B (Statistical Methodology) 75.3 (2013), pp. 397–426. [20] Ignasi Clavera, Violet Fu, and Pieter Abbeel. “Model-augmented actor-critic: Backpropagating through paths”. In: 
+
+International Conference on Learning Representations (ICLR) . 2020. [21] Bruce A Conway. Spacecraft trajectory optimization . Vol. 29. Cambridge University Press, 2010. [22] Chenguang Dai, Jeremy Heng, Pierre E Jacob, and Nick Whiteley. “An invitation to sequential Monte Carlo samplers”. In: Journal of the American Statistical Association 117.539 (2022), pp. 1587–1600. [23] Pieter-Tjerk De Boer, Dirk P Kroese, Shie Mannor, and Reuven Y Rubinstein. “A tutorial on the cross-entropy method”. In: Annals of operations research 134.1 (2005), pp. 19–67. [24] Robin Deits and Russ Tedrake. “Efficient mixed-integer planning for UAVs in cluttered environments”. In: IEEE International Conference on Robotics and Automation (ICRA) . IEEE. 2015, pp. 42–49. [25] Pierre Del Moral. Feynman-Kac formulae: genealogical and interacting particle systems with applications . Springer, 2004. [26] Pierre Del Moral, Arnaud Doucet, and Ajay Jasra. “Sequential Monte Carlo samplers”. In: Journal of the Royal Statistical Society: Series B 68.3 (2006), pp. 411–436. [27] Arnaud Doucet, Nando De Freitas, Neil James Gordon, et al. Sequential Monte Carlo methods in practice . Vol. 1. 2. Springer, 2001. [28] Simon Duane, Anthony D Kennedy, Brian J Pendleton, and Duncan Roweth. “Hybrid monte carlo”. In: Physics letters B 195.2 (1987), pp. 216–222. [29] C Daniel Freeman, Erik Frey, Anton Raichuk, Sertan Girgin, Igor Mordatch, and Olivier Bachem. “Brax–a differentiable physics engine for large scale rigid body simulation”. In: arXiv preprint arXiv:2106.13281 (2021). [30] Philip E Gill, Walter Murray, and Michael A Saunders. “SNOPT: An SQP algorithm for large-scale constrained optimization”. In: SIAM review 47.1 (2005), pp. 99–131. [31] Mark Girolami and Ben Calderhead. “Riemann manifold Langevin and Hamiltonian Monte Carlo methods”. In: Journal of the Royal Statistical Society: Series B (Statistical Methodology) 73.2 (2011), pp. 123–214. [32] Knut Graichen, Michael Treuer, and Michael Zeitz. “Swing-up of the double pendulum on a cart by feedforward and feedback control with experimental validation”. In: Automatica 43.1 (2007), pp. 63–71. [33] Evan Greensmith, Peter L Bartlett, and Jonathan Baxter. “Variance reduction techniques for gradient estimates in reinforcement learning”. In: Journal of Machine Learning Research (JMLR) 5 (2004), pp. 1471–1530. [34] Tuomas Haarnoja, Haoran Tang, Pieter Abbeel, and Sergey Levine. “Reinforcement learning with deep energy-based policies”. In: International Conference on Machine Learning (ICML) . PMLR. 2017, pp. 1352–1361. [35] Tuomas Haarnoja, Aurick Zhou, Pieter Abbeel, and Sergey Levine. “Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor”. In: International Conference on Machine Learning (ICML) . 2018, pp. 1861–1870. [36] Ernst Hairer, Christian Lubich, and Gerhard Wanner. Geometric Numerical Integration: Structure-Preserving Algorithms for Ordinary Differential Equations . 2nd ed. Vol. 31. Springer Series in Computational Mathematics. Springer, 2006. [37] James D Hamilton. Time series analysis . Princeton university press, 2020. [38] Haoyu Han and Heng Yang. “Building Rome with Convex Optimization”. In: Robotics: Science and Systems (RSS) .2025. [39] Haoyu Han and Heng Yang. “Non-Uniform Noise-to-Signal Ratio in the REINFORCE Policy-Gradient Estimator”. In: 
+
+arXiv preprint arXiv:2602.01460 (2026). [40] Haoyu Han and Heng Yang. “On the nonsmooth geometry and neural approximation of the optimal value function of infinite-horizon pendulum swing-up”. In: Annual Learning for Dynamics and Control Conference (L4DC) . PMLR. 2024, pp. 654–666. [41] Aaron Havens, Benjamin Kurt Miller, Bing Yan, Carles Domingo-Enrich, Anuroop Sriram, Brandon Wood, Daniel Levine, Bin Hu, Brandon Amos, Brian Karrer, et al. “Adjoint sampling: Highly scalable diffusion samplers via adjoint matching”. In: arXiv preprint arXiv:2504.11713 (2025). [42] Matthew D. Hoffman and Andrew Gelman. “The No-U-Turn Sampler: adaptively setting path lengths in Hamiltonian Monte Carlo”. In: Journal of Machine Learning Research 15.1 (2014), pp. 1593–1623. [43] François Robert Hogan and Alberto Rodriguez. “Feedback control of the pusher-slider system: A story of hybrid and underactuated contact dynamics”. In: International Workshop on the Algorithmic Foundations of Robotics (WAFR) .Springer. 2020, pp. 800–815. [44] Taylor Howell, Nimrod Gileadi, Saran Tunyasuvunakool, Kevin Zakka, Tom Erez, and Yuval Tassa. “Predictive sampling: Real-time behaviour synthesis with mujoco”. In: arXiv preprint arXiv:2212.00541 (2022). [45] Taylor A Howell, Brian E Jackson, and Zachary Manchester. “ALTRO: A fast solver for constrained trajectory optimization”. In: IEEE. 2019, pp. 7674–7679. [46] Taylor A Howell, Simon Le Cleach, J Zico Kolter, Mac Schwager, and Zachary Manchester. “Dojo: A differentiable simulator for robotics”. In: arXiv preprint arXiv:2203.00806 9.2 (2022), p. 4. [47] Yuanming Hu, Luke Anderson, Tzu-Mao Li, Qi Sun, Nathan Carr, Jonathan Ragan-Kelley, and Frédo Durand. “Diff-taichi: Differentiable programming for physical simulation”. In: International Conference on Learning Representations (ICLR) . 2019. [48] Pierre E. Jacob and Alexandre H. Thiéry. “On Nonnegative Unbiased Estimators”. In: The Annals of Statistics 43.2 (2015), pp. 769–784. [49] David H. Jacobson. “Optimal Stochastic Linear Systems with Exponential Performance Criteria and Their Relation to Deterministic Differential Games”. In: IEEE Transactions on Automatic Control 18.2 (1973), pp. 124–131. [50] Wilson Jallet, Antoine Bambade, Nicolas Mansard, and Justin Carpentier. “Proxnlp: a primal-dual augmented lagrangian solver for nonlinear programming in robotics and beyond”. In: arXiv preprint arXiv:2210.02109 (2022). [51] Eric Jang, Shixiang Gu, and Ben Poole. “Categorical reparameterization with gumbel-softmax”. In: International Conference on Learning Representations (ICLR) . 2017. [52] E. T. Jaynes. “Information Theory and Statistical Mechanics”. In: Phys. Rev. (1957). [53] Sham M. Kakade. “A Natural Policy Gradient”. In: Conference on Neural Information Processing Systems (NeurIPS) .2001. [54] Shucheng Kang, Guorui Liu, and Heng Yang. “Global Contact-Rich Planning with Sparsity-Rich Semidefinite Relaxations”. In: Robotics: Science and Systems (RSS) . 2025. [55] Shucheng Kang, Xiaoyang Xu, Jay Sarva, Ling Liang, and Heng Yang. “Fast and certifiable trajectory optimization”. In: International Workshop on the Algorithmic Foundations of Robotics (WAFR) . 2024. [56] Hilbert J Kappen. “Path integrals and symmetry breaking for optimal control theory”. In: Journal of statistical mechanics: theory and experiment 2005.11 (2005), P11011. [57] S. Kirkpatrick, C. D. Gelatt, and M. P. Vecchi. “Optimization by Simulated Annealing”. In: Science 220.4598 (1983), pp. 671–680. [58] Jovana Kondic. “Monte Carlo Methods for Motion Planning and Goal Inference”. PhD thesis. Massachusetts Institute of Technology, 2024. [59] Jere Koskela, Toni Karvonen, et al. “A debiased Bernoulli factory and unbiased estimation of a probability”. In: arXiv preprint arXiv:2510.01941 (2025). [60] Quentin Le Lidec, Louis Montaut, Yann de Mont-Marin, Fabian Schramm, and Justin Carpentier. “Highly-Efficient Differentiable Simulation for Robotics”. In: arXiv preprint arXiv:2409.07107 (2025). [61] Taeyoung Lee. “Computational geometric mechanics and control of rigid bodies”. PhD thesis. University of Michigan, 2008. [62] Sergey Levine. “Reinforcement learning and control as probabilistic inference: Tutorial and review”. In: arXiv preprint arXiv:1805.00909 (2018). [63] Chenhao Li, Andreas Krause, and Marco Hutter. “Robotic world model: A neural network simulator for robust policy optimization in robotics”. In: arXiv preprint arXiv:2501.10100 (2025). [64] Yulin Li, Haoyu Han, Shucheng Kang, Jun Ma, and Heng Yang. “On the Surprising Robustness of Sequential Convex Optimization for Contact-Implicit Motion Planning”. In: Robotics: Science and Systems (RSS) . 2025. [65] Kevin M Lynch and Matthew T Mason. “Stable pushing: Mechanics, controllability, and planning”. In: International Journal of Robotics Research (IJRR) 15.6 (1996), pp. 533–556. [66] Haitong Ma, Tianyi Chen, Kai Wang, Na Li, and Bo Dai. “Efficient Online Reinforcement Learning for Diffusion Policy”. In: International Conference on Machine Learning (ICML) . 2025. [67] David JC MacKay. Information theory, inference and learning algorithms . Cambridge university press, 2003. [68] Yuanqi Mao, Michael Szmuk, and Behçet Açıkme¸ se. “Successive convexification of non-convex optimal control problems and its convergence properties”. In: IEEE Conference on Decision and Control (CDC) . 2016, pp. 3636–3641. [69] Tobia Marcucci, Jack Umenberger, Pablo Parrilo, and Russ Tedrake. “Shortest paths in graphs of convex sets”. In: 
+
+SIAM Journal on Optimization 34.1 (2024), pp. 507–532. [70] Matthew T Mason. “Mechanics and planning of manipulator pushing operations”. In: International Journal of Robotics Research (IJRR) 5.3 (1986), pp. 53–71. [71] Radford M Neal. “Annealed importance sampling”. In: Statistics and computing 11.2 (2001), pp. 125–139. [72] Radford M Neal. “Sampling from multimodal distributions using tempered transitions”. In: Statistics and computing 
+
+6.4 (1996), pp. 353–366. [73] Radford M. Neal. “MCMC Using Hamiltonian Dynamics”. In: Handbook of Markov Chain Monte Carlo . Ed. by Steve Brooks, Andrew Gelman, Galin Jones, and Xiao-Li Meng. Chapman and Hall/CRC, 2011. Chap. 5. [74] Rhys Newbury, Jack Collins, Kerry He, Jiahe Pan, Ingmar Posner, David Howard, and Akansel Cosgun. “A review of differentiable simulators”. In: IEEE Access (2024). [75] Jorge Nocedal and Stephen J. Wright. Numerical Optimization . 2nd ed. New York, NY: Springer, 2006. [76] Chaoyi Pan, Zeji Yi, Guanya Shi, and Guannan Qu. “Model-based diffusion for trajectory optimization”. In: Conference on Neural Information Processing Systems (NeurIPS) . Vol. 37. 2024, pp. 57914–57943. [77] Anselm Paulus, A René Geist, Pierre Schumacher, Vít Musil, and Georg Martius. “Hard Contacts with Soft Gradients: Refining Differentiable Simulators for Learning and Control”. In: arXiv preprint arXiv:2506.14186 (2025). [78] Michael Posa, Cecilia Cantu, and Russ Tedrake. “A direct method for trajectory optimization of rigid bodies through contact”. In: The International Journal of Robotics Research 33.1 (2014), pp. 69–81. [79] Han Qi, Haocheng Yin, Aris Zhu, Yilun Du, and Heng Yang. “Strengthening generative robot policies through predictive world modeling”. In: arXiv preprint arXiv:2502.00622 (2025). [80] Antonin Raffin, Ashley Hill, Adam Gleave, Anssi Kanervisto, Maximilian Ernestus, and Noah Dormann. “Stable-baselines3: Reliable reinforcement learning implementations”. In: Journal of machine learning research 22.268 (2021), pp. 1–8. [81] James Blake Rawlings, David Q Mayne, Moritz Diehl, et al. Model predictive control: theory, computation, and design .Vol. 2. Nob Hill Publishing Madison, WI, 2020. [82] Christian P Robert and George Casella. Monte Carlo statistical methods . Vol. 2. Springer, 1999. [83] Kenneth Rose. “Deterministic annealing for clustering, compression, classification, regression, and related optimization problems”. In: Proceedings of the IEEE 86.11 (2002), pp. 2210–2239. [84] Tim Salimans, Jonathan Ho, Xi Chen, Szymon Sidor, and Ilya Sutskever. “Evolution strategies as a scalable alternative to reinforcement learning”. In: arXiv preprint arXiv:1703.03864 (2017). [85] Brian Sallans and Geoffrey E Hinton. “Using free energies to represent Q-values in a multiagent reinforcement learning task”. In: Conference on Neural Information Processing Systems (NeurIPS) . Vol. 13. 2000. [86] John Schulman, Sergey Levine, Pieter Abbeel, Michael Jordan, and Philipp Moritz. “Trust region policy optimization”. In: International Conference on Machine Learning (ICML) . PMLR. 2015, pp. 1889–1897. [87] John Schulman, Philipp Moritz, Sergey Levine, Michael Jordan, and Pieter Abbeel. “High-dimensional continuous control using generalized advantage estimation”. In: International Conference on Learning Representations (ICLR) 
+
+(2015). [88] John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. “Proximal policy optimization algorithms”. In: arXiv preprint arXiv:1707.06347 (2017). [89] Clemens Schwarke, Victor Klemm, Joshua Bagajo, Jean Pierre Sleiman, Ignat Georgiev, Jesus Tordesillas Torres, and Marco Hutter. “Learning Deployable Locomotion Control via Differentiable Simulation”. In: 9th Annual Conference on Robot Learning . 2025. [90] Jacob Shekel. “Test functions for multimodal search techniques”. In: Fifth Annual Princeton Conf. on Information Science and Systems . 1971. [91] Hyung Ju Suh, Max Simchowitz, Kaiqing Zhang, and Russ Tedrake. “Do differentiable simulators give better policy gradients?” In: International Conference on Machine Learning (ICML) . PMLR. 2022, pp. 20668–20696. [92] Richard S Sutton, Andrew G Barto, et al. Reinforcement learning: An introduction . MIT press Cambridge, 1998. [93] Richard S Sutton, David McAllester, Satinder Singh, and Yishay Mansour. “Policy gradient methods for reinforcement learning with function approximation”. In: Conference on Neural Information Processing Systems (NeurIPS) 12 (1999). [94] Robert H Swendsen and Jian-Sheng Wang. “Replica Monte Carlo simulation of spin-glasses”. In: Physical review letters 57.21 (1986), p. 2607. [95] Sangli Teng, Ashkan Jasour, Ram Vasudevan, and Maani Ghaffari. “Convex geometric motion planning on lie groups via moment relaxation”. In: Robotics: Science and Systems (RSS) . 2023. [96] The CG Solver in MJX doesn’t support reverse-mode differentiation (Issue #1182) . https://github.com/google-deepmind/ mujoco/issues/1182. Nov. 2023. [97] Emanuel Todorov. “Linearly-solvable Markov decision problems”. In: Conference on Neural Information Processing Systems (NeurIPS) . Vol. 19. 2006. [98] Emanuel Todorov, Tom Erez, and Yuval Tassa. “Mujoco: A physics engine for model-based control”. In: IEEE. 2012, pp. 5026–5033. [99] Mark Towers, Ariel Kwiatkowski, Jordan Terry, John U Balis, Gianluca De Cola, Tristan Deleu, Manuel Goulão, Andreas Kallinteris, Markus Krimmel, Arjun KG, et al. “Gymnasium: A standard interface for reinforcement learning environments”. In: Conference on Neural Information Processing Systems (NeurIPS) . 2025. [100] Francisco Vargas, Will Grathwohl, and Arnaud Doucet. “Denoising diffusion samplers”. In: arXiv preprint arXiv:2302.13834 (2023). [101] Robin Verschueren, Gianluca Frison, Dimitris Kouzoupis, Jonathan Frey, Niels van Duijkeren, Andrea Zanelli, Branimir Novoselnik, Thivaharan Albin, Rien Quirynen, and Moritz Diehl. “acados—a modular open-source framework for fast embedded optimal control”. In: Mathematical Programming Computation 14.1 (2022), pp. 147–183. [102] Andreas Wächter and Lorenz T Biegler. “On the implementation of an interior-point filter line-search algorithm for large-scale nonlinear programming”. In: Mathematical programming 106.1 (2006), pp. 25–57. [103] Ziyu Wang, Shakir Mohamed, and Nando Freitas. “Adaptive hamiltonian and riemann manifold monte carlo”. In: 
+
+International Conference on Machine Learning (ICML) . PMLR. 2013, pp. 1462–1470. [104] Nina Wiedemann, Valentin Wüest, Antonio Loquercio, Matthias Müller, Dario Floreano, and Davide Scaramuzza. “Training efficient controllers via analytic policy gradient”. In: IEEE International Conference on Robotics and Automation (ICRA) . 2023. [105] Grady Williams, Andrew Aldrich, and Evangelos Theodorou. “Model predictive path integral control using covariance variable importance sampling”. In: arXiv preprint arXiv:1509.01149 (2015). [106] Grady Williams, Andrew Aldrich, and Evangelos A Theodorou. “Model predictive path integral control: From theory to parallel computation”. In: Journal of Guidance, Control, and Dynamics 40.2 (2017), pp. 344–357. [107] Philipp Wu, Alejandro Escontrela, Danijar Hafner, Pieter Abbeel, and Ken Goldberg. “Daydreamer: World models for physical robot learning”. In: Conference on Robot Learning (CoRL) . PMLR. 2023, pp. 2226–2240. [108] Jie Xu, Viktor Makoviychuk, Yashraj Narang, Fabio Ramos, Wojciech Matusik, Animesh Garg, and Miles Macklin. “Accelerated policy learning with parallel differentiable simulation”. In: International Conference on Learning Representations (ICLR) . 2022. [109] Heng Yang. Semidefinite Optimization and Relaxation . Lecture notes: https://hankyang.seas.harvard.edu/Semidefinite/. 2024. [110] Heng Yang, Pasquale Antonante, Vasileios Tzoumas, and Luca Carlone. “Graduated non-convexity for robust spatial perception: From non-minimal solvers to global outlier rejection”. In: IEEE Robotics and Automation Letters (RAL) 
+
+5.2 (2020), pp. 1127–1134. [111] Kaifeng Zhang, Baoyu Li, Kris Hauser, and Yunzhu Li. “Particle-Grid Neural Dynamics for Learning Deformable Object Models from RGB-D Videos”. In: Robotics: Science and Systems (RSS) . 2025. [112] Qinsheng Zhang and Yongxin Chen. “Path integral sampler: a stochastic control approach for sampling”. In: arXiv preprint arXiv:2111.15141 (2021). [113] Tan Zhi-Xuan, Jovana Kondic, Stewart Slocum, Joshua B Tenenbaum, Vikash K Mansinghka, and Dylan Hadfield-Menell. “Bayesian Inverse Motion Planning for Online Goal Inference in Continuous Domains”. In: ICRA 2023 Workshop on Cognitive Modeling in Robot Learning . 2023.

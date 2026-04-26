@@ -6,64 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-04-23
-- 运行时间：2026-04-23 20:40:26 UTC
+- 最新运行日期：2026-04-26
+- 运行时间：2026-04-26 20:03:22 UTC
 - 运行状态：成功
-- 本次总论文数：14
-- 精读区：3
+- 本次总论文数：17
+- 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 14 篇前沿论文，深度解析了低推力多目标交会轨道优化与基于库普曼动力学的非线性机器人强化学习。
-核心结论指出，解析海森矩阵能显著提升非线性规划效率，而线性化动力学建模则是解决复杂机器人控制难题的关键。
-建议重点关注具身智能在未知负载及高精度接触任务中的演化与优化策略。
-- 详情：[/202604/23/README](/202604/23/README)
+深度解析机器人全身动态安全与 3D 极限竞速控制，今日 17 篇前沿论文带你突破感知与执行边界。
+重点推荐 3D 泊松安全函数在机械臂避障中的应用，以及针对复杂三维赛道的鲁棒非线性轨迹跟踪算法。
+建议关注大模型驱动的人形机器人抓取与物理仿真视频模仿技术，探索具身智能的快速部署方案。
+- 详情：[/202604/26/README](/202604/26/README)
 
 ### 精读区论文标签
-1. [Nonlinear Programming of Low-Thrust Multi-Rendezvous Trajectories Using Analytical Hessian](/202604/23/2604.19573v1-nonlinear-programming-of-low-thrust-multi-rendezvous-trajectories-using-analytical-hessian)  
-   标签：评分：8.0/10、query:q3
-   evidence：用于多交会轨迹优化的快速非线性规划
-2. [Efficient Reinforcement Learning using Linear Koopman Dynamics for Nonlinear Robotic Systems](/202604/23/2604.19980v1-efficient-reinforcement-learning-using-linear-koopman-dynamics-for-nonlinear-robotic-systems)  
+1. [Full-Body Dynamic Safety for Robot Manipulators: 3D Poisson Safety Functions for CBF-Based Safety Filters](/202604/26/2604.21189v1-full-body-dynamic-safety-for-robot-manipulators-3d-poisson-safety-functions-for-cbf-based-safety-filters)  
+   标签：评分：10.0/10、query:profile-1
+   evidence：基于CBF安全滤波器的机械臂全身避障
+2. [Robust Nonlinear Trajectory Tracking Control for Autonomous Racing on Three-Dimensional Tracks](/202604/26/2604.19452v1-robust-nonlinear-trajectory-tracking-control-for-autonomous-racing-on-three-dimensional-tracks)  
    标签：评分：8.0/10、query:q2
-   evidence：利用Koopman动力学进行非线性机器人系统的策略优化
-3. [Cortex 2.0: Grounding World Models in Real-World Industrial Deployment](/202604/23/2604.20246v1-cortex-20-grounding-world-models-in-real-world-industrial-deployment)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：为工业机器人操作生成候选未来轨迹
+   evidence：用于实时轨迹跟踪的鲁棒非线性模型预测控制
+3. [Safety-Critical Contextual Control via Online Riemannian Optimization with World Models](/202604/26/2604.19639v1-safety-critical-contextual-control-via-online-riemannian-optimization-with-world-models)  
+   标签：评分：8.0/10、query:q2
+   evidence：安全关键控制与规划的在线优化
+4. [Navigating the Clutter: Waypoint-Based Bi-Level Planning for Multi-Robot Systems](/202604/26/2604.21138v1-navigating-the-clutter-waypoint-based-bi-level-planning-for-multi-robot-systems)  
+   标签：评分：8.0/10、query:q1
+   evidence：高层任务规划与底层避障运动规划的联合优化
+5. [Tempered Sequential Monte Carlo for Trajectory and Policy Optimization with Differentiable Dynamics](/202604/26/2604.21456v1-tempered-sequential-monte-carlo-for-trajectory-and-policy-optimization-with-differentiable-dynamics)  
+   标签：评分：8.0/10、query:q3
+   evidence：基于采样的轨迹与策略优化框架
+6. [Long-Horizon Manipulation via Trace-Conditioned VLA Planning](/202604/26/2604.21924v1-long-horizon-manipulation-via-trace-conditioned-vla-planning)  
+   标签：评分：8.0/10、query:q6
+   evidence：长程操作与轨迹提示规划
 
 ### 速读区论文标签
-1. [Evolvable Embodied Agent for Robotic Manipulation via Long Short-Term Reflection and Optimization](/202604/23/2604.13533v2-evolvable-embodied-agent-for-robotic-manipulation-via-long-short-term-reflection-and-optimization)  
+1. [A Rapid Deployment Pipeline for Autonomous Humanoid Grasping Based on Foundation Models](/202604/26/2604.17258v1-a-rapid-deployment-pipeline-for-autonomous-humanoid-grasping-based-on-foundation-models)  
    标签：评分：7.0/10、query:q6
-   evidence：使用视觉语言模型进行机器人操作的策略规划
-2. [Wrench-Aware Admittance Control for Unknown-Payload Manipulation](/202604/23/2604.19469v1-wrench-aware-admittance-control-for-unknown-payload-manipulation)  
+   evidence：人形机器人操纵与逆运动学
+2. [DeVI: Physics-based Dexterous Human-Object Interaction via Synthetic Video Imitation](/202604/26/2604.20841v1-devi-physics-based-dexterous-human-object-interaction-via-synthetic-video-imitation)  
    标签：评分：7.0/10、query:q6
-   evidence：未知负载机器人操作的导纳控制
-3. [Learning Hybrid-Control Policies for High-Precision In-Contact Manipulation Under Uncertainty](/202604/23/2604.19677v1-learning-hybrid-control-policies-for-high-precision-in-contact-manipulation-under-uncertainty)  
+   evidence：通过合成视频模仿进行灵巧机器人操作的运动规划
+3. [PREVENT-JACK: Context Steering for Swarms of Long Heavy Articulated Vehicles](/202604/26/2604.21337v1-prevent-jack-context-steering-for-swarms-of-long-heavy-articulated-vehicles)  
+   标签：评分：7.0/10、query:q1
+   evidence：铰接车辆的碰撞规避
+4. [MISTY: High-Throughput Motion Planning via Mixer-based Single-step Drifting](/202604/26/2604.21489v1-misty-high-throughput-motion-planning-via-mixer-based-single-step-drifting)  
+   标签：评分：7.0/10、query:q3
+   evidence：用于轨迹生成的高吞吐量生成式运动规划器
+5. [VistaBot: View-Robust Robot Manipulation via Spatiotemporal-Aware View Synthesis](/202604/26/2604.21914v1-vistabot-view-robust-robot-manipulation-via-spatiotemporal-aware-view-synthesis)  
    标签：评分：7.0/10、query:q6
-   evidence：用于高精度操作的混合位置-力控制策略
-4. [Bimanual Robot Manipulation via Multi-Agent In-Context Learning](/202604/23/2604.20348v1-bimanual-robot-manipulation-via-multi-agent-in-context-learning)  
-   标签：评分：7.0/10、query:q6
-   evidence：通过多智能体主从控制进行双臂机器人操作
-5. [Lexicographic Minimum-Violation Motion Planning using Signal Temporal Logic](/202604/23/2604.20428v1-lexicographic-minimum-violation-motion-planning-using-signal-temporal-logic)  
-   标签：评分：7.0/10、query:q4
-   evidence：具有冲突规范的运动规划的词典优化方法
-6. [Multi-stage Planning for Multi-target Surveillance using Aircrafts Equipped with Synthetic Aperture Radars Aware of Target Visibility](/202604/23/2604.16962v1-multi-stage-planning-for-multi-target-surveillance-using-aircrafts-equipped-with-synthetic-aperture-radars-aware-of-target-visibility)  
-   标签：评分：6.0/10、query:q3
-   evidence：实时操作中的飞机轨迹优化
-7. [StableIDM: Stabilizing Inverse Dynamics Model against Manipulator Truncation via Spatio-Temporal Refinement](/202604/23/2604.17887v1-stableidm-stabilizing-inverse-dynamics-model-against-manipulator-truncation-via-spatio-temporal-refinement)  
+   evidence：闭环机器人操作与潜动作学习
+6. [ReconVLA: An Uncertainty-Guided and Failure-Aware Vision-Language-Action Framework for Robotic Control](/202604/26/2604.16677v1-reconvla-an-uncertainty-guided-and-failure-aware-vision-language-action-framework-for-robotic-control)  
+   标签：评分：6.0/10、query:q4
+   evidence：用于机器人控制和动作序列的视觉-语言-动作框架
+7. [Chain Of Interaction Benchmark (COIN): When Reasoning meets Embodied Interaction](/202604/26/2604.16886v1-chain-of-interaction-benchmark-coin-when-reasoning-meets-embodied-interaction)  
    标签：评分：6.0/10、query:q6
-   evidence：在部分可观测性下稳定机械臂控制的逆动力学模型
-8. [Chatting about Conditional Trajectory Prediction](/202604/23/2604.18126v1-chatting-about-conditional-trajectory-prediction)  
-   标签：评分：6.0/10、query:q1
-   evidence：为避障和路径规划建模社交互动
-9. [Geometric Trajectory Optimization for TRACON Arrivals: An NLP Approach with ATC Vectoring Maneuver Modeling](/202604/23/2604.18454v1-geometric-trajectory-optimization-for-tracon-arrivals-an-nlp-approach-with-atc-vectoring-maneuver-modeling)  
-   标签：评分：6.0/10、query:q3
-   evidence：使用非线性规划的轨迹优化
-10. [Tropical low-rank approximation and application to optimal control of N-body systems](/202604/23/2604.18785v1-tropical-low-rank-approximation-and-application-to-optimal-control-of-n-body-systems)  
-   标签：评分：6.0/10、query:q3
-   evidence：基于轨迹的热带低秩近似用于最优控制
-11. [JoyAI-RA 0.1: A Foundation Model for Robotic Autonomy](/202604/23/2604.20100v1-joyai-ra-01-a-foundation-model-for-robotic-autonomy)  
+   evidence：机器人操作交互推理基准
+8. [Re$^2$MoGen: Open-Vocabulary Motion Generation via LLM Reasoning and Physics-Aware Refinement](/202604/26/2604.17807v1-re2mogen-open-vocabulary-motion-generation-via-llm-reasoning-and-physics-aware-refinement)  
+   标签：评分：6.0/10、query:q4
+   evidence：利用LLM推理进行初始运动规划及物理感知细化
+9. [AeroBridge-TTA: Test-Time Adaptive Language-Conditioned Control for UAVs](/202604/26/2604.19059v1-aerobridge-tta-test-time-adaptive-language-conditioned-control-for-uavs)  
+   标签：评分：6.0/10、query:q5
+   evidence：无人机轨迹跟踪的测试时自适应控制
+10. [M$^{2}$GRPO: Mamba-based Multi-Agent Group Relative Policy Optimization for Biomimetic Underwater Robots Pursuit](/202604/26/2604.19404v1-m2grpo-mamba-based-multi-agent-group-relative-policy-optimization-for-biomimetic-underwater-robots-pursuit)  
+   标签：评分：6.0/10、query:q4
+   evidence：仿生水下机器人的多智能体策略优化
+11. [ETac: A Lightweight and Efficient Tactile Simulation Framework for Learning Dexterous Manipulation](/202604/26/2604.20295v1-etac-a-lightweight-and-efficient-tactile-simulation-framework-for-learning-dexterous-manipulation)  
    标签：评分：6.0/10、query:q6
-   evidence：通用机器人操作的基础模型
+   evidence：机器人机械臂的触觉仿真
 
 
 <div class="dpr-home-promo-card">
