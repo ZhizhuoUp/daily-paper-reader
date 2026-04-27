@@ -1,0 +1,1432 @@
+Title: A Hough transform approach to safety-aware scalar field mapping using Gaussian Processes
+
+URL Source: https://arxiv.org/pdf/2604.20799v1
+
+Published Time: Thu, 23 Apr 2026 01:15:55 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+> 1
+
+# A Hough transform approach to safety-aware scalar field mapping using Gaussian Processes 
+
+Muzaffar Qureshi 1 Trivikram Satharasi 1 Tochukwu E. Ogri 1 Kyle Volle 2 Rushikesh Kamalapurkar 1
+
+Abstract —This paper presents a framework for mapping unknown scalar fields using a sensor-equipped autonomous robot operating in unsafe environments. The unsafe regions are defined as regions of high-intensity, where the field value exceeds a predefined safety threshold. For safe and efficient mapping of the scalar field, the sensor-equipped robot must avoid high-intensity regions during the measurement process. In this paper, the scalar field is modeled as a sample from a Gaussian process (GP), which enables Bayesian inference and provides closed-form expressions for both the predictive mean and the uncertainty. Concurrently, the spatial structure of the high-intensity regions is estimated in real-time using the Hough transform (HT), leveraging the evolving GP posterior. A safe sampling strategy is then employed to guide the robot towards safe measurement locations, using probabilistic safety guarantees on the evolving GP posterior. The estimated high-intensity regions also facilitate the design of safe motion plans for the robot. The effectiveness of the approach is verified through two numerical simulation studies and an indoor experiment for mapping a light-intensity field using a wheeled mobile robot. 
+
+Index Terms —Scalar field mapping, Gaussian Process, Hough Transform, safe exploration, trajectory planning 
+
+I. I NTRODUCTION 
+
+# MAPPING the spatial and temporal variations of an unknown scalar field remains an active area of research, having broad applications in environmental monitoring, ocean floor mapping, radiation detection, fire hazard localization, and wireless signal estimation [1]–[4]. To construct an accurate map of the scalar field, a common approach is to deploy a sensor-equipped robot to visit predefined locations and collect field measurements [5]–[7]. Mobile sensor networks also pro-vide an efficient and practical solution for these mapping tasks, enabling comprehensive data acquisition over large domains using multiple sensor-equipped robots [8]–[10]. In this paper, we focus on mapping a scalar field that can have detrimental effects on the sensor-carrying robot. For example, in applications that require mapping nuclear radiation, forest fires, chemical spills, or hostile radar signals, the robot needs to maintain a safe distance from regions of high-intensity to avoid damage or detection. [11]–[14]. Since the field is unknown, the robot must leverage real-time measurements to infer and avoid the high-intensity regions. Avoidance of high-intensity regions necessitates a framework                       
+
+> This research was supported in part by the Air Force Research Laboratory under contract number FA8651-24-1-0019. Any opinions, findings, or recom-mendations in this article are those of the author(s), and do not necessarily reflect the views of the sponsoring agencies.
+> 1Department of Mechanical and Aerospace Engineering, Univer-sity of Florida, Gainesville, FL, USA, email: {muzaffar.qureshi, t.satharasi, tochukwu.ogri, rkamalapurkar }@ufl.edu .
+> 2Torch Technologies, Shalimar, Florida, USA, email:
+> Kyle.Volle@torchtechnologies.com
+
+that concurrently generates an accurate estimate of the scalar field and identifies high-intensity regions in the domain. Safe motion plans can then be generated for the robot, leveraging the estimated high-intensity regions. Existing approaches to scalar field estimation offer robust techniques for reconstructing spatial distributions from sparse measurements. These approaches emphasize large-scale cov-erage and optimization of resource usage, such as minimizing control effort for mobile platforms like robots and UAVs [1]–[10]. Estimation techniques such as [10], [15] rely on static sensor networks or pre-defined robot trajectories to provide resource-efficient field mapping. These methods aim to optimize the mapping efficiency but do not consider risks related to exposure to high field intensity. On the other hand, extremum seeking (ES) algorithms [16]– [18] are well-regarded for their efficiency in locating extrema within scalar fields, employing exploitative strategies that guide robots toward local or global optima. Recent advance-ments have introduced safety-aware mechanisms into the ES framework; notably, [19], [20] utilize control barrier function-based filters to mitigate safety violations during transient dy-namics. However, these algorithms remain primarily focused on extremum localization, often at the expense of broader exploration and comprehensive field mapping. Consequently, they do not address the objective of constructing a full spatial estimate of the scalar field. Obstacle avoidance techniques [21]–[23] are often em-ployed for safe navigation while mapping given scalar fields. Obstacles within the operating environment can be detected with sensors such as LiDAR, Sonar, or depth cameras [24]– [26]. These sensors provide real-time data within a finite sensing radius, enabling the robot to react to obstacles before violating safety. However, in this paper, obstacles are not physical, they are regions where the intensity of the scalar field surpasses a safety threshold. As such, the methods introduced in [21]–[25] do not apply to the safe scalar field mapping problem considered in this paper. Since the sensors only measure the field intensity at the current position, the robot must predict intensities in surrounding areas to map and avoid high-intensity regions. In this paper, we focus on Gaussian process (GP) regression for scalar field mapping [27]. A key advantage of GP is the computation of a predictive covariance that naturally serves as a utility function for informative exploration [28], [29]. For example, the trajectories for the robot can be planned to visit locations with high predictive covariance. While effec-tive, standard GP-based planners do not explicitly incorporate safety constraints imposed by potentially hazardous high-intensity regions. 
+
+> arXiv:2604.20799v1 [cs.RO] 22 Apr 2026 2
+
+To ensure safe navigation during the mapping of unknown scalar fields, this paper integrates GP regression with the Hough transform (HT), a robust feature extraction technique widely used in image processing [30], [31]. The authors presented preliminary results on detection of high-intensity re-gions in scalar fields in [32]. However, [32] did not incorporate an optimal strategy for selection of the initial measurement lo-cations, limiting the overall efficiency of the mapping process. In particular, for a fixed number of measurements, selecting uninformative locations can result in degraded mapping perfor-mance and increased posterior uncertainty across the domain [27]. In this study, we address the aforementioned limitation by utilizing optimal sampling strategies, such as maximum variance sampling (MVS) [33], to optimize the number of mea-surements required for mapping. Additionally, the information loss is quantified and compared between scenarios where measurement locations are restricted to safe regions versus when the entire domain is available for sampling using the MVS strategy. The framework developed in this work is also extended to integrate path planning and obstacle avoidance using algorithms such as RRT* [34]. Finally, the performance of the developed GP-HT algorithm is validated through two distinct numerical simulations, as well as an indoor scalar field mapping experiment using a sensor-equipped wheeled mobile robot. A central challenge addressed in this work is balancing safety with information gain during the mapping of scalar fields. This trade-off becomes particularly complex when informative locations lie within unsafe zones. Consequently, a fundamental problem arises in designing a budget-aware relocation scheme that optimally replaces unsafe measurement candidates. Specifically, given a fixed measurement budget and HT-derived safety estimates, the planner must identify admissible safe points that balance predictive covariance re-duction and pathwise cost. This paper addresses this challenge by formulating a systematic relocation algorithm, enabling a rigorous assessment of the information loss incurred by safety-constrained sampling compared to unconstrained MVS. The remainder of this paper is structured as follows. Sec-tion II presents the problem formulation. Sections III- IV con-tain the details of the developed methodology, including the GP regression model and the HT-based detection algorithm. An information loss analysis along with the convergence anal-ysis is presented in Section V and VI, respectively. Section VII provides numerical simulations and experimental results. A discussion of the findings and the summary of contributions and ideas for future research is offered in Section VIII. 
+
+A. Notation 
+
+In this paper, R denotes the set of real numbers, Rn and 
+
+Rn×m denote the sets of real n-dimensional vectors and n×m
+
+dimensional matrices, respectively. R>0 denotes the set of positive real numbers, and R≥a denotes the set of real numbers greater than or equal to a ∈ R. The symbol ∥ · ∥ represents the 2−norm for vectors and the induced 2−norm for matrices. 
+
+In represents an n × n identity matrix and 0n represents an 
+
+n × n zero matrix. For any matrix A ∈ Rn×n, λmax (A)
+
+and λmin (A) denote the maximum and minimum eigenvalues of matrix A, respectively. For a vector x or a matrix A,its transpose is denoted by x⊤ and A⊤, respectively. The gradient of a scalar-valued function f : Rn → R is denoted as 
+
+∇f (x) = 
+
+h ∂f ∂x 1 , . . . , ∂f ∂x n
+
+i⊤
+
+∈ Rn, where x ∈ Rn. For a given set X , ∂X denotes the boundary, Int( X ) denotes the interior, and |X | denotes the cardinality of X .II. P ROBLEM FORMULATION 
+
+Consider an unknown scalar field f : X → R, where X ⊂ 
+
+Rn is a compact domain and n ∈ { 2, 3} denotes the spatial dimension. Given a safety threshold ¯f ∈ R, the domain X is partitioned into two disjoint regions: the safe region denoted as X s and the high-intensity or unsafe region denoted as X u,defined as 
+
+X s := x ∈ X f (x) ≤ ¯f , (1) 
+
+X u := x ∈ X f (x) > ¯f , (2) respectively, where ¯f ∈ (fmin , f max ), fmin := min x∈X f (x),and fmax := max x∈X f (x).In this development, the unsafe region X u is assumed to be a finite union of disjoint P sets, where each subset corresponds to a distinct field source in X , such that 
+
+X u =
+
+> P
+
+[
+
+> i=1
+
+X u,i . (3) The number of high-intensity regions and their spatial profiles are unknown a priori and must be inferred online during the measurement process by the robot 1. The following as-sumptions are required to facilitate the analysis in subsequent sections. 
+
+Assumption 1. [35] The domain X is endowed with a positive definite kernel function k : X × X → R and f has a bounded norm in the native reproducing kernel Hilbert space (RKHS) Hk of k, satisfying ∥f ∥Hk ≤ B for some B > 0.
+
+Assumption 2. f : X → R is Lipschitz continuous on X , i.e., there exists a constant Lf > 0 such that |f (x) − f (x′)| ≤ 
+
+Lf ∥x − x′∥2, ∀ x, x ′ ∈ X .
+
+To facilitate tractable inference over the domain X , a GP is employed as a probabilistic model for the unknown field ff ∼ GP (μ, σ ), (4) where μ : Rn → R is the mean function and σ : Rn ×Rn → R
+
+is the covariance function. It is noted that while f is modeled via a GP for estimation, the theoretical analysis treats f as a function residing in the RKHS Hk, consistent with [36]. To map f , a finite set of measurement locations in X is visited to record the field intensity. The measurement collected at position xi is denoted as yi and is assumed to be of the form 
+
+yi = f (xi) + εi. (5)   
+
+> 1The term spatial profile refers to the geometric characteristics of each super-level set, such as its shape and extent in X.3
+
+where εi ∼ N (0 , σ 2
+
+> n
+
+) is zero-mean Gaussian noise with known variance σ2
+
+> n
+
+. The mapping objectives considered in this paper are  
+
+> •
+
+Field Mapping: Construct an estimate of f using a finite set of noisy measurements such that the error between the true and estimated field is minimized in safe regions.  
+
+> •
+
+High Intensity Region Avoidance: Optimize the measure-ment locations to minimize the number of measurements from the unknown unsafe set X u. 
+
+> •
+
+Safe Trajectory Generation: Given a sequence of mea-surement locations, generate collision-free trajectories that ensure the robot avoids the unsafe region X u while navigating between any two measurement locations. The aforementioned tasks are motivated by real-world robotics applications, such as mapping fire fronts in forest monitoring [37], [38], avoiding hostile radar emitters in reconnaissance missions [39], and characterizing radioactive contamination in nuclear disaster zones [40]–[42]. III. G AUSSIAN PROCESS REGRESSION 
+
+This section outlines a GP regression framework for map-ping the unknown function f based on the noisy measurements collected by a sensor-equipped autonomous robot. GP regres-sion offers a flexible, non-parametric Bayesian approach for learning complex and nonlinear functions [27]. An important component of GP regression framework is the selection of the kernel function, which encodes prior assumptions about the structure and smoothness of the function being mapped. In this paper, the squared exponential (SE) covariance kernel is selected for GP regression, which is defined as 
+
+k(x, x ′) := α2 exp 
+
+
+
+− ∥x − x′∥2
+
+2l2
+
+
+
+, (6) where α ∈ R>0 denotes the signal variance and l ∈ R>0
+
+denote the length-scale of the kernel function. Let Xt = {xi}ti=1 denote the set of measurement locations, 
+
+Yt = {yi}ti=1 denote the corresponding field measurements, and Dt = {(xi, y i)}ti=1 denote the dataset at the measurement step t. The posterior distribution of the GP at any given measurement step t, conditioned on the data Dt, is expressed as 
+
+f (x∗) | D t ∼ N  μt(x∗), σ 2 
+
+> t
+
+(x∗) , (7) where x∗ denotes an arbitrary test point, μt is the posterior mean and σ2 
+
+> t
+
+is the posterior variance of the GP. Given the measurements Yt at Xt, an arbitrary test location 
+
+x∗, and the kernel function in (6), the kernel vector kt(x∗) ∈
+
+Rt between the test point and the measurement locations, and the kernel matrix Ktt ∈ Rt×t of the measurement locations can be defined as [27] 
+
+kt(x∗) := [ k(x∗, x 1), . . . , k (x∗, x t)] ⊤ , (8) 
+
+[Ktt ]i,j := k(xi, x j ), i, j = 1 , . . . , t. (9) Using kt and Ktt , the GP posterior mean μt and variance σ2
+
+> t
+
+at any measurement step t are computed as [27] 
+
+μt(x∗) = kt(x∗)⊤  Ktt + σ2
+
+> n
+
+It
+
+−1 Yt, (10) 
+
+σ2 
+
+> t
+
+(x∗) = k(x∗, x ∗) − kt(x∗)⊤  Ktt + σ2
+
+> n
+
+It
+
+−1 kt(x∗). (11) Building on the GP regression framework, the next subsection focuses on information-driven initial selection of planned measurement locations. This initial selection is then modified in Section IV to minimize exposure to high-intensity regions. 
+
+A. Maximum Covariance Sampling Strategy 
+
+Existing strategies for the selection of measurement loca-tions aim to reduce the predictive variance by maximizing the information gained from each measurement. A widely used approach is mutual information sampling, which selects the next measurement location expected to yield the largest reduction in predictive variance [33], [43]. The mutual information between the true function values 
+
+FXt := [ f (x1), . . . , f (xt)] ⊤ and the noisy measurements Yt
+
+is defined as (cf. [43, Chapter 2]) 
+
+I(Yt; FXt ) := H(Yt) − H(Yt | FXt ), (12) where H(Yt) = − P 
+
+> y∈Y t
+
+p(y) ln p(y) is the entropy of Yt
+
+and H(Yt | FXt ) = − P
+
+> z∈FXt
+
+P 
+
+> y∈Y t
+
+p(z, y ) ln p(y | z)
+
+is the conditional entropy of Yt given FXt . For Gaussian distributions, the mutual information takes the closed-form expression [43] 
+
+I(Yt; FXt ) = 12 ln 
+
+
+
+det 
+
+
+
+It + 1
+
+σ2
+
+> n
+
+Ktt 
+
+ 
+
+, (13) where Ktt ∈ Rt×t is the kernel matrix defined in (9). Finding an optimal set of measurement locations denoted as 
+
+X oT that maximizes I over X is NP-hard [44]. A commonly employed approach to solve this problem is to use greedy sampling as developed in [45], where at each step t, the next sampling point is selected to maximize the information gain using the rule 
+
+xt+1 = argmax 
+
+> x∈X \X t
+
+I(YXt∪{ x}; FXt∪{ x})−I(YXt ; FXt ) . (14) Let the optimal information gain over any T locations be defined as 
+
+γoT := max     
+
+> XoT⊆X |X oT|=T
+
+I(YX oT ; FX oT ), (15) and let 
+
+γgT := I(YX gT ; FX gT ), (16) denote the information gain using the greedy sampling al-gorithm defined in (14), and X gT is the set of measurement locations selected by the greedy algorithm after T iterations. Using the submodular property of information function I in (12), the greedy algorithm yields a near-optimal solution that satisfies the inequality (cf. [46]) 
+
+γgT ≥
+
+
+
+1 − 1
+
+e
+
+
+
+γoT . (17) The factor  1 − 1
+
+> e
+
+ ≈ 0.632 in (17) guarantees that the information gain from the greedy strategy is at least 63.2% of that obtained by the globally optimal set X oT (see [45], [46]). The information gain serves as a quantitative metric to compare the learning performance of different sampling 4
+
+strategies. Specifically, the bound established in (17) provides a baseline for assessing the information loss incurred when deviating from the greedy strategy as discussed in detail in Section V. In the Gaussian setting, where measurements have Gaussian noise, the greedy maximization of information gain simplifies to the selection of the point with the highest variance [44], [47]. Specifically, the next measurement location is determined by 
+
+xt+1 = argmax 
+
+> x∈X \X t
+
+σ2 
+
+> t
+
+(x), (18) where σ2 
+
+> t
+
+(x) is the posterior variance defined in (11). This strategy is commonly referred to as maximum variance sam-pling (MVS) [33]. Since the covariance computation in (11) does not require field measurements, the selection criterion in (18) can be solved offline to yield the most informative set of planned measurement locations. In this paper, it is assumed that an initial set of planned measurement locations, denoted as X 0 
+
+> T
+
+, is pre-computed using MVS. The order in which the measurement locations appear in 
+
+X 0 
+
+> T
+
+is dictated by (18). However, it may not be the ideal order for a mobile robot to collect the samples. For example, the user may wish to re-order the points to minimize the distance traveled by the robot. The implications of such reordering on the information gain are addressed in the subsequent section. 
+
+B. Reordering Sampling Locations for Path Efficiency 
+
+A natural question that arises with the reordering of X 0 
+
+> T
+
+is whether the sequence in which the measurements are acquired affects the total information gain. The following lemma shows that the final information gain of a GP is invariant to the order of acquisition of measurement locations. 
+
+Lemma 1. Let XT ⊂ X be a fixed subset of T measurement locations and let X ∗ ⊂ X denote any arbitrary finite set of test locations. The GP posterior covariance matrix ΣT computed over X ∗ given measurements at XT is invariant under permu-tations of the acquisition order of the measurement locations. Proof. Let K∗∗ ∈ RM ×M be the test-test kernel matrix with entries [K∗∗ ]i,j = k(x∗ 
+
+> i
+
+, x ∗ 
+
+> j
+
+), and let K∗t ∈ RM ×T be the test-train kernel matrix with entries [K∗t]i,j = k(x∗ 
+
+> i
+
+, x j ),where M denotes the number of test locations in X ∗. Let 
+
+OA and OB represent two distinct acquisition orderings of the set XT , and let P ∈ RT ×T be the permutation matrix that transforms ordering OA to ordering OB . Let the kernel matrices constructed under ordering OA be denoted by KA
+
+> tt
+
+and KA
+
+> ∗t
+
+. Then, the corresponding matrices for ordering OB
+
+satisfy 
+
+KB 
+
+> tt
+
+= PKA 
+
+> tt
+
+P⊤, (19) 
+
+KB 
+
+> ∗t
+
+= KA
+
+> ∗t
+
+P⊤, (20) For the permuted ordering OB , the covariance matrix ΣBT can be expressed as 
+
+ΣBT = K∗∗ − KB
+
+> ∗t
+
+(KB 
+
+> tt
+
++ σ2
+
+> n
+
+IT )−1(KB
+
+> ∗t
+
+)⊤
+
+= K∗∗ − (KA
+
+> ∗t
+
+P⊤)  PKA 
+
+> tt
+
+P⊤ + σ2
+
+> n
+
+IT
+
+−1 (KA
+
+> ∗t
+
+P⊤)⊤
+
+= K∗∗ − KA
+
+> ∗t
+
+P⊤  P(KA 
+
+> tt
+
++ σ2
+
+> n
+
+IT )P⊤−1 P(KA
+
+> ∗t
+
+)⊤.
+
+Using the identity (PQP⊤)−1 = PQ−1P⊤ and the orthog-onality of permutation matrices ( P⊤P = IT ), the expression simplifies to 
+
+ΣBT = K∗∗ − KA
+
+> ∗t
+
+P⊤ P(KA 
+
+> tt
+
++ σ2
+
+> n
+
+IT )−1P⊤ P(KA
+
+> ∗t
+
+)⊤
+
+= K∗∗ − KA
+
+> ∗t
+
+(P⊤P)( KA 
+
+> tt
+
++ σ2
+
+> n
+
+IT )−1(P⊤P)( KA
+
+> ∗t
+
+)⊤
+
+= K∗∗ − KA
+
+> ∗t
+
+(KA 
+
+> tt
+
++ σ2
+
+> n
+
+IT )−1(KA
+
+> ∗t
+
+)⊤ = Σ AT .
+
+Thus, the posterior covariance ΣT is invariant to the acquisi-tion order of X 0 
+
+> T
+
+. Moreover, since permutations are orthogonal, 
+
+det( It + 1
+
+> σ2
+> n
+
+Ktt ) is order-invariant; hence the mutual informa-tion associated with XT is also invariant to acquisition order. Determining a trajectory that visits all planned measurement locations with the minimum total travel distance is the travel-ing salesperson problem (TSP) [48], which is known to be NP-hard. For practical applications involving a moderate number of measurement locations, approximate algorithms are often sufficient. For instance, the nearest neighbor (NN) heuristic provides a computationally efficient method to construct a reasonable motion plan [49]. In the NN algorithm, the robot proceeds from its current position to the nearest unvisited location, repeating the process until all locations in X 0 
+
+> T
+
+are visited. While the NN algorithm does not guarantee a shortest path, it yields a tractable approximation suitable for real-time robotic path planning. In this paper, the NN heuristic is employed to construct the ordered sequence of measurement locations denoted as 
+
+X0 
+
+> T
+
+= ( x1, x 2, . . . , x T ) , (21) where the locations are ordered such that each xi+1 is the nearest unvisited neighbor of xi, starting from a specified initial location x1. Under Lemma 1, the initial sequence X0
+
+> T
+
+in (21) yields the same GP posterior covariance as the planned measurement set X 0 
+
+> T
+
+, while providing a feasible trajectory for the robot for data collection. Although X0 
+
+> T
+
+provides a sequence of MVS locations, the presence of unsafe regions X u in the domain necessitates a safety evaluation of these measurement locations. To facilitate the safety evaluation from the evolving GP posterior, the next section focuses on detecting high-intensity regions of the field, which are then used to modify the measurement plan. IV. E STIMATION OF HIGH INTENSITY REGIONS USING 
+
+HOUGH TRANSFORM 
+
+To ensure the safety of the robot during the measurement process, we must evaluate the uncertainty associated with the GP posterior. Since the true function f is unknown, we rely on a probabilistic confidence bound to distinguish safe and unsafe regions. Evaluating the GP posterior error over the infinite set X
+
+is analytically intractable. A commonly used approach is to evaluate the GP posterior on a finite number of test locations (cf. [27], [50]). To facilitate the analysis, let the subset X ∗ ⊂X be a finite set of uniformly distributed testing locations in X , where |X ∗| = M . The finite X ∗ is quantified by two 5
+
+geometric measures, which are the fill distance hX ∗,X and the separation radius qX ∗ , defined as 
+
+hX ∗,X := sup 
+
+> x∈X
+
+min   
+
+> x∗∈X ∗
+
+∥x − x∗∥2, (22) 
+
+qX ∗ := min  
+
+> x∗
+> i̸=x∗
+> j
+
+∥x∗ 
+
+> i
+
+− x∗ 
+
+> j
+
+∥2. (23) To determine whether a location lies within the safe region 
+
+X s, the associated uncertainty is evaluated using the GP posterior at each update step t. The following lemma from [36] establishes uniform confidence bounds which will be utilized for both high-intensity region estimation and evaluation of planned measurement locations for safety. 
+
+Lemma 2. [36, Lemma 5.1] Given a domain X ∗ ⊂ Rn, a confidence level δ ∈ (0 , 1) , and a non-decreasing sequence 
+
+{πt}t∈N such that P 
+
+> t≥1
+
+π−1 
+
+> t
+
+= 1 , if 
+
+βt := 2 ln 
+
+ M π t
+
+δ
+
+
+
+, (24) 
+
+then, with probability at least 1 − δ,
+
+|f (x) − μt−1(x)| ≤ pβt σt−1(x), ∀t ≤ T, ∀x ∈ X ∗, (25) 
+
+where μt−1 and σt−1 are the GP posterior mean and covari-ance functions computed using the observed data Dt−1.A. Binary Safety Map and Hough Transform 
+
+To detect and identify the high-intensity regions using the GP posterior mean μt−1 and covariance σt−1 at any measurement step t − 1, a binary map Gt : X ∗ → { 0, 1}
+
+is generated using 
+
+Gt(x∗) =        
+
+> (
+> 0,if μt−1(x∗) + √βtσt−1(x∗)+ LfhX∗,X≤¯f ,
+> 1,otherwise ,
+
+(26) where ¯f is the user-defined safety threshold, Lf is the Lipschitz constant defined in Assumption 2, and βt is the confidence parameter defined in Lemma 2. The HT is applied to the data generated by the binary map 
+
+Gt at each measurement step t. The HT is a technique used in computer vision to isolate geometric primitives by trans-forming spatial points into curves within a parameter space; shapes are identified by parameter combinations accumulating the maximum number of consistent votes [30], [31]. In this paper, the circular or spherical Hough transform is utilized (cf. [32]) to detect objects in the binary image in (26) yielding 
+
+Ct := {(ci(t), r i(t)) }Pt 
+
+> i=1
+
+, (27) where ci(t) and ri(t) denote the center and radius of the i-th detected circle or sphere, and Pt denotes the number of circles or spheres identified at iteration t. The union of these detected geometries yields an approximation of the unsafe region, defined as 
+
+¯X ut := 
+
+> Pt
+
+[
+
+> i=1
+
+¯B(ci(t), r i(t)) , (28) where ¯B(c, r ) denotes the closed ball of radius r centered at 
+
+c. The estimate of the safe region is given by 
+
+¯X st := X \ ¯X ut . (29) The estimates ¯X st and ¯X ut guide the safety-constrained relo-cation of planned measurement locations and the synthesis of collision-free trajectories between any pair of measurement locations. 
+
+Remark 1. Derivation of bounds on the error between the true safe set X s and the estimated safe set ¯X st is precluded by the fact that the level sets of the underlying scalar field 
+
+f are not assumed to follow any predefined parametric forms or fixed geometric primitives, and is out of the scope of the paper. B. Safety Evaluation of Measurement Locations 
+
+To avoid measurements in the unsafe set, at each step t, the GP posterior generated using the dataset Dt is used to evaluate the remaining T −t planned locations for safety, and replanned if necessary. Let XtT denote the updated measurement location set at time step t consisting of visited measurement locations up to time step t and planned measurement locations from 
+
+t + 1 to T .To determine whether any planned measurement location in 
+
+XtT lies within the safe region, their associated uncertainty is evaluated using the confidence bounds derived in Lemma 2. Given the user-defined safety threshold ¯f , the time-varying safe subset Xs,t is defined using the probabilistic safety criterion (25) as 
+
+Xs,t = x ∈ XtT μt(x)+ √βt σt(x)+ Lf hX ∗,X ≤ ¯f , (30) for t ≥ 1. At any measurement step t, (30) provides the safe subset with probabilistic safety guarantees. To utilize the measurement budget T , locations deemed unsafe, i.e., the ones in XtT \ Xs,t are replanned to render them safe. The following subsection outlines the relocation process. 
+
+C. Relocation of Measurement Locations 
+
+Any future location found to lie within the estimated unsafe region ¯X ut , as identified by the HT, is replaced with a new location in ¯X st . The replacement location is selected from 
+
+¯X st to minimize its distance from the initially planned unsafe location. Relocation of all locations in XtT \ Xs,t results in a new planned set Xt+1  
+
+> T
+
+. Note that XTT denotes the true set of executed measurement locations at the conclusion of the mapping experiment. The classification of safe and unsafe regions depends on the GP posterior, which evolves as measurement data accumulate [27]. Hough transform-based unsafe region estimates derived early in the process may result in false positives, where safe regions are incorrectly classified as unsafe or vice versa. These misclassifications can lead to the formation of unvisited pockets within the safe domain, hindering the objective of maximizing exploration in safe regions. To correct these misclassifications, the algorithm recursively evaluates the set of previously rejected planned locations. Any location from 6
+
+the initial set X0 
+
+> T
+
+that was previously deemed unsafe but is subsequently found to lie within the updated safe region ¯X st is reinstated into the set of planned measurement locations. This strategy ensures that the robot corrects for initial conservatism as the model uncertainty diminishes. 
+
+Remark 2. This paper focuses on the finite measurement bud-get setting, where budget constraints necessitate a minimum-distance based relocation strategy. This relocation strategy aims to minimize deviations from the planned robot trajectory while effectively utilizing boundary information between safe and unsafe regions from HT. In contrast, under an infinite measurement budget setting, one could employ a maximum-variance sampling approach by iteratively solving Eq. (18) 
+
+over the estimated safe set ¯X st . As the number of iterations 
+
+T → ∞ , this latter strategy would yield a dense sampling of the entire safe domain X s.
+
+Algorithm 1 details the complete GP-HT framework, in-cluding the relocation strategy and retroactive GP updates. The subsequent section introduces a method for designing feasible trajectories that ensure the robot avoids unsafe regions during the mapping process, leveraging the HT-based estimates of 
+
+¯X u.
+
+D. Safe Trajectory Generation using RRT* 
+
+In this section, the path planning problem is addressed to de-termine an optimal trajectory that enables the robot to visit the planned measurement locations while avoiding high-intensity regions. Trajectory planning in environments with obstacles is a classical problem in robotics (e.g. [21]–[23]). Approaches to this problem are generally categorized into optimization-based methods, such as CHOMP [51], STOMP [52], and TrajOpt [53], which iteratively refine trajectories using gra-dient information, and sampling-based algorithms, such as the rapidly-exploring random tree (RRT) and its asymptotically optimal variant, RRT* [34]. Given a finite sequence of measurement locations XTT =(x1, x 2, . . . , x T ) ⊂ X , the objective is to construct a safe path for a sensor-equipped robot to traverse between two successive locations and navigate the entire planned trajectory. In this work, at any measurement step t, the estimated unsafe region 
+
+¯X ut is treated as the obstacle map, and the RRT* algorithm is utilized to construct a collision-free path ϕt from xt to xt+1 .This process is repeated until all measurement locations have been visited. This trajectory planning approach guarantees safety subject to the accuracy of the Hough transform-based high-intensity region approximation. The subsequent section presents a quantitative analysis of the information loss to compare the performance of the proposed GP-HT sampling strategy against the baseline MVS approach, specifically comparing the execution of measure-ment sequence XTT versus X0 
+
+> T
+
+.V. I NFORMATION LOSS DUE TO GP-HT A LGORITHM 
+
+To quantify the effect of relocating planned measurement locations on the information gain, the information gain ob-tained from the final executed set XTT , is compared to that of the initially planned greedy set X0 
+
+> T
+
+. Given any sequence of T
+
+measurement locations, the information gain can be expressed in terms of the eigenvalues of the kernel matrix derived from (13) as 
+
+I(Y; FXT ) = 12 ln  det( IT + σ−2 
+
+> n
+
+Ktt )
+
+= 12
+
+> T
+
+X
+
+> i=1
+
+ln 
+
+
+
+1 + λi
+
+> σ2
+> n
+
+
+
+, (31) where λi denotes the i-th eigenvalue of the kernel matrix Ktt 
+
+[36] . Let Kg ∈ RT ×T denote the kernel matrix computed using (9), using the greedy sampling locations in X0 
+
+> T
+
+. Let 
+
+Ks ∈ RT ×T denote the kernel matrix computed using the executed measurement locations in XTT . Let {λgi } and {λsi }
+
+denote the set of eigenvalues of Kg and Ks, respectively. The difference in the information gain due to safety-aware relocation can then be computed as [46] 
+
+∆γ := γgT −γsT = 12
+
+> T
+
+X
+
+> i=1
+
+
+
+ln 
+
+
+
+1+ λgi
+
+σ2
+
+> n
+
+
+
+−ln 
+
+
+
+1+ λsi
+
+σ2
+
+> n
+
+ 
+
+. (32) Using the definition of γgT from (16) and its correlation from optimal information value γoT from (17), we get 
+
+γgT ≥
+
+
+
+1 − 1
+
+e
+
+
+
+γoT , (33) The ∆γ from (32) can be utilized to bound the safe informa-tion gain 
+
+γsT = γgT − ∆γ ≥
+
+
+
+1 − 1
+
+e
+
+
+
+γoT − ∆γ, (34) where γsT can be computed using (13) and final set of executed measurement locations XTT using GP-HT sampling strategy. The loss of information gain due to XTT can be compared using the inequality (see [46]), 
+
+γsT ≥ γsT
+
+γgT
+
+
+
+1 − 1
+
+e
+
+
+
+γoT . (35) Using the replenishment scheme of adding safe measure-ment locations in the planned set as discussed in Section IV-C, one can conclude that the loss of information ∆γ is only attributed to unsafe planned measurement locations, while preserving the information utility of safe locations. The bound in (35) provide a quantitative analysis of the information loss while maintaining safety during the measurement process. The next section provides convergence guarantees for the evolving GP posterior under the GP-HT sampling strategy. The analysis is required since the domain for selecting mea-surement locations is restricted to safe regions. VI. C ONVERGENCE ANALYSIS OF THE GP-HT ALGORITHM 
+
+This section establishes convergence properties of the devel-oped GP-HT algorithm under safety constraints. The analysis examines a GP-based safety condition defined on a finite test grid and its extension to the continuous domain via Lipschitz regularity. The objective is to show that unsafe locations are not certified as safe with high probability, and that interior safe 7
+
+locations are eventually certified as the number of measure-ments increases and the GP posterior uncertainty contracts. While the practical implementation uses minimum-distance relocation to exploit safe-unsafe boundary information for robotic path planning, the analysis considers the idealized setting where measurement budget T → ∞ and locations are selected using MVS on the certified safe set. In this setting, the MVS rule serves as an exploration heuristic that samples in regions of high covariance, thereby accelerating variance contraction and enabling asymptotic identification of the safe region. All stochastic statements below are understood with respect to an underlying probability space (Ω , F, P), where Ω denotes the set of all realizations of the measurement-noise sequence in the GP observation model, F is the associated σ-algebra, and P is the probability measure induced by the assumed noise distribution. Accordingly, the event E ∈ F represents the subset of noise realizations for which the GP confidence bound holds uniformly over the test grid and over all time steps. Using Lemma 2, the subsequent analysis relies on the high-probability event defined as                  
+
+> E:= ω∈Ω∀x∈ X ∗,∀t≥1 : f(x)−μt−1(x)≤ √βtσt−1(x).
+
+(36) Provided E occurs, the GP confidence bounds hold uniformly for every grid point and for all time steps, allowing the subse-quent convergence analysis to be carried out deterministically. It is then shown that the safety condition never admits a grid point whose true function value exceeds the safety threshold. To formalize this, the true safe and unsafe subsets of the test grid X ∗ are defined as 
+
+X s, ∗ := {x ∈ X ∗ | f (x) ≤ ¯f }, (37) 
+
+X u, ∗ := {x ∈ X ∗ | f (x) > ¯f }. (38) Using the GP confidence bound specified in (36), define the GP-based safe set as 
+
+bX s, ∗ 
+
+> t
+
+:= 
+
+n
+
+x ∈ X ∗ μt−1(x) + pβt σt−1(x) ≤ ¯f
+
+o
+
+. (39) By construction, a grid point is certified as safe only if its GP upper confidence bound lies below the prescribed safety threshold. The following lemma establishes the correctness of the safety condition in (39), showing that no true unsafe location is assumed safe. 
+
+Lemma 3. Provided E occur, the GP-based estimate of the safe set satisfies 
+
+bX s, ∗ 
+
+> t
+
+⊆ X s, ∗, ∀t ≥ 1. (40) 
+
+Proof. For an arbitrary time index t ≥ 1, let x ∈ bX s, ∗
+
+> t
+
+be given. By the definition of the discrete GP-based safety condition, 
+
+μt−1(x) + pβt σt−1(x) ≤ ¯f . (41) On E, the GP confidence property gives 
+
+f (x) ≤ μt−1(x) + pβt σt−1(x). (42) Combining the two inequalities yields f (x) ≤ ¯f , and therefore 
+
+x ∈ X s, ∗.Lemma 3 establishes that the discrete GP-based safety condition never admits any grid point whose true function value violates the safety constraint. This guarantee, however, applies only to the finite set of test locations. To extend the safety guarantee to the continuous domain, the result is lifted using the assumed Lipschitz regularity of the unknown function f . To this end, the nearest-neighbor projection onto the test grid is defined as 
+
+ΠX ∗ (x) ∈ arg min   
+
+> x∗∈X ∗
+
+∥x − x∗∥2, (43) which satisfies 
+
+∥x − ΠX ∗ (x)∥2 ≤ hX ∗,X , ∀x ∈ X . (44) This projection enables the construction of a continuous-domain safety condition by augmenting a Lipschitz margin that accounts for interpolation error between grid points. Under Assumption 2 on the Lipschitz continuity of f , we define the continuous GP-based safe set as 
+
+bX st := x ∈ X μt−1(x∗) + √βt σt−1(x∗) + Lf hX ∗,X ≤ ¯f ,
+
+(45) where x∗ = Π X ∗ (x) denotes the nearest test-grid point to x.The following result formalizes the safety condition, showing that the Lipschitz-based lifting preserves the safety guarantees established on the discrete test grid. 
+
+Theorem 1. Let the Assumption 2 hold and that the GP confidence event E defined in (36) occur. Then, for all t ≥ 1,the GP-based safety condition defined in (45) satisfies 
+
+bX st ⊆ X s. (46) 
+
+Proof. Let x ∈ bX st and x∗ = Π X ∗ (x), the safety condition can be written as 
+
+μt−1(x∗) + pβt σt−1(x∗) + Lf hX ∗,X ≤ ¯f . (47) On the event E, we have f (x∗) ≤ μt−1(x∗) + √βt σt−1(x∗).Therefore, we have 
+
+f (x∗) + Lf hX ∗,X ≤ ¯f . (48) By Lipschitz continuity of f ,
+
+f (x) ≤ f (x∗) + Lf ∥x − x∗∥2 ≤ ¯f , (49) which implies x ∈ X s.Assuming the high-probability confidence event E occur, every location admitted into the condition is truly safe, so no unsafe point is ever certified as safe. However, a location may be safe while still failing to satisfy (39) if the GP upper confidence bound remains above the safety threshold. Safe points are likely to fail (39) near the safety boundary, where f (x) ≈ ¯f , and thus small posterior uncertainty can prevent safety certification. To obtain a meaningful asymptotic certification result, the analysis therefore focuses on grid points that lie strictly inside the safe region with a nonzero margin separating them from the threshold. Accordingly, for any 
+
+η > 0, the interior-safe grid is defined as 
+
+X s, ∗,η := x ∈ X ∗ f (x) ≤ ¯f − Lf hX ∗,X − η . (50) 8
+
+The η margin excludes points whose safety status may be affected by discretization or boundary effects. We now show that interior-safe grid points are eventually included in the discrete safety condition, provided that posterior uncertainty at those points contracts sufficiently. 
+
+Theorem 2. Let X ∗ ⊂ X , let k be positive definite, and assume Gaussian noise with variance σ2 
+
+> n
+
+> 0. Let {σ2 
+
+> t
+
+(·)}t≥0
+
+denote the GP posterior variance sequence induced by any sampling sequence {xt}t≥1 ⊆ X ∗. Then the following holds. (a) For every z ∈ X ∗, the sequence {σ2 
+
+> t
+
+(z)}t≥0 is non-increasing and convergent. (b) If a point x ∈ X ∗ is sampled infinitely often, then 
+
+σ2 
+
+> t
+
+(x) → 0 as t → ∞ . (51) 
+
+(c) On the event E, fix any margin η > 0 and any x ∈ X s, ∗,η .If 
+
+lim 
+
+> t→∞
+
+pβt σt−1(x) → 0, (52) 
+
+then there exists a finite time Tx < ∞ such that 
+
+x ∈ bX s, ∗ 
+
+> t
+
+, ∀t ≥ Tx. (53) 
+
+Proof. (a). The GP posterior variance update under noisy observations is given by 
+
+σ2 
+
+> t
+
+(z) = σ2
+
+> t−1
+
+(z) − Σt−1(z, x t)2
+
+σ2 
+
+> n
+
++ σ2
+
+> t−1
+
+(xt) , ∀z ∈ X ∗. (54) The subtracted term is nonnegative for all z, so σ2 
+
+> t
+
+(z) is nonincreasing. Since σ2 
+
+> t
+
+(z) ≥ 0, the sequence converges. 
+
+(b). Let {tj } denote the subsequence of times at which 
+
+xtj = x. Suppose lim t→∞ σ2 
+
+> t
+
+(x) = v > 0. Then for sufficiently large j,
+
+Σtj −1(x, x )2
+
+σ2 
+
+> n
+
++ σ2 
+
+> tj−1
+
+(x) = σ4 
+
+> tj−1
+
+(x)
+
+σ2 
+
+> n
+
++ σ2 
+
+> tj−1
+
+(x) ≥ (v/ 2) 2
+
+σ2 
+
+> n
+
++ v , (55) which is a strictly positive constant. This contradicts the convergence of σ2 
+
+> t
+
+(x). Hence σ2 
+
+> t
+
+(x) → 0.
+
+(c). For η > 0 and x ∈ X s, ∗,η , we have 
+
+f (x) ≤ ¯f − Lf hX ∗,X − η. (56) On the event E, the GP confidence bound yields 
+
+f (x) ≥ μt−1(x) − pβt σt−1(x), (57) Adding √βt σt−1(x) to both sides gives 
+
+μt−1(x) + pβt σt−1(x) ≤ f (x) + 2 pβt σt−1(x). (58) Substituting the interior-safe inequality for f (x) yields 
+
+μt−1(x)+ pβt σt−1(x) ≤ ¯f −Lf hX ∗,X −η+2 pβt σt−1(x).
+
+(59) Assuming lim t→∞ 
+
+√βt σt−1(x) = 0 and by the definition of the limit, there exists Tx < ∞ such that for all t ≥ Tx,
+
+2pβt σt−1(x) ≤ η. (60) This condition requires that the posterior uncertainty at x
+
+contracts sufficiently fast relative to the growth of βt, which is determined by the chosen GP confidence parameter. Substi-tuting (60) into (59) implies that for all t ≥ Tx,
+
+μt−1(x) + pβt σt−1(x) ≤ ¯f − Lf hX ∗,X . (61) In particular, we have 
+
+μt−1(x) + pβt σt−1(x) ≤ ¯f , (62) and therefore, (39) implies (53). 
+
+Corollary 1. On the event E, fix any margin η > 0. If 
+
+pβt σt−1(x) → 0, ∀x ∈ X s, ∗,η , (63) 
+
+then there exists a finite time T ∗ < ∞ such that 
+
+X s, ∗,η ⊆ bX s, ∗ 
+
+> t
+
+, ∀t ≥ T ∗. (64) 
+
+Proof. By Theorem 2(c), for each x ∈ X s, ∗,η , there exists a finite time Tx < ∞ such that x ∈ bX s, ∗ 
+
+> t
+
+for all t ≥ Tx.Since X s, ∗,η ⊆ X ∗ and X ∗ is finite, the set X s, ∗,η is finite. Hence, T ∗ is defined as T ∗ := max x∈X s, ∗,η Tx < ∞ Thus, (64) holds. In GP-HT, sampling is restricted to the currently certified-safe region and is guided by the MVS rule, which repeat-edly queries locations of highest posterior variance within the admissible set. This safe-restricted variance-seeking rule is reminiscent of space-filling and greedy variance-reduction strategies studied in kernel interpolation, such as P -greedy sampling [54, Thm. 4.1]. Theorem 2 shows that any interior-safe grid point is eventually certified once its confidence width becomes sufficiently small, and Corollary 1 then shows that there exists a finite time after which all points in X s, ∗,η 
+
+belong to the certified-safe set bX s, ∗ 
+
+> t
+
+. In addition, Theorem 1 guarantees that the Lipschitz-lifted set bX st remains a sound inner approximation of the true continuous safe set X s for all 
+
+t. Consequently, the proposed method asymptotically certifies a corresponding interior subset of the continuous safe region through the Lipschitz lifting, up to the discretization margin 
+
+Lf hX ∗,X .VII. S IMULATIONS AND RESULTS 
+
+This section presents two simulation studies and a hardware experiment to evaluate the performance of the developed safety-aware scalar field mapping framework using the GP-HT algorithm (Algorithm 1). Simulation 1 (section VII-A) considers a 2D scalar field with multiple high-intensity regions distributed across the domain. Simulation 2 (section VII-B) extends the framework to a 3D setting, where high-intensity regions are modeled as spherical regions. Finally, a hardware experiment demonstrates the effectiveness of the GP-HT algo-rithm using a wheeled robot equipped with an onboard scalar field intensity sensor (section VII-C). 9
+
+A. Two-Dimensional Simulation 
+
+In this simulation, the scalar field used is generated using 
+
+f (x, y ) = exp 
+
+
+
+− (x − x1)2 + ( y − y1)2
+
+0.08 
+
+
+
++ exp 
+
+
+
+− (x − x2)2 + ( y − y2)2
+
+0.08 
+
+
+
+, (65) where the coordinates of the two scalar field sources are se-lected as (x1, y 1) = (0 .25 , 0.75) and (x2, y 2) = (0 .75 , 0.25) .The domain of the function is restricted to x, y ∈ [0 , 1] . The function output ranges in f ∈ (0 , 1] , and the threshold ¯f = 0 .7
+
+is selected to define high-intensity regions. The exponential term in (65) represents a localized intensity peak centered at its respective source location, with the parameter 0.08 controlling the spatial spread, as shown in Figure 1. Initially, 100 measurement locations are planned using the information maximization in (18) as shown in Figure 3. The GP model is initialized with a zero-mean prior, α =1 and l = 0 .15 are selected as hyperparameters for the kernel. The GP posterior is evaluated over a fixed grid of 10,000 uni-formly distributed testing locations. High-intensity regions are estimated at each step using the imfindcircles HT routine of MATLAB on the binary high-intensity map generated from the GP posterior. A radius range of [0 .05 , 0.15] is selected to capture the high-intensity regions, with a sensitivity parameter of 1 to ensure robust detection. A temporal evaluation of the detected high-intensity regions is illustrated in Figure 3. Figures 3 also compare the initially planned and the final executed measurement locations. 
+
+B. Three-Dimensional Simulation 
+
+This simulation extends the developed framework to a 3D scalar field defined over the cubic domain 
+
+X = [0 , 10] 3. The field is generated using four field sources, each contributing an exponentially decaying intensity centered at fixed ground-plane locations 
+
+(xi, y i, z i) ∈ {(2 , 2, 0) , (2 , 8, 0) , (8 , 2, 0) , (8 , 8, 0) }.The scalar field function is given by 
+
+f (x,y,z )= A1exp 
+
+> 
+> −λp(x−x1)2+( y−y1)2+( z−z1)2
+> 
+> +A2exp
+> 
+> −λp(x−x2)2+( y−y2)2+( z−z2)2
+> 
+> +A3exp
+> 
+> −λp(x−x3)2+( y−y3)2+( z−z3)2
+> 
+> +A4exp
+> 
+> −λp(x−x4)2+( y−y4)2+( z−z4)2
+> 
+
+, (66) where Ai is the amplitude of the i-th source and selected as 
+
+A1, A 4 = 40 and A2, A 3 = 20 , and λ = 1 .7 controls the spatial decay rate of the field. A binary point cloud constructed using the threshold ¯f = 2 .The high-intensity regions are detected using MATLAB’s 
+
+bwlabeln and regionprops3 functions. The resulting high-intensity regions are extracted using the centroids and radii of the detected spheres. The GP model is initialized with a zero-mean prior, and 
+
+α = 1 and l = 2 .5 are selected as hyperparameters for the kernel. The predicted high-intensity regions are visualized using isosurfaces, and representative 2D slices at x = 2 and 
+
+Algorithm 1 GP-HT: Safe field mapping using Hough transform-based high-intensity detection 
+
+Require: GP hyperparameters (α, l, σ n), safety threshold ¯f ,initial location of the robot x1, testing locations X ∗
+
+Ensure: Final dataset DT , posterior GP μT and σN , executed measurement sequence XTT , trajectory Φ 
+
+> 1:
+
+Offline:  
+
+> 2:
+
+Given intial location x1 and X ∗ compute kernel matrices using (9)  
+
+> 3:
+
+Select T locations via MVS samping over X ∗ using (18) and compute X 0 
+
+> T
+> 4:
+
+Reorder X 0 
+
+> T
+
+via nearest-neighbor strategy to minimize travel distance and compute X0 
+
+> T
+> 5:
+
+Initialize: Set executed sequence XTT ← ∅ , dataset D0 ←∅, and global trajectory Φ ← ∅ , prior mean μ0 ← 0M ×1
+
+and covariance Σ0 ← KX ∗,X ∗ 
+
+> 6:
+
+Online:  
+
+> 7:
+
+for t = 0 , . . . , T do  
+
+> 8:
+
+Observe yt = f (xt) + ϵ and update history: Dt ←Dt−1 ∪ { (xt, y t)} and XTT ← XTT ∪ { xt} 
+
+> 9:
+
+Compute μt ∈ RM , Σt ∈ RM ×M using Eq. (10) and (11)  
+
+> 10:
+
+Generate binary map Gt using μt, Σt, β t, ¯f (Eq. 26)  
+
+> 11:
+
+Apply HT on Gt to extract primitives Ct (Eq. 27) using functions imfindcircles or regionprops3 to  
+
+> 12:
+
+Construct unsafe region approximation ¯X ut (Eq. 28) and safe region ¯X st (Eq. (27))  
+
+> 13:
+
+Compute ¯X ut (Eq. (29))  
+
+> 14:
+
+for k = t + 1 , . . . , T do ▷ Check future planned points  
+
+> 15:
+
+if xk ∈ ¯X ut then  
+
+> 16:
+
+Relocate xk ← arg min x∈ ¯X st ∥x − xk∥2 
+
+> 17:
+
+end if  
+
+> 18:
+
+end for  
+
+> 19:
+
+Check blocked candidates from X0 
+
+> T
+
+reinstate if now in ¯X st 
+
+> 20:
+
+if t < T then  
+
+> 21:
+
+Compute local path ϕt from xt to xt+1 using RRT* with ¯X ut as obstacles  
+
+> 22:
+
+Execute ϕt to move robot to xt+1  
+
+> 23:
+
+Append local path to global trajectory: Φ ← Φ∪ϕt 
+
+> 24:
+
+end if  
+
+> 25:
+
+end for  
+
+> 26:
+
+return DT , μT , ΣT , XTT , Φ
+
+x = 8 are shown for qualitative comparison with the true field as shown in Figures 4-5, respectively. The actual and detected high-intensity regions are shown in Figures 6-7. 
+
+C. Experimental Results 
+
+The developed GP-HT algorithm is experimentally validated in an indoor experiment at the University of Florida, where the scalar field is generated using the existing ambient lights in the lab, as shown in Figure 8. A Husarion 2R-Pro ground robot equipped with an Adafruit TSL2591 lux sensor was used for data collection as shown in Figure 9. The resulting 10 0 0.2 0.4 0.6 0.8 1 0
+
+> 0.5
+> 1
+> 0
+> 0.5
+> 1
+> x
+> y
+> g(x)
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+
+Fig. 1: 3D Surface plot of the true scalar field. 0 0.2 0.4 0.6 0.8 1
+
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> x
+> y
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+
+Fig. 2: The top view of the scalar field is shown with the high-intensity regions shown as interior regions of circles in red color. light intensity field is shown in Figure 10. A total of 35 measurement locations are planned using the MVS criteria in (18). At each location, light intensity readings are acquired and used to update the GP model. After each update, the HT is applied to the GP posterior to detect high-intensity regions. The RRT* algorithm is then invoked to compute a collision-free path from the current position to the next measurement location. The procedure is repeated when the robot reaches the next measurement location. Four different experiments are performed, starting from different starting positions of the robot as shown in Figures 11. VIII. D ISCUSSION AND CONCLUSION 
+
+This paper introduced the GP-HT algorithm, an adaptive sampling strategy for scalar field mapping that integrates safety constraints via high-intensity region avoidance. The simulation and the experimental results validate the performance of the GP-HT algorithm and its ability to map scalar fields while dynamically relocating measurements to avoid high-intensity regions. The observation of executed measurement locations inside the high-intensity regions in Figure 3 is attributed to measurements acquired during the early phases of the experiment, where the GP model had not yet acquired sufficient measurements for accurate detec-tion of high-intensity regions. A primary challenge in safe scalar field mapping is the lack of existing techniques that formally integrate safety constraints into Gaussian Process-based methodologies. The GP-HT algorithm addresses this shortcoming by developing a novel strategy to demarcate high-intensity regions online using field measurements, allowing robots to maintain a safe distance without a priori knowledge of hazard locations. A key trade-off is between the need for accurate field estimation and the imperative of safe operation. Due to avoidance constraints, the prediction error converges to a bounded non-zero value, as shown in the convergence analysis. The performance of the GP-HT algorithm hinges on the selection of the kernel hyperparameters, which are tuned in this work by hand. However, given sufficient data, the algo-rithm can be implemented using hyperparameter optimization techniques, reducing reliance on hand-tuned parameters. The use of HT to approximate hazardous regions as simple geo-metric shapes offers computational efficiency but may falter in complex environments with irregular hazard boundaries. Additionally, early-stage vulnerability is evident, as initial measurements may fall within hazardous zones before the GP model sufficiently learns the field structure. Future work will address several key challenges: enhancing the flexibility of hazard region representations beyond simple geometric shapes. Additionally, extending the framework to dynamic scalar fields where the field source follows a motion plan remains an open challenge. REFERENCES [1] P. Sabella, “A rendering algorithm for visualizing 3D scalar fields,” 
+
+Comp. Graph. , p. 51–58, Jun. 1988. [2] Z. Lin, H. H. T. Liu, and M. Wotton, “Kalman filter based large-scale wildfire monitoring with a system of UAVs,” IEEE Trans. Ind. Electron. , vol. 66, no. 1, pp. 606–615, Jan. 2019. [3] K. Matsuda, K. Nozaki, R. Schregle, K. Takase, K. Taniguchi, and N. Yoshizawa, “New assessment method for solar radiation effects on indoor thermal comfort based on scalar irradiance - using volume photon mapping,” Build. Environ. , vol. 243, p. 110662, 2023. [4] T. Ren, H. Li, M. F. Modest, and C. Zhao, “Efficient two-dimensional scalar fields reconstruction of laminar flames from infrared hyperspectral measurements with a machine learning approach,” J. Quant. Spectrosc. Radiat. Transfer , vol. 271, p. 107724, 2021. [5] R. A. Razak, S. Sukumar, and H. Chung, “Estimating scalar fields with mobile sensor networks,” in Proc. Ind. Control Conf. , 2019, pp. 63–68. [6] H. M. La, W. Sheng, and J. Chen, “Cooperative and active sensing in mobile sensor networks for scalar field mapping,” IEEE Trans. Syst., Man, Cybern., Syst. , vol. 45, no. 1, pp. 1–12, 2015. [7] A. Dossing, E. L. S. Silva, G. Martelet, and Rasmussen, “A high-speed, light-weight scalar magnetometer bird for km scale UAV magnetic surveying: on sensor choice, bird design, and quality of output data,” 
+
+Remote Sensing , vol. 4, no. 4, 2021. [8] H. M. La and W. Sheng, “Distributed sensor fusion for scalar field mapping using mobile sensor networks,” IEEE Trans. Cybern. , vol. 43, no. 2, pp. 766–778, Apr. 2013. [9] T. X. Lin, S. Al-Abri, S. Coogan, and F. Zhang, “A distributed scalar field mapping strategy for mobile robots,” in Proc. Int. Conf. Intell. Robots Syst. , 2020, pp. 11 581–11 586. [10] M. T. Nguyen, H. M. La, and K. A. Teague, “Compressive and collab-orative mobile sensing for scalar field mapping in robotic networks,” in 
+
+Proc. Annu. Allerton Conf. Commun., Control, Comput. IEEE, Sep. 2015, pp. 873–880. [11] K. Groves, E. Hernandez, A. West, T. Wright, and B. Lennox, “Robotic exploration of an unknown nuclear environment using radiation informed autonomous navigation,” Robotics , vol. 10, no. 2, p. 78, May 2021. [12] J. Aleotti, G. Micconi, S. Caselli, G. Benassi, N. Zambelli, M. Bettelli, and A. Zappettini, “Detection of nuclear sources by UAV teleoperation using a visuo-haptic augmented reality interface,” Sensors , vol. 17, no. 10, p. 2234, Sep. 2017. [13] K. A. Ghamry and Y. Zhang, “Cooperative control of multiple UAVs for forest fire monitoring and detection,” in Proc. Int. Conf. Mechatronic Embedded Syst. Appl. IEEE, Aug. 2016. 11 0 0.2 0.4 0.6 0.8 1 0                                                      
+
+> 0.5
+> 1
+> 0
+> 1
+> 2
+> ·10 −2
+> x
+> y
+> f (x, y )
+> (a) GP Predicted field at t= 1
+> 00.20.40.60.810
+> 0.5
+> 1
+> 0
+> 0.5
+> 1
+> x
+> y
+> (b) GP Predicted field at t= 50
+> 00.20.40.60.810
+> 0.5
+> 1
+> 0
+> 0.5
+> 1
+> x
+> y
+> (c) GP Predicted field at t= 100
+> 00.20.40.60.810
+> 0.5
+> 1
+> 0
+> 0.5
+> 1
+> x
+> y
+> (d) GP Predicted field at t= 150
+> 0.2
+> 0.4
+> 0.6
+> 0.800.20.40.60.81
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> x
+> y
+> (b) High-intensity map at t= 1
+> 00.20.40.60.81
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> x
+> y
+> (b) High-intensity map at t= 50
+> 00.20.40.60.81
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> x
+> y
+> (c) High-intensity map at t= 100
+> 00.20.40.60.81
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> x
+> y
+> (d) High-intensity map at t= 150
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+
+Fig. 3: Temporal evolution of the GP posterior mean function and estimates of the high-intensity regions. The top row shows the progression of the mean function as the number of measurements increases in plots left to the right at t = 1 , 50 , 100 ,and 150 , respectively. The bottom row displays the binary image of the high-intensity regions, with the interior of red circles indicating estimated high-intensity regions using the HT. The planned and executed measurement locations are also shown as green dots. 0 2 4 6 8 10 0     
+
+> 5
+> 10
+> 0
+> 5
+> 10
+> x
+> y
+> z
+> 3D View: Scalar Field Slices at x= 2 and x= 8
+> 0
+> 5
+> 10
+> 15
+
+Fig. 4: The cutouts of the actual scalar field at x = 2 and 
+
+x = 8 .0 2 4 6 8 10 0     
+
+> 5
+> 10
+> 0
+> 5
+> 10
+> x
+> y
+> z
+> 3D View: Scalar Field Slices at x= 2 and x= 8
+> 0
+> 5
+> 10
+> 15
+
+Fig. 5: The cutouts of the GP predicted scalar field at x = 2 
+
+and x = 8 .0  
+
+> 2
+> 4
+> 6
+> 8
+> 10 0
+> 2
+> 4
+> 6
+> 8
+> 10
+> 0
+> 5
+> 10
+> xy
+> z
+
+Fig. 6: The regions inside the red ellipses denote the regions where the true field intensity exceeds the given threshold. The black dots show the set of measurement locations assigned to the robot at the commencement of the episode. 
+
+[14] D. Casbeer, S.-M. Li, R. Beard, R. Mehra, and T. McLain, “Forest fire monitoring with multiple small uavs,” in Proc. Am. Cont. Conf. IEEE, 2015, pp. 3530–3535. [15] C. Jayasekaramudeli, A. S. Leong, A. T. Skvortsov, D. J. Nielsen, and O. Ilaya, “Distributed estimation of fields using a sensor network with quantized measurements,” Sensors , vol. 24, no. 16, 2024. [16] M. Krsti´ c and H.-H. Wang, “Stability of extremum seeking feedback for general nonlinear dynamic systems,” Automatica , vol. 36, no. 4, pp. 595–601, Apr. 2000. [17] K. B. Ariyur and M. Krsti´ c, Real-Time Optimization by Extremum-Seeking Control . Wiley, Sep. 2003. [18] A. Ghaffari, M. Krsti´ c, and D. Neˇ si´ c, “Multivariable Newton-based extremum seeking,” Automatica , vol. 48, no. 8, pp. 1759–1767, Aug. 2012. [19] A. Williams, M. Krsti´ c, and A. Scheinker, “Practically safe extremum seeking,” in Proc. IEEE Conf. Decis. Control , 2022, pp. 1993–1998. 12 0  
+
+> 2
+> 4
+> 6
+> 8
+> 10 0
+> 2
+> 4
+> 6
+> 8
+> 10
+> 0
+> 5
+> 10
+> xy
+> z
+
+Fig. 7: The estimated high-intensity regions in the domain. The planned measurement locations detected in estimated high-intensity regions are also shown as black dots. 
+
+Fig. 8: Ceiling view of the Lab at the University of Florida, showing the arrangement of overhead lights. The correspond-ing ground-level light intensity field is shown in Fig. 10. 
+
+Fig. 9: Mobile robot used for light intensity measurements in the NCR Lab. The platform is equipped with an Adafruit TSL2591 sensor to record lux readings. -4 -2 0 2 4 6
+
+x (m) 
+
+> -2 -1.5 -1 -0.5 00.5 11.5
+> y (m)
+> 050 100 150
+
+Fig. 10: Measured ground-level light intensity field produced by the lighting layout in Fig. 8. 
+
+[20] ——, “Semiglobal safety-filtered extremum seeking with unknown CBFs,” IEEE Trans. Autom. Control , vol. 70, no. 3, pp. 1698–1713, 2025. [21] K. Katona, H. A. Neamah, and P. Korondi, “Obstacle avoidance and path planning methods for autonomous navigation of mobile robot,” Sensors ,vol. 24, no. 11, p. 3573, Jun. 2024. [22] V. Kunchev, L. Jain, V. Ivancevic, and A. Finn, “Path planning and obstacle avoidance for autonomous mobile robots: A review,” in Proc. Knowl.-Based Intell. Inf. & Eng. Syst. , B. Gabrys, R. J. Howlett, and L. C. Jain, Eds. Berlin, Heidelberg: Springer Berlin Heidelberg, 2006, pp. 537–544. [23] J. Minguez, F. Lamiraux, and J.-P. Laumond, Motion Planning and Obstacle Avoidance . Berlin, Heidelberg: Springer Berlin Heidelberg, 2008, pp. 827–852. [24] B. Sangiovanni, G. P. Incremona, M. Piastra, and A. Ferrara, “Self-configuring robot path planning with obstacle avoidance via deep reinforcement learning,” IEEE Control Syst. Lett. , vol. 5, no. 2, pp. 397– 402, 2021. [25] R.-G. Li and H.-N. Wu, “Multi-robot source location of scalar fields by a novel swarm search mechanism with collision/obstacle avoidance,” 
+
+IEEE Trans. Intell. Transp. Syst. , vol. 23, no. 1, pp. 249–264, Jan. 2022. [26] S. Liu, Y. Mao, and C. A. Belta, “Safety-critical planning and control for dynamic obstacle avoidance using control barrier functions,” in 2025 American Control Conference (ACC) , 2025, pp. 348–354. [27] C. E. Rasmussen and C. K. I. Williams, Gaussian processes for machine learning. Cambridge, MA: MIT Press, 2006. [28] J. Binney, A. Krause, and G. S. Sukhatme, “Informative path planning for an autonomous underwater vehicle,” in Proc. IEEE Int. Conf. Robot. Autom. , May 2010, pp. 4791–4796. [29] G. Hitz, E. Galceran, M.- ` E. Garneau, F. Pomerleau, and R. Siegwart, “Adaptive continuous-space informative path planning for online envi-ronmental monitoring,” J. Field Robot. , vol. 34, no. 8, pp. 1427–1449, May 2017. [30] H. Yuen, J. Princen, J. Illingworth, and J. Kittler, “Comparative study of Hough transform methods for circle finding,” Image Vision Comput. ,vol. 8, no. 1, pp. 71–77, Feb. 1990. [31] R. O. Duda and P. E. Hart, “Use of the Hough transformation to detect lines and curves in pictures,” Commun. , vol. 15, no. 1, pp. 11–15, Jan. 1972. [32] M. Qureshi, T. E. Ogri, Z. I. Bell, and R. Kamalapurkar, “Scalar field mapping with adaptive high-intensity region avoidance,” in Proc. IEEE Conf. Control Technol. Appl. IEEE, Aug. 2024, pp. 388–393. [33] K. Chaloner and I. Verdinelli, “Bayesian experimental design: A review,” 
+
+Statist. Sci. , vol. 10, no. 3, Aug. 1995. [34] S. Karaman and E. Frazzoli, “Sampling-based algorithms for optimal motion planning,” Int. J. Robot. Res. , vol. 30, no. 7, pp. 846–894, Jun. 2011. [35] B. Sch¨ olkopf and A. J. Smola, Learning with Kernels: Support Vector Machines, Regularization, Optimization, and Beyond . The MIT Press, Dec. 2001. [36] N. Srinivas, A. Krause, S. M. Kakade, and M. W. Seeger, “Information-theoretic regret bounds for Gaussian process optimization in the bandit setting,” IEEE Trans. Inf. Theory , pp. 3250–3265, May 2012. [37] Z. Lin, H. H. T. Liu, and M. Wotton, “Kalman filter-based large-scale wildfire monitoring with a system of UAVs,” IEEE Trans Ind Electron ,vol. 66, no. 1, pp. 606–615, Jan. 2019. [38] F. A. Hossain, Y. Zhang, and C. Yuan, “A survey on forest fire monitoring using unmanned aerial vehicles,” in Proc. Int. Symp. Autom. Syst. (ISAS) , 2019, pp. 484–489. [39] D. J. Pack, P. DeLima, G. J. Toussaint, and G. York, “Cooperative control of UAVs for localization of intermittently emitting mobile targets,” Trans. Sys. Man Cyber. , vol. 39, no. 4, p. 959–970, Aug. 2009. [40] J. Huo, M. Liu, K. A. Neusypin, H. Liu, M. Guo, and Y. Xiao, “Autonomous search of radioactive sources through mobile robots,” 
+
+Sensors , vol. 20, no. 12, 2020. [41] H. Ardiny, S. Witwicki, and F. Mondada, “Autonomous exploration for radioactive hotspots localization taking account of sensor limitations,” 
+
+Sensors , vol. 19, no. 2, 2019. [42] K. Qian, A. Song, J. Bao, and H. Zhang, “Small teleoperated robot for nuclear radiation and chemical leak detection,” Int. J. Adv. Robot. Syst. ,vol. 9, no. 3, p. 70, 2012. [43] T. M. Cover and J. A. Thomas, Information Theory and Statistics . John Wiley & Sons, Ltd, Oct. 2005, ch. 11, pp. 347–408. [44] C.-W. Ko, J. Lee, and M. Queyranne, “An exact algorithm for maximum entropy sampling,” Oper. Res. , no. 4, pp. 684–691, Aug. 1995. 13 -4 -2 0 2 4 6 
+
+> x(m)
+> -2 -1.5 -1 -0.5 00.5 11.5
+> y (m)
+> 40 60 80 100 120 140 160
+
+(a) Initial position: bottom-left -4 -2 0 2 4 6  
+
+> x(m)
+> -2 -1.5 -1 -0.5 00.5 11.5
+> y (m)
+> 20 40 60 80 100 120 140 160
+
+(b) Initial position: bottom-right -4 -2 0 2 4 6 
+
+> x(m)
+> -2 -1.5 -1 -0.5 00.5 11.5
+> y (m)
+> 20 40 60 80 100 120 140 160
+
+(c) Initial position: top-left -4 -2 0 2 4 6  
+
+> x(m)
+> -2 -1.5 -1 -0.5 00.5 11.5
+> y (m)
+> 20 40 60 80 100 120 140 160
+
+(d) Initial position: top-right 
+
+Fig. 11: Final GP-predicted light intensity fields and corresponding high-intensity regions for four experiments with different initial robot positions. The robot trajectory is shown in green, with start and end positions marked by the green and red circles, respectively. 
+
+[45] A. Krause and C. E. Guestrin, “Near-optimal nonmyopic value of infor-mation in graphical models,” 2012, arXiv preprint, arXiv:1207.1394. [46] G. L. Nemhauser, L. A. Wolsey, and M. L. Fisher, “An analysis of approximations for maximizing submodular set functions–I,” Math. Program. , no. 1, pp. 265–294, 1978. [47] A. Krause, A. Singh, and C. Guestrin, “Near-optimal sensor placements in Gaussian processes: Theory, efficient algorithms and empirical stud-ies,” J. Mach. Learn. Res. , vol. 9, no. 8, pp. 235–284, 2008. [48] D. L. Applegate, R. E. Bixby, V. Chvat´ al, and W. J. Cook, The Traveling Salesman Problem: A Computational Study . Princeton University Press, 2006. [49] T. Cover and P. Hart, “Nearest neighbor pattern classification,” IEEE Trans. Inf. Theory , vol. 13, no. 1, pp. 21–27, 1967. [50] H. Wendland, Scattered data approximation . Cambridge University Press, 2004. [51] N. Ratliff, M. Zucker, J. A. Bagnell, and S. Srinivasa, “Chomp: Gradient optimization techniques for efficient motion planning,” in Proc. IEEE Int. Conf. Robot. Autom. , 2009, pp. 489–494. [52] M. Kalakrishnan, S. Chitta, E. Theodorou, P. Pastor, and S. Schaal, “Stomp: Stochastic trajectory optimization for motion planning,” in 
+
+Proc. IEEE Int. Conf. Robot. Autom. , 2011, pp. 4569–4574. [53] J. Schulman, J. Ho, A. X. Lee, I. Awwal, H. Bradlow, and P. Abbeel, “Finding locally optimal, collision-free trajectories with sequential convex optimization,” Proc. Robot.: Sci. Syst. , 2013. [54] K. Albrecht and A. Iske, “On the convergence of generalized kernel-based interpolation by greedy data selection algorithms,” BIT Numer. Math. , vol. 65, 2025.

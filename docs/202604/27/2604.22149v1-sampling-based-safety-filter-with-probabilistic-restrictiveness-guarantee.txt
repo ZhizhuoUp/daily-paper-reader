@@ -1,0 +1,668 @@
+Title: Sampling-Based Safety Filter with Probabilistic Restrictiveness Guarantee
+
+URL Source: https://arxiv.org/pdf/2604.22149v1
+
+Published Time: Mon, 27 Apr 2026 00:19:44 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Sampling-Based Safety Filter with Probabilistic Restrictiveness Guarantee 
+
+Junyoung Park, Hyeontae Sung and Heejin Ahn 
+
+Abstract — Ensuring safety is a critical requirement for au-tonomous systems, yet providing formal guarantees for nominal controllers remains a significant challenge. In this paper, we propose a modular sampling-based safety filter to ensure the safety of arbitrary nominal control inputs. At each timestep, the filter evaluates the safety of the nominal input by leveraging control sequence samples generated via Stein Variational Model Predictive Control (SV-MPC). This approach approximates a safety-conditioned posterior distribution over control sequences, enabling the filter to effectively capture multimodal safe regions in complex, non-convex environments. The filter guarantees safety by overriding the nominal input when all sampled control sequence candidates are deemed unsafe. By leverag-ing the scenario approach, the proposed method provides a probabilistic guarantee on its restrictiveness. We validate the filter through collision avoidance tasks in both single- and multi-vehicle settings, demonstrating its efficacy in navigating cluttered environments where nominal controllers may fail. 
+
+I. INTRODUCTION In safety-critical control systems such as autonomous ve-hicles, control inputs must be generated with rigorous safety assurances to prevent catastrophic failures. However, nominal controllers, often designed via reinforcement learning or heuristic methods, are typically optimized for performance rather than safety. Providing formal guarantees for such policies remains a significant challenge, necessitating an additional supervisory mechanism to ensure safe operation. Safety filters offer a practical, modular solution by moni-toring the nominal controller’s inputs and intervening only when necessary to enforce safety constraints. Safety filters can be categorized by their certification mechanism. Some rely on precomputed certificates, such as Hamilton–Jacobi (HJ) reachability [1], [2] or control barrier functions (CBF) [3], [4]. While these approaches are computationally efficient at runtime, HJ value function computation scales poorly with system dimensions, and CBF synthesis remains a nontrivial challenge. Alternatively, methods based on model predictive control (MPC) [5], [6] verify safety online by predicting future trajectories over a finite horizon. While these eliminate the need for explicit certificate construction, gradient-based formulations often                      
+
+> This work was partly supported by the IITP (Institute of Information & Communications Technology Planning & Evaluation)-ITRC (Information Technology Research Center) grant funded by the Korea government (MSIT) (IITP-2026-RS-2023-00259991, 50%), and Basic Science Research Program through the National Research Foundation of Korea (NRF) funded by the Ministry of Education (RS-2025-25407010, 50%). The authors are with the School of Electrical Engineering, Ko-rea Advanced Institute of Science and Technology (KAIST), Dae-jeon, Republic of Korea
+
+{junyoung766, hyeontae.sung, heejin.ahn }@kaist.ac.kr 
+
+struggle with non-smooth objectives, non-convex constraints, and numerical infeasibility. In this paper, we propose a sampling-based safety filter that operates entirely online. Our method is inspired by sampling-based MPC algorithms, such as model predic-tive path integral (MPPI) [7], the cross-entropy method (CEM) [8], and Stein variational MPC (SV-MPC) [9], which are particularly effective in non-differentiable or non-convex settings. Our method evaluates the nominal input by approxi-mating a safety-conditioned posterior distribution over future control sequences and sampling from it. These sampled se-quences are propagated through discrete-time dynamics and evaluated via a level function encoding the safety constraints. By maintaining a candidate safe sequence as a backup at each timestep, the filter intervenes whenever all sampled trajectories fail to satisfy the safety requirements. Our approach differs from prior work in two key re-spects. First, we leverage SV-MPC to capture the multimodal structure of safe control distributions. In contrast, existing sampling-based safety filters [10], [11] typically draw control sequences from a unimodal Gaussian distribution, which limits their ability to effectively represent disjoint or non-convex safe regions. Second, we provide a probabilistic guarantee on the filter’s restrictiveness by leveraging the scenario approach [12]. In particular, the filter overrides the nominal input only when it is unlikely that a safe future control sequence exists under the sampling distribution. To the best of our knowledge, this is the first work to provide a formal probabilistic guarantee on the restrictiveness of a sampling-based safety filter under a finite number of samples. The contributions of this paper are as follows:  
+
+> •
+
+We propose a sampling-based safety filter that provides a probabilistic guarantee on its restrictiveness using the scenario approach.  
+
+> •
+
+We incorporate Stein variational model predictive con-trol (SV-MPC) into the filter to represent the multimodal safety-conditioned posterior distribution over control sequences.  
+
+> •
+
+We validate the proposed filter on collision avoidance tasks in both single- and multi-vehicle scenarios with different nominal controllers. This paper is organized as follows. Section II formulates the safety filtering problem, and Section III presents the proposed safety filter, including the filter algorithm, the construction of the sampling distribution, and the theoretical properties of the filter. Section IV demonstrates the proposed method in single- and multi-vehicle scenarios. Finally, Sec-tion V concludes the paper. 
+
+> arXiv:2604.22149v1 [eess.SY] 24 Apr 2026
+
+II. PROBLEM STATEMENT Consider a discrete-time dynamical system xt+1 =
+
+f (xt, ut), where xt ∈ X denotes the state and ut ∈ U 
+
+denotes the control input at time t. Let l : X → R be a level function whose subzero level set defines the failure set 
+
+L := {x : l(x) ≤ 0}. (1) The failure set represents unsafe states such as collisions or constraint violations. Therefore, ensuring safety means that the system state remains outside L.For a finite horizon H, let Ut := (ut, · · · , ut+H−1)
+
+denote the control sequence starting at time t, and Xt := (xt, · · · , xt+H ) the corresponding state sequence. Since the dynamics are deterministic, Xt is uniquely determined by 
+
+xt and Ut. We define an auxiliary binary random variable 
+
+Oτt ∈ { 0, 1} for the state-action trajectory τt = ( Xt, U t) as 
+
+Oτt =
+
+(
+
+1, xt+k /∈ L , ∀k ∈ [0 , H ],
+
+0, otherwise . (2) This means that Oτt = 1 if the trajectory τt is safe over the horizon H, and Oτt = 0 otherwise. At each timestep t, a nominal controller generates acontrol input unom  
+
+> t
+
+∈ U, which may be designed for arbitrary objectives and may not explicitly account for safety constraints. Therefore, directly applying unom  
+
+> t
+
+does not in general guarantee avoidance of L.In this paper, we design a sampling-based safety filter that samples N candidate control sequences at each time step to assess the safety of the nominal input. Specifically, given the current state xt and a nominal input unom  
+
+> t
+
+, we first compute the next state xt+1 = f (xt, unom  
+
+> t
+
+). We then sample N candidate control sequences U it+1 , i ∈ [1 , N ], and propagate each sequence from xt+1 to generate a trajectory 
+
+τ it+1 . The safety filter outputs the control input usafe  
+
+> t
+
+as 
+
+usafe  
+
+> t
+
+=
+
+(unom  
+
+> t
+
+, ∃ i ∈ [1 , N ] s.t. Oτ it+1 = 1 ,
+
+ubackup  
+
+> t
+
+, otherwise , (3) where ubackup  
+
+> t
+
+denotes a known safe control input. The N
+
+control sequences are sampled from a distribution ˜qt+1 (U ).The construction of ˜qt+1 (U ) is described in Section III-B. We aim to design a safety filter (3) that satisfies the following two properties:  
+
+> •
+
+Safety : For any xt /∈ L , there exists a control sequence 
+
+Ut+1 such that from xt+1 = f (xt, usafe  
+
+> t
+
+), the trajectory 
+
+τt+1 is safe, i.e., Oτt+1 = 1 . If this holds, we say that 
+
+the filter guarantees safety at time t. 
+
+> •
+
+ϵ-restrictiveness : The filter overrides the nominal input only when it is unlikely that a safe future control sequence exists. Formally, an intervention implies that the probability of drawing a safe sequence from the sampling distribution ˜qt+1 (U ) is bounded by ϵ, that is, if usafe 
+
+> t
+
+̸ = unom  
+
+> t
+
+, then Pr 
+
+> Ut+1 ∼˜qt+1
+
+(Oτt+1 = 1) ≤ ϵ. 
+
+In the definition of ϵ-restrictiveness, ϵ ∈ (0 , 1) denotes a restrictiveness parameter, and the uncertainty in Oτt+1 arises from the sampled control sequence Ut+1 ∼ ˜qt+1 . Smaller 
+
+ϵ leads to less restrictive interventions. The least-restrictive case corresponds to ϵ = 0 , where intervention occurs only when no safe trajectory exists after applying unom  
+
+> t
+
+.III. S AMPLING -B ASED SAFETY FILTER 
+
+In this section, we present the proposed sampling-based safety filter in detail. We first describe the overall algorithm and the construction of the sampling distribution. We then establish the safety guarantee and restrictiveness of the proposed filter. 
+
+A. Safety Filter Algorithm 
+
+Algorithm 1 Sampling-Based Safety Filter 
+
+Given: Trajectory cost function C(·)
+
+Input: Current state xt, nominal input unom  
+
+> t
+
+, safe con-trol sequence U safe  
+
+> t
+
+= (¯ ut, · · · , ¯ut+H−1)
+
+Output: Safe input usafe  
+
+> t
+
+, safe control sequence U safe  
+
+> t+1
+> 1:
+
+xt+1 ← f (xt, unom  
+
+> t
+
+) 
+
+> 2:
+
+for i ← 1 to N in parallel do  
+
+> 3:
+
+Sample U it+1 ∼ ˜qt+1 ▷ Algorithm 2  
+
+> 4:
+
+Xit+1 ← Rollout (xt+1 , f (·), U it+1 ) 
+
+> 5:
+
+i∗ ← arg min i C(τ it+1 ) 
+
+> 6:
+
+if C(τ i∗
+
+> t+1
+
+) < 0 then  
+
+> 7:
+
+usafe  
+
+> t
+
+← unom  
+
+> t
+
+, U safe  
+
+> t+1
+
+← U i∗ 
+
+> t+1
+> 8:
+
+else  
+
+> 9:
+
+usafe  
+
+> t
+
+← ¯ut, U safe  
+
+> t+1
+
+← Shift (U safe  
+
+> t
+
+) 
+
+> 10:
+
+return usafe  
+
+> t
+
+, U safe 
+
+> t+1
+
+Our safety filtering algorithm is summarized in Algo-rithm 1. At each timestep t, the algorithm first predicts the next state xt+1 using the nominal control input unom  
+
+> t
+
+(line 1). It then samples N control input sequences U it+1 (i =1, · · · , N ) of length H and rolls them out from xt+1 to generate N corresponding state trajectories Xit+1 (i =1, · · · , N ) (lines 2–4). The safety of each trajectory is evaluated using the cost function 
+
+C(τ it+1 ) := max 
+
+> k∈[0 ,H ]
+
+−l(xit+1+ k) , (4) where C(τ it+1 ) < 0 for safe trajectories and C(τ it+1 ) ≥ 0
+
+otherwise. In our setting, the cost depends only on the state trajectory Xit+1 = ( xit+1 , · · · , xit+H+1 ); however, we use the state-action trajectory notation τ for generality. The filter then selects the control sequence with the minimum cost among all samples (line 5). If the minimum cost is negative, the nominal input unom  
+
+> t
+
+is applied without intervention, and U safe  
+
+> t+1
+
+is updated to the minimum-cost sam-ple U i∗ 
+
+> t+1
+
+(lines 6–7). Otherwise, the filter applies the backup safe input usafe  
+
+> t
+
+from the previously stored safe sequence 
+
+U safe  
+
+> t
+
+, and constructs U safe  
+
+> t+1
+
+by shifting U safe  
+
+> t
+
+forward by one step (lines 8–9). The last input of the shifted sequence is chosen to drive the system toward, or keep it inside, a safe control invariant set. Details are provided in Section III-C. The applied safe input usafe  
+
+> t
+
+is then executed, and the updated safe sequence U safe  
+
+> t+1
+
+is stored for the next timestep (line 10). B. Sampling Distribution 
+
+In line 3 of Algorithm 1, we draw samples to evaluate the safety of the nominal input unom  
+
+> t
+
+. The efficacy of the safety filter depends on its ability to thoroughly explore the safe control space. Because the filter intervenes only when it fails to identify at least one safe candidate, amore comprehensive search directly reduces the frequency of unnecessary interventions. Furthermore, any safe sequence identified during this exploration serves as a potential safe backup U safe  
+
+> t+1
+
+for fallback control in subsequent timesteps. To this end, we define a safety-conditioned posterior 
+
+pt+1 (U |O τt+1 = 1) . In this framework, we treat the search for safe control sequences as a Bayesian inference problem. By Bayes’ rule, the safety-conditioned posterior is given by 
+
+pt+1 (U |O τt+1 = 1) = pt+1 (Oτt+1 = 1 |U )pt+1 (U )
+
+pt+1 (Oτt+1 = 1) . (5) For brevity, we write Oτt+1 instead of Oτt+1 = 1 whenever the meaning is clear. Since the posterior is generally intractable, we approxi-mate pt+1 (U |O τt+1 ) using variational inference. Specifically, we seek a distribution q∗(U ) in a tractable family Q that minimizes the Kullback-Leibler (KL) divergence to the target posterior: 
+
+q∗ = arg min  
+
+> q∈Q
+
+DKL (q(U )|| pt+1 (U |O τt+1 )) .
+
+Using (5), this optimization can be rewritten as 
+
+q∗ = arg min 
+
+> q∈Q
+
+−Eq
+
+log pt+1 (Oτt+1 |U )
+
++ DKL (q(U )∥pt+1 (U )) .
+
+(6) To evaluate the safety-conditioned likelihood, we de-fine a non-negative cost-likelihood function L(τt+1 ) ∝
+
+pt+1 (Oτt+1 | U ), which maps the predicted trajectory τt+1 
+
+to a safety-informed weight. A standard formulation for this likelihood is L(τt+1 ) = exp( −αC (τt+1 )) where α > 0
+
+is a temperature parameter and C(τt+1 ) is the trajectory cost. This exponential form ensures that trajectories with higher costs, those nearing or entering the failure set L, are exponentially less likely to be represented in the posterior. With this definition, (6) becomes 
+
+q∗ = arg min 
+
+> q∈Q
+
+−Eq [log L(τt+1 )] + DKL (q(U )∥pt+1 (U )) ,
+
+(7) which is the variational formulation used in sampling-based MPC. To solve (7), we adapt SV-MPC [9], which uses Stein variational gradient descent (SVGD) [13] to construct a particle-based approximation of the posterior. The procedure is summarized in Algorithm 2. Specifically, the distribution q ∈ Q is represented by m
+
+particles {U i}mi=1 . This particle-based representation allows the approximation to capture complex, potentially multi-modal structures that cannot be represented by unimodal Gaussian distributions. SVGD iteratively updates each parti-cle according to line 6 of Algorithm 2. The update consists of two components: the kernel k(·, ·) acts as a similarity 
+
+Algorithm 2 SV-MPC [9] for Safety Filtering 
+
+Given: Trajectory cost function C(·), kernel k(·, ·), num-ber of particles m, number of iterations iters , inverse-temperature α, step-size η
+
+Input: Predicted state xt+1 
+
+Output: Safety-conditioned posterior ˜qt+1 (U ) 
+
+> 1:
+
+Initialize ˜qt+1 (U ) and sample {U }mi=1 ∼ ˜qt+1 (U ) 
+
+> 2:
+
+for iter ← 1 to iters do  
+
+> 3:
+
+for i ← 1 to m in parallel do  
+
+> 4:
+
+∇U i log pt+1 (U i|O τ i = 1) = ∇U i log E[exp( −αC (τ i))]+ ∇U i log ˜ qt+1 (U i) 
+
+> 5:
+
+for i ← 1 to m in parallel do  
+
+> 6:
+
+∆U i
+
+← 1
+
+> mm
+
+P
+
+> j=1
+
+k(U j , U i)∇U j log pt+1 (U i|O τ i = 1) +∇U j k(U j , U i) 
+
+> 7:
+
+U i ← U i + η∆U i 
+
+> 8:
+
+wi ← exp( −αC (τ i))  
+
+> 9:
+
+wi ← wi  
+
+> Pmj=1 wj
+> 10:
+
+return ˜qt+1 (U ) = Pmi=1 wiN (U |U i, Σ) 
+
+weight that enables particles to share gradient information, while its derivative ∇U j k(U j , U i) introduces a repulsive force that prevents particles from collapsing to a single mode. Together, these terms allow the particles to “spread out” and approximate the target posterior more effectively. We use the radial basis function (RBF) kernel k(U, U ′) = exp( − 1 
+
+> h
+
+∥U − U ′∥22), where h = med 2/ log m and med de-notes the median pairwise particle distance. This mechanism is critical for achieving comprehensive coverage of the safe control space; by maintaining a diverse set of candidate trajectories, the filter can simultaneously capture multiple, potentially disjoint, safe modes. At the beginning of Algorithm 2, m particles are initial-ized from a zero-mean Gaussian distribution (line 1). The algorithm then computes the gradient of the log posterior for each particle (lines 3–4), which provides the update direction for minimizing the objective in (7). The particles are subsequently updated (lines 5–7). The second term 
+
+∇U j k(U j , U i) in line 6 acts as a repulsive force between particles, enabling the approximation to capture multimodal-ity. After the updates, the particle weights wi are computed based on the trajectory cost (lines 8–9). The algorithm then constructs a Gaussian mixture ˜q(U ) = Pmi=1 wiN (U |U i, Σ) ,where N (U |U i, Σ) denotes a Gaussian density with mean U i
+
+and covariance Σ (line 10). The resulting ˜q is used as the sampling distribution in Algorithm 1. 
+
+C. Safety Guarantee 
+
+We now establish the safety guarantee of the proposed filter. 
+
+Proposition 1. Let xt be the current state. If usafe  
+
+> t
+
+= unom  
+
+> t
+
+,then the proposed filter guarantees safety at time t.Proof. If usafe  
+
+> t
+
+= unom  
+
+> t
+
+, then by Algorithm 1, the filter has stored a control sequence U safe  
+
+> t+1
+
+with negative cost. By (1) and (4), the trajectory induced by U safe  
+
+> t+1
+
+from xt+1 is safe. Therefore, the proposed filter guarantees safety at time t.However, this argument does not directly apply when 
+
+usafe 
+
+> t
+
+̸ = unom  
+
+> t
+
+, i.e., when the nominal input is overridden. In this case, the filter applies the first input of U safe  
+
+> t
+
+and constructs U safe  
+
+> t+1
+
+by shifting U safe  
+
+> t
+
+by one step, as in line 9 of Algorithm 1. To guarantee safety at the next timestep, we must ensure that the shifted sequence can be safely extended. To this end, we define a safe control invariant set .
+
+Definition 1 (Safe control invariant set) . A set C ⊆ X is a 
+
+safe control invariant set if x /∈ L , ∀x ∈ C , and for every 
+
+x ∈ C , there exists a control input uinv (x) ∈ U such that 
+
+f (x, uinv ) ∈ C .
+
+For many robotic systems, a decelerating sequence can drive the system to a known safe control invariant set. In the single-robot experiment in Section IV-A, candidate backup sequences are sampled from control sequences that bring the robot to a complete stop at the terminal timestep H.Once the robot has stopped, the shifted sequence is extended by appending a terminal input that maintains the stopped state, so that a safe control sequence exists at all subsequent timesteps. This motivates Proposition 2. 
+
+Proposition 2. Let the sampling space be restricted to control sequences whose terminal state lies in C. Suppose there exists a known invariance control law uinv (x) such that for any x ∈ C , the next state remains in C.If the filter does not intervene at t = 0 , i.e., usafe 0 = unom 0 ,then the filter guarantees safety at all timestep t ≥ 0.Proof. We prove the claim by induction on t. By Proposi-tion 1, the condition usafe 0 = unom 0 implies that the filter guarantees safety at t = 0 . Furthermore, the corresponding safe control sequence U safe 1 steers the terminal state into C
+
+by the construction of the sampling space. For the induction step, assume that at time t, the filter guarantees safety with a safe control sequence U safe  
+
+> t+1
+
+=(¯ ut+1 , · · · , ¯ut+H ) whose terminal state xt+H+1 lies in C.At time t + 1 , if usafe  
+
+> t+1
+
+= unom  
+
+> t+1
+
+, by Proposition 1, the filter guarantees safety at time t + 1 with a safe control sequence whose terminal state lies in C due to the sampling space. Otherwise, the filter overrides unom  
+
+> t+1
+
+and applies usafe  
+
+> t+1
+
+=¯ut+1 . Since the terminal state induced by U safe  
+
+> t+1
+
+lies in 
+
+C, we can construct a candidate safe sequence U safe  
+
+> t+2
+
+=(¯ ut+2 , · · · , ¯ut+H , uinv (xt+H+1 )) . Hence, there exists a safe control sequence U safe  
+
+> t+2
+
+that keeps the terminal state in C, and the filter guarantees safety at time t + 1 .
+
+Remark 1. To ensure all-time safety with a braking-based backup, the horizon H must exceed the stopping time under maximum braking. This allows the filter to drive the system to a safe stationary state within the horizon. 
+
+Remark 2. From the CBF perspective, the cost function can also be defined as 
+
+C(τ it+1 ) := max 
+
+> k∈[0 ,H ]
+
+−l(xit+k+1 ) + (1 − γ)l(xit+k) ,
+
+where γ ∈ (0 , 1) denotes the decay rate. This formulation also guarantees safety, often yields smoother control actions, and is closely related to MPC-CBF in [5]. 
+
+D. Restrictiveness 
+
+The proposed safety filter intervenes when the minimum cost among the sampled trajectories is nonnegative. Ideally, the filter should intervene only when every possible control sequence from xt+1 = f (xt, unom  
+
+> t
+
+) is unsafe, that is, when the minimum cost over the entire control space is nonnega-tive. Since this quantity cannot be evaluated exactly, the filter relies on N sampled sequences to assess the safety of the nominal input. We derive a probabilistic guarantee on the restrictiveness induced by this finite-sample approximation, based on the scenario approach [12]. 
+
+Theorem 1. Given a restrictiveness parameter ϵ ∈ (0 , 1) 
+
+and a confidence parameter β ∈ (0 , 1) , let the sample size 
+
+N satisfy 
+
+N ≥ 2
+
+ϵ
+
+
+
+ln 1
+
+β + 1 
+
+
+
+. (8) 
+
+If the filter in Algorithm 1 intervenes, i.e., usafe 
+
+> t
+
+̸ = unom  
+
+> t
+
+, then with probability at least 1 − β, the probability of sampling a safe control sequence Ut+1 from ˜qt+1 is at most ϵ:
+
+Pr 
+
+> Ut+1 ∼˜qt+1
+
+ Oτt+1 = 1  ≤ ϵ. (9) 
+
+Proof. If the filter intervenes, then the minimum sampled cost satisfies min i C(τ it+1 ) ≥ 0. The problem of finding this minimum cost can be formulated as 
+
+max  
+
+> g∈R
+
+g
+
+s.t. g ≤ C(τ it+1 ), i = 1 , · · · , N, 
+
+which is the same form as the scenario optimization problem in [12]. Therefore, by Theorem 1 in [12], if the sample size 
+
+N satisfies (8), then Pr Ut+1 ∼˜qt+1 (g∗ − C(τt+1 ) > 0) ≤ ϵ. If the filter intervenes, then g∗ > 0. Hence, 
+
+Pr 
+
+> Ut+1 ∼˜qt+1
+
+(C(τt+1 ) < 0) ≤ Pr 
+
+> Ut+1 ∼˜qt+1
+
+(C(τt+1 ) < g ∗) ≤ ϵ. 
+
+By (2) and (4), this implies (9). 
+
+Remark 3. The probabilistic guarantee in Theorem 1 holds for any sampling distribution ˜qt+1 . However, the practical utility of the filter depends on the choice of this distribution. A more accurate approximation of the safety-conditioned posterior, achieved in this paper through the multimodal coverage of SV-MPC, reduces unnecessary interventions by effectively exploring the safe control space. IV. EXAMPLES In this section, we evaluate the proposed safety filter in two examples. We first consider a single-robot obstacle avoidance task to compare the sampling distributions induced by SV-MPC and CEM-based safety filters [10], [11], and to examine the restrictiveness of the resulting filters. We then apply the proposed method to a multi-vehicle intersection scenario using a reinforcement learning-based nominal controller. A. Single-Robot Obstacle Avoidance 
+
+We demonstrate the proposed safety filter on a system with the following dynamics: 
+
+xt+1 = xt + v cos( θt)∆ t, yt+1 = yt + v sin( θt)∆ t, θt+1 = θt + ωt∆t, vt+1 = vt + at∆t. 
+
+where x and y denote the robot position, θ is the heading angle, and v ∈ [0 , 1] is the speed. The control inputs are the angular velocity ω ∈ [−1.5, 1.5] and the acceleration 
+
+a ∈ [−1, 1] , with a timestep of ∆t = 0 .1. 
+
+> Fig. 1. Comparison of closed-loop trajectories obtained under filters based on (a) SV-MPC and (b) CEM [10], [11].
+
+As shown in Fig. 1, the robot is tasked with reaching the goal position, marked by a purple star, while avoiding the gray obstacles. The robot is depicted as a hollow green circle. To evaluate safety, we define the level function as 
+
+l(x) = 1000 ( dmin − (rrobot + robs )) ,
+
+which is used to compute the cost C(τ i). Here, dmin denotes the minimum distance from the robot position to the obstacle centers, and rrobot = 0.1 and robs = 0.1 are the radii of the robot and the obstacles, respectively. The minimum-distance operation leads to a nonsmooth and nonconvex level function, which motivates the use of the proposed sampling-based filter. We apply the filter with N = 757 and H = 20 .The sample size N = 757 is determined from (8) with 
+
+β = 10 −16 and ϵ = 0 .1. For the SV-MPC procedure, we set m = 12 , iters = 5 , α = 0 .1, and η = 0 .25 .Fig. 1 illustrates the experimental results. Trajectories are shown in red when the filter intervenes and in blue otherwise. As the nominal controller, we use an MPC that seeks only to reach the goal without considering safety constraints. As shown in Fig. 1(a), when the filter uses SV-MPC to construct the sampling distribution, the robot successfully reaches the goal along a safe trajectory. In contrast, when the filter uses                                     
+
+> TABLE I COMPARISON OF FILTER RESTRICTIVENESS
+> Parameters Num. Intervened Max. Safe Sample Rate
+> ϵNSV-MPC CEM SV-MPC CEM 0.2 379 4717 5794 1.4×10 −21.0×10 −2
+> 0.1 757 4672 5730 3.9×10 −33.6×10 −3
+> 0.01 7569 4549 5601 8.4×10 −44.3×10 −4
+
+CEM, the robot becomes stuck in a deadlock and fails to reach the goal, as shown in Fig. 1(b).  
+
+> Fig. 2. Comparison of samples generated by the filter using (a) SV-MPC and (b) CEM [10], [11] to construct the sampling distribution.
+
+In Fig. 2, we visualize the samples generated by the two filters to better understand this difference. Fig. 2(a) shows samples generated using SV-MPC, which captures the multimodal structure of the safety-conditioned posterior and thereby enables broader exploration of safe trajectories. Fig. 2(b) shows samples generated using a CEM-based distribution constructed with five iterations, which is the same number of iterations used in SV-MPC. This procedure is similar to the distribution update in Algorithm 1 of [11]. Because this distribution is unimodal Gaussian, the result-ing samples concentrate around a single mode, leading to limited diversity. As a result, depending on initialization and sampling, the distribution may converge to an unfavorable di-rection and become stuck in the deadlock shown in Fig. 1(b). We also examine the restrictiveness of the filters. To this end, we test whether the filter intervenes for all feasible 
+
+(x, y ) positions in the same environment as in Fig. 1 and Fig. 2, while fixing v = 1 and θ = 0. The region is discretized on a grid with resolution 0.01 × 0.01 , and the number of states where the filter intervenes is reported as 
+
+Num. Intervened in TABLE I. For each intervened state, we then draw an additional 100,000 control sequences from the same sampling distribution used by the filter and compute the fraction of safe samples, i.e., samples with negative cost. The maximum of these fractions over all intervened states is reported as the Max. Safe Sample Rate . This analysis is performed with H = 20 and N = 379 /757 /7569 ,which correspond to ϵ = 0 .2/0.1/0.01 , respectively, when 
+
+β = 10 −16 . The results are summarized in TABLE I. As shown in TABLE I, the filter based on SV-MPC intervenes less frequently than the filter based on CEM, indicating that SV-MPC better approximates the posterior. In both methods, the number of interventions decreases as the sample size N increases. The safe sample rates are smaller than the corresponding restrictiveness parameter ϵ
+
+in all cases, consistent with the bound ϵ in Theorem 1. 
+
+B. Multi-Vehicle Intersection 
+
+This subsection demonstrates the proposed safety filter in a multi-vehicle scenario. We consider an unsignalized intersection consisting of a single-lane four-way crossing with multiple vehicles as shown in Fig. 3. Each vehicle is randomly initialized with an entry time, entry location, and destination. To model the longitudinal motion of each vehicle, we employ double integrator dynamics. The state of vehicle i at time t is defined as si,t := ( xi,t , y i,t , v i,t ),
+
+where (x, y ) denotes the position and v ∈ [0 , 10] denotes the velocity. The overall system state is formed by concatenating the states of all vehicles, i.e., (s1,t , s 2,t , s 3,t , · · · ). The control input for each vehicle is defined as the longitudinal accel-eration ai,t ∈ [−1.5, 1.5] . The paths of all vehicles toward their destinations are predetermined, and the control action affects only their longitudinal motion along these paths. As the nominal controller, we adopt the GPT-based De-cision Transformer (DT) proposed in [14]. This offline re-inforcement learning architecture treats the control task as a sequence-modeling problem, mapping historical states and desired returns-to-go to optimal actions. The DT is trained to minimize intersection traversal time while simultaneously reducing inter-vehicle collisions. We apply the proposed safety filter to this nominal con-troller. The level function is defined as 
+
+l(x) = 
+
+(
+
+100 d, d > 0,
+
+−100 , otherwise ,
+
+where d = min( d12 , d 23 , d 31 ) denotes the minimum pairwise distance between the vehicle polytopes. This piecewise-defined level function is discontinuous, which makes the setting well-suited to the proposed sampling-based approach. The filter uses N = 757 samples and a horizon H = 67 . For SV-MPC, we set m = 12 , iters = 5 , α = 0 .1 and η = 0 .15 .TABLE II summarizes the experimental results for scenar-ios with 3, 4, and 5 vehicles. We randomly select 100 test cases not included in the training dataset to evaluate the effect of the safety filter. Without the filter, the nominal controller results in collisions in 4, 12, and 15 cases for 3-, 4-, and 5-vehicle settings, respectively. When the filter is applied, all collision cases are eliminated, although it also intervenes in some cases that would not have resulted in collisions.                       
+
+> TABLE II COLLISION RATE AND FILTER INTERVENTION STATISTICS
+> Nominal Filter Applied Num Vehicles Collision Rate Intervention Rate Collision Rate 3 Vehicles 0.04 0.08 0.00 4 Vehicles 0.12 0.21 0.00 5 Vehicles 0.15 0.38 0.00 Collision veh1 veh1
+> veh2 veh2 veh3
+> veh3
+> time: 8.4s time: 8.4s
+> Fig. 3. Visualization of a test case. (a) Vehicle 2 collides with vehicle 3 without the filter. (b) With the filter applied, vehicle 2 avoids the collision with vehicle 3. (c) Velocity profiles of the three vehicles.
+
+We visualize an example test case, from the 3-vehicle setting, in which a collision occurs without the filter. As shown in Fig. 3(a), vehicle 2 collides with vehicle 3 without the filter. With the filter applied, however, vehicle 2 slows down and avoids the collision, as shown in Fig. 3(b). Fig. 3(c) shows the velocity profiles of all three vehicles. V. CONCLUSION In this paper, we propose a sampling-based safety filter. We establish a finite-sample probabilistic guarantee on re-strictiveness via the scenario approach. By adapting SV-MPC to approximate a safety-conditioned posterior over control sequences, the proposed filter can identify safe samples more effectively and thereby reduce unnecessary interventions. Experimental results show that, with a sufficiently long horizon, the proposed method eliminates collisions entirely in both single- and multi-vehicle scenarios while being less restrictive than a CEM-based filter [10], [11]. The probabilistic restrictiveness guarantee in this work depends on the sampling distribution and therefore cannot serve as an absolute measure of filter restrictiveness. In future work, we plan to relate the notion of filter restrictiveness directly to the backward reachable tube. REFERENCES [1] S. Bansal, M. Chen, S. Herbert, and C. J. Tomlin, “Hamilton-jacobi reachability: A brief overview and recent advances,” in IEEE Conference on Decision and Control (CDC) , 2017. [2] J. Borquez, K. Chakraborty, H. Wang, and S. Bansal, “On safety and liveness filtering using hamilton–jacobi reachability analysis,” IEEE Transactions on Robotics , vol. 40, 2024. [3] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier function based quadratic programs for safety critical systems,” IEEE Transactions on Automatic Control , vol. 62, no. 8, 2016. [4] L. Wang, A. D. Ames, and M. Egerstedt, “Safety barrier certificates for collisions-free multirobot systems,” IEEE Transactions on Robotics ,vol. 33, no. 3, 2017. [5] J. Zeng, B. Zhang, and K. Sreenath, “Safety-critical model predictive control with discrete-time control barrier function,” in IEEE American control conference (ACC) , 2021. [6] F. B. Kopp and F. Borrelli, “Data-driven multi-modal learning model predictive control,” in IEEE Conference on Decision and Control (CDC) . IEEE, 2024. [7] G. Williams, N. Wagener, B. Goldfain, P. Drews, J. M. Rehg, B. Boots, and E. A. Theodorou, “Information theoretic mpc for model-based reinforcement learning,” in IEEE international conference on robotics and automation (ICRA) . IEEE, 2017. [8] M. Kobilarov, “Cross-entropy motion planning,” The International Journal of Robotics Research , vol. 31, no. 7, 2012. [9] A. Lambert, A. Fishman, D. Fox, B. Boots, and F. Ramos, “Stein vari-ational model predictive control,” arXiv preprint arXiv:2011.07641 ,2020. [10] J. Park, H. Sung, and H. Ahn, “Safety filtering using sampling-based model predictive control,” in Proceedings of the 13th International Conference on Robot Intelligence Technology and Applications (RiTA) ,2025, to appear. [11] Z. Feng, H. Zhang, and S. Bansal, “From words to safety: Language-conditioned safety filtering for robot navigation,” arXiv preprint arXiv:2511.05889 , 2025. [12] M. C. Campi, S. Garatti, and M. Prandini, “The scenario approach for systems and control design,” Annual Reviews in Control , vol. 33, no. 2, 2009. [13] Q. Liu and D. Wang, “Stein variational gradient descent: A general purpose bayesian inference algorithm,” Advances in neural informa-tion processing systems , vol. 29, 2016. [14] E. Lee, M. Kang, Y. Choi, and H. Ahn, “A gpt-based decision trans-former for multi-vehicle coordination at unsignalized intersections,” 
+
+arXiv preprint arXiv:2410.05829 , 2024.
