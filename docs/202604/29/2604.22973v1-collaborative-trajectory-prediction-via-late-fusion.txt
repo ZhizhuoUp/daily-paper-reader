@@ -1,0 +1,3677 @@
+Title: Collaborative Trajectory Prediction via Late Fusion
+
+URL Source: https://arxiv.org/pdf/2604.22973v1
+
+Published Time: Tue, 28 Apr 2026 00:14:31 GMT
+
+Number of Pages: 18
+
+Markdown Content:
+# Collaborative Trajectory Prediction via Late Fusion 
+
+Nadya Abdel Madjid a,d , Murad Mebrahtu a,d , Zakhar Yagudin e, Bilal Hassan b, Naoufel Werghi a, Jorge Dias c,d , Dzmitry Tsetserukou e, Majid Khonji a,d 
+
+> a
+
+Khalifa University, Computer Science, Abu Dhabi, UAE 
+
+> b
+
+New York University Abu Dhabi, Computer Science, Abu Dhabi, UAE 
+
+> c
+
+Khalifa University, Computer and Information Engineering, Abu Dhabi, UAE 
+
+> d
+
+Khalifa University, KUCARS-KU Center for Autonomous Robotic Systems, Department of Computer Science, Abu Dhabi, UAE 
+
+> e
+
+Skolkovo Institute of Science, Intelligent Space Robotics Laboratory, Center for Engineering Systems and Sciences, and Technology, Moscow, Russia 
+
+Abstract 
+
+Predicting future trajectories of surrounding traffic agents is critical for safe autonomous navigation and collision avoidance. De-spite all advances in the trajectory forecasting realm, the prediction models remains vulnerable to uncertainty caused by occlusions, limited sensing range, and perception errors. Collaborative vehicle-to-vehicle (V2V) approaches help reduce this uncertainty by sharing complementary information. Existing collaborative trajectory prediction methods typically fuse feature maps at the percep-tion stage to construct a holistic scene view. Further this holistic representation is decoded into the future trajectories. Such design incurs substantial communication overhead due to the exchange of high-dimensional feature representations and often assumes ide-alized bandwidth and synchronization, limiting practical deployment. We address these limitations by shifting collaboration from perception to the prediction module and introducing a late-fusion framework for shared forecasts. The framework is model-agnostic and treats collaborating vehicles as independent asynchronous agents. We evaluate the approach on the OPV2V, V2V4Real, and DeepAccident datasets, comparing individual and collaborative forecasting. Across all datasets, late fusion consistently reduces miss rate and improves trajectory success rate ( TSR 0.5), defined as the fraction of ground-truth agents with final displacement error below 0.5 m. On the real-world V2V4Real dataset, collaborative prediction improves the success rate by 1.69% and 1.22% for both intelligent vehicles, respectively, compared with individual forecasting. 
+
+Keywords: Autonomous Driving, Collaboration, Multi-Agent Systems, Trajectory Prediction, Trajectory Forecasting 
+
+1. Introduction 
+
+Predicting future trajectories of surrounding traffic agents is essential for safe navigation and collision avoidance in au-tonomous driving. While single-vehicle trajectory forecasting has matured significantly [1, 2, 3], it remains sensitive to per-ception errors caused by occlusions, sensor noise, and limited sensing range (some scenarios are illustrated in Figure 1). Col-laboration between communicating vehicles, through sharing complementary information, can address these challenges. By fusing observations from different perspectives, vehicles can reason about agents that are otherwise unobservable or only partially observed, helping to reduce uncertainty in their pre-dictions. However, enabling effective collaboration in a multi-vehicle system requires carefully balancing improvements in predictive accuracy against communication bandwidth, latency, and potential degradation caused by inaccurate or misaligned information fusion. Most existing works [4, 5, 6] explore collaboration by fus-ing intermediate feature representations at the perception stage, aiming to construct a holistic view of the environment. This shared representation is then passed to downstream task mod-ules, including predictor. In such approach, collaboration is ef-fectively confined to the feature-fusion stage of perception, lim-iting exploration of integrating shared information directly into 𝒊𝒗 𝟏                    
+
+> 𝑎 1is fully
+> occluded
+> for 𝑖𝑣 1
+> 𝑖𝑣 2can share prediction for
+> 𝑎 1with 𝑖𝑣 1to avoid accident
+> 𝒊𝒗 𝟐
+> 𝒂 𝟏
+> 𝑖𝑣 2
+> predicts
+> trajectory
+> of 𝑎 1
+> 𝒂 𝟏
+> 𝒊𝒗 𝟏
+> 𝒊𝒗 𝟐
+> 𝒂 𝟐
+> 𝑖𝑣 2can share prediction for 𝑎 2with
+> 𝑖𝑣 1to refine 𝑖𝑣 1
+> ′𝑠 prediction for 𝑎 2
+> 𝑎 2is fully
+> observable
+> for 𝑖𝑣 2
+> 𝑎 2is
+> partially
+> occluded
+> for 𝑖𝑣 1
+
+Figure 1: Occlusion scenarios, where collaboration between vehicles is useful. Left scenario: a fully occluded agent is not observable to the ego vehicle (e.g., a pedestrian hidden behind a truck), motivating the need for external information to avoid collision. Right scenario: agent a2 is partially occluded for iv 1 by agent a1, degrading tracking and prediction, while iv 2 has a clear view and can estimate a2’s future trajectory more reliably. 
+
+task-specific modules. Few existing trajectory forecasting mod-els perform fusion outside the perception stage. V2X-Graph [7] performs intermediate fusion over past trajectories using inter-pretable motion and interaction features. CMP model [8] adopts 
+
+> arXiv:2604.22973v1 [cs.RO] 24 Apr 2026
+
+a hybrid fusion strategy: it fuses BEV features during percep-tion to enhance object detection and applies late fusion to refine predicted trajectories. While it is intuitive that trajectory prediction benefits from access to a holistic scene view, in such pipelines the predic-tion module operates on a fixed fused scene representation and behaves as a single-vehicle forecaster with richer contex-tual input. We tackle this gap by introducing a dedicated fu-sion layer for explicit trajectory-level fusion across vehicles. Moving collaboration from perception-stage feature fusion to prediction-stage trajectory fusion aligns it closer with the fore-casting objective and improves communication efficiency, since messages consist of sparse trajectory predictions rather than high-dimensional feature maps. Next, most works [9, 10, 11] do not model delay under the assumption that collaborating vehicles operate as indepen-dent distributed systems. Temporal misalignment arises from two sources. First, sensing, inference, and broadcasting oc-cur asynchronously across vehicles, so shared information is already temporally behind the ego vehicle’s current inference time. Second, transmission latency introduces additional stale-ness. Many existing designs instead assume near-synchronized operation, with matched frame rates and negligible delay, so that shared features can be treated as if they align with the ego vehicle’s timestamp before inference. Such assumptions are in-feasible in practical deployments, where system heterogeneity and communication latency are the norm. Few SOTA models [12, 13] explicitly compensate for tem-poral misalignment. For example, Yu et al. [14] use a learned feature-flow module to extrapolate infrastructure features to the ego vehicle’s current timestamp, while Lei et al. [13] proposed SyncNet, which estimates delayed collaborative features from historical information. In our design, each vehicle operates as an independent au-tonomous system with its own parameters and algorithmic stack. A dedicated collaboration layer handles asynchronous message arrivals and performs data association, ensuring that vehicles refer to the same physical agents and that shared fore-casts are aligned to the ego vehicle’s prediction timeline. This temporal alignment block is algorithmic and does not require joint training to learn delay compensation. Another challenge in collaborative setting is keeping com-munication requirements compatible with realistic bandwidth constraints. A number of works [15, 16, 17, 18, 19, 20] fo-cus on optimizing communication efficiency aimig for message size reduction. For example, the CMP model [8] reports a re-duction to 0.23 MB/s, which under its assumption of a 100 ms synchronized processing window corresponds roughly to a 10 Hz broadcast rate and about 23 KB per message. More broadly in V2V settings, V2X-ViT [21] reports approximately 120 KB per message, while TransIFF reports a compact com-munication footprint of 212 bytes (4096 bytes). However, these studies do not clearly specify which communication protocol is assumed to reliably sustain such transmission rates in real-time operation. In contrast, CoSDH [22] explicitly references an IEEE 802.11p–based DSRC protocol with a reported trans-mission rate of 27 Mbps under point-to-point communication. Under these assumptions, the authors estimate an upper bound of 86 KB per message at 10 Hz when four vehicles collaborate. However, as the number of collaborating vehicles increases, the allowable message size decreases proportionally, raising con-cerns about the scalability. Another line of work focuses on query-driven collaboration. In such setup, the ego vehicle first identifies regions of uncer-tainty and requests complementary information from neighbor-ing vehicles [23, 24, 25]. It broadcasts its query and waits for relevant responses before inference. Following this approach, Direct-CP [26] introduces a direction-aware collaborative per-ception framework, where ego vehicle proactively generates query maps based on directional interest. While this strategy improves efficiency and implies transmission of information only for the most relevant regions, it needs inference-time anal-ysis to assess the practical cost of awaiting responses. In our work, a late fusion approach is adopted as a scalable and practical strategy for collaborative trajectory forecasting. In late fusion, the amount of shared information, compared to early [27] and intermediate fusion [28, 29, 30, 31], is reduced, lowering communication bandwidth requirements. By leverag-ing shared trajectories, late fusion refines predictions for par-tially occluded agents and enables reasoning about agents that are fully occluded and not locally observable. From a com-munication perspective, we adopt a broadcast–listen paradigm and explicitly specify V2V communication protocols that im-pose practical constraints on broadcasting frequency (10 Hz) and message size (up to 1,500 bytes). Vehicles do not establish fixed connections or explicitly allocate bandwidth. Messages are broadcast within communication range, and intelligent ve-hicles within the range acting as aggregators, listen and fuse the received predictions. Next, we detail the system design and the assumptions re-garding communication topologies and constraints, summarize the main contributions of this study, and outline the structure of the paper. 
+
+1.1. System Design and Assumptions 
+
+Each intelligent vehicle is equipped with a full percep-tion–prediction stack and operates on its own local clock. Each vehicle is assumed to have access to GPS time as a coarse global clock, providing a shared reference for aligning times-tamps across vehicles without requiring matched frame rates. For coordinate representation, vehicles store and transmit data in a global coordinate system. 
+
+Communication Protocol: In the proposed collaborative trajectory prediction system, vehicles communicate using a broadcast-listen paradigm without establishing persistent point-to-point connections. This design avoids delays associated with connection setup and ensures compatibility with highly dy-namic traffic scenarios, where vehicles may collaborate for both short and long durations. C-V2X Mode 4, developed under the 3GPP standards (Re-lease 14) 1, enables direct vehicle-to-vehicle (V2V) communi-
+
+> 1https://www.3gpp.org/specifications-technologies/ releases/release-14
+
+2cation based on 4G LTE technology. It supports single-hop broadcast communication, where vehicles transmit messages directly to others within range. Messages can be customized to include trajectory prediction–related information. C-V2X Mode 4 operates in the 5.9 GHz band with a typical channel bandwidth of 10 MHz and a broadcast frequency of 10 Hz (ev-ery 100 ms). The message size is typically on the order of 200–400 bytes, with a communication range of approximately 300–500 m in urban environments, around 800 m in suburban settings, and up to 1–2 km in rural areas. Following the same design principles, i.e., single-hop direct communication and customizable message formats, 5G NR-V2X, developed under the 3GPP standards (Release 16) 2, can also be deployed. 5G NR-V2X extends these capabilities us-ing 5G technology and operates primarily in the 5.9 GHz band with a typical channel bandwidth of 10 MHz in the Sub-6 GHz spectrum. It supports broadcast communication at 10 Hz (ev-ery 100 ms), with message sizes typically ranging from 200 to 1,500 bytes and a communication range comparable to that of C-V2X Mode 4. Accordingly, in our system design the upper bound supported by 5G NR-V2X is taken as the limit, assuming a maximum message size of 1,500 bytes at a broadcast frequency of 10 Hz to maintain low-latency communication. 
+
+Broadcasting and Aggregating Modes: Intelligent vehicles can operate in broadcasting and aggregating modes. In the broadcasting mode, the vehicles share their individual fore-casts, while in aggregating mode, the vehicles collect and fuse data broadcast by other vehicles to refine their own predictions. The intelligent vehicles can act simultaneously as broadcast-ers and aggregators; however, in our single-hop setting we re-strict communication to broadcasting individual, unfused pre-dictions. Sharing trajectories after fusion would implicitly propagate aggregated information, since fused predictions al-ready include information received from other vehicles. The impact of relaying and multi-hop communication is beyond the scope of this study and is left for future investigation. 
+
+1.2. Contributions 
+
+We claim the following contributions: • A collaborative trajectory prediction framework with a dedicated collaboration layer that models collaborating ve-hicles as independent systems in a distributed setting, to-gether with a scalable late-fusion mechanism. • A modular and reproducible implementation of the pro-posed framework, facilitating further research on collab-orative trajectory prediction and alternative fusion strate-gies. The code is publicly available at repository. 
+
+1.3. Paper Structure 
+
+The rest of the paper is organized as follows. Section 2 re-views existing work in the area of single and collaborative tra-jectory forecasting. Section 3 introduces the proposed collab-orative trajectory prediction framework, covering the problem 
+
+> 2https://www.3gpp.org/specifications-technologies/ releases/release-16
+
+formulation, collaboration model, and fusion mechanism. Im-plementation details, the training setup, and the multi-vehicle datasets along with the evaluation protocol used in the experi-ments are presented in Section 4. Section 5 reports the results of all experiments conducted to evaluate the effectiveness of the framework. Finally, Section 6 concludes the paper with a discussion and outlines future directions. 
+
+2. Related Work 
+
+The literature on collaborative vehicle systems for trajectory prediction remains sparse. Existing works investigate how in-formation from multiple viewpoints can be aggregated to im-prove object detection [27, 10], tracking [30], trajectory pre-diction [4], planning [32, 33], or task-invariant [34]. In this related work, we review existing collaborative models for tra-jectory prediction, as well as collaborative perception methods that address communication efficiency and transmission delays. 
+
+2.1. Trajectory Prediction 
+
+BEV-based cooperative prediction methods [4, 5] rely on ex-tracting BEV representations independently at each agent and then sharing intermediate feature maps for fusion. The pioneer-ing model V2VNet [4] following this approach, uses a cross-vehicle GNN to aggregate delay-compensated and pose-aligned features before decoding the fused representation into detec-tion and trajectory forecasting outputs. V2XFormer [5] adopts a similar pipeline. It generates BEV features with a Swin-Transformer-based backbone, spatially aligns them to the ego frame, and decodes the fused BEV representation into forecasts. Another line of work [35, 7] aims to improve trajectory fore-casting by compensating for incomplete past observations. Co-MTP [35] performs vehicle–infrastructure cooperative fusion over both past trajectories and predicted motions. The model combines AV and infrastructure trajectories to enrich incom-plete observations. It further integrates the ego planning tra-jectory with infrastructure-predicted trajectories of surround-ing agents to model planning-oriented interactions. V2X-Graph [7] performs forecasting-oriented fusion over historical trajec-tories. The problem of associating past trajectories belonging to the same agent across views is formulated as a trainable graph-link prediction task supervised by pseudo labels. After asso-ciation, the model fuses motion and interaction representations before decoding multimodal forecasts. Lastly, CMP [8] combines fusion at both the perception and prediction stages to improve predicted trajectories. It performs intermediate BEV feature fusion for cooperative perception and late prediction aggregation across vehicles. Unlike earlier BEV-based approaches, which encode multiple past sweeps into a fused representation and decode prediction downstream, CMP is closer to our design: it first decodes detections from the fused perception output, then uses a tracker to recover past motion, and finally aggregates shared predictions across vehicles. The prediction model is pre-trained, and the aggregation module is subsequently trained with predictors’ finetuning. Spatial align-ment in its’ cooperative perception part is handled by a learn-able transformation operator. 32.2. Communication Efficiency 
+
+Mitigating communication redundancy in collaborative per-ception has been explored in two main directions: (1) deter-mining which information should be shared by surrounding agents to complement the ego vehicle’s observations [15, 16, 17, 18, 22], and (2) designing efficient compression mecha-nisms to minimize message sizes while preserving essential in-formation [19, 20, 36, 37]. The first line of research typically follows a request–response pipeline: the ego agent broadcasts a query, surrounding agents evaluate their local information with respect to that request, and only selected complementary re-sponses are transmitted back for fusion. The second line of re-search focuses on compressing communicated representations while retaining task-relevant context. Exsisting approaches in-clude sparse transmission of high-confidence features Hu et al. [19], filtering low-value predictions before transmission Chen et al. [20], codebook-based message compression Hu et al. [36], and compact object-level representations that preserve semantic and structural information Ding et al. [37]. 
+
+2.3. Transmission Delays 
+
+Existing methods compensate for stale collaborative infor-mation through predictive temporal alignment at the feature level, aiming to realign delayed features to the ego vehicle’s current timestamp before fusion. Among detection methods, SyncNet [13] jointly estimates current collaborative features and collaboration attention from historical information and uses latency-conditioned modulation for synchronization. FFNet [14] uses a learned feature-flow representation to predict in-frastructure features at the target time. CoDynTrust [12] com-bines uncertainty-aware ROI evaluation with motion-based fea-ture warping to suppress unreliable asynchronous features dur-ing alignment. In collaborative trajectory prediction models, V2VNet [4] uses a trainable delay-compensation module, CMP [8] handles delay through synchronized 100 ms processing and one-frame-delayed prediction aggregation, and V2X-Graph [7] relies on interpolation-based synchronization of delayed past trajecto-ries. 
+
+3. Methodology 
+
+This section presents the problem formulation of collabora-tive trajectory prediction, including the collaboration model and objective, and describes the fusion mechanism (refer to Figure 2 for overview). 
+
+3.1. Problem Formulation 
+
+Let A be a set of agents, among which C ⊆ A is the set of collaborative agents (e.g., intelligent vehicles), and N = A \ C 
+
+is the set of non-collaborative agents (e.g., pedestrians, cy-clists, human-driven vehicles). For brevity, we refer to non-collaborative agents as targets and to the collaborative agents observing them as observers. Each agent a ∈ A has a state 
+
+sa(t) ∈ Rd at time t. A typical state representation includes the bird’s-eye-view position, and optionally, heading angle, and longitudinal velocity. Each observer i ∈ C is configured with an observation horizon T obs  
+
+> i
+
+and a prediction horizon T pred  
+
+> i
+
+. At any given time t, a target k ∈ N may be visible by a subset of observers. The observed trajectory of target k by observer i is denoted as 
+
+˜τki =   ˜ski (t − T obs  
+
+> i
+
++ 1) , ˜ski (t − T obs  
+
+> i
+
++ 2) , . . . , ˜ski (t).
+
+Based on the observed trajectory ˜τki , observer i predicts the future trajectory of target k denoted 
+
+˜ζki =   ˜ski (t + 1) , ˜ski (t + 2) , . . . , ˜ski (t + T pred  
+
+> i
+
+),
+
+where ˜ski (·) denotes predicted states at future time steps. The corresponding true future trajectory of target k is 
+
+ζk =  sk(t + 1) , sk(t + 2) , . . . , sk(t + T pred  
+
+> i
+
+).
+
+In a collaborative setting, different observers that see the same target k will each produce their own prediction, so that multiple predicted trajectories are available for the same under-lying true trajectory ζk. The goal of collaborative fusion is to combine these observer-specific predictions into a refined esti-mate of ζk. We assume that an observer i can provide an es-timate of its prediction uncertainty for target k, encoded as a variance of the predicted trajectory per sample, (i.e., each tra-jectory is presented by ( ˜ζki , ˜Σki )), derived from some uncertainty estimation techniques. When we refer to ˜ζ, we assume that ˜Σ is always available. 
+
+3.1.1. Collaboration Model 
+
+We consider a collaboration model where observers share their predicted trajectories and associated uncertainty estimates over a V2V broadcast channel. Each observer i ∈ C maintains a local agent-level prediction map Πi(Vi), where Vi ⊆ A denotes the set of targets known to i, including targets it directly ob-serves and targets it learns about through information received from other observers. For a target k, the corresponding entry in the map is represented by an attribute tuple 
+
+Πi(k) =  κki , ski (t), ˜ζki , ˜ζ∗
+
+> ki
+
+, Zki 
+
+, (1) where κki is a node category, ski (t) is the current state estimate of target k at time t as maintained by observer i, ˜ζki is the local prediction, ˜ζ∗ 
+
+> ki
+
+is the fused trajectory, and Zki denotes the pre-diction pool. The pool Zki collects all remote predictions for target k aggregated from other observers by observer i.Entries in Πi can belong to two categories: 
+
+Category L (local targets). An entry with κki = L corresponds to a target that is directly observed by the observer i (i.e., through its perception-prediction stack). For such targets: 1. The local state estimate ski (·) and prediction ˜ζki is main-tained ans stored in Πi(k);2. The fused trajectory ˜ζ∗ 
+
+> ki
+
+is obtained by applying the fusion to ˜ζki and the elements of Zki .4. . .
+
+Fusion  
+
+> KF
+> Gate
+> GP
+> Fusion on
+> Residuals
+> GP
+> Fusion on
+> Pool
+
+Receiver 
+
+Prediction Map 
+
+Maintenance 
+
+Prediction Map 
+
+Maintenance 
+
+Predictor 
+
+Local 
+
+Forecasts  Add 
+
+Nodes 
+
+Update 
+
+Nodes 
+
+Remove 
+
+Nodes 
+
+Associated 
+
+Forecasts 
+
+Add 
+
+Nodes 
+
+Update 
+
+Nodes 
+
+෨ζ
+
+Ɀ=∅
+
+෩ζ∗ = ∅sκ = L
+
+𝑎 1
+
+෨ζ
+
+Ɀ
+
+෩ζ∗ = ∅sκ = L
+
+𝑎 2
+
+෨ζ
+
+Ɀ
+
+෩ζ∗ = ∅sκ = L
+
+𝑎 3
+
+෨ζ = ∅
+
+Ɀ
+
+෩ζ∗ = ∅sκ = S
+
+𝑎 𝑛 −1
+
+෨ζ
+
+Ɀ
+
+෩ζ∗ = ∅sκ = L
+
+𝑎 𝑛 
+
+Agent -level Prediction Map 
+
+> . . .
+
+Prediction Channel 
+
+Message  𝓜 
+
+Header 
+
+Payload      
+
+> Vehicle’s state and
+> parameters
+> Quantized Forecasts
+> . . . . . .
+> Percept. Stack
+> Broadcaster
+> Observer 𝒐 𝟏
+> (mode: broadcasting)
+> Receiver
+> Detector
+> Tracker
+> Predictor
+> Map & Fusion
+> . . . . . .
+> Percept. Stack
+> Broadcaster
+> Observer 𝒐 𝟐
+> (mode: aggregating)
+> Receiver
+> Detector
+> Tracker
+> Predictor
+> Map & Fusion
+> . . . . . .
+> Percept. Stack
+> Broadcaster
+> Observer 𝒐 𝒏
+> (mode: broadcasting)
+> Receiver
+> Detector
+> Tracker
+> Predictor
+> Map & Fusion
+
+෨ζ
+
+Ɀ
+
+෩ζ∗ = ∅sκ = L
+
+𝑎 1
+
+෨ζ
+
+Ɀ=∅
+
+෩ζ∗sκ = L
+
+𝑎 1
+
+෨ζ = ∅
+
+Ɀ
+
+෩ζ∗ = ∅sκ = S
+
+𝑎 𝑛 
+
+෨ζ = ∅
+
+Ɀ=∅
+
+෩ζ∗sκ = S
+
+𝑎 𝑛 
+
+> . . .
+
+b
+
+a
+
+cFigure 2: System architecture of the proposed collaborative trajectory prediction framework. (a) Broadcast–listen communication setup and packet structure used to share predicted trajectories between vehicles. (b) Agent-level prediction map update: the perception–prediction stack adds, updates, and removes nodes; after data association, the prediction pools of Category L (locally observed) nodes are updated, while Category S (shared-only) nodes are added or updated. The fusion module combines trajectories for Category L and Category S nodes and resets their prediction pools after each fusion step. 
+
+Category S (shared-only targets). An entry with κki = S cor-responds to a target that is not currently observed by observer i
+
+(e.g., due to occlusion or perception failure) and is known only through predictions received from other observers. For such targets: 1. The local prediction field in Πi(k) is empty, i.e., ζki = ∅,and the current state ski (t) is estimated from aligned remote predictions (e.g., state estimate sk j (·) shared by another ob-server j); 2. The fused trajectory ˜ζ∗ 
+
+> ki
+
+is obtained by applying the fusion mechanism to the elements of Zki ;3. A target of Category S is changed to target of Category L 
+
+if it becomes directly observable by observer i.For consistent fusion and updates of entries in the prediction map Πi, the collaboration layer is equipped with a data associ-ation mechanism that performs temporal alignment and spatial matching of received trajectories. Temporal alignment is per-formed with respect to the current prediction timestamp of ob-server i. Upon receiving a trajectory ˜ζk j shared by observer j for target k, all trajectory samples that lie before observer i’s pre-diction timestamp are discarded. The current shared state sk j (·)
+
+is set to the first remaining sample, and the timestamps of the rest samples are re-anchored so that the trajectory is expressed relative to observer i’s prediction timeline. The temporally aligned states and trajectories broadcast by observer j are then passed to a spatial matching step. After matching, the association module outputs a matched set of tar-gets M ji ⊆ N , whose predictions from j are associated with existing entries in Πi, and an unmatched set of targets U ji ⊆ N ,whose predictions from j do not match any current entry in Πi.These predictions are candidates for instantiating new shared-only entries with κ = S .As a remark, the data association mechanism is independent 5of the fusion layer and can be replaced by more advanced or simplified variants. Its main role is to ensure that entries in Πi
+
+consistently refer to the same physical agents across different observers and that shared trajectories are temporally aligned. Initially, Πi is empty. As observer i begins to track targets locally and generate forecasts, entries in Πi are created and maintained. After receiving a broadcast message from observer 
+
+j ∈ C , and data association, observer i merges the received pre-dictions into its prediction map Πi (refer to Algorithms 1 and 2 for details). For local targets according to the update rule: 
+
+Zpi := Zpi ∪ ( ˜ ζp j , Σp j ) , p ∈ M ji , (2) and for shared nodes according to the add rule: 
+
+Πi(p) : =  κpi = S , spi (t) = sp j (t), Zpi = {( ˜ ζp j , Σp j )}, p ∈ U ji .
+
+(3) 
+
+3.1.2. Objective 
+
+Given the prediction map Πi(k) for each target k ∈ Vi, the objective is to design a fusion scheme F that produces a refined trajectory prediction 
+
+˜ζ∗ 
+
+> ki
+
+= F  Πi(k), (4) such that ˜ζ∗ 
+
+> ki
+
+is closer to the true future trajectory ζk than any in-dividual prediction ˜ζk j ∈ Πi(k), as measured by a displacement error. 
+
+3.2. Fusion Mechanism 
+
+As fusion operator F , a Gaussian Process (GP) regression framework [38] is adopted. GP regression explicitly models observation noise, which allows to incorporate the uncertainty estimates shared by observers alongside their predictions. Ad-ditionally, because a GP can be queried at any set of times-tamps, it can fuse trajectories with different prediction horizons and sampling rates stored in Πi without requiring resampling to a common time grid. Depending on the category type, two strategies are intro-duced: for Category L nodes, fusion is performed through a GP-based residual correction of the ego trajectory, triggered by the KF-gate, and for Category S nodes the fused trajectory is con-structed directly from the pool of shared trajectories using GP. Since each trajectory sample ˜sk j (t) ∈ Rd is multi-dimensional (e.g., position, heading, velocity), one approach is to perform fusion with a multi-output GP over the full state. To keep in-ference lightweight, we instead apply independent scalar GP regression to each state component. In the common case where the state is a 2D position s = (x, y), the fused trajectory is mod-eled as two independent scalar-valued functions of time, fx(t)
+
+and fy(t). If an observer provides a non-diagonal covariance over (x, y), we use only the marginal variances (diagonal en-tries) for each coordinate and ignore cross-dimensional covari-ance terms. 
+
+Algorithm 1: Prediction Map Update by Predictor 
+
+Input: prediction map Πi(Vi)
+
+local predictions P =  (id q, sq(t), ˜ζq, ˜Σq)Nq=1
+
+match threshold λmatch 
+
+Output: updated map Πi
+
+VL ← { v ∈ Vi | κ(v) = L}
+
+VS ← { v ∈ Vi | κ(v) = S }Pmatched ← ∅ Punmatched ← P 
+
+foreach p ∈ P do if ∃v ∈ Vi : id (v) = p.id then 
+
+v.s ← p.s(t)
+
+v. ˜ζ ← (p. ˜ζ, p. ˜Σ)
+
+Pmatched ← P matched ∪ { p.id }Punmatched ← P unmatched \ p
+
+foreach p ∈ P unmatched do 
+
+v⋆ ← arg min v∈VS distance  p.s(t), v.s
+
+if distance  p.s(t), v⋆.s ≤ λmatch then 
+
+κ(v⋆) ← L
+
+id (v⋆) ← p.id 
+
+v⋆.s ← p.s(t)
+
+v⋆. ˜ζ ← (p. ˜ζ, p. ˜Σ)
+
+Pmatched ← P matched ∪ { p.id }Punmatched ← P unmatched \ p
+
+foreach v ∈ Vi do if κ(v) = L ∧ id (v) < Pmatched then 
+
+remove v from Πi
+
+else if κ(v) = S and v is unmatched for n steps then 
+
+remove v from Πi
+
+foreach p ∈ P unmatched do 
+
+create vnew with 
+
+(p.id , s=p.s(t), ˜ζ=(p. ˜ζ, p. ˜Σ), ˜ζ∗=∅, κ =L, Z=∅)
+
+add vnew to Πi
+
+Let Oi(k) denote the set of observers who observe target k
+
+and whose predictions have been aggregated by observer i. Ex-panding Eq. 4: 
+
+˜ζ∗ 
+
+> ki
+
+= F Zki ∪ ( ˜ ζki , ˜Σki ) 
+
+= F  ( ˜ ζk j , ˜Σk j ) j ∈ O i(k) ∪ ( ˜ ζki , ˜Σki ) . (5) The fusion is estimated independently in each coordinate: 
+
+˜ζ∗,xki = Fx
+
+ ( ˜ ζxk j , ˜Σxk j ) j ∈ O i(k) ∪ { i} ,
+
+˜ζ∗,yki = Fy
+
+ ( ˜ ζyk j , ˜Σyk j ) j ∈ O i(k) ∪ { i} . (6) where ˜ζxk j and ˜ζyk j denote the x- and y-coordinate sequences of 
+
+˜ζk j , and ˜Σxk j and ˜Σyk j denote the corresponding per-sample vari-ances extracted from ˜Σk j .6Algorithm 2: Prediction Map Update by Association 
+
+Input: prediction map Πi
+
+matched set M = {(matched_id q, sq(t), ˜ζq, ˜Σq)}NM
+
+> q=1
+
+unmatched set U = {(sr(t), ˜ζr, ˜Σr)}NU
+
+> r=1
+
+relevance threshold λrel 
+
+Output: updated map Πi
+
+foreach p ∈ M do 
+
+v ← Πi[p.matched_id ]
+
+v.Z ← v.Z ∪ { (p. ˜ζ, p. ˜Σ)}
+
+foreach p ∈ U do if is_relevant  p.s(t) > λ rel then 
+
+create vnew with 
+
+(κ=S , s=p.s(t), ˜ζ=∅, ˜ζ∗=∅, Z={(p. ˜ζ, p. ˜Σ)})
+
+add vnew to Πi
+
+For simplicity, we denote coordinate-wise sequences 
+
+{ ˜ζxk j } j∈O i(k)∪{ i} and { ˜ζyk j } j∈O i(k)∪{ i} as observation vectors Xobs ∈ RN
+
+and Yobs ∈ RN . Let Tobs denote the timestamps associated with the entries of Xobs and Tinf denote the query timestamps at which observer i requires the fused prediction (e.g., i’s local prediction timestamps). Following the GP regression framework, the fused coordi-nates are modeled as random functions: 
+
+fx(t) ∼ GP  mx(t), kθx (t, t′),
+
+fy(t) ∼ GP  my(t), kθy (t, t′),
+
+where t and t′ denote arbitrary time instants, mx(t) and my(t)
+
+are mean functions, and kθx (t, t′) and kθy (t, t′) are temporal co-variance kernels parameterized by hyperparameters θx and θy,respectively. The hyperparameters are re-estimated at each fusion step by maximizing the GP log marginal likelihood for each coordinate: 
+
+θx = arg max  
+
+> θ
+
+log p(Xobs | Tobs , θ ) ,θy = arg max  
+
+> θ
+
+log p(Yobs | Tobs , θ ) .
+
+The associated uncertainties are incorporated as Gaussian observation noise via diagonal matrices, so that larger variances downweight uncertain samples in the GP posterior: 
+
+Σx 
+
+> obs
+
+= diag  ˜Σxk j 
+
+ j∈O i(k)∪{ i}
+
+, Σy 
+
+> obs
+
+= diag  ˜Σyk j 
+
+ j∈O i(k)∪{ i}
+
+,
+
+where · j∈O i(k)∪{ i} denotes stacking the per-sample variance se-quences in the same order as Xobs . Through computing the pos-terior mean at Tinf , the fused trajectories are obtained as: 
+
+˜ζ∗,xki = K Tinf , Tobs 
+
+h K Tobs , Tobs 
+
+ + Σ x
+
+> obs
+
+i−1
+
+Xobs ,
+
+˜ζ∗,yki = K Tinf , Tobs 
+
+h K Tobs , Tobs 
+
+ + Σ y
+
+> obs
+
+i−1
+
+Yobs ,
+
+(7) where K(·, ·) denotes covariance matrices computed from the corresponding kernel ( kθx for x and kθy for y). 
+
+3.2.1. Fusion for Category L Nodes 
+
+Let uki (t) denote the trace of the Kalman filter covariance for target k at time t, and let umed  
+
+> ki
+
+denote the running median of 
+
+uki (·) over the tracklet history maintained by observer i. The covariance ratio at time t is defined as 
+
+ρcov (t) = uki (t)
+
+umed 
+
+> ki
+
+.
+
+Let ℓki (t) denote the prediction-only streak, i.e., the number of consecutive KF steps up to time t without a detection update. The KF-gate is defined as 
+
+gki (t) =
+
+
+
+1, if ℓki (t) ≥ λmin _streak or ρcov (t) ≥ λcov _ratio ,
+
+0, otherwise ,
+
+where λmin _streak and λcov _ratio are threshold hyperparame-ters. The intuition is that when the KF runs consecutively in prediction-only mode without detection updates, the uncer-tainty increases because the state is propagated without new ob-servations. If gki (t) = 0, the fused output is set to the local pre-diction ( ˜ζ∗ 
+
+> ki
+
+← ˜ζki ), indicating that the vehicle is confident in its track and does not require fusion; otherwise, GP-based residual fusion is applied. Once the KF-gate is open, fusion is performed as a resid-ual correction. For each coordinate, the ego prediction is first interpolated at the timestamps of the pooled shared samples, and residual samples are formed by subtracting the interpolated ego prediction from the pooled predictions. The GP posterior mean is then computed using Eq. 7 with these residuals as ob-servations, yielding an estimated correction over the ego query horizon. The fused trajectory is obtained by adding this cor-rection to the ego prediction. The same procedure is applied independently in the y-dimension. 
+
+3.2.2. Fusion for Category S Nodes 
+
+For these nodes, there is no local trajectory, so the fused trajectory is reconstructed entirely from the shared predictions stored in the pool Z. Fusion is triggered whenever at least one shared trajectory exists in the pool. Before fitting the GPs, the pooled x- and y-coordinate samples are normalized to zero mean and unit variance for numerical stability, and the asso-ciated per-sample variances are rescaled by the same normal-ization factor. The GP posterior mean is then computed using Eq. 7 at the ego vehicle’s prediction timestamps on the nor-malized values. The resulting fused trajectory is obtained by de-normalizing the posterior mean (i.e., applying the inverse scale-and-shift), independently for each coordinate. 
+
+4. Implementation Details 
+
+Each collaborative vehicle is configurable with its own set of parameters (e.g., frame rate, forecasting frequency). The imple-mented stack follows a standard detect–track–predict paradigm: each module specifies the data format it consumes and pro-duces, and wrapper layers convert between algorithm-specific 7representations and a common internal format. This design en-ables plug-and-play replacement of different detectors, track-ers, and predictors without modifying the rest of the pipeline. All collaborating vehicles are subscribed to a single predic-tion channel. In broadcasting mode, based on the configured broadcast frequency, collaborative vehicles construct a com-pact V2V message with quantized predictions. Messages are serialized using a lightweight binary format and sent via a Ze-roMQ PUB/SUB socket, with optional compression to further reduce bandwidth. In aggregating mode, a vehicle fetches in-coming messages, performs dequantization, data association, and triggers the prediction map update in parallel with the main perception–prediction stack. To simulate collaboration, sensor data for all vehicles are pre-loaded and replayed using a shared simulation clock. At each tick, the current timestamp is provided to each vehicle, which runs detection, tracking, prediction, and communication according to its configured rates. Vehicles are advanced sequen-tially for reproducibility with incrementing the clock when full cycle is completed; extending the framework to parallel execu-tion is left as future work. Further, we detail the perception and predictor configura-tions, elaborate on the datasets used for evaluation, and describe the performance metrics. 
+
+4.1. Perception Setup 
+
+The perception stack is implemented in two settings: (i) a controlled replay setting for simulated datasets, where occlu-sion scores are explicitly computed and used to filter precom-puted detections, so that occlusions are reflected in the his-tory passed to the predictor and their impact (and the benefit of collaboration) can be evaluated in isolation, and (ii) a real-deployment setting for V2V4Real dataset. The first setting re-duces confounding effects from detector–tracker errors and fo-cuses the analysis on occlusion-induced failures. Tracking and prediction are executed online within the stack, while detec-tions are generated and stored offline; during runtime, they are loaded at each vehicle’s configured frame rate. 
+
+4.1.1. Controlled Setup 
+
+Fully occluded objects are not perceived by the ego vehicle. For heavily partially occluded objects, with a high probabil-ity the perception will miss it. A casting-ray algorithm is used to compute an occlusion score for each bounding box to ap-proximate the behavior of a realistic detector. Occlusion scores are computed once during dataset preprocessing and stored per box. At runtime, when detections are loaded, all boxes with an occlusion score above 0.75 are discarded before tracking and prediction (this threshold is chosen arbitrarily to represent cases where detection is expected to fail). Let B denote the set of bounding boxes. For every target box Bm ∈ B , its angular span [θL, θ R] is obtained by taking the ego-vehicle origin as a reference point, computing the viewing angle from the ego vehicle to each ground-plane corner of Bm,and using the smallest and largest of these angles as θL and 
+
+θR, respectively. After computing the span, N rays with angles 
+
+{θn}Nn=1 are cast, uniformly sampled in this interval. For each ray, the distance dm from sego (t) to Bm is compared with the distance do to any other box Bo ∈ B\ Bm that intersects the same ray. A ray is marked as occluded if there exists an occluder Bo
+
+that lies closer to the ego vehicle than the target box and is tall enough, relative to their distances, to cover the target from the ego vehicle’s viewpoint. Algorithm 3 shows the computation of the occlusion score OL1(Bm), defined as the fraction of rays that are occluded, where hm and ho denote the heights (vertical extents) of the boxes Bm and Bo.
+
+Algorithm 3: Casting-ray Algorithm 
+
+Input: sego (t), B, N
+
+Output: { OL1(Bm) }Bm∈B 
+
+for Bm ∈ B do 
+
+compute [θL, θ R] of Bm
+
+sample rays {θn}Nn=1 in [θL, θ R]
+
+c ← 0
+
+for n = 1, . . . , N do 
+
+compute dm = ∥sego (t) − sm(t)∥2
+
+for Bo ∈ B \ { Bm} do if θn ∩ Bo , ∅ then 
+
+compute do = ∥sego (t) − so(t)∥2
+
+if do < dm and ho ≥ hm · (do/dm) then 
+
+c ← c + 1
+
+break 
+
+OL1(Bm) ← c/N
+
+return { OL1(Bm) }Bm∈B 
+
+To isolate association errors and focus on the drift introduced purely by the tracker’s state estimation, acompined tracker uses ground-truth IDs for association, bypassing appearance or geometry matching and directly linking detections across frames via provided object identifiers. For state estimation and prediction, each object is represented by a lightweight 2D Kalman filter with a 6D constant-acceleration state x =
+
+[x, y, vx, vy, ax, ay]⊤ and measurements z = [x, y]⊤, where x and 
+
+y denote the bird’s-eye-view (ground-plane) position, vx and vy
+
+denote the corresponding velocity components, and ax and ay
+
+denote the corresponding acceleration components. The tracker uses standard tracklet management: detections are assigned to existing tracks with the same GT ID and used in a predict–update step, or they initialize a new track when no matching ID exists. Tracks without an associated detection per-form predict-only updates and are removed once a miss counter exceeds a fixed lifetime. Each tracklet stores a fixed-length his-tory and updates the box dimensions (dx, dy, dz) using an expo-nential moving average. In addition, each tracklet maintains a streak counter ℓ to count consecutive predict-only steps and the running median covariance trace u, which are used for fusion gating. 84.1.2. Real-Deployment Setup 
+
+For 3D object detection, a LiDAR-based CenterPoint de-tector with a PointPillars backbone is used to detect vehicles, pedestrians, and cyclists. The point cloud is pillarized with a voxel resolution of 0.24 ×0.24 ×6.0 m over a perception range of 
+
+[−60 , 60] m. The model is initialized from a Waymo-pretrained checkpoint and fine-tuned on V2V4Real for 50 epochs with batch size 24 using single-sweep LiDAR input. During infer-ence, non-maximum suppression with IoU threshold 0.2 and a confidence threshold of 0.5 are applied. Detections are gener-ated offline on an NVIDIA RTX 3090 (24 GB) and replayed per frame during fusion. The real-deployment tracker uses the same 6-state KF for-mulation, augmented with global data association, track lifecy-cle management, and improved initialization. For association, Euclidean distances between detections and active tracklets are computed as a distance gate. In parallel, an NIS-based cost ma-trix is formed for all track–detection pairs, where NIS is the squared Mahalanobis distance between the KF-predicted posi-tion and the detection, and the Hungarian algorithm is applied to obtain one-to-one assignments. Each candidate match is re-quired to have a consistent class label and to pass two gates: a category- and track-state-dependent Euclidean distance thresh-old with different limits for tentative and confirmed tracks, and a fixed NIS threshold. Tracks are confirmed after a minimum number of hits and pruned after a fixed number of consecu-tive misses, while the initial velocity is optionally bootstrapped from the nearest same-class detection in the previous frame. 
+
+4.2. Training Predictor 
+
+To equip each predicted trajectory with an uncertainty esti-mate Σ, the predictor models future motion as a sequence of Gaussian-distributed displacements with diagonal covariance. At the current time t, the predictor outputs the mean and covari-ance of the displacement distribution for each future prediction timestamp t′ ∈ { t + 1, . . . , t + T pred },
+
+μ(t′) = [ ˆ dx(t′), ˆdy(t′)] , Σ(t′) =
+
+"σ2
+
+> x
+
+(t′) 00 σ2 
+
+> y
+
+(t′)
+
+#
+
+.
+
+To estimate predictive uncertainty, the model is trained using Gaussian negative log-likelihood loss [39]: 
+
+LNLL = 1
+
+T pred  
+
+> t+Tpred
+
+X
+
+> t′=t+1
+
+"   dx(t′) − ˆdx(t′)2
+
+2σ2
+
+> x
+
+(t′) +
+
+ dy(t′) − ˆdy(t′)2
+
+2σ2 
+
+> y
+
+(t′) ++ log σ2
+
+> x
+
+(t′) + log σ2 
+
+> y
+
+(t′)2
+
+#
+
+.
+
+The loss penalizes prediction error relative to the predicted uncertainty: if the model inflates the variances, the log σ2 terms dominate and increase the loss; if it makes the variances too small, the squared-error terms scaled by 1/σ 2 become large and increase the loss. This trade-off discourages both overconfident and underconfident predictions and encourages calibrated un-certainty estimates. Adversarial training is applied by adding a gradient-sign perturbation to the past-motion input and opti-mizing a weighted sum of the clean and adversarial negative log-likelihood losses. Absolute positions are reconstructed by integrating the pre-dicted displacements over the prediction horizon starting from the position at time t.
+
+4.3. Datasets 
+
+The proposed fusion approach is evaluated on three V2V datasets that support trajectory forecasting: DeepAccident [5], OPV2V [40], and V2V4Real [41]. The DeepAccident dataset, simulated in CARLA, focuses on diverse collision scenarios with multi-modal data from four vehicles. The OPV2V dataset has up to 7 collaborating vehicles per scenario. V2V4Real is a real-world dataset collected on urban and highway routes, with data recorded from two vehicles. All datasets are preprocessed into a unified structure using scenario identifiers as the primary index and intelligent vehicle identifiers as the second-level keys. Each vehicle entry stores sensors data, calibration parameters, ego-state information and annotations. 
+
+4.4. Evaluation Metrics 
+
+At each timestamp t, Bg(t) denotes the set of ground-truth bounding boxes and Bp(t) denotes the set of predicted bound-ing boxes for which forecasts are available. Ground-truth and predicted boxes are associated using IoU-based greedy match-ing: for each Bm ∈ B g(t), the predicted box with the highest IoU is selected if the maximum IoU exceeds a threshold λmatch :
+
+B⋆ 
+
+> n
+
+= arg max  
+
+> Bn∈B p(t)
+
+IoU( Bm, Bn),
+
+match( Bm) =
+
+
+
+B⋆ 
+
+> n
+
+, if IoU  Bm, B⋆
+
+> n
+
+ ≥ λmatch ,
+
+None , otherwise. After matching at timestamp t, let K(t) denote the set of matched ground-truth targets. Displacement errors are com-puted over K(t). For each k ∈ K(t), let ζk =  sk(t +
+
+1) , . . . , sk(t + T pred ) denote the ground-truth future trajectory and ˜ζ∗ 
+
+> k
+
+=   ˜s∗
+
+> k
+
+(t + 1) , . . . , ˜s∗
+
+> k
+
+(t + T pred ) denote the fused future trajectory. The timestamp-level ADE and FDE are computed as: 
+
+ADE( t) = 1
+
+|K (t)| T pred 
+
+X 
+
+> k∈K (t)
+> t+Tpred
+
+X
+
+> t′=t+1
+
+˜s∗
+
+> k
+
+(t′) − sk(t′) 2 ,
+
+FDE( t) = 1
+
+|K (t)|
+
+X
+
+> k∈K (t)
+
+˜s∗
+
+> k
+
+(t + T pred ) − sk(t + T pred ) 2 .
+
+The miss rate at timestamp t is computed as the fraction of unmatched ground-truth objects: 
+
+MR( t) = |B g(t)| − |K (t)||B g(t)| .
+
+To jointly capture changes in both accuracy and coverage, the trajectory success rate (TSR) is reported. TSR counts a target 9as successful if it is matched and its final displacement is below a threshold λtsr . It is normalized by the total number of ground-truth targets, so unmatched targets are treated as failures. Let 1[·] ∈ { 0, 1} denote the indicator function, equal to 1 if the condition holds and 0 otherwise. The TSR at timestamp t is defined as 
+
+TSR( t) = 1
+
+|B g(t)|
+
+X
+
+> k∈K (t)
+
+1h ˜s∗
+
+> k
+
+(t + T pred ) − sk(t + T pred ) 2 ≤ λtsr 
+
+i.
+
+In all experiments, λtsr is set to 0.5 m , denoted as TSR 0.5.At every timestamp t, all metrics ADE( t), FDE( t), MR( t), and 
+
+TSR( t) are computed and aggregated over all scenarios in the dataset. The reported numbers for each experiment are averages over timestamps. 
+
+5. Results 
+
+To evaluate collaborative trajectory prediction, three groups of experiments are conducted. Section 5.1 compares individ-ual and collaborative prediction on two datasets under different predictor configurations, and varies the number of collabora-tors to analyze trends across both agent- and node-level cate-gories. Section 5.2 reports results on a real-world dataset us-ing the real-deployment setup and discusses runtime feasibility. Finally, Section 5.3 focuses on communication aspects, exam-ining the communication volume and the impact of message delays on performance. In the result tables, rows marked (w/o Occ.) report single-vehicle performance under perfect detections and tracklets. Rows marked (under Occ.) report single-vehicle performance in the presence of occlusions, and the reported deltas are com-puted relative to the corresponding (w/o Occ.) setting. All Fu-sion rows are compared against the corresponding (under Occ.) 
+
+baseline, so their deltas are reported relative to that setting. The vehicle, which is evaluated in the aggregating mode is refereed as ego in the experiments. Under occlusion, both displacement errors and miss rate are expected to increase compared to the fully observable case. With fusion, the miss rate is expected to decrease; however, ADE/FDE may fluctuate because these errors are computed only over matched targets, and fusion can recover targets that were previously missed and may have larger errors. Thus, TSR is the primary metric for comparing configurations, since it jointly reflects accuracy and coverage. The exact dataset-specific settings and experimental parameters are provided in the repository to ensure full reproducibility. 
+
+5.1. Individual versus Collaborative Modes 
+
+Effect of predictor configuration . Table 1 reports per-vehicle results on the OPV2V dataset for Vehicle 1 and Vehicle 2 , which are present in all scenarios, for both validation and test sub-sets. The setting No fusion (w/o Occ.) is evaluated for four predictor configurations: Transformer and LSTM predictors, each with two temporal settings, 12 (1 s history, 2 s prediction horizon) and 23 (2 s history, 3 s horizon). Across all configura-tions, occlusions cause a moderate increase in ADE /FDE and a strong drop in TSR 0.5, with a maximum drop reaching 23 .24% 
+
+reported in No fusion (under Occ.) .To analyze the cases where aggregating vehicles uses weaker or stronger predictors, we first compared the performance of individual predictors without occlusion. In general, LSTM performs better in displacement errors, especially in the test datasets; for Vehicle 1 the difference reached roughly 35 and 90 cm in ADE and FDE in comparison with the Transformer in the shorter-horizon setting. Additionally, Transformer dis-placement errors are consistently more impacted under occlu-sion than LSTM. However, for the longer horizon, the trend of lower errors for LSTM remains, with a large margin of reduced displacement error but a substantial drop in TSR in compari-son with the Transformer (e.g., 10.10% versus 56.23% without occlusion). To further investigate this behavior and eliminate any possibility of error, the success threshold was increased to 
+
+τ = 0.75 . Under this condition, LSTM and Transformer achieve 
+
+TSR 0.75 of 32 .78 % and 34 .77 %, respectively, for Vehicle 1 ,showing close performance. Combined with the lower displace-ment errors, this indicates that LSTM trajectories are more sta-ble: the error histogram is less skewed and exhibits shorter tails, with most predictions concentrated around the main low-error peak rather than in the tails. In contrast, the Transformer han-dles certain motion patterns better, which yields good perfor-mance when τ = 0.5, but it also produces more large-error out-liers, resulting in marginally higher average displacement errors and a more right-skewed error distribution. In Fusion rows each predictors configuration follows the for-mat ego _predictor : others _predictor , where homogeneous settings use the same model and prediction horizon for both ego and received trajectories (e.g., tr12:tr12 , lstm23:lstm23 ), and mixed settings combine different predictors or same predictor but different horizon (e.g., tr12:tr23 , lstm12:tr12 ). Across all configurations, vehicles, and splits, fusion consistently reduces 
+
+MR by about 2–3.5% and increases TSR 0.5 in the range of 0.3–
+
+2%, both in homogeneous and mixed settings. Changes in ADE 
+
+and FDE do not follow a strict monotonic trend: when fusion recovers agents that were previously missed, these objects enter the matched set and can slightly increase average displacement errors, even though overall coverage and TSR 0.5 improve. Amore detailed analysis of this effect is provided in a later table, where the dataset is stratified into category L and category S nodes to examine the corresponding displacement error traces. For the shorter-horizon 12 setting, comparing the homoge-neous configuration ( tr12:tr12 ) with the mixed configuration where the ego still uses Transformer but the received trajecto-ries come from the stronger LSTM predictor ( tr12:lstm12 ), the mixed setting yields a larger reduction in displacement errors in all cases, except for Vehicle 2 in FDE in valid subset. In the reverse scenario, when the ego uses LSTM and is paired either with LSTM ( lstm12:lstm12 ) or Transformer ( lstm12:tr12 ), the configuration lstm12:lstm12 consistently achieves the stronger improvement in displacement errors for both vehicles. In regard to different horizons, when the ego uses the longer horizon predictor and broadcasting vehicles use the shorter horizon predictor ( Fusion, lstm23:lstm12 ) compared to the homogeneous long-horizon configuration (Fusion, 
+
+10 Valid subset Test subset Vehicle 1 Vehicle 2 Vehicle 1 Vehicle 2 
+
+ADE ↓ FDE ↓ MR ↓ TSR 0.5 ↑ ADE ↓ FDE ↓ MR ↓ TSR 0.5 ↑ ADE ↓ FDE ↓ MR ↓ TSR 0.5 ↑ ADE ↓ FDE ↓ MR ↓ TSR 0.5 ↑
+
+No fusion (w/o Occ.), tr12 0.694 1.681 - 55.17 0.812 1.926 - 56.92 1.245 3.023 - 34.36 1.175 2.862 - 35.69 
+
+No fusion (under Occ.), tr12 
+
+0.773  
+
+> (+0.079) ↑
+
+1.849   
+
+> (+0.168) ↑
+
+30.42 36.49  
+
+> (-18.68%) ↓
+
+0.894  
+
+> (+0.082) ↑
+
+2.062   
+
+> (+0.136) ↑
+
+34.69 33.68  
+
+> (-23.24%) ↓
+
+1.350  
+
+> (+0.105) ↑
+
+3.202   
+
+> (+0.179) ↑
+
+21.97 24.72  
+
+> (-9.64%) ↓
+
+1.259  
+
+> (+0.084) ↑
+
+2.982   
+
+> (+0.100) ↑
+
+24.21 25.91  
+
+> (-9.78%) ↓
+
+Fusion, tr12:tr12 0.770  
+
+> (-0.003) ↓
+
+1.841  
+
+> (-0.008) ↓
+
+27.62  
+
+> (-2.8%) ↓
+
+38.22  
+
+> (+1.73%) ↑
+
+0.882  
+
+> (-0.012) ↓
+
+2.043  
+
+> (-0.019) ↓
+
+31.39  
+
+> (-3.3%) ↓
+
+35.74  
+
+> (+2.06%) ↑
+
+1.343  
+
+> (-0.007) ↓
+
+3.189  
+
+> (-0.013) ↓
+
+18.85  
+
+> (-3.12%) ↓
+
+25.12  
+
+> (+0.4%) ↑
+
+1.271  
+
+> (+0.012) ↑
+
+3.004  
+
+> (+0.022) ↑
+
+20.73  
+
+> (-3.48%) ↓
+
+26.99  
+
+> (+1.08%) ↑
+
+Fusion, tr12:lstm12 0.763  
+
+> (-0.010) ↓
+
+1.825  
+
+> (-0.024) ↓
+
+27.62  
+
+> (-2.8%) ↓
+
+38.25  
+
+> (+1.76%) ↑
+
+0.882  
+
+> (-0.012) ↓
+
+2.042  
+
+> (-0.020) ↓
+
+31.39  
+
+> (-3.3%) ↓
+
+35.69  
+
+> (+2.01%) ↑
+
+1.335  
+
+> (-0.015) ↓
+
+3.172  
+
+> (-0.030) ↓
+
+18.84  
+
+> (-3.13%) ↓
+
+25.18  
+
+> (+0.46%) ↑
+
+1.260  
+
+> (+0.001) ↑
+
+2.983  
+
+> (+0.001) ↑
+
+20.73  
+
+> (-3.48%) ↓
+
+26.96  
+
+> (+1.05%) ↑
+
+Fusion, tr12:tr23 0.776  
+
+> (+0.003) ↑
+
+1.852  
+
+> (+0.003) ↑
+
+27.62  
+
+> (-2.8%) ↓
+
+38.25  
+
+> (+1.76%) ↑
+
+0.887  
+
+> (-0.007) ↓
+
+2.050  
+
+> (-0.012) ↓
+
+31.28  
+
+> (-3.41%) ↓
+
+35.83  
+
+> (+2.15%) ↑
+
+1.346  
+
+> (-0.004) ↓
+
+3.191  
+
+> (-0.011) ↓
+
+18.82  
+
+> (-3.15%) ↓
+
+25.11  
+
+> (+0.39%) ↑
+
+1.269  
+
+> (+0.010) ↑
+
+2.996  
+
+> (+0.014) ↑
+
+20.68  
+
+> (-3.53%) ↓
+
+26.95  
+
+> (+1.04%) ↑
+
+No fusion (w/o Occ.), tr23 1.348 3.248 - 48.50 1.544 3.694 - 51.05 2.000 4.972 - 30.65 1.841 4.572 - 31.40 
+
+No fusion (under Occ.), tr23 
+
+1.530  
+
+> (+0.182) ↑
+
+3.640   
+
+> (+0.392) ↑
+
+29.04 32.56  
+
+> (-15.94%) ↓
+
+1.804  
+
+> (+0.260) ↑
+
+4.206   
+
+> (+0.512) ↑
+
+33.28 30.32  
+
+> (-20.73%) ↓
+
+2.369  
+
+> (+0.369) ↑
+
+5.725   
+
+> (+0.753) ↑
+
+18.83 22.88  
+
+> (-7.77%) ↓
+
+2.116  
+
+> (+0.275) ↑
+
+5.123   
+
+> (+0.551) ↑
+
+22.99 23.09  
+
+> (-8.31%) ↓
+
+Fusion, tr23:tr12 1.517  
+
+> (-0.013) ↓
+
+3.658  
+
+> (+0.018) ↑
+
+26.57  
+
+> (-2.47%) ↓
+
+34.16  
+
+> (+1.6%) ↑
+
+1.798  
+
+> (-0.006) ↓
+
+4.275  
+
+> (+0.069) ↑
+
+30.18  
+
+> (-3.1%) ↓
+
+32.14  
+
+> (+1.82%) ↑
+
+2.364  
+
+> (-0.005) ↓
+
+5.795  
+
+> (+0.070) ↑
+
+16.78  
+
+> (-2.05%) ↓
+
+23.11  
+
+> (+0.23%) ↑
+
+2.145  
+
+> (+0.029) ↑
+
+5.266  
+
+> (+0.143) ↑
+
+19.67  
+
+> (-3.32%) ↓
+
+23.96  
+
+> (+0.9%) ↑
+
+Fusion, tr23:tr23 1.514  
+
+> (-0.017) ↓
+
+3.607  
+
+> (-0.033) ↓
+
+26.49  
+
+> (-2.55%) ↓
+
+34.13  
+
+> (+1.57%) ↑
+
+1.783  
+
+> (-0.021) ↓
+
+4.169  
+
+> (-0.037) ↓
+
+30.07  
+
+> (-3.21%) ↓
+
+32.21  
+
+> (+1.89%) ↑
+
+2.352  
+
+> (-0.017) ↓
+
+5.707  
+
+> (-0.018) ↓
+
+16.76  
+
+> (-2.07%) ↓
+
+23.15  
+
+> (+0.27%) ↑
+
+2.118  
+
+> (+0.002) ↑
+
+5.129  
+
+> (-0.006) ↓
+
+19.63  
+
+> (-3.36%) ↓
+
+23.95  
+
+> (+0.86%) ↑
+
+No fusion (w/o Occ.), lstm12 0.688 1.606 - 56.23 0.826 1.900 - 57.09 0.905 2.132 - 37.25 0.913 2.162 - 37.48 
+
+No fusion (under Occ.), lstm12 
+
+0.711  
+
+> (+0.023) ↑
+
+1.672   
+
+> (+0.066) ↑
+
+30.42 36.42  
+
+> (-19.81%) ↓
+
+0.858  
+
+> (+0.032) ↑
+
+1.957   
+
+> (+0.057) ↑
+
+34.69 33.97  
+
+> (-23.12%) ↓
+
+0.931  
+
+> (+0.026) ↑
+
+2.170   
+
+> (+0.038) ↑
+
+21.07 27.18  
+
+> (-10.07%) ↓
+
+0.889  
+
+> (-0.024) ↓
+
+2.089   
+
+> (-0.073) ↓
+
+24.21 27.71  
+
+> (-9.77%) ↓
+
+Fusion, lstm12:lstm12 0.708  
+
+> (-0.003) ↓
+
+1.667  
+
+> (-0.005) ↓
+
+27.62  
+
+> (-2.8%) ↓
+
+38.18  
+
+> (+1.76%) ↑
+
+0.852  
+
+> (-0.006) ↓
+
+1.952  
+
+> (-0.005) ↓
+
+31.41  
+
+> (-3.28%) ↓
+
+35.94  
+
+> (+1.97%) ↑
+
+0.925  
+
+> (-0.006) ↓
+
+2.164  
+
+> (-0.006) ↓
+
+18.87  
+
+> (-2.2%) ↓
+
+27.66  
+
+> (+0.48%) ↑
+
+0.899 
+
+> (no impr.)
+
+2.118  
+
+> (+0.029) ↑
+
+20.73  
+
+> (-3.48%) ↓
+
+28.77  
+
+> (+1.06%) ↑
+
+Fusion, lstm12:tr12 0.714  
+
+> (+0.003) ↑
+
+1.684  
+
+> (+0.012) ↑
+
+27.65  
+
+> (-2.77%) ↓
+
+38.15  
+
+> (+1.73%) ↑
+
+0.853  
+
+> (-0.005) ↓
+
+1.953  
+
+> (-0.004) ↓
+
+31.39  
+
+> (-3.3%) ↓
+
+36.02  
+
+> (+2.05%) ↑
+
+0.933  
+
+> (+0.002) ↑
+
+2.181  
+
+> (+0.011) ↑
+
+18.87  
+
+> (-2.2%) ↓
+
+27.60  
+
+> (+0.42%) ↑
+
+0.910  
+
+> (+0.011) ↑
+
+2.138  
+
+> (+0.049) ↑
+
+20.71  
+
+> (-3.5%) ↓
+
+28.79  
+
+> (+1.08%) ↑
+
+Fusion, lstm12:lstm23 0.712  
+
+> (+0.001) ↑
+
+1.667  
+
+> (-0.005) ↓
+
+27.65  
+
+> (-2.77%) ↓
+
+38.29  
+
+> (+1.87%) ↑
+
+0.854  
+
+> (-0.004) ↓
+
+1.942  
+
+> (-0.015) ↓
+
+31.30  
+
+> (-3.39%) ↓
+
+35.93  
+
+> (+1.96%) ↑
+
+0.925  
+
+> (-0.006) ↓
+
+2.156  
+
+> (-0.014) ↓
+
+18.84  
+
+> (-2.23%) ↓
+
+27.58  
+
+> (+0.4%) ↑
+
+0.898  
+
+> (+0.009) ↑
+
+2.101  
+
+> (+0.012) ↑
+
+20.69  
+
+> (-3.52%) ↓
+
+28.80  
+
+> (+1.09%) ↑
+
+No fusion (w/o Occ.), lstm23 1.120 2.652 - 10.10 1.275 2.973 - 9.76 1.505 3.582 - 16.23 1.480 3.557 - 15.83 
+
+No fusion (under Occ.), lstm23 
+
+1.181  
+
+> (+0.061) ↑
+
+2.773   
+
+> (+0.121) ↑
+
+29.04 6.01  
+
+> (-4.09%) ↓
+
+1.347  
+
+> (+0.072) ↑
+
+3.116   
+
+> (+0.143) ↑
+
+33.28 6.94  
+
+> (-2.82%) ↓
+
+1.590  
+
+> (+0.085) ↑
+
+3.747   
+
+> (+0.165) ↑
+
+18.83 11.75  
+
+> (-4.48%) ↓
+
+1.513  
+
+> (+0.033) ↑
+
+3.633   
+
+> (+0.076) ↑
+
+22.99 11.80  
+
+> (-4.03%) ↓
+
+Fusion, lstm23:lstm12 1.195  
+
+> (+0.014) ↑
+
+2.872  
+
+> (+0.099) ↑
+
+26.57  
+
+> (-2.47%) ↓
+
+7.77  
+
+> (+1.76%) ↑
+
+1.365  
+
+> (+0.018) ↑
+
+3.246  
+
+> (+0.130) ↑
+
+30.21  
+
+> (-3.07%) ↓
+
+8.77  
+
+> (+1.84%) ↑
+
+1.607  
+
+> (+0.017) ↑
+
+3.885  
+
+> (+0.138) ↑
+
+16.85  
+
+> (-1.98%) ↓
+
+12.12  
+
+> (+0.37%) ↑
+
+1.562  
+
+> (+0.049) ↑
+
+3.846  
+
+> (+0.213) ↑
+
+19.62  
+
+> (-3.37%) ↓
+
+12.78  
+
+> (+0.98%) ↑
+
+Fusion, lstm23:lstm23 1.176  
+
+> (-0.005) ↓
+
+2.764  
+
+> (-0.009) ↓
+
+26.57  
+
+> (-2.47%) ↓
+
+7.60  
+
+> (+1.59%) ↑
+
+1.336  
+
+> (-0.011) ↓
+
+3.094  
+
+> (-0.022) ↓
+
+30.11  
+
+> (-3.17%) ↓
+
+8.63  
+
+> (+1.69%) ↑
+
+1.580  
+
+> (-0.010) ↓
+
+3.737  
+
+> (-0.010) ↓
+
+16.82  
+
+> (-2.01%) ↓
+
+12.05  
+
+> (+0.3%) ↑
+
+1.522  
+
+> (+0.009) ↑
+
+3.651  
+
+> (+0.018) ↑
+
+19.58  
+
+> (-3.41%) ↓
+
+12.59  
+
+> (+0.79%) ↑
+
+Table 1: OPV2V results for Vehicle 1 and Vehicle 2 on the validation and test subsets. Notation: tr12 /lstm12 denote Transformer/LSTM predictors using 1 s history and a 2 s prediction horizon; tr23 /lstm23 use 2 s history and a 3 s horizon. The tracker maintains tracklets for 10 frames in the 12 setting and 20 frames in the 23 
+
+setting. For No fusion (under Occ.) , the second line shows the change relative to No fusion (w/o Occ.) . For Fusion rows, the second line shows the change relative to No fusion (under Occ.) for the same ego predictor. ADE/FDE deltas are absolute, MR and TSR 0.5 are relative percentage changes (%). 
+
+lstm23:lstm23 ), the performance is tangibly worse in terms of displacement errors; for example, on the test subset for Vehi-cle 2 , ADE/FDE increase from 1.522 /3.651 to 1.562 /3.846 .The same trend is supported by the comparison between the Transformer configurations Fusion, tr23:tr12 and Fusion, tr23:tr23 . When the ego uses the shorter hroizon LSTM pre-dictor and the other vehicles use the longer horizon ( Fusion, lstm12:lstm23 ), the FDE shows improvement for all cases, while ADE shows a decrease in comparison with the homo-geneous Fusion, lstm12:lstm12 configuration. For the Trans-former, the longer-horizon predictor yields consistently worse behavior when the ego uses the shorter horizon predictor, com-pared to the homogeneous short-horizon configuration (i.e., Fu-sion, tr12:tr23 versus Fusion, tr12:tr12 ). In theory, longer-horizon predictions from other vehicles could provide addi-tional foresight that the ego might exploit, but in practice these configurations did not yield the hypothesised gains, most likely because further tuning and adjustment of the fusion mechanism would be required. 
+
+Effect of semantic classes and node categories (L/S) . Table 2 shows the results of individual and collaborative experiments on the DeepAccident valid dataset. In this dataset, experiments are run for all four vehicles, which each acting as ego at run-time while other vehicles operate in the broadcasting mode. Results are additionally reported per semantic class (van, car, motorcycle, truck, cyclist, and pedestrian). The overall fusion performance is summarized in the row Overall (cat L&S) . For category L, the ego-only performance is reported in Cat L ego ,and Cat L fused gives the corresponding errors after fusion for the same set of agents. Consistent with the OPV2V experi-ments, occlusions increase the missing rate and reduce TSR, whereas late fusion reverses part of this degradation: across the four vehicles, fusion reduces the overall missing rate by about 
+
+1.0–1.3% and increases TSR 0.5 in the range of 0.3–0.5%. Re-garding displacement errors, ADE decreases after fusion for all vehicles, and FDE also decreases except for Vehicle 4 .At the level of semantic classes, for vans, cars, and trucks fusion not only reduces MR and increases TSR 0.5, but also con-sistently lowers ADE and FDE for all vehicles. The largest displacement-error reduction is observed for vans with Vehicle 3 as ego, with an improvement of almost 0.10 m in ADE and 
+
+0.21 m in FDE. A different trend appears for motorcycles, cy-clists, and pedestrians. For motorcycles and cyclists, introduc-ing occlusions reduces displacement errors while increasing the missing rate, effectively pruning some hard-to-predict agents; with fusion, the missing rate decreases again, bringing these agents back and increasing displacement errors. For pedestri-ans, occlusions increase both ADE and FDE, and fusion further raises them, indicating that pedestrian trajectories are particu-larly susceptible to occlusion-induced errors. 11 Vehicle 1 Vehicle 2 Vehicle 3 Vehicle 4 
+
+ADE ↓ FDE ↓ MR ↓ TSR 0.5 ↑ ADE ↓ FDE ↓ MR ↓ TSR 0.5 ↑ ADE ↓ FDE ↓ MR ↓ TSR 0.5 ↑ ADE ↓ FDE ↓ MR ↓ TSR 0.5 ↑
+
+> w/o Occ.
+
+Van 1.033 2.307 - 29.06 1.040 2.415 - 26.65 1.084 2.456 - 28.44 1.052 2.362 - 29.59 Car 1.183 2.680 - 32.66 1.197 2.721 - 33.44 1.190 2.760 - 31.97 1.183 2.722 - 32.92 Motorcycle 0.998 2.045 - 35.02 0.979 2.111 - 36.48 1.057 2.263 - 33.33 1.111 2.385 - 34.80 Truck 0.856 2.018 - 34.48 0.845 2.041 - 36.61 0.833 1.948 - 33.79 0.787 1.884 - 35.18 Cyclist 0.606 1.370 - 35.20 0.539 1.243 - 34.24 0.578 1.312 - 38.45 0.612 1.402 - 35.32 Pedestrian 0.317 0.672 - 52.78 0.334 0.706 - 51.55 0.338 0.719 - 52.05 0.364 0.780 - 49.98 
+
+Overall 0.982 2.203 - 37.65 0.993 2.267 - 37.55 1.006 2.298 - 36.93 1.025 2.334 - 36.82 
+
+> under Occ.
+
+Van 1.050  
+
+> (+0.017) ↑
+
+2.316   
+
+> (+0.009) ↑
+
+11.34 24.49  
+
+> (-4.57%) ↓
+
+1.026  
+
+> (-0.014) ↓
+
+2.362   
+
+> (-0.053) ↓
+
+7.78 22.88  
+
+> (-3.77%) ↓
+
+1.077  
+
+> (-0.007) ↓
+
+2.412   
+
+> (-0.044) ↓
+
+10.24 24.93  
+
+> (-3.51%) ↓
+
+1.049  
+
+> (-0.003) ↓
+
+2.339   
+
+> (-0.023) ↓
+
+8.73 26.58  
+
+> (-3.01%) ↓
+
+Car 1.250  
+
+> (+0.067) ↑
+
+2.788   
+
+> (+0.108) ↑
+
+13.23 26.73  
+
+> (-5.93%) ↓
+
+1.243  
+
+> (+0.046) ↑
+
+2.820   
+
+> (+0.099) ↑
+
+11.21 28.30  
+
+> (-5.14%) ↓
+
+1.247  
+
+> (+0.057) ↑
+
+2.845   
+
+> (+0.085) ↑
+
+9.73 27.47  
+
+> (-4.50%) ↓
+
+1.234  
+
+> (+0.051) ↑
+
+2.808   
+
+> (+0.086) ↑
+
+9.55 28.40  
+
+> (-4.52%) ↓
+
+Motorcycle 0.845  
+
+> (-0.153) ↓
+
+1.762   
+
+> (-0.283) ↓
+
+17.65 27.85  
+
+> (-7.17%) ↓
+
+0.875  
+
+> (-0.104) ↓
+
+1.832   
+
+> (-0.279) ↓
+
+21.37 27.02  
+
+> (-9.46%) ↓
+
+0.959  
+
+> (-0.098) ↓
+
+2.077   
+
+> (-0.186) ↓
+
+22.04 23.60  
+
+> (-9.73%) ↓
+
+1.005  
+
+> (-0.106) ↓
+
+2.153   
+
+> (-0.232) ↓
+
+20.05 25.90  
+
+> (-8.90%) ↓
+
+Truck 0.811  
+
+> (-0.045) ↓
+
+1.867   
+
+> (-0.178) ↓
+
+11.92 28.96  
+
+> (-5.52%) ↓
+
+0.772  
+
+> (-0.073) ↓
+
+1.791   
+
+> (-0.250) ↓
+
+10.82 33.66  
+
+> (-2.95%) ↓
+
+0.878  
+
+> (+0.045) ↑
+
+2.027   
+
+> (+0.079) ↑
+
+3.68 30.11  
+
+> (-3.68%) ↓
+
+0.804  
+
+> (+0.017) ↑
+
+1.902   
+
+> (+0.018) ↑
+
+4.86 32.98  
+
+> (-2.20%) ↓
+
+Cyclist 0.524  
+
+> (-0.082) ↓
+
+1.194   
+
+> (-0.176) ↓
+
+14.54 30.51  
+
+> (-4.76%) ↓
+
+0.515  
+
+> (-0.024) ↓
+
+1.173   
+
+> (-0.070) ↓
+
+16.49 27.67  
+
+> (-6.57%) ↓
+
+0.552  
+
+> (-0.026) ↓
+
+1.235   
+
+> (-0.077) ↓
+
+15.50 30.03  
+
+> (-8.42%) ↓
+
+0.577  
+
+> (-0.035) ↓
+
+1.301   
+
+> (-0.101) ↓
+
+14.55 27.68  
+
+> (-7.64%) ↓
+
+Pedestrian 0.354  
+
+> (+0.037) ↑
+
+0.750   
+
+> (+0.078) ↑
+
+21.04 42.37  
+
+> (-10.41%) ↓
+
+0.362  
+
+> (+0.028) ↑
+
+0.762   
+
+> (+0.056) ↑
+
+22.05 41.55  
+
+> (-10.00%) ↓
+
+0.369  
+
+> (+0.031) ↑
+
+0.778   
+
+> (+0.059) ↑
+
+24.14 40.04  
+
+> (-12.01%) ↓
+
+0.395  
+
+> (+0.031) ↑
+
+0.840   
+
+> (+0.060) ↑
+
+26.80 38.16  
+
+> (-11.82%) ↓
+
+Overall 1.043  
+
+> (+0.061) ↑
+
+2.310   
+
+> (+0.107) ↑
+
+15.17 30.73  
+
+> (-6.92%) ↓
+
+1.048  
+
+> (+0.055) ↑
+
+2.378   
+
+> (+0.111) ↑
+
+14.17 31.28  
+
+> (-6.27%) ↓
+
+1.062  
+
+> (+0.056) ↑
+
+2.397   
+
+> (+0.099) ↑
+
+13.48 30.38  
+
+> (-6.55%) ↓
+
+1.083  
+
+> (+0.058) ↑
+
+2.446   
+
+> (+0.112) ↑
+
+13.63 30.64  
+
+> (-6.18%) ↓
+> Fusion
+
+Van 0.993  
+
+> (-0.057) ↓
+
+2.189  
+
+> (-0.127) ↓
+
+10.37  
+
+> (-0.97%) ↓
+
+24.82  
+
+> (+0.33%) ↑
+
+0.998  
+
+> (-0.028) ↓
+
+2.300  
+
+> (-0.062) ↓
+
+7.04  
+
+> (-0.74%) ↓
+
+23.15  
+
+> (+0.27%) ↑
+
+0.981  
+
+> (-0.096) ↓
+
+2.199  
+
+> (-0.213) ↓
+
+9.66  
+
+> (-0.58%) ↓
+
+25.23  
+
+> (+0.30%) ↑
+
+1.005  
+
+> (-0.044) ↓
+
+2.244  
+
+> (-0.095) ↓
+
+8.05  
+
+> (-0.68%) ↓
+
+26.94  
+
+> (+0.36%) ↑
+
+Car 1.243  
+
+> (-0.007) ↓
+
+2.778  
+
+> (-0.010) ↓
+
+11.92  
+
+> (-1.31%) ↓
+
+27.20  
+
+> (+0.47%) ↑
+
+1.236  
+
+> (-0.007) ↓
+
+2.807  
+
+> (-0.013) ↓
+
+10.42  
+
+> (-0.79%) ↓
+
+28.54  
+
+> (+0.24%) ↑
+
+1.243  
+
+> (-0.004) ↓
+
+2.842  
+
+> (-0.003) ↓
+
+8.91  
+
+> (-0.82%) ↓
+
+27.87  
+
+> (+0.40%) ↑
+
+1.232  
+
+> (-0.002) ↓
+
+2.808 
+
+> (no impr.)
+
+8.64  
+
+> (-0.91%) ↓
+
+28.66  
+
+> (+0.26%) ↑
+
+Motorcycle 0.865  
+
+> (+0.020) ↑
+
+1.812  
+
+> (+0.050) ↑
+
+16.53  
+
+> (-1.12%) ↓
+
+28.19  
+
+> (+0.34%) ↑
+
+0.885  
+
+> (+0.010) ↑
+
+1.851  
+
+> (+0.019) ↑
+
+19.61  
+
+> (-1.76%) ↓
+
+28.25  
+
+> (+1.23%) ↑
+
+0.964  
+
+> (+0.005) ↑
+
+2.087  
+
+> (+0.010) ↑
+
+20.39  
+
+> (-1.65%) ↓
+
+24.50  
+
+> (+0.90%) ↑
+
+1.036  
+
+> (+0.031) ↑
+
+2.235  
+
+> (+0.082) ↑
+
+17.08  
+
+> (-2.97%) ↓
+
+26.52  
+
+> (+0.62%) ↑
+
+Truck 0.791  
+
+> (-0.020) ↓
+
+1.824  
+
+> (-0.043) ↓
+
+11.66  
+
+> (-0.26%) ↓
+
+29.27  
+
+> (+0.31%) ↑
+
+0.757  
+
+> (-0.015) ↓
+
+1.758  
+
+> (-0.033) ↓
+
+10.21  
+
+> (-0.61%) ↓
+
+33.79  
+
+> (+0.13%) ↑
+
+0.839  
+
+> (-0.039) ↓
+
+1.943  
+
+> (-0.084) ↓
+
+3.67  
+
+> (-0.01%) ↓
+
+30.41  
+
+> (+0.30%) ↑
+
+0.751  
+
+> (-0.053) ↓
+
+1.777  
+
+> (-0.125) ↓
+
+4.69  
+
+> (-0.17%) ↓
+
+33.17  
+
+> (+0.19%) ↑
+
+Cyclist 0.526  
+
+> (+0.002) ↑
+
+1.200  
+
+> (+0.006) ↑
+
+14.23  
+
+> (-0.31%) ↓
+
+30.66  
+
+> (+0.15%) ↑
+
+0.517  
+
+> (+0.002) ↑
+
+1.178  
+
+> (+0.005) ↑
+
+15.96  
+
+> (-0.53%) ↓
+
+27.83  
+
+> (+0.16%) ↑
+
+0.554  
+
+> (+0.002) ↑
+
+1.239  
+
+> (+0.004) ↑
+
+14.63  
+
+> (-0.87%) ↓
+
+30.47  
+
+> (+0.44%) ↑
+
+0.584  
+
+> (+0.007) ↑
+
+1.322  
+
+> (+0.021) ↑
+
+12.94  
+
+> (-1.61%) ↓
+
+28.20  
+
+> (+0.52%) ↑
+
+Pedestrian 0.357  
+
+> (+0.003) ↑
+
+0.759  
+
+> (+0.009) ↑
+
+19.37  
+
+> (-1.67%) ↓
+
+43.04  
+
+> (+0.67%) ↑
+
+0.370  
+
+> (+0.008) ↑
+
+0.781  
+
+> (+0.019) ↑
+
+20.39  
+
+> (-1.66%) ↓
+
+42.10  
+
+> (+0.55%) ↑
+
+0.375  
+
+> (+0.006) ↑
+
+0.792  
+
+> (+0.014) ↑
+
+22.12  
+
+> (-2.02%) ↓
+
+40.56  
+
+> (+0.52%) ↑
+
+0.404  
+
+> (+0.009) ↑
+
+0.860  
+
+> (+0.020) ↑
+
+24.67  
+
+> (-2.13%) ↓
+
+38.60  
+
+> (+0.44%) ↑
+
+Cat L ego 1.313 2.759 1.274 2.764 1.292 2.703 1.338 2.852 
+
+Cat L fused 1.282  
+
+> (-0.031) ↓
+
+2.708  
+
+> (-0.051) ↓
+
+1.266  
+
+> (-0.008) ↓
+
+2.740  
+
+> (-0.024) ↓
+
+1.261  
+
+> (-0.031) ↓
+
+2.648  
+
+> (-0.055) ↓
+
+1.315  
+
+> (-0.023) ↓
+
+2.809  
+
+> (-0.043) ↓
+
+Cat S 0.961 2.239 1.038 2.410 0.952 2.258 1.128 2.737 
+
+Overall (cat L&S) 1.039  
+
+> (-0.004) ↓
+
+2.305  
+
+> (-0.005) ↓
+
+13.92  
+
+> (-1.25%) ↓
+
+31.21  
+
+> (+0.48%) ↑
+
+1.048  
+
+> (-0.004) ↓
+
+2.380  
+
+> (-0.012) ↓
+
+13.16  
+
+> (-1.01%) ↓
+
+31.63  
+
+> (+0.35%) ↑
+
+1.058  
+
+> (-0.004) ↓
+
+2.393  
+
+> (-0.004) ↓
+
+12.42  
+
+> (-1.06%) ↓
+
+30.82  
+
+> (+0.44%) ↑
+
+1.081  
+
+> (-0.002) ↓
+
+2.447  
+
+> (+0.001) ↑
+
+12.39  
+
+> (-1.24%) ↓
+
+30.96  
+
+> (+0.32%) ↑
+
+Table 2: DeepAccident per-class results for four vehicles on the validation subsets. All vehicles run the same LSTM-based predictor (keep_track = 10, past_trajectory = 10, future_trajectory = 20 under fps 10Hz). For under Occ. , the second line shows the change relative to w/o Occ. . For Fusion rows, the second line shows the change relative to under Occ. rows. Cat L ego and Cat L fused summarize errors for agents observed by the ego before and after fusion, Cat S covers agents only visible to collaborators, and Overall (cat L&S) aggregates both categories. ADE/FDE deltas are absolute, MR and TSR 0.5 are relative percentage changes (%). 
+
+At the category level, comparing Cat L ego to Cat L fused ,late fusion consistently reduces ADE by 0.008 –0.031 m and 
+
+FDE by 0.024 –0.055 m across vehicles, indicating that the residual GP correction refines already-visible agents but only by a small margin; further gains on these nodes would require additional design improvements. The net change in overall dis-placement errors then depends on how far the Cat S errors lie from the mean ego error for agents on which the ego does not collaborate. 
+
+Effect of number of collaborators . Finally, Table 3 completes the experiments and decomposes OPV2V performance for ho-mogeneous tr12 predictors by node category and number of sharing vehicles. For the node categories, the other vehicles’ trackers are configured with a shorter tracklet lifetime than the ego (5 versus 10 frames), so under occlusions the shared esti-mates are intentionally more certain than the ego’s. Comparing 
+
+cat L ego and cat L fused shows that fusion consistently reduces 
+
+ADE and FDE for locally observed agents, but only by about 
+
+0.01 –0.02 m, i.e., the same small margin as in the previous ex-periments; this suggests that predictor error may dominate the error introduced by occlusions, limiting the tangible gains from residual correction alone. As for the number of sharing vehi-cles, for Vehicle 1 on the validation subset, increasing from one to six sharing vehicles improves TSR 0.5 by about 2.11 points, with a similar trend for Vehicle 2 . On the test subset, however, the best performance is achieved when two vehicles share for 
+
+Vehicle 1 and three vehicles share for Vehicle 2 ; adding more collaborators yields no further benefit and only increases fusion overhead and runtime. This raises the question of an optimal number of sharing vehicles, which is left as an interesting di-rection for future work. 
+
+5.2. V2V4Real Evaluation 
+
+Performance . Tables 4 and 5 report the results of individual and collaborative experiments on the V2V4Real dataset for the validation and test subsets of Vehicle 1 and Vehicle 2 , un-der casting-ray ( Casting Ray → Tracker (ID asc.) ) and real-deployment setups ( Detector → Tracker ). In all V2V4Real dataset experiments, the individual predictor for both vehicles is an LSTM, using 1 second of past trajectory and a 2-second prediction horizon at 10 Hz. In the ray-casting case, occlusions introduce a miss rate of roughly 23 –29% , which is about a fac-tor of two lower than the 45 –55% miss rates observed with the detector–tracker pipeline, suggesting that ray-casting provides 12 Valid subset Test subset Vehicle 1 Vehicle 2 Vehicle 1 Vehicle 2 
+
+ADE ↓ FDE ↓ MR ↓ TSR 0.5 ↑ ADE ↓ FDE ↓ MR ↓ TSR 0.5 ↑ ADE ↓ FDE ↓ MR ↓ TSR 0.5 ↑ ADE ↓ FDE ↓ MR ↓ TSR 0.5 ↑
+
+No fusion (w/o Occ.) 0.694 1.681 - 55.17 0.812 1.926 - 56.92 1.245 3.023 - 34.36 1.175 2.862 - 35.69 
+
+No fusion (under Occ.) 
+
+0.773  
+
+> (+0.079) ↑
+
+1.849   
+
+> (+0.168) ↑
+
+30.42 36.49  
+
+> (-18.68%) ↓
+
+0.894  
+
+> (+0.082) ↑
+
+2.062   
+
+> (+0.136) ↑
+
+34.69 33.68  
+
+> (-23.24%) ↓
+
+1.350  
+
+> (+0.105) ↑
+
+3.202   
+
+> (+0.179) ↑
+
+21.97 24.72  
+
+> (-9.64%) ↓
+
+1.259  
+
+> (+0.084) ↑
+
+2.982   
+
+> (+0.100) ↑
+
+24.21 25.91  
+
+> (-9.78%) ↓
+
+1 sh. cat L ego 1.330 2.811 1.275 2.765 1.528 3.183 1.820 3.999 
+
+1 sh. cat L fused 
+
+1.322  
+
+> (-0.008) ↓
+
+2.802  
+
+> (-0.009) ↓
+
+1.271  
+
+> (-0.004) ↓
+
+2.760  
+
+> (-0.005) ↓
+
+1.519  
+
+> (-0.009) ↓
+
+3.173  
+
+> (-0.010) ↓
+
+1.806  
+
+> (-0.014) ↓
+
+3.982  
+
+> (-0.017) ↓
+
+1 sh. cat S 0.934 2.257 1.026 2.594 1.380 3.014 1.171 2.811 
+
+1 sh. cat L&S 0.773 
+
+> (no impr.)
+
+1.849 
+
+> (no impr.)
+
+29.19  
+
+> (-1.23%) ↓
+
+36.98  
+
+> (+0.49%) ↑
+
+0.889  
+
+> (-0.005) ↓
+
+2.058  
+
+> (-0.004) ↓
+
+33.76  
+
+> (-0.93%) ↓
+
+33.83  
+
+> (+0.15%) ↑
+
+1.345  
+
+> (-0.005) ↓
+
+3.189  
+
+> (-0.013) ↓
+
+19.43  
+
+> (-2.54%) ↓
+
+25.06  
+
+> (+0.34%) ↑
+
+1.265  
+
+> (+0.006) ↑
+
+2.996  
+
+> (+0.014) ↑
+
+21.70  
+
+> (-2.51%) ↓
+
+26.86  
+
+> (+0.95%) ↑
+
+2 sh. cat L ego 1.335 2.803 1.276 2.766 1.513 3.148 1.810 3.981 
+
+2 sh. cat L fused 
+
+1.324  
+
+> (-0.011) ↓
+
+2.790  
+
+> (-0.013) ↓
+
+1.266  
+
+> (-0.010) ↓
+
+2.757  
+
+> (-0.009) ↓
+
+1.501  
+
+> (-0.012) ↓
+
+3.130  
+
+> (-0.018) ↓
+
+1.789  
+
+> (-0.021) ↓
+
+3.957  
+
+> (-0.024) ↓
+
+2 sh. cat S 0.511 1.230 0.464 1.162 1.392 3.198 1.268 2.853 
+
+2 sh. cat L&S 0.766  
+
+> (-0.007) ↓
+
+1.834  
+
+> (-0.015) ↓
+
+27.76  
+
+> (-2.66%) ↓
+
+38.20  
+
+> (+1.71%) ↑
+
+0.883  
+
+> (-0.011) ↓
+
+2.045  
+
+> (-0.017) ↓
+
+31.89  
+
+> (-2.80%) ↓
+
+35.38  
+
+> (+1.70%) ↑
+
+1.343  
+
+> (-0.007) ↓
+
+3.189  
+
+> (-0.013) ↓
+
+18.97  
+
+> (-3.00%) ↓
+
+25.11  
+
+> (+0.39%) ↑
+
+1.268  
+
+> (+0.009) ↑
+
+2.999  
+
+> (+0.017) ↑
+
+21.01  
+
+> (-3.20%) ↓
+
+26.95  
+
+> (+1.04%) ↑
+
+3 sh. cat L ego 1.335 2.803 1.276 2.766 1.508 3.138 1.818 3.986 
+
+3 sh. cat L fused 
+
+1.324  
+
+> (-0.011) ↓
+
+2.790  
+
+> (-0.013) ↓
+
+1.267  
+
+> (-0.009) ↓
+
+2.759  
+
+> (-0.007) ↓
+
+1.496  
+
+> (-0.012) ↓
+
+3.120  
+
+> (-0.018) ↓
+
+1.791  
+
+> (-0.020) ↓
+
+3.962  
+
+> (-0.024) ↓
+
+3 sh. cat S 0.512 1.248 0.432 1.029 1.403 3.216 1.248 2.819 
+
+3 sh. cat L&S 0.766  
+
+> (-0.007) ↓
+
+1.835  
+
+> (-0.014) ↓
+
+27.74  
+
+> (-2.68%) ↓
+
+38.21  
+
+> (+1.72%) ↑
+
+0.882  
+
+> (-0.012) ↓
+
+2.042  
+
+> (-0.020) ↓
+
+31.56  
+
+> (-3.13%) ↓
+
+35.68  
+
+> (+2.00%) ↑
+
+1.343  
+
+> (-0.007) ↓
+
+3.189  
+
+> (-0.013) ↓
+
+18.93  
+
+> (-3.04%) ↓
+
+25.11  
+
+> (+0.39%) ↑
+
+1.268  
+
+> (+0.009) ↑
+
+2.998  
+
+> (+0.016) ↑
+
+20.98  
+
+> (-3.23%) ↓
+
+26.96  
+
+> (+1.05%) ↑
+
+4 sh. cat L ego 1.344 2.824 1.280 2.776 1.500 3.116 1.811 3.986 
+
+4 sh. cat L fused 
+
+1.332  
+
+> (-0.012) ↓
+
+2.809  
+
+> (-0.015) ↓
+
+1.267  
+
+> (-0.013) ↓
+
+2.764  
+
+> (-0.012) ↓
+
+1.488  
+
+> (-0.012) ↓
+
+3.098  
+
+> (-0.018) ↓
+
+1.791  
+
+> (-0.020) ↓
+
+3.962  
+
+> (-0.024) ↓
+
+4 sh. cat S 0.443 1.050 0.465 1.114 1.578 3.757 1.248 2.821 
+
+4 sh. cat L&S 0.763  
+
+> (-0.010) ↓
+
+1.827  
+
+> (-0.022) ↓
+
+27.08  
+
+> (-3.34%) ↓
+
+38.82  
+
+> (+2.33%) ↑
+
+0.876  
+
+> (-0.018) ↓
+
+2.031  
+
+> (-0.031) ↓
+
+29.68  
+
+> (-5.01%) ↓
+
+36.80  
+
+> (+3.12%) ↑
+
+1.348  
+
+> (-0.002) ↓
+
+3.204  
+
+> (+0.002) ↑
+
+18.90  
+
+> (-3.07%) ↓
+
+25.11  
+
+> (+0.39%) ↑
+
+1.268  
+
+> (+0.009) ↑
+
+2.998  
+
+> (+0.016) ↑
+
+20.98  
+
+> (-3.23%) ↓
+
+26.96  
+
+> (+1.05%) ↑
+
+5 sh. cat L ego 1.344 2.824 1.280 2.776 1.500 3.116 1.818 3.986 
+
+5 sh. cat L fused 
+
+1.331  
+
+> (-0.013) ↓
+
+2.808  
+
+> (-0.016) ↓
+
+1.267  
+
+> (-0.013) ↓
+
+2.764  
+
+> (-0.012) ↓
+
+1.488  
+
+> (-0.012) ↓
+
+3.098  
+
+> (-0.018) ↓
+
+1.791  
+
+> (-0.027) ↓
+
+3.962  
+
+> (-0.024) ↓
+
+5 sh. cat S 0.444 1.051 0.465 1.114 1.578 3.757 1.245 2.816 
+
+5 sh. cat L&S 0.763  
+
+> (-0.010) ↓
+
+1.827  
+
+> (-0.022) ↓
+
+27.08  
+
+> (-3.34%) ↓
+
+38.82  
+
+> (+2.33%) ↑
+
+0.876  
+
+> (-0.018) ↓
+
+2.031  
+
+> (-0.031) ↓
+
+29.68  
+
+> (-5.01%) ↓
+
+36.80  
+
+> (+3.12%) ↑
+
+1.348  
+
+> (-0.002) ↓
+
+3.204  
+
+> (+0.002) ↑
+
+18.90  
+
+> (-3.07%) ↓
+
+25.11  
+
+> (+0.39%) ↑
+
+1.268  
+
+> (+0.009) ↑
+
+2.998  
+
+> (+0.016) ↑
+
+20.98  
+
+> (-3.23%) ↓
+
+26.96  
+
+> (+1.05%) ↑
+
+6 sh. cat L ego 1.344 2.824 1.280 2.776 1.500 3.116 1.811 3.986 
+
+6 sh. cat L fused 
+
+1.327  
+
+> (-0.017) ↓
+
+2.803  
+
+> (-0.021) ↓
+
+1.267  
+
+> (-0.013) ↓
+
+2.765  
+
+> (-0.011) ↓
+
+1.488  
+
+> (-0.012) ↓
+
+3.098  
+
+> (-0.018) ↓
+
+1.791  
+
+> (-0.012) ↓
+
+3.962  
+
+> (-0.024) ↓
+
+6 sh. cat S 0.412 0.974 0.465 1.113 1.578 3.757 1.248 2.821 
+
+6 sh. cat L&S 0.760  
+
+> (-0.013) ↓
+
+1.819  
+
+> (-0.030) ↓
+
+26.77  
+
+> (-3.65%) ↓
+
+39.09  
+
+> (+2.6%) ↑
+
+0.875  
+
+> (-0.019) ↓
+
+2.030  
+
+> (-0.032) ↓
+
+29.56  
+
+> (-5.13%) ↓
+
+36.90  
+
+> (+3.22%) ↑
+
+1.348  
+
+> (-0.002) ↓
+
+3.204  
+
+> (+0.002) ↑
+
+18.90  
+
+> (-3.07%) ↓
+
+25.11  
+
+> (+0.39%) ↑
+
+1.268  
+
+> (+0.009) ↑
+
+2.998  
+
+> (+0.016) ↑
+
+20.98  
+
+> (-3.23%) ↓
+
+26.96  
+
+> (+1.05%) ↑
+
+Table 3: OPV2V dataset ablation results by node category and number of collaborating vehicles. All vehicles run the same Transformer predictor with 1 s history and 2 s horizon ( tr12 ), where the broadcasting vehicle use a shorter tracklet lifetime than the aggregating vehicle. For each number of sharing vehicles (1–6), cat L ego and cat L fused report errors for agents observed by the ego, before and after fusion; cat S covers agents only visible to collaborators; and cat L&S shows overall performance across both categories. ADE/FDE deltas are absolute, MR and TSR 0.5 are relative percentage changes (%). 
+
+a controlled yet non-trivial proxy for studying performance un-der occlusions. Across both vehicles and both setups, the trend under collaboration is consistent: late fusion reduces MR and improves TSR 0.5, confirming that multi-vehicle fusion recov-ers missed agents and increases successful trajectory coverage. Fusion results are averaged over 10 runs and bracketed ranges report 95% confidence intervals. 
+
+Time Feasibility . Figure 3 compares the runtime of individ-ual and collaborative settings for online deployment. Box-plots show the distribution of per-step runtimes, with ( μ) indi-cating the mean runtime in milliseconds. The individual set-ting measures only the local predictor, whereas the collabo-rative setting includes the full fusion cycle (all local predic-tions plus GP-based refinement). Mean runtimes for individ-ual prediction range from about 12 .9 ms to 15 .4 ms, while col-laborative prediction increases this by roughly a factor of four (43 .6–69 .6 ms), keeping all runtimes below 100 ms. The re-
+
+Setting Vehicle 1 
+
+ADE ↓ FDE ↓ MR ↓ TSR 0.5 ↑
+
+> Casting Ray →
+> Tracker (ID asc.)
+> valid
+
+w/o Occ. 1.380 2.609 – 63.50 under Occ. 1.381 
+
+(+0.001) ↑
+
+2.611 
+
+(+0.002) ↑ 23.57 46.67 
+
+(-16.83%) ↓
+
+Fusion 1.381 
+
+(no impr.) 2.611 
+
+(no impr.) 23 .10 , [23 .09 , 23 .10] 
+
+(-0.47%) ↓
+
+47 .02 , [47 .02 , 47 .03] 
+
+(+0.35%) ↑
+
+> test
+
+w/o Occ. 1.617 3.115 – 56.99 under Occ. 1.636 
+
+(+0.019) ↑
+
+3.146 
+
+(+0.031) ↑ 28.84 36.27 
+
+(-20.72%) ↓
+
+Fusion 1.638 
+
+(+0.002) ↑
+
+3.144 
+
+(-0.002) ↑
+
+25 .39 [25 .37 , 23 .40] 
+
+(-3.45%) ↓
+
+38 .69 , [38 .69 , 38 .70] 
+
+(+2.42%) ↑
+
+> Detector →
+> Tracker
+> valid
+
+Indiv 1.123 2.098 45.78 37.88 Fusion 1.139 
+
+(+0.016) ↑
+
+2.139 
+
+(+0.041) ↑
+
+44 .02 , [44 .00 , 44 .03] 
+
+(-1.76%) ↓
+
+39 .09 , [39 .08 , 39 .11] 
+
+(+1.21%) ↑
+
+> test
+
+Indiv 1.524 3.045 54.44 24.88 Fusion 1.517 
+
+(-0.007) ↓
+
+3.033 
+
+(-0.012) ↓
+
+52 .77 , [52 .76 , 52 .78] 
+
+(-1.67%) ↓
+
+26 .57 , [26 .56 , 26 .58] 
+
+(+1.69%) ↑
+
+Table 4: Trajectory prediction on V2V4Real for Vehicle 1 under ray-casting and detector-based setups, comparing individual and collaborative (fusion) predic-tion. 
+
+maining outliers are caused by frames with many tracked agents 13 Setting Vehicle 2                                                                    
+
+> ADE ↓FDE ↓MR ↓TSR 0.5↑
+> Casting Ray →
+> Tracker (ID asc.)
+> valid
+> w/o Occ. 1.646 3.198 –56.69 under Occ. 1.664
+> (+0.020) ↑
+> 3.228
+> (+0.030) ↑28.74 36.05
+> (-20.64%) ↓
+> Fusion 1.667
+> (+0.003) ↑
+> 3.226
+> (-0.002) ↓
+> 25 .31 ,[25 .30 ,25 .32]
+> (-3.43%) ↓
+> 38 .46 ,[38 .45 ,38 .46]
+> (+2.41%) ↑
+> test
+> w/o Occ. 1.408 2.690 –63.22 under Occ. 1.409
+> (+0.001) ↑
+> 2.692
+> (+0.002) ↑23.49 46.45
+> (-16.77%) ↓
+> Fusion 1.409
+> (no impr.) 2.692
+> (no impr.) 23 .03 [23 .02 ,23 .03]
+> (-0.46%) ↓
+> 46 .80 ,[46 .79 ,46 .81]
+> (+0.35%) ↑
+> Detector →
+> Tracker
+> valid  Indiv 1.149 2.342 55.29 24.77 Fusion 1.143
+> (-0.006) ↓
+> 2.330
+> (-0.012) ↓
+> 53 .63 ,[53 .62 ,53 .63]
+> (-1.66%) ↓
+> 26 .46 ,[26 .45 ,26 .46]
+> (+1.69%) ↑
+> test  Indiv 1.462 2.717 45.11 37.78 Fusion 1.478
+> (+0.016) ↑
+> 2.757
+> (+0.040) ↑
+> 43 .36 ,[43 .33 ,43 .38]
+> (-1.75%) ↓
+> 39 .00 ,[38 .98 ,39 .02]
+> (+1.22%) ↑
+
+Table 5: Trajectory prediction on V2V4Real for Vehicle 2 under ray-casting and detector-based setups, comparing individual and collaborative (fusion) predic-tion. 
+
+and can be suppressed by limiting prediction to agents within a proximity/radius around the ego vehicle. The fusion com-putation time is governed by the cost of online kernel hyper-parameter optimization. Improving runtime can be potentially be done through filtering noisy shared tracks before fusion, and precomputing parts of the GP model so that hyperparameter op-timization is run only for those nodes when necessary. This optimization is left for exploration as future work. Time ( ms )
+
+> 10
+> 100
+
+Figure 3: Runtime comparison between individual trajectory prediction and collaborative prediction with fusion for V2V4Real dataset. 
+
+5.3. Communication Volume and Latency 
+
+Communication Volume . For each dataset, the per-broadcast message-size distribution is plotted for every vehicle, with box-plots indicating the spread and annotated means ( μ). Figures 4, 5, and 6 (V2V4Real and OPV2V) show that the mean per-message sizes for all vehicles are below the 1,500-byte upper bound imposed by the 5G NR-V2X design, with most of the distribution well within this limit. DeepAccident (Figure 7) exhibits heavier tails and mean sizes that approach or exceed 1,500 bytes, reflecting its higher object density. One way to lower the message size is to increase the com-pression of the payload. For compression, we use Zstandard (Zstd), a modern LZ77-based scheme with Finite State En-tropy coding and a configurable compression level. Increas-ing the compression level can further reduce message sizes, but at the cost of higher runtime. As an alternative direction, an optimization scheme could share trajectories only for a subset of targets (e.g., those closest to the ego or most informative), 
+
+Figure 4: Per-broadcast message sizes for Vehicles 1 and 2 on V2V4Real (val-idation and test subsets). 
+
+Figure 5: Per-broadcast message sizes for all seven vehicles on OPV2V (vali-dation subset). 
+
+Figure 6: Per-broadcast message sizes for all seven vehicles on OPV2V (test subset). 
+
+Figure 7: Per-broadcast message sizes for four vehicles on DeepAccident (valid subset). 
+
+thereby maximizing information gain while keeping communi-cation volume and latency under the threshold. Exploring such adaptive sharing policies remains an interesting direction for future work. 
+
+Latency . The simplified latency model is constructed based on the findings reported in [42], which evaluates latency and packet drop for the C-V2X protocol under packet sizes of 200, 800, and 1000 bytes at a 40 Hz broadcast frequency. To adapt these observations to our setting, each transmitted packet of size 14 b bytes is first subjected to a Bernoulli packet-drop model and, if successfully received, is assigned a delay ∆:
+
+D(b) ∼ Bernoulli  1 − pdrop (b),
+
+∆ = k b + X, X ∼ LogNormal( μ, σ ),
+
+where D(b) = 1 indicates successful packet delivery and D(b) =
+
+0 indicates packet loss. The term k b captures the increase of latency with packet size, while X models right-skewed channel-access and scheduling jitter. For the log-normal component, (μ, σ ) are estimated from the 50th and 95th percentile quantiles of the reported C-V2X la-tency CDF for 200-byte packets in [42], resulting in μ = 3.135 
+
+and σ = 0.182 . The coefficient k is estimated from the in-crease in the 50th percentile delay across the three reported packet sizes, yielding k = 0.0197 . Packet drop is modeled as a Bernoulli random event with size-dependent probability, where the values are set from the reported packet error rate CDFs in [42]. Accordingly, 200-byte packets are assumed not to be dropped, while larger packets are assigned higher drop probabilities to reflect the reported increase in packet error rate with packet size: 
+
+pdrop (b) =
+
+
+
+0, b ≤ 400 ,
+
+0.08 , 400 < b ≤ 900 ,
+
+0.10 , b > 900 .
+
+A packet broadcast at time t becomes available to the receiver at t + ∆ . When fusion is performed, the receiver uses only pack-ets that are already available and ignores packets that have not yet arrived until they become available. Results are summarized in Table 6.           
+
+> Setting ADE ↓FDE ↓MR ↓TSR 0.5↑
+> Vehicle 1
+> valid
+> Indiv 1.123 2.098 45.78 37.88 Fusion 1.139
+
+(+0.016) ↑
+
+> 2.139
+
+(+0.041) ↑
+
+> 44.02
+
+(-1.76%) ↓
+
+> 39.09
+
+(+1.21%) ↑ 
+
+> Fusion + Delay 1.125
+
+(+0.002) ↑
+
+> 2.099
+
+(+0.001) ↑
+
+> 44.39
+
+(-1.39%) ↓
+
+> 39.06
+
+(+1.18%) ↑ 
+
+> Fusion + Delay + Packet Drop 1.124
+
+(+0.001) ↑
+
+> 2.096
+
+(-0.002) ↓
+
+> 44.48
+
+(-1.3%) ↓
+
+> 39.02
+
+(+1.14%) ↑     
+
+> test
+> Indiv 1.524 3.045 54.44 24.88 Fusion 1.517
+
+(-0.007) ↓
+
+> 3.033
+
+(-0.012) ↓
+
+> 52.77
+
+(-1.67%) ↓
+
+> 26.57
+
+(+1.69%) ↑ 
+
+> Fusion + Delay 1.526
+
+(+0.002) ↑
+
+> 3.043
+
+(-0.002) ↓
+
+> 52.48
+
+(-1.96%) ↓
+
+> 26.49
+
+(+1.61%) ↑ 
+
+> Fusion + Delay + Packet Drop 1.526
+
+(+0.002) ↑
+
+> 3.043
+
+(-0.002) ↓
+
+> 52.62
+
+(-1.82%) ↓
+
+> 26.47
+
+(+1.59%) ↑     
+
+> Vehicle 2
+> valid
+> Indiv 1.149 2.342 55.29 24.77 Fusion 1.143
+
+(-0.006) ↓
+
+> 2.330
+
+(-0.012) ↓
+
+> 53.63
+
+(-1.66%) ↓
+
+> 26.46
+
+(+1.69%) ↑ 
+
+> Fusion + Delay 1.151
+
+(+0.002) ↑
+
+> 2.340
+
+(-0.002) ↓
+
+> 53.34
+
+(-1.95%) ↓
+
+> 26.37
+
+(+1.6%) ↑ 
+
+> Fusion + Delay + Packet Drop 1.151
+
+(+0.002) ↑
+
+> 2.340
+
+(-0.002) ↓
+
+> 53.48
+
+(-1.81%) ↓
+
+> 26.35
+
+(+1.58%) ↑     
+
+> test
+> Indiv 1.462 2.717 45.11 37.78 Fusion 1.478
+
+(+0.016) ↑
+
+> 2.757
+
+(+0.040) ↑
+
+> 43.36
+
+(-1.75%) ↓
+
+> 39.00
+
+(+1.22%) ↑ 
+
+> Fusion + Delay 1.464
+
+(+0.002) ↑
+
+> 2.718
+
+(+0.001) ↑
+
+> 43.73
+
+(-1.38%) ↓
+
+> 38.95
+
+(+1.17%) ↑ 
+
+> Fusion + Delay + Packet Drop 1.462
+
+(no impr.) 2.715 
+
+(-0.002) ↓
+
+> 43.83
+
+(-1.28%) ↓
+
+> 38.91
+
+(+1.13%) ↑
+
+Table 6: Trajectory prediction results on V2V4Real, comparing individual and collaborative prediction under communication delay and packet drop. 
+
+For the valid split, Vehicle 1 shows an increase in missing objects, which leads to an improvement in displacement error compared with the fusion-only case. The TSR 0.5 rate shows only a mild drop of 0.07% after introducing delay and packet drop. Vehicle 2 shows a different trend, with a decrease in miss-ing objects when delay is introduced and a slight increase when packet drop is added, which leads to a decrease in displacement error. TSR 0.5 decreases steadily in this case. Similar trends are observed for the test split. Vehicle 1 shows a decrease in miss-ing objects once delay is introduced, while Vehicle 2 follows a monotonic trend, with the largest drop in missing objects reach-ing 0.47% and a moderate TSR 0.5 drop of 0.09%. These results indicate that the proposed collaborative approach remains ro-bust under communication delay and packet drop, with moder-ate attenuation of the gains achieved by fusion. Figure 8 confirms that the adopted communication model produces the intended delay behavior, where per-broadcast de-lay increases with packet size, while maintaining moderate vari-ability due to the stochastic log-normal component. Figure 9 further shows a consistent rightward shift of the delay distri-bution from smaller to larger packet-size categories, with only limited overlap between adjacent groups. 
+
+Figure 8: Per-broadcast communication delay as a function of packet size. 
+
+Figure 9: Distribution of communication delay across three broadcast size cat-egories. 
+
+15 6. Discussion and Conclusion 
+
+This paper proposed a collaborative framework for trajec-tory prediction. At its core is a collaboration layer based on a dynamic object-level map that associates local and asyn-chronously received shared predictions, and defines the mes-sage structure for broadcasting. Built on top of this repre-sentation, the proposed late-fusion module combines local and shared trajectories to refine ego forecasts and reconstruct trajec-tories for occluded agents. The conducted experiments show that the proposed frame-work consistently reduces the missing rate and improves 
+
+TSR 0.5 across all three datasets (OPV2V, DeepAccident, and V2V4Real). This trend remains stable under different predictor backbones and horizon configurations. In addition, the evalua-tion quantifies communication volume and examines the frame-work under realistic transmission effects, including latency and packet drop. On V2V4Real, the same overall trend is preserved when moving from the ray-casting occlusion setup to the full LiDAR–detector–tracker stack, indicating that the benefits of collaborative late fusion carry over to a more realistic percep-tion pipeline. Future work spans several directions. First, further in-vestigation is needed into uncertainty estimation and calibra-tion. If predictor-internal uncertainty can be decoupled from input-driven uncertainty, the fusion process could become more uncertainty-source aware. Both estimates could then be in-tegrated into fusion to distinguish, on a per-agent basis, be-tween shares arising from better observability and those arising from stronger motion forecasting. In addition, calibrated uncer-tainty could support an aggregation filter that prioritizes lower-uncertainty shares before fusion. Together, these extensions are expected to improve displacement errors. Second, communication bandwidth can undergo further re-duction. It can be formulated as an explicit optimization prob-lem, selecting which agents, horizons, or message components to broadcast so that information gain is maximized while stay-ing within the 5G NR-V2X budget. Finally, time feasibility invites further work on reducing the cost of Gaussian Process fitting. One potential direction is to use a gating mechanism to remove noisy shares and to precom-pute kernel parameters on filtered pools. This includes trigger-ing expensive re-optimization only when the expected benefit justifies the latency. 
+
+References 
+
+[1] H. Zhao, J. Gao, T. Lan, C. Sun, B. Sapp, B. Varadarajan, Y. Shen, Y. Chai, C. Schmid, Tnt: Target-driven trajectory prediction, in: Proceedings of the Conference on Robot Learning, CoRL, 2020, pp. 1–12. [2] D. Li, Q. Zhang, Z. Xia, Y. Zheng, K. Zhang, M. Yi, W. Jin, D. Zhao, Planning-inspired hierarchical trajec-tory prediction via lateral-longitudinal decomposition for autonomous driving, IEEE Transactions on Intelligent Vehicles 9 (2024) 692–702. doi: 10.1109/TIV.2023. 3307116 .[3] S. Moon, H. Woo, H. Park, H. Jung, R. Mahjourian, H.-g. Chi, H. Lim, S. Kim, J. Kim, Visiontrap: Vision-augmented trajectory prediction guided by textual descriptions, in: Computer Vision – ECCV 2024: 18th European Conference, Milan, Italy, September 29–Oc-tober 4, 2024, Proceedings, Part VI, Springer-Verlag, Berlin, Heidelberg, 2024, p. 361–379. URL: https:// doi.org/10.1007/978-3-031-72658-3_21 .doi: 10.1007/978-3-031-72658-3_21 .[4] T.-H. Wang, S. Manivasagam, M. Liang, B. Yang, W. Zeng, R. Urtasun, V2vnet: Vehicle-to-vehicle com-munication for joint perception and prediction, in: A. Vedaldi, H. Bischof, T. Brox, J.-M. Frahm (Eds.), Computer Vision – ECCV 2020, Springer International Publishing, Cham, 2020, pp. 605–621. [5] T. Wang, S. Kim, J. Wenxuan, E. Xie, C. Ge, J. Chen, Z. Li, P. Luo, Deepaccident: a motion and accident pre-diction benchmark for v2x autonomous driving, in: Pro-ceedings of the Thirty-Eighth AAAI Conference on Ar-tificial Intelligence and Thirty-Sixth Conference on In-novative Applications of Artificial Intelligence and Four-teenth Symposium on Educational Advances in Arti-ficial Intelligence, AAAI’24/IAAI’24/EAAI’24, AAAI Press, 2025. URL: https://doi.org/10.1609/ aaai.v38i6.28370 . doi: 10.1609/aaai.v38i6. 28370 .[6] R. Xu, Z. Tu, H. Xiang, W. Shao, B. Zhou, J. Ma, Cobevt: Cooperative bird’s eye view semantic segmentation with sparse transformers, in: Conference on Robot Learning (CoRL), 2022. [7] H. Ruan, H. Yu, W. Yang, S. Fan, Y. Tang, Z. Nie, Learn-ing cooperative trajectory representations for motion fore-casting, 2023. arXiv:2311.00371 .[8] Z. Wu, Y. Wang, H. Ma, Z. Li, H. Qiu, J. Li, Cmp: Co-operative motion prediction with multi-agent communica-tion, 2024. arXiv:2403.17916 .[9] Z. Lei, Z. Ni, R. Han, S. Tang, D. Wang, C. Feng, S. Chen, Y. Wang, Robust collaborative perception without external localization and clock devices, 2024. URL: https://arxiv.org/abs/2405.02965 .
+
+arXiv:2405.02965 .[10] Y. Li, S. Ren, P. Wu, S. Chen, C. Feng, W. Zhang, Learn-ing distilled collaboration graph for multi-agent percep-tion, in: Proceedings of the 35th International Confer-ence on Neural Information Processing Systems, NIPS ’21, Curran Associates Inc., Red Hook, NY, USA, 2024. [11] Y. Xia, Q. Yuan, G. Luo, X. Fu, Y. Li, X. Zhu, T. Luo, S. Chen, J. Li, One is plenty: A polymorphic fea-ture interpreter for immutable heterogeneous collabora-tive perception, 2025. URL: https://arxiv.org/ abs/2411.16799 . arXiv:2411.16799 .16 [12] Y. Xu, L. Li, J. Wang, B. Yang, Z. Wu, X. Chen, J. Wang, Codyntrust: Robust asynchronous collab-orative perception via dynamic feature trust modu-lus, 2025. URL: https://arxiv.org/abs/2502. 08169 . arXiv:2502.08169 .[13] Z. Lei, S. Ren, Y. Hu, W. Zhang, S. Chen, Latency-aware collaborative perception, in: S. Avidan, G. Bros-tow, M. Cissé, G. M. Farinella, T. Hassner (Eds.), Com-puter Vision – ECCV 2022, Springer Nature Switzerland, Cham, 2022, pp. 316–332. [14] H. Yu, Y. Tang, E. Xie, J. Mao, P. Luo, Z. Nie, Flow-based feature fusion for vehicle-infrastructure cooperative 3d object detection, in: Thirty-seventh Conference on Neu-ral Information Processing Systems, 2023. URL: https: //openreview.net/forum?id=gsglrhvQxX .[15] Y.-C. Liu, J. Tian, C.-Y. Ma, N. Glaser, C.-W. Kuo, Z. Kira, Who2com: Collaborative perception via learn-able handshake communication, in: 2020 IEEE Interna-tional Conference on Robotics and Automation (ICRA), 2020, pp. 6876–6883. doi: 10.1109/ICRA40945. 2020.9197364 .[16] T. Wang, G. Chen, K. Chen, Z. Liu, B. Zhang, A. Knoll, C. Jiang, Umc: A unified bandwidth-efficient and multi-resolution based collaborative perception frame-work, in: 2023 IEEE/CVF International Conference on Computer Vision (ICCV), IEEE Computer Soci-ety, Los Alamitos, CA, USA, 2023, pp. 8153–8162. URL: https://doi.ieeecomputersociety. org/10.1109/ICCV51070.2023.00752 .doi: 10.1109/ICCV51070.2023.00752 .[17] K. Yang, D. Yang, J. Zhang, H. Wang, P. Sun, L. Song, What2comm: Towards communication-efficient collabo-rative perception via feature decoupling, in: Proceedings of the 31st ACM International Conference on Multimedia, Association for Computing Machinery, New York, NY, USA, 2023, p. 7686–7695. [18] D. Yang, K. Yang, Y. Wang, J. Liu, Z. Xu, R. Yin, P. Zhai, L. Zhang, How2comm: Communication-efficient and collaboration-pragmatic multi-agent percep-tion, in: Thirty-seventh Conference on Neural In-formation Processing Systems, 2023. URL: https:// openreview.net/forum?id=Dbaxm9ujq6 .[19] Y. Hu, S. Fang, Z. Lei, Y. Zhong, S. Chen, Where2comm: communication-efficient collaborative perception via spa-tial confidence maps, in: Proceedings of the 36th Interna-tional Conference on Neural Information Processing Sys-tems, NIPS ’22, Curran Associates Inc., Red Hook, NY, USA, 2024. [20] Z. Chen, Y. Shi, J. Jia, Transiff: An instance-level fea-ture fusion framework for vehicle-infrastructure coopera-tive 3d detection with transformers, in: Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV), 2023, pp. 18205–18214. [21] R. Xu, H. Xiang, Z. Tu, X. Xia, M.-H. Yang, J. Ma, V2x-vit: Vehicle-to-everything cooperative perception withÂ vision transformer, in: S. Avidan, G. Bros-tow, M. Cissé, G. M. Farinella, T. Hassner (Eds.), Com-puter Vision – ECCV 2022, Springer Nature Switzerland, Cham, 2022, pp. 107–124. [22] J. Xu, Y. Zhang, Z. Cai, D. Huang, Cosdh: Communication-efficient collaborative perception via supply-demand awareness and intermediate-late hybridization, 2025. URL: https://arxiv.org/ abs/2503.03430 . arXiv:2503.03430 .[23] X. Gao, R. Xu, J. Li, Z. Wang, Z. Fan, Z. Tu, STAMP: Scalable task- and model-agnostic collaborative percep-tion, in: The Thirteenth International Conference on Learning Representations, 2025. URL: https:// openreview.net/forum?id=8NdNniulYE .[24] N. Glaser, Y.-C. Liu, J. Tian, Z. Kira, Overcoming ob-structions via bandwidth-limited multi-agent spatial hand-shaking, in: 2021 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), 2021, pp. 2406– 2413. doi: 10.1109/IROS51168.2021.9636761 .[25] S. Hong, Y. Liu, Z. Li, S. Li, Y. He, Multi-agent collabo-rative perception via motion-aware robust communication network, in: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2024, pp. 15301–15310. [26] Y. Tao, S. Hu, Z. Fang, Y. Fang, Direct-cp: Di-rected collaborative perception for connected and autonomous vehicles via proactive attention, 2025. URL: https://arxiv.org/abs/2409.08840 .
+
+arXiv:2409.08840 .[27] R. Chen, Y. Mu, R. Xu, W. Shao, C. Jiang, H. Xu, Y. Qiao, Z. Li, P. Luo, CO3: Cooperative unsupervised 3d rep-resentation learning for autonomous driving, in: The Eleventh International Conference on Learning Represen-tations, 2023. URL: https://openreview.net/ forum?id=QUaDoIdgo0 .[28] S. Wei, Y. Wei, Y. Hu, Y. Lu, Y. Zhong, S. Chen, Y. Zhang, Asynchrony-robust collaborative perception via bird’s eye view flow, in: Thirty-seventh Conference on Neural Information Processing Systems, 2023. URL: https: //openreview.net/forum?id=UHIDdtxmVS .[29] D. Qiao, F. Zulkernine, Adaptive feature fusion for co-operative perception using lidar point clouds, in: 2023 IEEE/CVF Winter Conference on Applications of Com-puter Vision (WACV), 2023, pp. 1186–1195. doi: 10. 1109/WACV56688.2023.00124 .17 [30] Y. Zhou, J. Xiao, Y. Zhou, G. Loianno, Multi-robot col-laborative perception with graph neural networks, IEEE Robotics and Automation Letters 7 (2022) 2289–2296. doi: 10.1109/LRA.2022.3141661 .[31] K. Yang, D. Yang, J. Zhang, M. Li, Y. Liu, J. Liu, H. Wang, P. Sun, L. Song, Spatio-Temporal Domain Awareness for Multi-Agent Collaborative Perception , in: 2023 IEEE/CVF International Conference on Computer Vision (ICCV), IEEE Computer Society, Los Alamitos, CA, USA, 2023, pp. 23326–23335. URL: https://doi.ieeecomputersociety. org/10.1109/ICCV51070.2023.02137 .doi: 10.1109/ICCV51070.2023.02137 .[32] J. Cui, H. Qiu, D. Chen, P. Stone, Y. Zhu, Cooper-naut: End-to-end driving with cooperative perception for networked vehicles, 2022 IEEE/CVF Confer-ence on Computer Vision and Pattern Recogni-tion (CVPR) (2022) 17231–17241. URL: https: //api.semanticscholar.org/CorpusID: 248512704 .[33] N. M. Glaser, Z. Kira, Communication-critical plan-ning via multi-agent trajectory exchange, in: 2023 IEEE International Conference on Robotics and Au-tomation (ICRA), 2023, pp. 3468–3475. doi: 10.1109/ ICRA48891.2023.10160880 .[34] Y. Li, J. Zhang, D. Ma, Y. Wang, C. Feng, Multi-robot scene completion: Towards task-agnostic collabo-rative perception, in: 6th Annual Conference on Robot Learning, 2022. URL: https://openreview.net/ forum?id=hW0tcXOJas2 .[35] X. Zhang, Z. Zhou, Z. Wang, Y. Ji, Y. Huang, H. Chen, Co-mtp: A cooperative trajectory prediction frame-work with multi-temporal fusion for autonomous driv-ing, 2025. URL: https://arxiv.org/abs/2502. 16589 . arXiv:2502.16589 .[36] Y. Hu, J. Peng, S. Liu, J. Ge, S. Liu, S. Chen, Communication-efficient collaborative perception via information filling with codebook, 2024. URL: 
+
+https://arxiv.org/abs/2405.04966 .
+
+arXiv:2405.04966 .[37] Z. Ding, J. Fu, S. Liu, H. Li, S. Chen, H. Li, S. Zhang, X. Zhou, Point cluster: A compact message unit for communication-efficient collaborative perception, in: The Thirteenth International Conference on Learning Rep-resentations, 2025. URL: https://openreview. net/forum?id=54XlM8Clkg .[38] C. E. Rasmussen, C. K. I. Williams, Gaussian Processes for Machine Learning, Adaptive Computation and Ma-chine Learning, MIT Press, Cambridge, MA, 2006. [39] B. Lakshminarayanan, A. Pritzel, C. Blundell, Simple and scalable predictive uncertainty estimation using deep ensembles, in: Proceedings of the 31st International Conference on Neural Information Processing Systems, NIPS’17, Curran Associates Inc., Red Hook, NY, USA, 2017, p. 6405–6416. [40] R. Xu, H. Xiang, X. Xia, X. Han, J. Li, J. Ma, Opv2v: An open benchmark dataset and fusion pipeline for per-ception with vehicle-to-vehicle communication, in: 2022 International Conference on Robotics and Automation (ICRA), IEEE, 2022, pp. 2583–2589. [41] R. Xu, X. Xia, J. Li, H. Li, S. Zhang, Z. Tu, Z. Meng, H. Xiang, X. Dong, R. Song, et al., V2v4real: A real-world large-scale dataset for vehicle-to-vehicle coopera-tive perception, in: Proceedings of the IEEE/CVF Confer-ence on Computer Vision and Pattern Recognition, 2023, pp. 13712–13722. [42] F. de Ponte Müller, I. Rashdan, M. Schmidhammer, S. Sand, Its-g5 and c-v2x link level performance measurements, in: Proceedings of the 27th ITS World Congress, Hamburg, Germany, 2021. URL: 
+
+https://elib.dlr.de/142341/1/ITS-G5_ and_C-V2X_Link_Level_Performance_ Measurements_dePonteMueller_v4.0.pdf ,german Aerospace Center (DLR). Field-test report/paper. 18

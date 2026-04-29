@@ -6,74 +6,68 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-04-28
-- 运行时间：2026-04-28 20:57:31 UTC
+- 最新运行日期：2026-04-29
+- 运行时间：2026-04-29 20:23:40 UTC
 - 运行状态：成功
-- 本次总论文数：17
-- 精读区：6
+- 本次总论文数：15
+- 精读区：4
 - 速读区：11
 
 ### 今日简报（AI）
-- 今日共生成 17 篇推荐（精读 6 篇，速读 11 篇）
-- 精读：《Adaptive vs. Static Robot-to-Human Handover: A Study on Orientation and Approach Direction》（9.0/10）, 《Multi-Robot Motions in Milliseconds: Vector-Accelerated Primitives for Sampling-Based Planning》（9.0/10）
-- 速读：《ST-$π$: Structured SpatioTemporal VLA for Robotic Manipulation》（8.0/10）, 《BridgeACT: Bridging Human Demonstrations to Robot Actions via Unified Tool-Target Affordances》（8.0/10）, 《Cooptimizing Safety and Performance Using Safety Value-Constrained Model Predictive Control》（8.0/10）
+- 今日共生成 15 篇推荐（精读 4 篇，速读 11 篇）
+- 精读：《Safe Navigation in Unknown and Cluttered Environments via Direction-Aware Convex Free-Region Generation》（8.0/10）, 《Exploiting Differential Flatness for Efficient Learning-based Model Predictive Control of Constrained Multi-Input Control Affine Systems》（8.0/10）
+- 速读：《FingerEye: Continuous and Unified Vision-Tactile Sensing for Dexterous Manipulation》（7.0/10）, 《CodeGraphVLP: Code-as-Planner Meets Semantic-Graph State for Non-Markovian Vision-Language-Action Models》（7.0/10）, 《Move-Then-Operate: Behavioral Phasing for Human-Like Robotic Manipulation》（7.0/10）
 - 这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。
-- 详情：[/202604/28/README](/202604/28/README)
+- 详情：[/202604/29/README](/202604/29/README)
 
 ### 精读区论文标签
-1. [Adaptive vs. Static Robot-to-Human Handover: A Study on Orientation and Approach Direction](/202604/28/2604.22378v1-adaptive-vs-static-robot-to-human-handover-a-study-on-orientation-and-approach-direction)  
-   标签：评分：9.0/10、query:q8
-   evidence：机械臂的实时运动学约束轨迹
-2. [Multi-Robot Motions in Milliseconds: Vector-Accelerated Primitives for Sampling-Based Planning](/202604/28/2604.23960v1-multi-robot-motions-in-milliseconds-vector-accelerated-primitives-for-sampling-based-planning)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：机械臂多机器人运动规划的毫秒级加速
-3. [Hybrid A*-Based Reverse Path-Planning of a Vehicle with Trailer System](/202604/28/2604.24606v1-hybrid-a-based-reverse-path-planning-of-a-vehicle-with-trailer-system)  
-   标签：评分：9.0/10、query:q1
-   evidence：多体系统的避障路径规划
-4. [DART: Learning-Enhanced Model Predictive Control for Dual-Arm Non-Prehensile Manipulation](/202604/28/2604.17833v2-dart-learning-enhanced-model-predictive-control-for-dual-arm-non-prehensile-manipulation)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：基于非线性MPC和阻抗控制的双臂操作优化控制框架
-5. [Control Barrier Functions Solved with Hierarchical Quadratic Programming for Safe Physical Human-Robot Interaction](/202604/28/2604.23039v1-control-barrier-functions-solved-with-hierarchical-quadratic-programming-for-safe-physical-human-robot-interaction)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：用于机器人安全交互和避障的分层二次规划
-6. [Sliding Mode Control for Safe Trajectory Tracking with Moving Obstacles Avoidance: Experimental Validation on Planar Robots](/202604/28/2604.24518v1-sliding-mode-control-for-safe-trajectory-tracking-with-moving-obstacles-avoidance-experimental-validation-on-planar-robots)  
-   标签：评分：8.0/10、query:q1
-   evidence：结合安全滤波器的轨迹跟踪与避障控制
+1. [Safe Navigation in Unknown and Cluttered Environments via Direction-Aware Convex Free-Region Generation](/202604/29/2604.23648v1-safe-navigation-in-unknown-and-cluttered-environments-via-direction-aware-convex-free-region-generation)  
+   标签：评分：8.0/10、query:q3
+   evidence：用于无碰撞导航的优化友好型表示
+2. [Exploiting Differential Flatness for Efficient Learning-based Model Predictive Control of Constrained Multi-Input Control Affine Systems](/202604/29/2604.24706v1-exploiting-differential-flatness-for-efficient-learning-based-model-predictive-control-of-constrained-multi-input-control-affine-systems)  
+   标签：评分：8.0/10、query:q2
+   evidence：针对受约束机器人系统的高效学习型模型预测控制
+3. [VISION-SLS: Safe Perception-Based Control from Learned Visual Representations via System Level Synthesis](/202604/29/2604.24894v1-vision-sls-safe-perception-based-control-from-learned-visual-representations-via-system-level-synthesis)  
+   标签：评分：8.0/10、query:q2
+   evidence：基于视觉输入的具有鲁棒约束满足性的优化控制
+4. [Egocentric Tactile and Proximity Sensors as Observation Priors for Humanoid Collision Avoidance](/202604/29/2604.25554v1-egocentric-tactile-and-proximity-sensors-as-observation-priors-for-humanoid-collision-avoidance)  
+   标签：评分：8.0/10、query:q4
+   evidence：人形机器人的全身避障
 
 ### 速读区论文标签
-1. [ST-$π$: Structured SpatioTemporal VLA for Robotic Manipulation](/202604/28/2604.17880v1-st--structured-spatiotemporal-vla-for-robotic-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：专注于使用VLA模型进行精细的时空机器人操作
-2. [BridgeACT: Bridging Human Demonstrations to Robot Actions via Unified Tool-Target Affordances](/202604/28/2604.23249v1-bridgeact-bridging-human-demonstrations-to-robot-actions-via-unified-tool-target-affordances)  
-   标签：评分：8.0/10、query:q6
-   evidence：直接从人类视频中学习机器人操作
-3. [Cooptimizing Safety and Performance Using Safety Value-Constrained Model Predictive Control](/202604/28/2604.23863v1-cooptimizing-safety-and-performance-using-safety-value-constrained-model-predictive-control)  
-   标签：评分：8.0/10、query:q2
-   evidence：使用约束模型预测控制实时合成安全轨迹
-4. [Optimal Planning and Control under Signal Temporal Logic Specifications](/202604/28/2604.24107v1-optimal-planning-and-control-under-signal-temporal-logic-specifications)  
-   标签：评分：8.0/10、query:q3
-   evidence：满足安全走廊和STL任务的轨迹优化问题
-5. [Energy-Efficient Multi-Robot Coverage Path Planning of Non-Convex Regions of Interests](/202604/28/2604.22189v1-energy-efficient-multi-robot-coverage-path-planning-of-non-convex-regions-of-interests)  
+1. [FingerEye: Continuous and Unified Vision-Tactile Sensing for Dexterous Manipulation](/202604/29/2604.20689v1-fingereye-continuous-and-unified-vision-tactile-sensing-for-dexterous-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：用于灵巧操作的视触觉感知
+2. [CodeGraphVLP: Code-as-Planner Meets Semantic-Graph State for Non-Markovian Vision-Language-Action Models](/202604/29/2604.22238v1-codegraphvlp-code-as-planner-meets-semantic-graph-state-for-non-markovian-vision-language-action-models)  
+   标签：评分：7.0/10、query:q6
+   evidence：长程机器人操作与基于代码的规划器
+3. [Move-Then-Operate: Behavioral Phasing for Human-Like Robotic Manipulation](/202604/29/2604.23620v1-move-then-operate-behavioral-phasing-for-human-like-robotic-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：将机器人操作解耦为重新定位和关键接触交互
+4. [AsyncShield: A Plug-and-Play Edge Adapter for Asynchronous Cloud-based VLA Navigation](/202604/29/2604.24086v1-asyncshield-a-plug-and-play-edge-adapter-for-asynchronous-cloud-based-vla-navigation)  
    标签：评分：7.0/10、query:q1
-   evidence：包含避障和安全缓冲的多机器人路径规划
-6. [GCImOpt: Learning efficient goal-conditioned policies by imitating optimal trajectories](/202604/28/2604.22724v1-gcimopt-learning-efficient-goal-conditioned-policies-by-imitating-optimal-trajectories)  
-   标签：评分：7.0/10、query:q3
-   evidence：用于生成最优控制演示的高效轨迹优化方法
-7. [Integrated Lander-Propulsion-GNC Framework for Autonomous Lunar Powered Descent](/202604/28/2604.23013v1-integrated-lander-propulsion-gnc-framework-for-autonomous-lunar-powered-descent)  
-   标签：评分：7.0/10、query:q3
-   evidence：用于轨迹优化的实时逐次凸化引导求解器
-8. [CAPSULE: Control-Theoretic Action Perturbations for Safe Uncertainty-Aware Reinforcement Learning](/202604/28/2604.23576v1-capsule-control-theoretic-action-perturbations-for-safe-uncertainty-aware-reinforcement-learning)  
+   evidence：防止导航碰撞的异步控制框架
+5. [An Automatic Ground Collision Avoidance System with Reinforcement Learning](/202604/29/2604.24403v1-an-automatic-ground-collision-avoidance-system-with-reinforcement-learning)  
+   标签：评分：7.0/10、query:q1
+   evidence：航空航天领域的自动地面防撞系统
+6. [Adaptive Constraint-Lifting Control with Stability and Invariance Guarantees](/202604/29/2604.24984v1-adaptive-constraint-lifting-control-with-stability-and-invariance-guarantees)  
    标签：评分：7.0/10、query:q2
-   evidence：高维系统的控制理论安全性
-9. [MOMO: A framework for seamless physical, verbal, and graphical robot skill learning and adaptation](/202604/28/2604.20468v2-momo-a-framework-for-seamless-physical-verbal-and-graphical-robot-skill-learning-and-adaptation)  
+   evidence：具有状态约束和不变性保证的自适应控制
+7. [State-Constrained Control of Discrete-Time Nonlinear Systems via Constraint Lifting](/202604/29/2604.24989v1-state-constrained-control-of-discrete-time-nonlinear-systems-via-constraint-lifting)  
+   标签：评分：7.0/10、query:q2
+   evidence：基于优化的状态约束控制与安全性保证
+8. [X2-N: A Transformable Wheel-legged Humanoid Robot with Dual-mode Locomotion and Manipulation](/202604/29/2604.21541v1-x2-n-a-transformable-wheel-legged-humanoid-robot-with-dual-mode-locomotion-and-manipulation)  
    标签：评分：6.0/10、query:q6
-   evidence：机器人技能自适应与轨迹编辑
-10. [Visual-Tactile Peg-in-Hole Assembly Learning from Peg-out-of-Hole Disassembly](/202604/28/2604.20712v1-visual-tactile-peg-in-hole-assembly-learning-from-peg-out-of-hole-disassembly)  
-   标签：评分：6.0/10、query:q6
-   evidence：机器人操作任务中的视触觉技能学习
-11. [Learning from Demonstration with Failure Awareness for Safe Robot Navigation](/202604/28/2604.23360v1-learning-from-demonstration-with-failure-awareness-for-safe-robot-navigation)  
+   evidence：带有机械臂的人形机器人，用于灵巧操作任务
+9. [Collaborative Trajectory Prediction via Late Fusion](/202604/29/2604.22973v1-collaborative-trajectory-prediction-via-late-fusion)  
    标签：评分：6.0/10、query:q1
-   evidence：利用故障感知学习实现机器人安全导航与避障
+   evidence：用于避障的轨迹预测
+10. [Logic of Fuzzy Paths](/202604/29/2604.24907v1-logic-of-fuzzy-paths)  
+   标签：评分：6.0/10、query:q4
+   evidence：用于运动规划规范的时序逻辑
+11. [Dynamic UGV-UAV Cooperative Path Planning in Uncertain Environments](/202604/29/2604.25267v1-dynamic-ugv-uav-cooperative-path-planning-in-uncertain-environments)  
+   标签：评分：6.0/10、query:q4
+   evidence：无人车与无人机的协同路径规划
 
 
 <div class="dpr-home-promo-card">
