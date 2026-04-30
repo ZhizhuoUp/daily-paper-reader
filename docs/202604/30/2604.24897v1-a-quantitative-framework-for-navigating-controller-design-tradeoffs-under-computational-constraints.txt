@@ -1,0 +1,1979 @@
+Title: A Quantitative Framework for Navigating Controller Design Tradeoffs under Computational Constraints
+
+URL Source: https://arxiv.org/pdf/2604.24897v1
+
+Published Time: Wed, 29 Apr 2026 00:08:55 GMT
+
+Number of Pages: 34
+
+Markdown Content:
+# A Quantitative Framework for Navigating Controller Design Tradeoffs under Computational Constraints 
+
+Chris Verhoek and Nikolai Matni ∗
+
+April 29, 2026 
+
+Abstract 
+
+Computational constraints permeate the controller design process, and yet are rarely treated as explicit design constraints. Towards addressing this gap, we propose a quantitative framework that captures the effects of common design approximations, such as model order reduction, tem-poral discretization, horizon truncation, and solver accuracy, on both controller performance and computational requirements. Our framework highlights that these approximations are tunable parameters within an overall controller design process. By leveraging incremental input-to-state stability, we show that bounding the aggregate effects of these approximations reduces to ver-ifying a design-dependent sector bound on the difference between the deployed policy and an idealized baseline, with stability enforced via a small-gain condition. We operationalize these insights via a Design Meta-Problem in which the performance gap is minimized subject to sta-bility, real-time compute, and timing constraints. Finally, we instantiate the framework on a receding horizon LQR case study, and demonstrate a principled near-optimal navigation of tradeoffs among sampling rate, model order, horizon length, and solver iterations. 
+
+# 1 Introduction 
+
+Controllers implemented on digital hardware must respect hard timing bounds imposed by plant dynamics, directly coupling achievable performance to available processing speed. Yet computa-tional limits are rarely treated as first-class design constraints. Instead, tractability is achieved through a sequence of standard simplifications falling into roughly three categories: (i) modeling approximations, e.g., discretization of continuous-time dynamics, truncation of infinite horizons, and model order reduction, (ii) problem relaxations, e.g., convex relaxations of nonconvex optimal control problems, and early termination of iterative solvers, and (iii) architectural decompositions, e.g., layered control hierarchies that distribute computation across decision-making, planning, and regulation layers. While each simplification is individually well-motivated, they are typically introduced in iso-lation, and their combined effect on stability, performance, and computational feasibility is rarely analyzed jointly. This leaves practitioners without principled guidance on which approximations to 
+
+> ∗
+
+C. Verhoek and N. Matni are with the Dept. of Electrical and Systems Engineering, University of Pennsylvania, United States. C. Verhoek is also with the Control Systems Group, Eindhoven University of Technology, The Nether-lands. Email addresses: {cverhoek, nmatni }@seas.upenn.edu. This work has been supported by the European project COVER under the grant No. 101086228, and AFOSR Award FA9550-24-1-0102. 
+
+1
+
+> arXiv:2604.24897v1 [eess.SY] 27 Apr 2026
+
+make, and at what fidelity. To address this gap, we propose a quantitative framework that makes computational constraints explicit within the control design process. Focusing on a single-layer op-timal control problem, we treat model reduction, temporal discretization, horizon truncation, and solver accuracy as tunable design parameters, relating each directly to closed-loop performance degradation and real-time computational feasibility. This yields a design meta-problem in which performance is optimized subject to stability and real-time compute constraints. To our knowledge, this is the first framework for systematically and jointly navigating approximation choices under explicit computational constraints. 
+
+Related work: The individual effects of design approximations (model reduction, horizon trun-cation, discretization, solver accuracy) are well understood, see Antoulas (2005); Chen and Francis (1995); Gr¨ une and Rantzer (2008); Karapetyan et al. (2025) and references therein. What is lacking is a framework that treats these approximations as jointly tunable parameters under performance, stability, and computational constraints. Complementary lines of work address (i) the division of compute resources between fast and slow control loops Garg et al. (2021); Rosolia et al. (2022); Stamouli et al. (2025), which connects naturally to the broader research program on layered control architectures (LCAs) Matni et al. (2024), (ii) co-design and resource-aware methods Lahijanian et al. (2018); Zardini et al. (2021), which take a system-level perspective in which the controller is one component among many to be selected, and (iii) event-triggered control Heemels et al. (2021), which addresses computational constraints from a different angle, optimizing when the controller acts rather than how it computes. The most directly related body of work concerns compute-aware, real-time optimization for con-trol, particularly for model-predictive control (MPC). Results in this space analyze performance loss incurred by early termination of online optimization in MPC Karapetyan et al. (2025); Liao-McPherson et al. (2020); Richter et al. (2011); Rubagotti et al. (2014); Shi et al. (2026); Srikanthan et al. (2024) by leveraging (incremental) input-to-state stability. While important, these works treat model order, discretization, and horizon length as fixed rather than as tuenable parameters. 
+
+Contributions: We propose a quantitative framework for optimizing controller performance subject to stability, real-time compute, and timing constraints. Our framework is centered around a 
+
+Design Meta-Problem (DMP) in which performance degradation induced by design approximations, i.e., model reduction, temporal discretization, horizon truncation, and solver accuracy, is minimized subject to stability and computational feasibility. By leveraging incremental input-to-state stability (δISS), we show that bounding degradation in performance reduces to verifying a design-dependent sector bound on the difference between deployed and baseline policies, with stability enforced via a small-gain condition. We operationalize the framework on a receding horizon linear quadratic regulator (LQR) case study, demonstrating principled near-optimal navigation of tradeoffs among model order, sampling rate, horizon length, and solver iterations. 
+
+Notation: R is the set of real numbers and let R+ be the set of non-negative numbers. For a matrix X ∈ Rn×n, its smallest (largest) eigenvalue is denoted by λmin (X) ( λmax (X)). The conditioning number of X is denoted κ(X), i.e., for X = X⊤, κ(X) = λmax (X) 
+
+> λmin (X)
+
+. We denote the operator norm of X by ∥X∥. All proofs can be found in the appendices. 22 Problem Formulation 
+
+We consider the nonlinear dynamical system ˙xt = ft(xt, u t), (1) and associated infinite-horizon optimal control problem, minimize 
+
+> π
+
+Z ∞
+
+> 0
+
+ct(xt, u t)d t (2a) s. t. dynamics (1) , (2b) 
+
+ut = πt(x[0 ,t ], u [0 ,t )), (2c) 
+
+xt ∈ X t, u t ∈ U t, (2d) 
+
+x0 = ξ, (2e) with state xt ∈ Rnx , control input ut ∈ Rnu , dynamics model ft, stage-wise cost function ct, state and input constraint sets Xt and Ut, and state-feedback policy πt. We denote 1 the cost achieved by a policy π in problem (2) by J(π), and the optimal cost is given by J⋆ := J(π⋆), where π⋆ is an optimal solution of (2). We assume throughout that J⋆ is finite and is attained by a policy π⋆. The problem, as stated, is in general intractable to solve, and as such approximations to the problem must be introduced, motivated in part by computational constraints. A goal of this paper is to bound the joint effects of these approximations on overall system performance, i.e., to bound 
+
+J(ˆ π) − J(π⋆), for ˆ π the deployed policy. We highlight commonly used approximations next. 
+
+2.1 Design Approximations 
+
+1) Reduced Order Models and Policy Classes: It is common to approximate the dynamics with a reduced order model ˆf from a model class F (e.g., linear, control-affine), and similarly to restrict our search to policies ˆ π lying in a policy class Π (e.g., Markovian, time-invariant). We denote the joint reduced order model and policy class by M = F × Π. 
+
+2) Horizon Length: Rather than solving problem (2) over an infinite horizon, it is instead solved over a finite horizon T . The cost for t ∈ (T, ∞) is captured by augmenting the finite-horizon objective with a terminal cost cT (xT ). 
+
+3) Temporal Discretization: To make solving the optimal control problem (2) computation-ally tractable, it is often temporally discretized with a sampling time τ .
+
+4) Optimization Iterations: The resulting reduced-order, finite-horizon, discrete-time prob-lem, is often deployed in a receding horizon fashion, which demands online re-solving at each step using iterative algorithms (e.g., gradient descent, interior point methods). Due to loop rate and compute constraints, only a finite number N of iterations can be run. 
+
+Remark 1. This list is not exhaustive, and the proposed framework can easily be extended to handle other bespoke approximations and design choices. Moreover, the order in which these design approximations are introduced may depend on the control design problem at hand. While these approximations are necessary to make the control design problem (2) tractable, the resulting deployed policy ˆ π must still respect certain key design constraints .     
+
+> 1For clarity of notation, we suppress the tsubscript when referring to the policy π={πt}t≥0.
+
+32.2 Design Constraints 
+
+1) Stability Constraints: A minimal requirement is for the deployed policy ˆ π ∈ Π to be stabilizing. This, in turn, may impose lower bounds on model and policy class complexity M, on loop rate and sampling time, on horizon length, and on the number of optimization iterations. 
+
+2) Performance Constraints: These may be imposed from the design problem at hand or due to integration within a larger LCA. These could include, e.g., tracking error or convergence rate guarantees. These can be enforced by requiring a policy ˆ π satisfying R(ˆ π) ≤ 0, for a suitably defined requirements function R.
+
+3) Offline Compute Constraints: While heavier demands can be made of offline compute requirements, we still require methods that can be solved within a prescribed amount of time, e.g., polynomial time synthesis algorithms. 
+
+4) Online Compute Constraints: Online computation must respect constraints as imposed by, e.g., loop rate constraints and hardware capabilities. As before, this list is not exhaustive, and our framework naturally accommodates additional constraints. 
+
+2.3 Problem Statement 
+
+While the above design approximations and constraints are well understood individually, they have yet to be holistically quantified and optimized. We therefore seek to provide a systematic framework for navigating the tradeoffs introduced by these design approximations and constraints. Toward that end, in the next section, we formulate a DMP for the optimal control problem (2) that optimizes the performance gap of the deployed policy induced by the design approximations of §2.1 subject to the constraints of §2.2, with a particular emphasis on explicitly encoding computational constraints .
+
+# 3 The Design Meta-Problem 
+
+To track the contribution of each approximation to the overall performance gap, we associate a dedicated approximate policy with each design parameter, wherein subscripts identify the relevant quantities that define the approximation. For example, ˆ πM denotes the policy computed using the reduced order model and policy class M, ˆ πT denotes the policy computed for a finite horizon of length T , ˆ πτ denotes the policy computed using a sampling time τ , and ˆ πN denotes the policy computed using N compute iterations. There is an implicit dependence induced by the order of the approximations, e.g., ˆ πN here is inherently dependent on the choices of τ, T, M, i.e., ˆ πN,τ,T, M.However, to reduce notational clutter, we suppress this implicit dependence in our notation. In our model, the deployed policy (on f ) is ˆ πN , and hence our goal is to understand the effect of the design choices on the performance gap E := J(ˆ πN ) − J(π⋆). 
+
+Remark 2. We use the optimal policy π⋆ as a natural baseline, but this is not a requirement, and ˆπ can be compared against any baseline policy. This is particularly useful when π⋆ is impossible to compute, but a performant yet non-implementable policy (e.g., one that violates online compute constraints) is available as a baseline. Towards quantifying the tradeoffs that design choices induce in the overall control design prob-lem, we take inspiration from work on tradeoffs in large-scale learning Bottou and Bousquet (2007), 4and consider the following performance gap decomposition :
+
+E = J(ˆ πN ) − J(π⋆)= J(ˆ πN ) − J(ˆ πτ )
+
+| {z }  
+
+> Optimization Error Eopt (N)
+
++ J(ˆ πτ ) − J(ˆ πT )
+
+| {z }  
+
+> Discretization Error Edt (τ)
+
++ J(ˆ πT ) − J(ˆ πM)
+
+| {z }  
+
+> Finite Horizon Error Efh (T)
+
++ J(ˆ πM) − J(π⋆)
+
+| {z } 
+
+> ROM Error Erom (M)
+
+=: Eopt (N ) + Edt (τ ) + Efh (T ) + Erom (M). (3) Decomposition (3) shows that the performance gap of the deployed policy ˆ πN relative to the baseline policy π⋆ can be decomposed into error terms that depend on the choice of horizon T (i.e., Efh ), the sampling time τ (i.e., Edt ), the choice of reduced order model class M (i.e., Erom ), and the number of optimization iterations N (i.e., Eopt ). We note that the order of the decomposition will typically depend on the design problem at hand, and that not all approximations need be introduced. Moreover, note that the error terms in (3) share the same implicit dependence on earlier approximation errors as the approximate policies do. As a final note, this sequential introduction of design approximations is common in every field in engineering, and is not only done to make the problem computationally tractable, but also to make solutions understandable and interpretable. Hence, our proposed framework not only leads to computational tractability, but also to intellectual tractability : each error term has a clear operational interpretation, and the sequential structure mirrors how experienced engineers approach these problems. Absent additional constraints, one would simply minimize all error terms simultaneously. How-ever, as outlined in §2.2, engineers are subject to several constraints when designing systems, which we encode in the following (informal) DMP: minimize  
+
+> N,τ,T, M
+
+Eopt (N ) + Edt (τ ) + Efh (T ) + Erom (M) (4a) s. t. T ≥ Tmin , τ ≤ τmax , (4b) 
+
+∃( ˆf , ˆπ) ∈ M stable, s.t. ˆ π stabilizes (1), (4c) ˆπN is stabilizing, (4d) 
+
+T(N, τ, T, M) ≤ τ. (4e) In solving the DMP, we seek to minimize the objective function (4a), which characterizes the to-tal error induced by design approximation parameters ( N, τ, T, M), as defined in decomposition (3), subject to practical design constraints. Constraint (4b) ensures that the horizon T is sufficiently large and the sampling time τ is sufficiently small, so as to ensure stability of the resulting policy when deployed on the base problem (2). 2 Constraint (4c) imposes a minimal complexity bound on the reduced order model and policy class M, such that a stabilizing controller for the base problem (2) can be found using a reduced order model and policy defined by M. Constraint (4d) ensures that enough optimization algorithm iterations N are run so that ˆ πN is stabilizing. 3
+
+Finally, in constraint (4e) we introduce the compute time T, which maps the design parameters (N, τ, T, M) to a wall-clock time that is needed to compute the next control action defined by ˆ πN .Motivated by receding horizon deployment of policies, we constrain that the control action update                
+
+> 2For this informal problem definition, we assume that a minimum horizon Tmin and a maximum sampling time
+> τmax are provided. In §4, we show how these can be implicitly characterized by a small-gain constraint.
+> 3We omit the performance constraint R(ˆ πN)≤0 for simplicity, but note that if Rsatisfies smoothness conditions analogous to those imposed on the cost cin Lemma 1, the same δISS-based analysis applies to bound R(ˆ πN).
+
+5Table 1: Typical evolution of the error terms in E and compute time T when design parameters (N, τ, T, M) increase. 
+
+N τ T MEopt (optimization error) ↘ − − −Edt (discretization error) − ↗ − −Efh (finite horizon error) − − ↘ −Erom (ROM error) − − − ↘
+
+T (compute time) ↗ ↘ ↗ ↗
+
+time T be no larger than the sampling time τ . This constraint can be naturally adapted to other deployment paradigms, and we emphasize that this constraint captures the interplay between online compute and loop rate constraints .The DMP (4) makes the tensions inherent in controller design under computational constraints explicit, which we qualitatively summarize in Table 1. The table shows the typical evolution of objective and constraint components (rows) when design variables (columns) increase: compute time invariably increases (decreases) when a performance metric decreases (increases), illustrating the unavoidable tradeoffs to be made in controller design. While conceptually useful, the DMP is not yet actionable, as the expressions appearing in (4) are difficult to quantify, let alone jointly optimize. We show next that assuming a δISS baseline system reduces both the stability constraints and the performance gap bound to a design-dependent sector bound on ∥(ˆ π − π⋆)( x)∥, yielding a tractable reformulation of the DMP. 
+
+# 4 Formalizing the Design Meta-Problem via Incremental Input-to-State Stability 
+
+Towards simplifying exposition, we assume that problem (2) is time-invariant, i.e., ct ≡ c, ft ≡ f ,
+
+Xt ≡ X , and Ut ≡ U , so that the optimal baseline policy π⋆ is Markovian and time-invariant. Although time-varying policies may be optimal for sub-problems induced by design approximations, we will consider the deployment of these solutions in a receding horizon fashion, and hence, we can assume without loss of generality that ˆ πt(x[0 ,t ], u [0 ,t )) = ˆ π(xt). To bound the performance gap of ˆ π, we view it as a perturbed version of the baseline policy 
+
+π⋆, i.e., ˆ π(x) = π⋆(x) + ∆( x), where ∆( x) := (ˆ π − π⋆)( x) denotes the policy perturbation. Towards that end, for a fixed policy u = π(x), define the closed-loop dynamics f π(x, u ) := f (x, π (x) + u), and f π(x) := f π(x, 0). To characterize the difference in cost achieved by the baseline closed-loop system f ⋆ := f π⋆
+
+and a closed-loop system evolving under the deployed policy ˆ π, i.e., ˆf := f ˆπ, we observe that ˆf (ˆ x) = f ⋆(ˆ x, ∆(ˆ x)), i.e., it is an input perturbed version of the baseline system f ⋆.
+
+Remark 3. Throughout, we use ( x, x ′) and ( f, f ′) to denote generic nominal and perturbed sys-tems, reserving ( x⋆, ˆx) and ( f ⋆, ˆf ) for the baseline and deployed systems specifically. The former appear in the general results of §4.2, while the latter connect those to formalizing the DMP (4). Incremental input-to-state stability, which characterizes a notion of robust stability between trajectories, provides a natural framework for bounding the effects of such input perturbations on closed-loop behavior, see Angeli (2002) and references therein. We show next that if the baseline 6system f ⋆ is δISS, then stability and performance guarantees can then be characterized via a suitable small-gain condition defined in terms of a tunable sector bound on the policy difference. 
+
+4.1 Preliminaries 
+
+Recall definitions of standard comparison functions Khalil (2002): 
+
+Definition 1. A function γ : [0 , a ) → R+ is of class K if it is continuous, strictly increasing, and 
+
+γ(0) = 0. It is of class K∞ if it is of class K with a = ∞ and, in addition, lim r→∞ γ(r) = ∞.
+
+Definition 2. A function β : [0 , a ) × R+ → R+ is of class KL if: i) it is continuous, ii) for each fixed t, β(·, t ) is class K∞, and iii) for each fixed x, β(x, ·) is strictly decreasing and lim t→∞ β(x, t ) = 0. We restrict ourselves to K∞ comparison functions, which corresponds to assuming global δISS. 4
+
+Definition 3 (Def. 4.1, Angeli (2002)) . A system ˙ x = f (x, u ) is δISS if there exists a class KL 
+
+function β and a class K∞ function γ, such that for all initial conditions x0, x ′ 
+
+> 0
+
+∈ Rnx , all input signals {ut}t≥0, {u′
+
+> t
+
+}t≥0, and all t ≥ 0: 
+
+xt − x′ 
+
+> t
+
+≤ β   x0 − x′ 
+
+> 0
+
+, t  + γ sup 0≤s≤t us − u′
+
+> s
+
+.
+
+Definition 3 says that: i) trajectories generated by δISS systems converge towards each other if they begin from different initial conditions, and ii) the effect of bounded differences in inputs 
+
+{ut − u′
+
+> t
+
+}t≥0 on trajectories is bounded. δISS Lyapunov functions can be used to certify whether a system satisfies the δISS condition of Definition 3. 
+
+Definition 4 (Def. 5.1, Angeli (2002)) . A smooth function V (x, x ′) : Rnx × Rnx → R+ is called a 
+
+δISS-Lyapunov function if 
+
+α1(∥x − x′∥) ≤ V (x, x ′) ≤ α2(∥x − x′∥) (5) for some α1, α 2 ∈ K ∞, and there exists κ ∈ K ∞ such that for any u, u ′ ∈ U and any x, x ′ ∈ Rnx , we have that κ(∥x − x′∥) ≥ ∥ u − u′∥ implies ˙V (x, x ′) = ∂V ∂x f (x, u ) + ∂V ∂x ′ f (x′, u ′) < −ρ(∥x − x′∥), (6) is satisfied with ρ positive definite. It is shown in (Angeli, 2002, Thm. 2) that when u, u ′ ∈ U , with U a compact set, then the existence of a δISS-Lyapunov function for a system ˙ x = f (x, u ) is equivalent to it being δISS. Fur-ther, condition (6) is equivalent to the existence of a δISS Lyapunov function with Lie derivative ˙V
+
+satisfying the exponential dissipation inequality: ˙V (x, x ′) ≤ − cV (x, x ′) + σ(∥u − u′∥), (7) for some constant c > 0 and class K∞ (supply) function σ. 
+
+> 4This can be relaxed to local δISS on a compact domain under suitable assumptions on the input perturbations.
+
+74.2 A Small-Gain Robustness Criterion 
+
+We now analyze the evolution of a perturbed system ˙x′ = f (x′, ∆( x′) + u) (8) relative to an unperturbed system ˙ x = f (x, u ). We consider sector bounded perturbations ∆ for which there exists an L > 0, such that ∥∆( x′)∥ ≤ L∥x′∥ for all x′ ∈ Rnx that can be generated by the perturbed system (8). Under a suitable robustness assumption on the nominal system ˙ x = f (x, u ), akin to a small-gain condition, we can guarantee that ∥xt − x′
+
+> t
+
+∥ is bounded, and converges to zero: 
+
+Proposition 1. Suppose that ˙x = f (x, u ) is δISS with δISS-Lyapunov function Vδ satisfying bound (5) and inequality (7) , characterized by class K∞ functions α1, α 2, σ and constant c > 0. Let 
+
+ρ ∈ (0 , 1) and assume that 
+
+σ(2 Lz ) ≤ ρcα 1(z), for all z ≥ 0, (9) 
+
+that x′ 
+
+> 0
+
+= x0, and that ut ≡ 0 for all t ≥ 0. Then, 
+
+∥xt − x′
+
+> t
+
+∥ ≤ α−11
+
+ e−c(1 −ρ)tα2(∥x0∥). (10) Prop. 1 follows from a standard small-gain argument, but its implications are profound. In particular, ensuring stability of the perturbed system (8) is reduced to verifying the sector bound 
+
+∥∆( x′)∥ ≤ L∥x′∥ for all states x′ that can be generated by the perturbed system (8), so long as the small-gain condition (9) holds. The result also reveals an interplay between c, a measure for the robustness of the baseline system, and the tunable parameter ρ. A small c, corresponding to a fragile baseline, makes the small-gain condition (9) harder to satisfy, and while increasing ρ relaxes this condition, it degrades the performance bound (10). An immediate corollary of Prop. 1 is that if the baseline system f ⋆ is δISS, then ensuring robust stability of the deployed system ˆf can be reduced to verifying a sector bound on the policy difference ∥(ˆ π−π⋆)(ˆ x)∥. In §4.4, we show how this offers a practical means of enforcing the stability, robustness, and timing constraints (4b)–(4d) of the DMP proposed above. However, we defer this discussion, and now focus on bounding the performance gap of the deployed system ˆf .
+
+Remark 4. We note that if instead, ∥∆( x′)∥ ≤ L∥x′∥ + d,for some d > 0, then Prop. 1 can be suitably modified to show incremental practical stability of 
+
+∥x − x′∥, i.e., (10) instead becomes ∥x′ 
+
+> t
+
+− xt∥ ≤ α−11 (e−c(1 −ρ)tα2(∥x0∥)) + γ(sup 0≤τ ≤t ∥dt∥) for γ
+
+some class K∞ function. Similarly, if ut̸ = 0 for all t, then the error system inherits a (suitably degraded) ISS property of the nominal system. Both follow from a standard comparison lemma with inputs argument. 
+
+4.3 Bounding the Performance Gap 
+
+Our next goal is to bound the performance gap 
+
+J(ˆ π) − J(π⋆) = 
+
+Z ∞
+
+> 0
+
+c(ˆ xt, ˆπ(ˆ xt)) − c(x⋆t , π ⋆(x⋆t ))d t (11) for a generic deployed policy ˆ π satisfying ∥(ˆ π − π⋆)(ˆ x)∥ ≤ ˆL∥ˆx∥ for all ˆ x ∈ Rnx generated by the perturbed system ˆf , and for a baseline system f ⋆ satisfying the assumptions of Prop. 1, i.e., ∥ˆxt−x⋆t ∥
+
+8satisfies bound (10). We further assume that there exists some function μρ ∈ K ∞ such that 
+
+Z ∞
+
+> 0
+
+α−11 (e−c(1 −ρ)tα2(∥x0∥))d t ≤ μρ(∥x0∥). (12) This assumption is true for most reasonable α1, α2 functions, e.g., any αi functions that grow at most polynomially in their arguments. Moreover, it is easy to show that the left-hand side of (12) is monotonically increasing with respect to ρ.The following lemma shows, under suitable regularity assumptions on the stage-wise cost func-tion c(·, ·) and the assumption that ∥(ˆ π − π⋆)( x⋆)∥ ≤ L⋆∥x⋆∥ for all x⋆ generated by the baseline system f ⋆, that the performance gap (11) scales at most linearly with L⋆.
+
+Lemma 1. Assume that ∥(ˆ π − π⋆)(ˆ x)∥ ≤ ˆL∥ˆx∥ for any ˆx generated by the perturbed system (8) ,and that ∥(ˆ π − π⋆)( x⋆)∥ ≤ L⋆∥x⋆∥ for any x⋆ generated by the optimal system f ⋆. Further, assume that the cost function satisfies 
+
+|c(ˆ x, ˆπ(ˆ x)) − c(x⋆, ˆπ(x⋆)) | ≤ Lx∥ˆx − x⋆∥, (13) 
+
+|c(x⋆, ˆπ(x⋆)) − c(x⋆, π ⋆(x⋆)) | ≤ Lπ∥(ˆ π − π⋆)( x⋆)∥, (14) 
+
+for all ˆx, x ⋆ ∈ Rnx . Then, if the assumptions of Prop. 1 are satisfied with L⋆, and if upper bound (12) 
+
+holds, 
+
+J(ˆ π) − J(π⋆) ≤ (Lx + LπL⋆)μρ(∥x⋆
+
+> 0
+
+∥). (15) Analogously to Prop. 1, Lemma 1 shows that bounding the performance gap (11) can be reduced to characterizing a design-dependent sector bound quantified by L⋆. In contrast to the small-gain condition (9), this sector bound must only be valid on trajectories generated by the baseline system f ⋆.
+
+4.4 The Design Meta-Problem for δISS Systems 
+
+Towards operationalizing these conditions and bounds, we again leverage the sequential decompo-sition approach used to obtain (3), but this time applied to ∥ˆπN − π⋆∥. Towards that end, consider the following policy error decomposition: 
+
+∥(ˆ πN − π⋆)( x)∥ ≤ ∥ (ˆ πN − ˆπτ )( x)∥ + ∥(ˆ πτ − ˆπT )( x)∥ + ∥(ˆ πT − ˆπM)( x)∥ + ∥(ˆ πM − π⋆)( x)∥≤ (LN + Lτ + LT + LM)
+
+| {z }
+
+> =: L(N,τ,T, M)
+
+∥x∥, (16) where L(N, τ, T, M) := ( LN + Lτ + LT + LM). In the above, we associate a sector bound with gain L• to each of the terms in the decomposition, each of which captures the effect of different design decisions. For example, Lτ captures the error introduced due to temporal discretization. We re-emphasize that, based on the order of the decomposition, the gains later in the decom-position are inherently dependent on the former design parameters. For example, for the intro-duced order in (16), Lτ will also depend on the choices for T and M. Finally, we distinguish between ˆL(N, τ, T, M), which holds on states generated by the system evolving under ˆ πN , and 
+
+L⋆(N, τ, T, M), which holds on states generated by the baseline system. Substituting the policy decomposition (16) into the sector bound argument of Proposition 1 and the performance bound of Lemma 1 yields a unified condition that certifies both stability and performance of the deployed policy ˆ πN , as formalized in the following central result. 9Theorem 1. Fix ρ ∈ (0 , 1) , and suppose that f ⋆ is δISS with δISS-Lyapunov function Vδ satisfy-ing (5) and (7) , characterized by α1, α 2, σ ∈ K ∞ and constant c > 0. Further suppose that the cost function satisfies (13) and (14) , and let μρ ∈ K ∞ be such that (12) holds. Suppose additionally that the policy decomposition (16) holds with gains L⋆ and ˆL, where L⋆(N, τ, T, M) := L⋆N +L⋆τ +L⋆T +L⋆
+
+> M
+
+holds on trajectories of the baseline system f ⋆, and similarly, ˆL• holds on trajectories of the deployed system ˆf . Then, any solution (N, τ, T, M) to 
+
+minimize  
+
+> N,τ,T, M
+
+(L⋆N + L⋆τ + L⋆T + L⋆
+
+> M
+
+) μρ(∥x0∥) (17a) s. t. ˆLN + ˆLτ + ˆLT + ˆLM ≤ σ−1(ρcα 1(z)) 2z , for all z > 0 (17b) 
+
+T(N, τ, T, M) ≤ τ, (17c) 
+
+yields a deployed policy ˆπN that: (i) satisfies the feasibility constraints (4b) –(4e) of the DMP, and 
+
+(ii) achieves a performance gap bounded by 
+
+J(ˆ πN ) − J(π⋆) ≤ (L⋆N + L⋆τ + L⋆T + L⋆
+
+> M
+
+) μρ(∥x0∥), (18) 
+
+with x0 the initial condition of optimal control problem (2) .
+
+Theorem 1 reduces the DMP to a tractable optimization over design-dependent sector bound gains ˆL, L ⋆, with stability enforced via the small-gain constraint (17b) and computational feasibility via (17c). While the resulting performance bound is explicit in the initial condition ∥x0∥, it enters as a constant scaling factor, and we include it to highlight the tradeoff between the objective (17a) and the small-gain constraint (17b), controlled by ρ. We also note that the framework is intentionally general and hence conservative. For example, the small-gain condition of Prop. 1 is sufficient but not necessary. We expect tighter bounds can be derived for specific problem classes by exploiting additional structure. A key remaining challenge is deriving expressions for the gains L⋆, ˆL that make the role of the design parameters ( N, τ, T, M) explicit. In §5, we show this can be done for a receding horizon LQR problem. 
+
+# 5 Compute Constraint Receding Horizon LQR 
+
+We apply our proposed framework to a receding horizon LQR problem. While the LQR problem admits an exact solution to the optimal control problem (2) that can be implemented online with minimal computational overhead, it nevertheless provides a tractable and analytically transparent setting in which to validate the framework, and naturally connects to existing work on suboptimal MPC. The results of this section can be seen as extending this prior work to jointly optimize for model reduction, temporal discretization, and horizon selection in addition to finite algorithm iterations. These results additionally lay the groundwork for analyzing more complex schemes, including linear MPC with constraints and sequential linearization-based methods such as iterative LQR. 10 5.1 Baseline LQR Controller 
+
+The baseline LQR problem is: minimize 
+
+> π
+
+Z ∞
+
+> 0
+
+(x⊤ 
+
+> t
+
+Qx t + u⊤ 
+
+> t
+
+Ru t)d t (19a) s. t. ˙xt = Ax t + Bu t (19b) 
+
+ut = π(xt), (19c) 
+
+x0 = ξ, (19d) where A ∈ Rnx×nx , B ∈ Rnx×nu , and Q, R ≻ 0 are positive definite matrices defining a quadratic stage cost c(x, u ). We assume that ( A, B ) is controllable, ( A, Q 1/2) is observable, and that A is invertible. 5
+
+We use the optimal solution to (19) as the baseline controller, i.e., π⋆(x) = K⋆x, where K⋆ := 
+
+−R−1B⊤P⋆, and P⋆ is the unique positive definite solution to the continuous-time algebraic Riccati equation (CARE) 
+
+A⊤P⋆ + P⋆A − P⋆BR −1B⊤P⋆ + Q = 0 . (20) It is well-known that for LTI systems, δISS is equivalent to exponential stability Angeli (2002). The following characterizes a function σ and constant c needed to define the small-gain condi-tion (17b) for the optimal closed-loop LQR system. 
+
+Proposition 2. Denoting the optimal closed-loop matrix Alqr := A + BK ⋆, the system ˙x =
+
+Alqr x+Bu is δISS, and Vδ(x, x ′) := ( x−x′)⊤P⋆(x−x′), where P⋆ is the solution to the CARE (20) ,is a valid δISS Lyapunov function with Lie derivative satisfying the exponential dissipative form (7) 
+
+with c = λmin (Q) 
+
+> λmax (P⋆)
+
+and σ(z) = λmax (R)z2.
+
+The cost function c(x, K ⋆x) = x⊤(Q + K⊤ 
+
+> ⋆
+
+RK ⋆)x satisfies the regularity conditions required by Lemma 1, so long as x⋆t , ˆxt remain in a compact domain, which is ensured by stability of both the baseline and deployed policies. Further, since α1 and α2 are quadratic, μρ in (12) exists and can be computed analytically as μρ(z) := 2κ(P⋆)1/2 
+
+> c(1 −ρ)
+
+z, where c = λmin (Q) 
+
+> λmax (P⋆)
+
+is as given in Proposition 2. Note again that μρ is monotonically increasing in ρ, reflecting the robustness-performance tradeoff identified in §4.2. 
+
+5.2 Design Approximations for Receding Horizon LQR 
+
+Our strategy is to introduce these design approximations in the following order: model reduction, discretization, and finite horizon approximation (which subsumes solver iterations in this setting). While related results exist in the literature, e.g., perturbation bounds for the algebraic Riccati equa-tion Konstantinov et al. (1993) and convergence rates for the DARE Hager and Horowitz (1976), these must be adapted to yield explicit analytic expressions for how each approximation contributes to the sector bound gains of Theorem 1. 6 In what follows, ˆL (and corresponding constants ˆCi) de-notes sector bound gains evaluated on trajectories of the deployed system ˙ˆxt = Aˆxt + B ˆπN (ˆ xτ ⌊t/τ ⌋), and L⋆ (and corresponding constants C⋆i ) denotes gains evaluated on trajectories of the baseline system ˙ x⋆t = Alqr x⋆t .     
+
+> 5We assume Q≻0 and Abeing invertible for clarity of exposition, but these assumptions can easily be relaxed.
+> 6All derivations are deferred to Appendix B.
+
+11 1) Reduced Order Modeling: We consider a linear model and policy class composed of four models: M := {M0, M 1, M 2, M 3}, each with state-dimension nx,i . Model M0 is the true system, and models M1, M 2, M 3 are obtained using balanced truncation Antoulas (2005). We compute the optimal controller Kri for the reduced order model ( Ari , B ri ) and ( Qri , R ) using (20). We denote the negative spectral abscissa of the closed-loop for model Mi by αi := − max j Re {λj (Ari +
+
+Bri Kri )}. For model Mi, ∥(ˆ πMi −π⋆)( xt)∥ ≤ ∥ R−1B(U ⊤Pri U −P⋆)∥∥ xt∥, where U is the projection matrix obtained from the reduction method and Pri is the solution to the CARE with the reduced model, and thus ˆLM(Mi) = L⋆
+
+> M
+
+(Mi) = ∥R−1B(U ⊤Pri U − P⋆)∥.
+
+2) Discretization: We bound the errors induced by a zero-order hold (ZOH) discretization 7
+
+with sampling time τ by a decomposition of the term ∥(ˆ πτ − ˆπMi )( x)∥. We denote a ZOH signal by x[t] (= xτ ⌊t/τ ⌋). To this end, let ˆ πzoh (τ, x t) = Kri x[t] denote a ZOH approximation to ˆ πMi ,and ˆ πτ (xt) = Kτ x[t] denote the optimal discrete-time LQR controller Kτ , obtained through the 
+
+discrete-time algebraic Riccati difference equation (DARE), applied to the ZOH state x[t] obtained via a first-order Euler discretization of the Mi dynamics. Then, we have 
+
+∥(ˆ πτ − ˆπMi )( xt)∥ = ∥(Kτ − Kri )x[t] + Kri (x[t] − xt)∥ ≤ ∥ Kτ − Kri ∥∥ x[t]∥ + ∥Kri ∥∥ x[t] − xt∥
+
+The first term captures the mismatch between the continuous and discrete optimal gains, and the second captures the state quantization error due to ZOH sampling. Both scale as O(τ ) for small enough τ , reflecting the first-order accuracy of Euler discretization, and hence there exists system dependent constants C⋆ 
+
+> 1
+
+such that ∥(ˆ πτ − ˆπMi )( x⋆t )∥ ≤ C⋆ 
+
+> 1
+
+τ ∥x⋆t ∥ for all small enough τ , and similarly for ˆC1 with respect to ∥ˆxt∥.
+
+3) Finite Horizon Approximation: For the receding horizon LQR controller, we set the discrete-time horizon to N :=  Tτ
+
+. The effects of finite horizon approximation and solver iterations can be combined, as computing the solution to the N -horizon LQR problem requires taking N
+
+recursions of the discrete-time algebraic Riccati recursion (DARR). Let ˆ πT (xt) = KT,τ x[t] denote the policy computed from a finite horizon approximation of the DARE solution with a horizon set to N and terminal cost cT (xt) = x⊤
+
+> [t]
+
+τ Qx [t]. Then, standard convergence rates for the DARE over N
+
+iterations Hager and Horowitz (1976), along with our discretization bounds outlined above, show that for small enough τ , there exist system dependent constants C⋆ 
+
+> 2
+
+, C ⋆ 
+
+> 3
+
+such that ∥(ˆ πT − ˆπτ )( x⋆t )∥ ≤ 
+
+(C⋆ 
+
+> 2
+
++ C⋆ 
+
+> 3
+
+τ )e−αiT ∥x⋆t ∥, and similarly for ˆC2, ˆC3 with respect to ∥ˆxt∥. The exponential convergence rate of the DARR is governed by αi, the least-stable closed-loop pole of Mi, highlighting that a more stable closed-loop requires a shorter horizon to achieve the same accuracy. We deploy ˆ πT (xt) = 
+
+KT,τ x[t] in a receding horizon fashion, recomputing KT,τ with the DARR at each sampling time. 
+
+4) Computation Model: Given the state dimension nx,i of Mi, we consider the following computation model. At each discrete time step we solve the DARR over N (≤ T /τ ) steps, where each step incurs the 4 n3x,i + 4 n2x,i nu + 2 nx,i n2u + 13 n4u =: Φ( Mi) flops required to compute the matrix multiplication, addition, and inversions defining the DARR. Assigning a machine-dependent constant of τg seconds/flop, we define the timing function to be T(τ, T, M i) = τg Tτ Φ( Mi). 
+
+5.3 Compute Constrained Receding Horizon LQR DMP 
+
+Combining the bounds derived in §5.2 via the policy decomposition (16) yields the aggregate sector bound: 
+
+∥(ˆ πT − π⋆)( xt)∥ ≤  C1τ + ( C2 + C3τ )e−αiT + LM(Mi) ∥xt∥, (21)   
+
+> 7More sophisticated discretization may lead to different scalings with τ.
+
+12 which holds for all τ ≤ τ⋆, with τ⋆ sufficiently small for both ( L⋆
+
+> M
+
+, C ⋆i ) and ( ˆLM, ˆCi). A key observation is that, for fixed Mi, the timing constraint (17c) is always active at optimality, as it is never beneficial to use less than the available compute budget. We can therefore set T =
+
+T⋆(τ, M i) := τ 2  
+
+> τgΦ( Mi)
+
+, which saturates the timing constraint (17c), reducing the DMP to a scalar optimization over τ ∈ (0 , τ ⋆] for each Mi.
+
+Theorem 2. Consider the design problem (19) subject to the design approximations presented in 
+
+§5.2. Fix a ρ ∈ (0 , 1) , a model Mi, i ∈ { 0, 1, 2, 3}, let T⋆(τ, M i) := τ 2  
+
+> τgΦ( Mi)
+
+, and P⋆ be the solution of (20) . Then, for small enough τ⋆, the δISS DMP (17) with fixed model Mi is given by: 
+
+minimize  
+
+> 0<τ ≤τ⋆
+
+C⋆
+
+> 1
+
+1 − ρ τ + C⋆ 
+
+> 2
+
++ C⋆ 
+
+> 3
+
+τ
+
+1 − ρ e−αiT⋆(τ,M i) + LM(Mi)1 − ρ (22a) s. t. ˆC1τ + ( ˆC2 + ˆC3τ )e−αiT⋆(τ,M i) ≤ 12
+
+q ρλ min (Q) 
+
+> κ(P⋆)λmax (R)
+
+− LM(Mi) (22b) For each Mi, problem (22) reduces to a scalar optimization over the compact interval (0 , τ ⋆], which can be solved by dense gridding or any scalar optimization routine. The overall DMP is then solved by comparing the optima across M0, M 1, M 2, M 3, directly identifying the jointly optimal reduced order model, sampling rate, and finite horizon choice. 
+
+5.4 Numerical Example 
+
+We operationalize Theorem 2 on a large, randomly generated LTI system of the form (19b) with 
+
+nx = 97 and nu = 1. 8 The system is then normalized to have one unstable pole at 0 .4, and two slow stable poles at −0.5 and −1.2. The remaining stable poles are set to be very fast, with 
+
+Re {λi} < −30. For the control design problem, we choose Q = R = I, and set τg = 6 .25 · 10 −8,corresponding to the standard 16MHz clock speed of an Arduino Leonardo. The orders for the reduced order models Mi are chosen as ( nx,1, n x,2, n x,3) = (6 , 3, 1). Our analysis has established that L⋆ and ˆL take the functional form (21), with constants C⋆i and ˆCi to be identified. Appendix B provides analytical bounds on these constants, they can be overly conservative. We therefore instead estimate these constants from 10 randomly selected values of τ
+
+by computing ∥Kτ,T ⋆ − K⋆∥, with appropriate corrections for ZOH effects. The resulting design-dependent sector bound gains L⋆(τ ) and ˆL(τ ) are then evaluated on a dense grid τ ∈ [10 −4, 0.04] to solve (22) and identify the optimal τ ⋆ (and hence T ⋆i = T⋆(τ ⋆, M i)). We repeat this for each choice of model Mi, i = 0 , 1, 2, 3, and compare the resulting designs to identify a jointly optimal design tuple ( τ ⋆, M ⋆i ), with T ⋆ = T⋆(τ ⋆, M ⋆i ). We follow the procedure outlined above. The interplay between compute resources and system dynamics lead to no feasible solution for the full order system M0, and required setting ρ = 0 .97 to obtain feasible solutions to the DMP (22) for the remaining models M1, M 2, M 3: the results are shown in Fig. 1. The left-hand plots show the performance gap sector bound gain L⋆, which defines the objective (22a), and the right-hand plots show the deployed policy sector bound gain ˆL, which must satisfy the small-gain condition (22b). The right-hand side of small-gain condition (22b) is indicated by the red horizontal line. To provide a baseline, we use nonlinear optimization to compute the (locally) optimal sampling time that minimizes ∥Alqr xt − (Ax t + BK T⋆,τ x[t])∥ for all xt, which is denoted by a blue vertical line. One can view this as a DMP that directly minimizes  
+
+> 8All code available at https://tinyurl.com/sxvjp8x4 .
+
+13 =
+
+## 0 0.02 0.04
+
+> L?(M1; =; T?)
+
+## 0
+
+## 5000
+
+## =
+
+## 0 0.02 0.04
+
+> ^L(M1; =; T?)
+
+## 0
+
+## 1(a) Reduced order model M1 with nx,1 = 6 =
+
+## 0 0.02 0.04
+
+> L?(M2; =; T?)
+
+## 0
+
+## 5000
+
+## =
+
+## 0 0.02 0.04
+
+> ^L(M2; =; T?)
+
+## 0
+
+## 0.05
+
+## 0.1     
+
+> (b) Reduced order model M2with nx,2= 3
+
+## =
+
+## 0 0.02 0.04
+
+> L?(M3; =; T?)
+
+## 0
+
+## 5000
+
+## =
+
+## 0 0.02 0.04
+
+> ^L(M3; =; T?)
+
+## 0
+
+## 1     
+
+> (c) Reduced order model M3with nx,3= 1
+
+Figure 1: Computed values of the design-dependent sector bounds L⋆ and ˆL for 10 randomly selected τ s ( ∗) for the reduced order models M1, M 2, M 3, and the fitted function (21) of the sector bound ( ). The right-hand side of the small-gain constraint ( ) in (22b) indicates the feasible region for τ . The vertical blue line ( ) depicts the τ that minimizes ∥Alqr xt − (Ax t + BK T ⋆,τ x[t])∥
+
+for all xt.14 Figure 2: Computed values of the design-dependent sector bound over a grid of τ × ρ for the optimal and deployed systems for system M2. The region for which the small-gain condition (22b) is satisfied is indicated with green. the difference between the deployed and baseline closed-loop systems, rather than the difference between deployed and baseline policies. While appealing, this perspective heavily exploits the linear problem structure and does not obviously extend to the nonlinear setting addressed by Theorem 1. The minimizer of the fitted objective (22a) closely coincides with the vertical blue line, suggest-ing that the empirical estimates of (22a) and (22b) are accurate. This confirms that Theorem 2 successfully identifies near-optimal design parameters, and validates the functional form of the sec-tor bound (21) derived in Appendix B. Moreover, the plots in Fig. 1 also demonstrate the tradeoffs across different axes, such as model order and compute resources. The smallest ( Mi, τ )-dependent sector bound gain (with respect to the fitted sector bound) is achieved for the optimal design tuple (M ⋆i , τ ⋆) = ( M2, 0.0178), with T ⋆ = 12 .4 seconds. We also explore the influence of ρ on the solutions to (22). Fig. 2 shows the cost function (22a) (left plot) and the small-gain constraint (22b) (right plot, where green indicates satisfaction of the inequality (22b)) over a tight grid of τ × ρ. As ρ approaches 1, it becomes easier to satisfy the small-gain condition, indicated by a wider range of feasible τ s. However, the left plot shows that for larger ρ, the performance gap grows exponentially, highlighting the robustness-performance tradeoff inherent to our framework. In Appendix B.5, we provide more background and analysis of this numerical study. In particu-lar, we i ) elaborate on how we computed ∥Kτ,T ⋆ −K⋆∥, i.e., the data points ( ∗) in Fig. 1, ii ) provide and compare numerical simulations of the deployed policies corresponding to the minima in Fig. 1, 
+
+iii ) improve the functional form (21) by including higher-order terms, and iv ) study the effect of increased computational resources on the feasibility and cost of the DMP. 
+
+# 6 Conclusions and Outlook 
+
+We presented a framework for systematically navigating approximation choices in controller de-sign under explicit computational constraints, formalized as a Design Meta-Problem (DMP) that jointly optimizes controller performance subject to stability, real-time compute, and timing con-straints. When the baseline system is δISS, bounding closed-loop performance degradation reduces to verifying a design-dependent sector bound on the policy difference, with stability enforced via a small-gain condition. In the receding horizon LQR setting, this yields a scalar optimization over τ for each candidate model Mi, from which a jointly optimal ( τ ⋆, M ⋆i ) is identified by direct comparison. 15 Looking ahead, we aim to extend the framework in three directions. First, for the LQR example, the sector bound gains ˆL, L ⋆ were estimated by bounding errors in the feedback gains for various choices of τ . While this is tractable linear feedback policies, it may not be in general, and developing general data-driven or empirical methods for fitting these gains, e.g., via sampling-based estimation of ∥(ˆ π − π⋆)( x)∥, is an important direction for broader applicability. Second, the DMP naturally accommodates additional approximations and constraints, such as memory constraints for explicit MPC or sector bound terms capturing model uncertainty from data-driven identification. Third, and more ambitiously, Theorem 1 provides a principled building block for the systematic design of layered control architectures Matni et al. (2024): when a single-layer DMP is infeasible, this motivates decomposing the problem into layers, each with its own compute resources and DMP, linked via inter-layer constraints. 
+
+# References 
+
+A. Alla and V. Simoncini. Order reduction approaches for the algebraic Riccati equation and the LQR problem. In Numerical Methods for Optimal Control Problems , pages 89–109. Springer, 2019. D. Angeli. A Lyapunov approach to incremental stability properties. IEEE Trans. Aut. Contr. , 47 (3):410–421, 2002. A. C. Antoulas. Approximation of large-scale dynamical systems . SIAM, 2005. R. R. Bitmead and M. Gevers. Riccati difference and differential equations: Convergence, mono-tonicity and stability. In The Riccati Equation , pages 263–291. Springer, 1991. J. F. Bonnans and A. Festa. Error estimates for the Euler discretization of an optimal control problem with first-order state constraints. SIAM J. Numerical Analysis , 55(2):445–471, 2017. L. Bottou and O. Bousquet. The tradeoffs of large scale learning. Adv. Neur. Inf. Proc. Sys. , 20, 2007. T. Chen and B. A. Francis. Optimal sampled-data control systems . Springer-Verlag, 1995. K. Garg, R. K. Cosner, U. Rosolia, A. D. Ames, and D. Panagou. Multi-rate control design under input constraints via fixed-time barrier functions. IEEE Contr. Sys. Lett. , 6:608–613, 2021. L. Gr¨ une and A. Rantzer. On the infinite horizon performance of receding horizon controllers. 
+
+IEEE Trans. Aut. Contr. , 53(9):2100–2111, 2008. W. W. Hager and L. L. Horowitz. Convergence and stability properties of the discrete Riccati operator equation and the associated optimal control and filtering problems. SIAM J. Contr. & Optim. , 14(2):295–312, 1976. W. P. M. H. Heemels, K. H. Johansson, and P. Tabuada. Event-triggered and self-triggered control. In Encyclopedia of Systems & Control , pages 724–730. Springer, 2021. A. Karapetyan, E. C. Balta, A. Iannelli, and J. Lygeros. Closed-loop finite-time analysis of subop-timal online control. IEEE Trans. Aut. Contr. , 2025. 16 C. Kenney and G. Hewer. The sensitivity of the algebraic and differential riccati equations. SIAM J. Contr. Optim. , 28(1):50–69, 1990. H. K. Khalil. Nonlinear Systems , volume 3. Prentice Hall, 2002. M. M. Konstantinov, P. H. Petkov, and N. D. Christov. Perturbation analysis of the discrete Riccati equation. Kybernetika , 29(1):18–29, 1993. M. Lahijanian, M. Svorenova, A. A. Morye, B. Yeomans, D. Rao, I. Posner, P. Newman, H. Kress-Gazit, and M. Kwiatkowska. Resource-performance tradeoff analysis for mobile robots. IEEE Robot. Autom. Lett. , 3(3):1840–1847, 2018. D. Liao-McPherson, M. M. Nicotra, and I. Kolmanovsky. Time-distributed optimization for real-time model predictive control: Stability, robustness, and constraint satisfaction. Automatica ,117:108973, 2020. N. Matni, A. D. Ames, and J. C. Doyle. A quantitative framework for layered multirate control: Toward a theory of control architecture. IEEE Contr. Sys. Mag. , 44(3), 2024. S. Richter, C. N. Jones, and M. Morari. Computational complexity certification for real-time mpc with input constraints based on the fast gradient method. IEEE Trans. Aut. Contr. , 57(6), 2011. U. Rosolia, A. Singletary, and A. D. Ames. Unified multirate control: From low-level actuation to high-level planning. IEEE Trans. Aut. Contr. , 67(12):6627–6640, 2022. M. Rubagotti, P. Patrinos, and A. Bemporad. Stabilizing linear model predictive control under inexact numerical optimization. IEEE Trans. Aut. Contr. , 59(6):1660–1666, 2014. S. Shi, A. Tsiamis, and B. de Schutter. Suboptimality analysis of receding horizon quadratic control with unknown linear systems and its applications in learning-based control. IEEE Trans. Aut. Contr. , 71(3):1422–1437, 2026. A. Srikanthan, A. Karapetyan, V. Kumar, and N. Matni. Closed-loop analysis of admm-based suboptimal linear model predictive control. IEEE Contr. Sys. Lett. , 8:3195–3200, 2024. C. Stamouli, A. Tsiamis, M. Morari, and G. J. Pappas. Layered multirate control of constrained linear systems. In Proc. 64th IEEE Conf. Decis. Contr. , pages 3027–3034, 2025. G. Zardini, A. Censi, and E. Frazzoli. Co-design of autonomous systems: From hardware selection to control synthesis. In Proc. 2021 Europ. Contr. Conf. , pages 682–689, 2021. 
+
+# A Proofs 
+
+Proof of Proposition 1. We are interested in analyzing x − x′. By the assumption that ˙ x = f (x, u )is δISS with δISS-Lyapunov function Vδ satisfying (5) and inequality (7), we have that ˙Vδ satisfies ˙Vδ(x, x ′) ≤ − cV δ(x, x ′) + σ(∥∆( x′)∥)
+
+≤ − cV δ(x, x ′) + σ(2 L∥x − x′∥) + σ(2 L∥x∥)
+
+≤ − cV δ(x, x ′) + ρc  Vδ(x, x ′) + Vδ(x, 0) 
+
+≤ − c(1 − ρ)Vδ(x, x ′) + ρce −ct Vδ(x0, 0) , (23) 17 where the second inequality follows from ∥∆( x′)∥ ≤ L∥x′∥ ≤ L∥x − x′∥ + L∥x∥ and σ(a + b) ≤
+
+σ(2 a) + σ(2 b), the third and fourth from the small-gain assumption σ(2 Lz ) ≤ ρcα 1(z) and (5), respectively. We get to (23) using a standard comparison lemma argument (Khalil, 2002, Lem 3.4) on (5) for x′ = 0. Reapplication of the comparison lemma on (23) gives 
+
+Vδ(xt, x ′
+
+> t
+
+) ≤ e−c(1 −ρ)tVδ(x0, x ′
+
+> 0
+
+) + ρcV δ(x0, 0) 
+
+Z t
+
+> 0
+
+e−c(1 −ρ)( t−s)e−cs ds
+
+= ρce −c(1 −ρ)tVδ(x0, 0) 
+
+Z t
+
+> 0
+
+e−ρcs ds
+
+= e−c(1 −ρ)t  1 − e−ρct  Vδ(x0, 0) 
+
+≤ e−c(1 −ρ)tVδ(x0, 0) ,
+
+where we used that Vδ(x0, x ′
+
+> 0
+
+) = 0. Finally, we conclude: 
+
+∥xt − x′
+
+> t
+
+∥ ≤ α−11
+
+ Vδ(xt, x ′
+
+> t
+
+) ≤ α−11
+
+ e−c(1 −ρ)tα2(∥x0∥),
+
+which is the desired result. ■
+
+Proof of Lemma 1. The following is immediate from (13) and (14), and Prop. 1: 
+
+|c(ˆ xt, ˆπ(ˆ xt)) − c(x⋆t , π ⋆(x⋆t )) | ≤ | c(ˆ xt, ˆπ(ˆ xt)) − c(x⋆t , ˆπ(x⋆t )) | + |c(x⋆t , ˆπ(x⋆t )) − c(x⋆t , π ⋆(x⋆t )) |≤ Lx∥ˆxt − x⋆t ∥ + Lπ∥(ˆ π − π⋆)( x⋆t )∥ ≤ Lx∥ˆxt − x⋆t ∥ + LπL⋆∥x⋆t ∥≤ Lxα−11
+
+ e−c(1 −ρ)tα2(∥x⋆
+
+> 0
+
+∥) + LπL⋆α−11
+
+ e−ct α2(∥x⋆
+
+> 0
+
+∥)
+
+≤ (Lx + LπL⋆)α−11
+
+ e−c(1 −ρ)tα2(∥x⋆
+
+> 0
+
+∥),
+
+where we used the fact that ∥x⋆t ∥ ≤ α−11 (Vδ(0 , x ⋆t )) ≤ α−11 (e−ct α2(∥x⋆
+
+> 0
+
+∥)). Integrating and leveraging bound (12) then yields the desired bound (15). ■
+
+Proof of Theorem 1. Consider the decomposition (16). Application of Prop. 1 and Lemma 1 allow us to conclude that for a fixed ρ ∈ (0 , 1), 
+
+J(ˆ πN ) − J(π⋆) ≤ (Lx + LπL⋆(N, τ, T, M)) μρ(∥x⋆
+
+> 0
+
+∥) ∝ L⋆(N, τ, T, M)μρ(x0), (24) with x0 as in (2), as long as σ(2 ˆL(N, τ, T, M)z) ≤ ρcα 1(z) for all z ≥ 0. The bound (24) on (3) directly yields (17a), while rewriting the small-gain condition for z̸ = 0 yields the term in (17b). This inequality constraint subsumes the stability and timing constraints (4b)–(4d), as it restricts ( N, τ, T, M) to values that ensure the computed policy ˆ π is stabilizing. Adding (4e) gives (17). ■
+
+Proof of Proposition 2. Let P⋆ be the solution to (20), and consider the candidate δISS Lyapunov function V (x, x ′) = e⊤P⋆e, where we write e = x − x′. Note that ˙ e = Alqr e + Bd , with d = u − u′.It is immediate that 
+
+λmin (P⋆)∥e∥2 ≤ V (x, x ′) ≤ λmax (P⋆)∥e∥2,
+
+18 and we compute ˙V = ˙ e⊤P⋆e + e⊤P⋆ ˙e
+
+= e⊤(A⊤
+
+> lqr
+
+P⋆ + P⋆Alqr )e + 2 d⊤B⊤P⋆e
+
+= e⊤(−Q − K⊤ 
+
+> ⋆
+
+RK ⋆)e − 2d⊤RK ⋆e
+
+≤ −∥ e∥2 
+
+> Q
+
+− ∥ K⋆e∥2 
+
+> R
+
++ 2 ∥d∥R∥K⋆e∥R
+
+≤ −∥ e∥2 
+
+> Q
+
+− ∥ K⋆e∥2 
+
+> R
+
++ ∥K⋆e∥2 
+
+> R
+
++ ∥d∥2
+
+> R
+
+≤ − λmin (Q)∥e∥2 + ∥d∥2 
+
+> R
+
+≤ − λmin (Q) 
+
+> λmax (P⋆)
+
+V + ∥d∥2
+
+> R
+
+.
+
+In the above, the third equality follows from P⋆ being the solution to the CARE (20) and that 
+
+P⋆BR −1B⊤P⋆ = K⊤ 
+
+> ⋆
+
+RK ⋆, the first inequality follows by Cauchy-Schwarz, the second by Young’s inequality, and the final from ∥e∥2 
+
+> Q
+
+≥ λmin (Q)∥e∥2 and V (x, x ′) ≤ λmax (P⋆)∥e∥2.
+
+Now, set c = λmin (Q) 
+
+> λmax (P⋆)
+
+. Then, via a standard application of the comparison lemma, we conclude that 
+
+V (xt, x ′
+
+> t
+
+) ≤ e−ct V (x0, x ′
+
+> 0
+
+) + 1 
+
+> c
+
+sup 0≤τ ≤t∥dτ ∥2
+
+> R
+
+,
+
+and therefore, 
+
+∥et∥2 ≤ κ(P⋆)
+
+
+
+e−ct ∥e0∥2 + λmax (R) 
+
+> λmin (Q)
+
+sup 0≤τ ≤t∥dτ ∥2
+
+.
+
+Taking square roots of both sides, and noting that √a + b ≤ √a + √b for a, b > 0, we obtain the desired result. ■
+
+Proof of Theorem 2. The bound (21) provides us with upper bounds for ˆL•, L ⋆ 
+
+> •
+
+in (17) for all 0 < τ ≤ τ⋆. With the given compute model, saturating the wall-clock inequality constraint (17c), i.e., 1 
+
+> τ
+
+τgT Φ( Mi) ≤ τ , is optimal for a fixed Mi, and hence we can set T := T⋆(τ, M i). By Prop. 2, α1,
+
+α2, c, and σ are defined. Hence, the small-gain condition (17b) can be explicitly computed as right-hand side of (21) ≤ 12
+
+q ρλ min (Q) 
+
+> κ(P⋆)λmax (R)
+
+∥xt∥.
+
+Dividing by ∥xt∥ and subtracting LM(Mi) from both sides gives (22b). Finally, we solve the left-hand side of (12), which gives μρ(z) := 2κ(P⋆)1/2 
+
+> c(1 −ρ)
+
+z. Absorbing 2κ(P⋆)1/2 
+
+> c
+
+in C⋆i gives (22a). ■
+
+# B Deriving the Design-Dependent Sector Bounds for the Reced-ing Horizon LQR DMP 
+
+This appendix discusses the detailed derivations for the receding horizon LQR design problem under compute constraints, as is presented in §5. We follow the same order of discussion as in §5.2, i.e., we first consider the derivation for the sector bound gain LM (§B.1), followed by Lτ (§B.2), and 
+
+LT (§B.3). Then in §B.4, we show that the conditions on the cost in Lemma 1 hold. We conclude the appendix in §B.5 by providing additional details and extra plots for the numerical example presented in §5.4. We first restate the assumptions associated with the baseline system and the LQR design problem at hand: 19 1. The quadratic stage cost c(xt, u t) = x⊤ 
+
+> t
+
+Qx t + u⊤ 
+
+> t
+
+Ru t is characterized by positive definite matrices Q, R ≻ 0, 2. The true system (19b) defined by ( A, B ) is controllable, 3. The A matrix of the true system (19b) is invertible. While Item 2 is needed for unique, stabilizing solutions of (20), we assume Item 1 for ease of nota-tion. Under suitable regularity assumptions, we can relax this assumption and take the standard 
+
+Q ⪰ 0. As will be seen later in Prop. 8, assuming Item 3 significantly clarifies the exposition of the results. This assumption can also easily be lifted through the use of the Jordan form of A.
+
+B.1 Reduced Order Modeling 
+
+The design-dependent sector bound corresponding to reduced order modeling is characterized by: 
+
+∥(ˆ πMi − π⋆)( xt)∥ ≤ LM(Mi)∥xt∥
+
+for all t ≥ 0. Many techniques exist for obtaining reduced order models Mi, see, e.g., Antoulas (2005), most of which can be easily applied in our setting. We also want to highlight that there are specific methods available that consider state reduction with respect to the ARE (Alla and Simoncini, 2019). Most balanced reduction methods (including Alla and Simoncini (2019)) can brought under the umbrella term of finding matrices U, V ∈ Rnx×nx,i that satisfy a Petrov-Galerkin type condition, 9 which project the state of the original system xt to a state ˜ xt with a lower dimen-sion nx,i , where the state-space matrices of the reduced system are given by: 
+
+Ar := U ⊤AV, Br := U ⊤B, Cr := CV. 
+
+We assume that U ⊤V = Inx,i , which is a required condition for most reduction methods for real systems, such as balanced truncation. Under this assumption, we have xt = V ˜xt, with ˜ xt ∈ Rnx,i ,and ˜ xt = U ⊤xt. In this setting, the reduced order LQR problem is minimize 
+
+> ˆπMi
+
+Z ∞
+
+> 0
+
+
+
+˜x⊤ 
+
+> t
+
+Qr ˜xt + u⊤ 
+
+> t
+
+Ru t
+
+
+
+dt (25a) s. t. ˜xt = Ar ˜xt + Brut, (25b) ˜x0 = ˜ξ := U ⊤x0 (25c) 
+
+ut = ˆ πMi (xt) := Kri U ⊤xt (25d) where Ar, B r are defined as above, and Qr := V ⊤QV . The resulting optimal control policy is given by ut = Kri ˜xt, where Kri = −R−1B⊤ 
+
+> r
+
+Pri , and Pri is the solution to the CARE defined by (Ar, B r, Q r, R ). The following straight-forward result provides a way to compute LM(Mi) for a given U, V :
+
+Proposition 3. For Petrov-Galerkin type matrices U, V ∈ Rnx×nx,i , let Pri be the solution to the CARE that solves (25) , then 
+
+∥(ˆ πMi − π⋆)( xt)∥ ≤ ∥ R−1B⊤(U P ri U ⊤ − P⋆)∥∥ xt∥,
+
+i.e., LM(Mi) := ∥R−1B⊤(U P ri U ⊤ − P⋆)∥.     
+
+> 9In general, this conditions entails that image( V) must be A-invariant and image( B)⊆image( V), see also (An-toulas, 2005, Chap. 7).
+
+20 Proof. The optimal control policy that solves (25) is given by ut = Kri ˜xt, i.e., 
+
+ut = Kri ˜xt = −R−1B⊤ 
+
+> r
+
+Pri ˜xt = −R−1B⊤U P ri ˜xt = −R−1B⊤U P ri U ⊤xt.
+
+Hence, 
+
+∥(ˆ πMi − π⋆)( xt)∥ = ∥(−R−1B⊤U P ri U ⊤ − K⋆)xt∥ = ∥ − R−1B⊤(U P ri U ⊤ − P⋆)xt∥≤ ∥ R−1B⊤(U P ri U ⊤ − P⋆)∥∥ xt∥,
+
+showing the claim. ■
+
+Remark 5. As we mentioned before, there are many different ways to obtain the matrices U, V .One of the simplest examples is to consider reduced order models that only consider the unstable modes of the original system. Under the assumption that A is diagonizable, consider the eigenvalue decomposition of A:
+
+AΛ = Λ 
+
+" λ1
+
+... λnx
+
+#
+
+,
+
+and let Re {λj } ≥ 0 for j = 1 , . . . , n x,i . Then, the reduced order model that only contains the unstable modes can be obtained with U := Λ −1 Inx,i 0 and V := Λ Inx,i 0. In the numerical example in §5.4, we have used a standard implementation of the balanced reduction method in Matlab to obtain U, V .10 
+
+B.2 Discretization 
+
+We bound the difference in policy due to ZOH discretization by characterizing the design-dependent sector bound: 
+
+∥(ˆ πτ − ˆπM)( xt)∥ ≤ Lτ ∥xt∥ (26) for all t ≥ 0 and all reduced order models in Mi ∈ M . To avoid notational clutter, we denote the optimal controller Kri for reduced order model Mi by Kr. Similarly, we denote Pri by Pr. We briefly revisit the approach discussed in §5.2-2: we bound the errors induced by a ZOH discretization with sampling time τ by a decomposition of the term ∥(ˆ πτ −ˆπMi )( x)∥. We introduced ˆ πzoh (τ, x t) = Krx[t]
+
+as the ZOH approximation to ˆ πMi (recall the notation x[t] := xτ ⌊t/τ ⌋), and ˆ πτ (xt) = Kτ x[t] as the optimal discrete-time LQR controller Kτ , obtained through the DARE, applied to the ZOH state 
+
+x[t] obtained via a first-order Euler discretization of the Mi dynamics. This gave for a given Mi:
+
+∥(ˆ πτ −ˆπMi )( xt)∥ ≤ ∥ ˆπτ (xt)−ˆπzoh (τ, x t)∥+∥ˆπzoh (τ, x t)−ˆπMi (xt)∥ ≤ ∥ Kτ −Kr∥∥ x[t]∥+∥Kr∥∥ x[t]−xt∥.
+
+Our goal is to identify upper bounds on ∥Kτ − Kr∥ that scale with τ , as well as upper bounds on ∥xt − x[t]∥ and ∥x[t]∥ as a function of τ and ∥xt∥. We show that this is possible under suitable regularity assumptions and for small enough τ . Most of the individual results in this section are coming from perturbation analysis techniques, e.g., Konstantinov et al. (1993), but have never been collectively used to achieve bounds of the form (26). We start by identifying upper bounds on ∥Kτ − Kr∥ as a function of τ . 
+
+> 10 See also https://tinyurl.com/sxvjp8x4 .
+
+21 B.2.1 Bounding ∥Kτ − Kr∥
+
+We first bound ∥Kτ − Kr∥ as a function of ∥Pτ − Pr∥ and τ , i.e., 
+
+∥Kτ − Kr∥ ≤ O(∥Pτ − Pr∥) + O(τ ),
+
+assuming both are sufficiently small. We then provide a bound on ∥Pτ − Pr∥ as a function of τ .The following results that show this are standard and can be found in various forms in the litera-ture Bonnans and Festa (2017); Kenney and Hewer (1990); Konstantinov et al. (1993). We included self-contained proofs of the results for convenience of the reader. Define Kτ as the solution to the discrete LQR problem defined over first order Euler discretiza-tion of the dynamics and cost objectives in (25b). We drop the r-subscript in the system and cost function matrices to reduce notational clutter. The first order Euler discretizations of the reduced order model Mi and corresponding cost objective are parametrized by 
+
+Aτ = I + τ A, B τ = τ B, Q τ = τ Q, R τ = τ R. (27) This means that Kτ = −(Rτ + B⊤ 
+
+> τ
+
+Pτ Bτ )−1B⊤ 
+
+> τ
+
+Pτ Aτ , where Pτ is the solution to the corresponding DARE. First, we introduce the following mathematical tools that follow directly from the Von Neumann series: 
+
+Lemma 2. Let A ∈ Rn×n, with ∥A∥ ≤ ¯a < 1. Then, the following holds: (i) (I + A)−1 exists, (ii) (I + A)−1 admits the expansion I − A(I + A)−1,(iii) ∥(I + A)−1∥ ≤ O(1) .Proof. Item (i) follows directly from the Von Neumann series argument. Item (ii) can be shown as follows: (I + A)−1 = ( I + A − A)( I + A)−1 = ( I + A)( I + A)−1 − A(I + A)−1 = I − A(I + A)−1.
+
+Finally for Item (iii), we have that for ∥A∥ ≤ ¯a < 1, ∥(I + A)−1∥ ≤ 11−∥ A∥ = 11−¯a ≤ O(1). ■
+
+With this result, we can derive a bound on ∥Kτ − Kr∥ as a function of ∥Pτ − Pr∥ and τ :
+
+Proposition 4. Define Φτ := R−1/2B⊤Pτ BR −1/2. If, for the positive constants ¯τ and ¯P , we have that ∥τ Φτ ∥ ≤ 12 for all τ ≤ ¯τ and for all ∥Pτ ∥ ≤ ¯P , then it holds that 
+
+∥Kτ − Kr∥ ≤ O(∥Pτ − Pr∥) + O(τ ). (28) 
+
+Proof. We first observe that 
+
+Rτ + B⊤ 
+
+> τ
+
+Pτ Bτ = τ (R + τ B ⊤Pτ B) = τ R 1/2(I + τ R −1/2B⊤Pτ BR −1/2)R1/2 =: τ R 1/2(I + τ Φτ )R1/2.
+
+For small enough ¯ τ , ∥τ Φτ ∥ ≤ 12 < 1, Lemma 2 provides that ( I + τ Φτ )−1 exists. This yields 
+
+Kτ = − 1 
+
+> τ
+
+R−1/2(I + τ Φτ )−1R−1/2B⊤ 
+
+> τ
+
+Pτ Aτ
+
+= −R−1/2(I + τ Φτ )−1R−1/2B⊤Pτ − τ R −1/2(I + τ Φτ )−1R−1/2B⊤Pτ A. 
+
+22 Substituting the expansion in Item (ii) of Lemma 2 and subtracting Kr = −R−1B⊤Pr gives: 
+
+Kτ − Kr = −R−1B⊤Pτ +
+
+R−1/2τ Φτ (I + τ Φτ )−1R−1/2B⊤Pτ + R−1B⊤Pr − τ R −1/2(I + τ Φτ )−1R−1/2B⊤Pτ A. 
+
+Taking the norm of Kτ − Kr and repeatedly applying the triangle inequality and sub-multiplicative property, together with realizing that ∥Φτ ∥ ≤ λmin (R)∥B∥2 ¯P ≤ O(1) yields: 
+
+∥Kτ − Kr∥ ≤ ∥ R−1B⊤∥
+
+| {z }
+
+> ≤λmin (R)∥B∥
+
+
+
+∥Pτ − Pr∥ + τ   ∥Pτ ∥
+
+| {z }  
+
+> ≤¯P
+
+∥Φτ ∥
+
+| {z } 
+
+> ≤O(1)
+
+∥(I + τ Φτ )−1∥
+
+| {z }
+
+> ≤O(1)
+
++ ∥Pτ ∥
+
+| {z }  
+
+> ≤¯P
+
+∥(I + τ Φτ )−1∥
+
+| {z }
+
+> ≤O(1)
+
+∥A∥
+
+|{z} 
+
+> ≤O(1)
+
+
+
+where we employed Item (iii) of Lemma 2. This gives ∥Kτ − Kr∥ ≤ O(∥Pτ − Pr∥) + O(τ ), which is the desired bound. ■
+
+We will now only need to formulate a bound on ∥Pτ − Pr∥ as a function of τ . We achieve this by analyzing the solution to the DARE as τ gets close to zero. To that end, define the scaled DARE residual operator as 
+
+F (τ, X ) := 1
+
+τ
+
+
+
+A⊤ 
+
+> τ
+
+XA τ + Qτ − A⊤ 
+
+> τ
+
+XB τ
+
+ Rτ + B⊤ 
+
+> τ
+
+XB τ
+
+−1B⊤ 
+
+> τ
+
+XA τ − X
+
+
+
+(29) for all τ > 0. We note that F (τ, X ) is jointly smooth in ( τ, X ), and satisfies F (τ, P τ ) = 0 for all τ > 0. We further recall that by a standard limiting argument we have that for P0 = Pr,the residual (29) gives: F (0 , P 0) := lim τ ↓0 F (τ, P τ ) = F (0 , P r) = 0. This follows directly from noting that the zeroth order terms of F (τ, P r) are precisely the CARE for which Pr is the unique stabilizing solution. The following result uses this observation to analyze the dependence of F on τ .
+
+Lemma 3. Let Pr be the unique, positive definite solution to the CARE, corresponding to (25) .For all 0 ≤ τ ≤ ¯τ and ∥Pτ ∥ ≤ ¯P , we have that 
+
+F (τ, P r) = τ Γ1(Pr) + τ 2Γ2(Pr),
+
+where ∥Γi(Pr)∥ ≤ O(1) , i = 1 , 2.
+
+Proof. Algebraic expansion of F (τ, P r) gives 
+
+F (τ, P r) = A⊤Pr + PrA + Q + τ A ⊤PrA
+
+− PrB(R + τ B ⊤PrB)−1B⊤Pr − τ A ⊤PrB(R + τ B ⊤PrB)−1B⊤Pr
+
+− τ P rB(R + τ B ⊤PrB)−1B⊤PrA − τ 2A⊤PrB(R + τ B ⊤PrB)−1B⊤PrA. 
+
+Using Item (ii) in Lemma 2, we can write 
+
+F (τ, P r) = A⊤Pr + PrA − PrBR −1B⊤Pr + Q + τ Γ1(Pr) + τ 2Γ2(P ),
+
+where Γ1(Pr) = A⊤PrA − A⊤PrB(R + τ B ⊤PrB)−1B⊤Pr − PrB(R + τ B ⊤PrB)−1B⊤PrA
+
+− PrBR −1B⊤PrB(R + τ B ⊤PrB)−1B⊤Pr
+
+Γ2(Pr) = −A⊤PrB(R + τ B ⊤PrB)−1B⊤PrA
+
+We recall that the O(1) term vanishes as it is precisely the CARE that Pr satisfies. Finally, Lemma 2 and the results of Prop. 4 allow us to conclude that for small enough ¯ τ , ( R + τ B ⊤PrB)−1 ≤ O(1) for all 0 ≤ τ ≤ ¯τ . Hence, we conclude ∥Γi(Pr)∥ ≤ O(1), i = 1 , 2. ■
+
+23 The results of this lemma can now be used to formulate a bound on the directional derivative of (29). This bound, which we derive in the lemma below, allows us to finally formulate the bound on ∥Pτ − Pr∥.Let Acl := Ar + BrKr and recall that αi := − max j Re {λj (Acl )} for the reduced order model Mi. Then, a direct computation shows that the partial Fr´ echet derivative of F (τ, X ) with respect to X in direction H is given by 
+
+DX F (τ, X ) [ H] = 1
+
+τ
+
+
+
+A⊤ 
+
+> τ
+
+HA τ − H −  A⊤ 
+
+> τ
+
+HB τ
+
+Σ−1
+
+> τ
+
+ B⊤ 
+
+> τ
+
+XA τ
+
+ −  A⊤ 
+
+> τ
+
+XB τ
+
+Σ−1
+
+> τ
+
+ B⊤ 
+
+> τ
+
+HA τ
+
+
+
++ A⊤ 
+
+> τ
+
+XB τ
+
+Σ−1
+
+> τ
+
+ B⊤ 
+
+> τ
+
+HB τ
+
+Σ−1
+
+> τ
+
+ B⊤ 
+
+> τ
+
+XA τ
+
+
+
+, (30) where Σ τ := Rτ + B⊤ 
+
+> τ
+
+XB τ .
+
+Lemma 4. DX F (0 , P r) [ H] is the Lyapunov operator induced by the closed-loop LQR system Acl ,i.e., 
+
+DX F (0 , P r) [ H] = A⊤
+
+> cl
+
+H + HA cl =: L(H). (31) 
+
+Furthermore, L is invertible and satisfies ∥L −1∥ ≤ O( 1 
+
+> αi
+
+).
+
+Proof. Equation (31) follows from evaluating (30) as τ ↘ 0 and recalling that Kr = −R−1B⊤Pr.As Acl is stable, L is invertible, with 
+
+L−1(S) = 
+
+Z ∞
+
+> 0
+
+eA⊤
+
+> cl s
+
+Se Acl sds. 
+
+We recall that by Gelfand’s formula, there exists some Ccl > 0 such that || eAcl s|| ≤ Ccl e−αis.Hence, 
+
+∥L −1(S)∥ ≤ ∥ S∥C2
+
+> cl
+
+Z ∞
+
+> 0
+
+e−2αisds = ∥S∥ C2
+
+> cl
+
+2αi
+
+,
+
+and ∥L −1∥ ≤ C2 
+
+> cl
+> 2αi
+
+≤ O( 1 
+
+> αi
+
+). ■
+
+These results allow us to guarantee the following bound on ∥Pτ − Pr∥.
+
+Proposition 5. There exists τ ′ > 0 such that for all 0 ≤ τ ≤ τ ′, ∥Pτ − Pr∥ ≤ O(τ ).
+
+Proof. Recall that F (τ, P τ ) = 0. Using the definition of F and Lemma 4, we can now invoke the implicit function theorem to define a unique function φ with φ(τ ) = Pτ and F (τ, φ (τ )) = 0 for all 0 ≤ τ ≤ τ ′. Taking the Taylor approximation of φ allows us to conclude that there exists a 
+
+τ ′ > 0 such that Pτ = Pr + [ DX F (0 , P r)] −1∂τ F (0 , P r)τ + O(τ 2) = Pr + L−1(Γ 1(Pr)) τ + O(τ 2) for all 0 ≤ τ ≤ τ ′, i.e., such that ∥Pτ − Pr∥ ≤ ∥L −1∥∥ Γ1(Pr)∥τ + O(τ 2) ≤ O(τ ). ■
+
+We can now finally combine Prop. 4 and Prop. 5 to obtain the bound on ∥Kτ −Kr∥ as a function of τ .
+
+Proposition 6. There exists a τmax > 0 such that for all 0 ≤ τ ≤ τmax we have that 
+
+∥Kτ − Kr∥ ≤ O(τ ).
+
+Proof. By Prop. 5, there exists some τ ′ > 0 such that ∥Pτ −Pr∥ ≤ O(τ ) for all 0 < τ ≤ τ ′. It follows that for sufficiently small τmax := min {τ ′, ¯τ }, we can guarantee that ∥Pτ ∥ = ∥Pr + ( Pτ − Pr)∥ ≤ ¯P
+
+for all τ ∈ (0 , τ max ] and hence the assumptions of Prop. 4 hold, from which the result follows immediately. ■
+
+24 B.2.2 Bounding ∥Kr∥∥ xt − x[t]∥ and ∥x[t]∥
+
+Our goal is to bound ∥ˆπzoh (τ, x t)− ˆπMi (xt)∥ ≤ ∥ Kr∥∥ xt −x[t]∥ and ∥x[t]∥ as a function of τ and ∥xt∥.Note that ∥Kr∥ ≤ O(1). Hence, we will only need to bound ∥xt − x[t]∥ and ∥x[t]∥.As discussed in §5.2, we will need to analyze these quantities with respect to the states of the optimal and perturbed system. In the following we show that for both cases, ∥xt − x[t]∥ ≤ O(τ )and ∥x[t]∥ ≤ O(1). 
+
+Bound under the states of the optimal system The state evolution of the optimal system is governed by ut = K⋆x⋆t , i.e., ˙ x⋆t = Alqr x⋆t . Recall that α0 := − max j Re {λj (Alqr )} denotes the negative spectral abscissa of the optimal closed-loop. The following result shows that for this case, we have ∥x⋆t − x⋆
+
+> [t]
+
+∥ ≤ O(τ ) and ∥x⋆
+
+> [t]
+
+∥ ≤ O(1): 
+
+Proposition 7. Let ˙x⋆t = Alqr x⋆t . Then, for small enough τ ≤ τzoh ,
+
+∥x⋆t − x⋆
+
+> [t]
+
+∥ ≤ O(τ )∥x⋆t ∥, (32) 
+
+and 
+
+∥x⋆
+
+> [t]
+
+∥ ≤ O(1) ∥x⋆t ∥. (33) 
+
+Proof. For x⋆t generated by ˙ x⋆ = Alqr x⋆, we have that x⋆t = eAlqr (t−[t]) x⋆ 
+
+> [t]
+
+(recall that [ t] := τ  tτ
+
+)on a τ -long sampling interval. Hence, x⋆ 
+
+> [t]
+
+= e−Alqr (t−[t]) x⋆t and x⋆t − x⋆ 
+
+> [t]
+
+= ( I − e−Alqr (t−[t]) )x⋆t .It therefore suffices to bound ∥I − e−Alqr s∥ for all 0 ≤ s ≤ τ ≤ τzoh . We write I − e−Alqr s =
+
+e−Alqr s(eAlqr s − I) = ( I + ( eAlqr s − I)) −1(eAlqr s − I), and first bound ∥eAlqr s − I∥. To that end, note that 
+
+eAlqr s − I =
+
+Z s
+
+> 0
+
+Alqr eAlqr θdθ, 
+
+so that for all 0 ≤ s ≤ τ ≤ τzoh , we have 
+
+∥eAlqr s − I∥ =
+
+Z s
+
+> 0
+
+Alqr eAlqr θdθ ≤ ∥ Alqr ∥ Clqr 
+
+Z s
+
+> 0
+
+e−α0θdθ = ∥Alqr ∥ Clqr 
+
+1 − e−α0s
+
+α0
+
+≤ ∥ Alqr ∥ Clqr 
+
+1 − e−α0τ
+
+α0
+
+≤ (∥Alqr ∥ Clqr )τ, 
+
+where we used Gelfand’s formula. It therefore follows immediately that for small enough τzoh ≤
+
+τmax , any 0 ≤ τ ≤ τzoh will ensure that ( ∥Alqr ∥ Clqr )τ ≤ 12 , and thus ( I +( eAlqr s −I)) −1 ≤ O(1) and 
+
+∥e−Alqr s∥ ≤ 2 for all s ≤ τ . This provides us with ∥x⋆
+
+> [t]
+
+∥ ≤ O(1) ∥x⋆t ∥ and ∥x⋆t −x⋆
+
+> [t]
+
+∥ ≤ O(τ )∥x⋆t ∥. ■
+
+Bound under the states of the perturbed system Considering the order of approximations in §5.2, the state evolution of the perturbed system is governed by a state-feedback policy with a ZOH input, i.e., ut = K ˆx[t]. Note that for this case, it does not matter what K is. In the proposition that follows, we use the fact that under the policy ut = K ˆx[t] the input is constant over the time-interval I := [[ t], [t] + τ ]. As highlighted in §5.1, we assume here that A is invertible. As will be evident from the proof, this assumption can easily be lifted using the Jordan form of A. We are now able to state the bounds on ∥ˆxt − ˆx[t]∥ and ∥ˆx[t]∥ under policy ut = K ˆx[t].25 Proposition 8. For all τ ≤ ˆτ , we have 
+
+∥ˆxt − ˆx[t]∥ ≤ O(τ )∥ˆxt∥
+
+and 
+
+∥ˆx[t]∥ ≤ O(1) ∥ˆxt∥
+
+for ˆxt generated by ut = K ˆx[t].Proof. Note that during interval I, we have that ˙ˆxt = Aˆxt + BK ˆx[t]. It follows immediately that for t ∈ I , we have ˆ xt = G(t − [t])ˆ x[t] where 
+
+G(s) = eAs +
+
+Z s
+
+> 0
+
+eA(s−θ)dθBK = eAs + ( eAs − I)A−1BK. 
+
+Assuming that G−1(t − [t]) exists for t ∈ I , we may then write ˆ x[t] = G−1(t − [t])ˆ xt to conclude that ˆxt − ˆx[t] =  I − G−1(t − [t]) ˆxt =  G(t − [t]) − IG−1(t − [t])ˆ xt.
+
+Hence, 
+
+∥ˆxt − ˆx[t]∥ ≤ ∥ G(t − [t]) − I∥∥ G−1(t − [t]) ∥∥ ˆxt∥,
+
+and it suffices to bound the two operator norms to reach our desired result. Let CA > 0, αA ∈ R
+
+be such that ∥eAs ∥ ≤ CAeαAs. To that end, first observe that 
+
+G(s) − I = ( eAs − I)( I + A−1BK ) = 
+
+Z s
+
+> 0
+
+eAθ dθA (I + A−1BK ) = 
+
+Z s
+
+> 0
+
+eAθ dθ(A + BK ),
+
+and we then have for all s ∈ [0 , τ ]
+
+∥G(s) − I∥ ≤ CA
+
+Z s
+
+> 0
+
+eαAθdθ∥A + BK ∥ = CA∥A + BK ∥ |eαAs − 1||αA| ≤ CA∥A + BK ∥ e|αAτ | − 1
+
+|αA| .
+
+Finally, for small enough ˆ τ , we have |αAτ | ≤ log 2, so that by the mean value theorem e|αAτ | − 1 ≤
+
+2|αA|τ and we conclude that 
+
+∥G(s) − I∥ ≤ O(τ ) (34) for all s ∈ [0 , τ ]. To compute ∥G−1(s)∥, we observe that G−1(s) = ( I − (I − G(s)) −1, and thus, so long as ∥G(s) − I∥ < 1, which we can always guarantee for sufficiently small τ , we have that 
+
+∥G−1(s)∥ ≤ O(1) .
+
+Thus, under the assumptions made above, we have that for all τ ≤ ˆτ , ∥ˆxt − ˆx[t]∥ ≤ O(τ )∥ˆxt∥ and 
+
+∥ˆx[t]∥ ≤ O(1) ∥ˆxt∥ for all ˆ xt generated by ut = K ˆx[t]. ■
+
+B.2.3 Bounding ∥Kr∥∥ xt − x[t]∥ + ∥Kτ − Kr∥∥ x[t]∥
+
+Let τdt := min {τzoh , τ max , ˆτ }. Combining the results above yields the following bound: 
+
+∥(ˆ πτ − ˆπMi )∥ = ∥Kr∥∥ xt − x[t]∥ + ∥Kτ − Kr∥∥ x[t]∥ ≤ O(τ )∥xt∥.
+
+for states xt generated by either the continuous policy ut = K⋆xt or the ZOH policy ut = Kx [t] for all 0 ≤ τ ≤ τdt .26 B.3 Finite Horizon Approximation 
+
+For this approximation, we want to characterize the following design-dependent sector bound, which we can write as 
+
+∥(ˆ πT − ˆπτ )( xt)∥ = ∥(KT,τ − Kτ )x[t]∥ ≤ ∥ KT,τ − Kτ ∥∥ x[t]∥.
+
+From Propositions 7,8, we have that ∥x[t]∥ ≤ O(1) ∥xt∥ for small enough τ ≤ τdt , for states generated by either the optimal or perturbed system. Thus, we only need to characterize ∥KT,τ − Kτ ∥ in terms of T, τ . Recall that we defined N :=  Tτ
+
+.For a fixed sampling time τ , denote by P (N ) 
+
+> τ
+
+the value computed by running the DARR for N
+
+iterations, i.e., by computing P (N ) 
+
+> τ
+
+:= Pτ, 0, where Pτ,N = QN is the terminal cost, and 
+
+Pτ,k = A⊤ 
+
+> τ
+
+Pτ,k +1 Aτ + Qτ − A⊤ 
+
+> τ
+
+Pτ,k +1 Bτ
+
+ Rτ + B⊤ 
+
+> τ
+
+Pτ,k +1 Bτ
+
+−1B⊤ 
+
+> τ
+
+Pτ,k +1 Aτ
+
+for k = 0 , . . . , N − 1. Further, define the map K(X, τ ) := −(Rτ + B⊤ 
+
+> τ
+
+XB τ )−1B⊤ 
+
+> τ
+
+XA τ . Our goal in this section is to bound ∥K(P (N ) 
+
+> τ
+
+, τ ) − K(Pτ , τ )∥ as a function of N for all τ ≤ τ ⋆. We first bound this quantity as a function of ∥P (N ) 
+
+> τ
+
+− Pτ ∥:
+
+Lemma 5. Let U be a compact neighborhood of Pτ contained within the positive semi-definite cone. Then, for all X ∈ U and all τ ∈ (0 , ˘τ ], we have that 
+
+∥K(X, τ ) − K(Pτ , τ )∥ ≤ O(∥X − Pτ ∥).
+
+Proof. We first observe that for a fixed τ , the map K(X, τ ) is locally Lipschitz in X in any compact neighborhood U around Pτ contained within the positive semi-definite cone. This follows from 
+
+∥K(X, τ ) − K(Pτ , τ )∥ ≤ sup 
+
+> γ∈[0 ,1]
+
+∥DX K(X + γP τ , τ )∥∥ X − Pτ ∥,
+
+and DX K(X, τ ) being continuous in X ⪰ 0, and hence the supreme is finite for all X ∈ U .We denote by L(τ ) := sup γ∈[0 ,1] ∥DX K(X + γP τ , τ )∥ and note that LP := sup τ ∈(0 ,˘τ ] L(τ ) can be verified to be finite through routine algebra. Hence, ∥K(X, τ ) − K(Pτ , τ )∥ ≤ LP ∥X − Pτ ∥ ≡ 
+
+O(∥X − Pτ ∥). ■
+
+Next, we turn to quantifying the rate at which the sequence {P Nτ } converges towards Pτ as a function of the number of iterations N . Standard convergence rate analysis of the Riccati difference equation Bitmead and Gevers (1991); Hager and Horowitz (1976) shows that under stabilizability and detectability of ( Aτ , B τ , Q 1/2 
+
+> τ
+
+), the sequence {P Nτ } converges geometrically in the operator norm to Pτ , which is summarized in the following proposition: 
+
+Proposition 9. Let N := ⌊T /τ ⌋. Then, for all τ ≤ τfh , sufficiently large N0, and sufficiently small ϵ, such that N ≥ N0 and ∥QN − Pτ ∥ ≤ ϵ, there exists a polynomial CT (τ ) such that 
+
+∥K(P (N ) 
+
+> τ
+
+) − K(Pτ )∥ ≤ CT (τ )e−αiT . (35) 
+
+Proof. Let Ek := Pτ,k − Pτ and Adlqr := Aτ + Bτ Kτ . As Adlqr is stable, its spectral radius satisfies 
+
+ρ(Adlqr ) < 1, and thus for the linear (Lyapunov) operator LAdlqr (Ek+1 ) := A⊤
+
+> dlqr
+
+Ek+1 Adlqr we have that: ρ(LAdlqr ) = ρ(Adlqr )2 < 1. Writing out Ek gives 
+
+Ek = A⊤
+
+> dlqr
+
+Ek+1 Adlqr + R(Ek+1 ), (36) 27 where R(Ek+1 ) := −A⊤
+
+> dlqr
+
+Ek+1 Bτ (Rτ + B⊤Pτ,k +1 Bτ )−1B⊤ 
+
+> τ
+
+Ek+1 Adlqr . Note that if Pτ,k +1 ≻ 0, 
+
+R(Ek+1 ) ⪯ 0 for all Ek+1 . Moreover, as R(Ek+1 ) is quadratic in Ek+1 , ∥R (Ek+1 )∥ ≤ O(∥Ek+1 ∥2), i.e., for small enough ∥Ek+1 ∥, ∥R (Ek+1 )∥ ≤ c∥Ek+1 ∥2. Let ρ(Adlqr )2 ≤ γ < 1 such that 
+
+∥L Adlqr (Ek+1 )∥ ≤ γ∥Ek+1 ∥. Then, for ∥Ek+1 ∥ ≤ ϵ, where cϵ < 1 − γ, we have 
+
+∥Ek∥ ≤ ∥L Adlqr (Ek+1 )∥ + c∥Ek+1 ∥2 ≤ (γ + cϵ )∥Ek+1 ∥.
+
+Note that γ can be chosen arbitrarily close to ρ(Adlqr )2 for a given norm, and that ( γ + cϵ ) < 1by definition. Hence, due to backwards recursion, ∥P (N ) 
+
+> τ
+
+− Pτ ∥ ≤ (γ + cϵ )N ∥QN − Pτ ∥, for the ball around Pτ defined by {X : ∥X − Pτ ∥ ≤ ϵ}. Thus, for large enough N0 and small enough ϵ, there exists a C0 > 0 such that 
+
+∥P (N ) 
+
+> τ
+
+− Pτ ∥ ≤ C0ρ(Adlqr )2N ∥QN − Pτ ∥.
+
+Next, for the reduced order model Mi, let Alqr i := Ar + BrKr, and recall that we defined αi =
+
+− max j Re {λj (Alqr i )}. Then, as Adlqr = I + τ A lqr i + τ B (Kτ − Kr) = I + τ A lqr i + O(τ 2), cf. Prop. 6. Using standard perturbation techniques, we conclude that the spectral radius of 
+
+Aτ + Bτ Kτ satisfies ρ(Aτ + Bτ Kτ ) = 1 − αiτ + O(τ 2) ≤ 1 − αiτ 
+
+> 2
+
+for all 0 ≤ τ ≤ τfh for small enough τfh . Therefore, ρ(Adlqr )2N ≤ (1 − αiτ 
+
+> 2
+
+)2N ≤ e−αiτ N ≤ eαiτ e−αiT , where we use that 
+
+τ N ≤ T ≤ τ (N + 1) and e−αiτ (N +1) ≤ e−αiT . Taking the Taylor series of eαiτ with respect to τ
+
+gives a polynomial in τ , which, combined with ϵC 0, allows us to define the polynomial CT (τ ). Together with the result in Lemma 5, we therefore conclude that (35) holds for all τ ≤ τfh with 
+
+⌊T /τ ⌋ sufficiently large and ∥QN − Pτ ∥ sufficiently small. ■
+
+Combining all the above results, and defining τ⋆ := min {τdt , ˘τ , τ fh } yields the design-dependent sector bound (21). 
+
+B.4 Lipschitz Bounds on the Cost Function 
+
+We now show that the conditions (13) and (14) hold for the quadratic cost in (19), and hence that we can construct the compute constraint receding horizon LQR DMP presented in Theorem 2. From the above derivations, we observe that the deployed policy ˆ π(x) = Kτ,T ⋆(τ,M i)x[t] is linear 
+
+in xt: ˆπ(xt) = ˆK(t − [t], τ, M i)xt, where we lumped the effects of reduced-order modeling, ZOH discretization, and finite horizon approximation in the gain matrix function ˆK. Moreover, under the assumption that ∥(ˆ π − π⋆)( x⋆)∥ ≤ L⋆(τ, M i)∥x⋆∥, we have that 
+
+∥ ˆK(t − [t], τ, M i)∥ ≤ ∥ ˆK(t − [t], τ, M i) − K⋆∥
+
+| {z }
+
+> L⋆(τ,M i)
+
++∥K⋆∥ ≤ O(∥K⋆∥).
+
+Hence, there exists a BK > 0 such that ∥ ˆK(t − [t], τ, M i)∥ ≤ BK ∥K⋆∥, which we will use in the following result. 
+
+Proposition 10. Consider the quadratic cost c(x, u ) = x⊤Qx + u⊤Ru , and the stabilizing poli-cies ˆπ(x) = ˆKx and π⋆(x) = K⋆x. Define X := {x ∈ Rnx : ∥x∥ ≤ BX }, and assume that x0 ∈ X .Furthermore, assume that for ∥(ˆ π − π⋆)( x⋆)∥ ≤ ¯L∥x⋆∥, with ¯L = sup 0<τ ≤τ⋆,i =0 ,..., 3 L⋆(τ, M i), the small-gain condition (9) holds. Then, (13) and (14) hold with 
+
+Lx := 3 pκ(P⋆)BX
+
+ ∥Q∥ + 2 BK ∥R∥, Lπ := pκ(P⋆)BX ∥R∥ 2∥K⋆∥ + ¯L. (37) 28 Proof. We first show that (13) holds. By Cauchy-Schwarz, we have 
+
+|c(ˆ x, ˆπ(ˆ x)) − c(x⋆, ˆπ(x⋆)) | = ˆx⊤(Q + ˆK⊤R ˆK)ˆ x − (x⋆)⊤(Q + ˆK⊤R ˆK)x⋆
+
+= (ˆ x − x⋆)⊤(Q + ˆK⊤R ˆK)ˆ x − (x⋆)⊤(Q + ˆK⊤R ˆK)(ˆ x − x⋆)
+
+≤ (∥Q∥ + 2 ∥ ˆK∥∥ R∥)( ∥ˆx∥ + ∥x⋆∥)∥ˆx − x⋆∥,
+
+where we suppressed the t subscript. As x0 ∈ X , and the baseline closed-loop is stable with Lyapunov function ( x⋆t )⊤P⋆x⋆t , we can use a simple Lyapunov argument to conclude that 
+
+∥x⋆t ∥2 ≤ κ(P⋆)∥x⋆
+
+> 0
+
+∥2 = κ(P⋆)∥x0∥2 ≤ κ(P⋆)B2 
+
+> X
+
+,
+
+i.e., ∥x⋆t ∥ ≤ pκ(P⋆)BX . Next, we note that ∥ˆxt∥ ≤ ∥ ˆxt − x⋆t ∥ + ∥x⋆t ∥. Hence, under the small-gain and δISS assumption, Props. 1, 2 give 
+
+∥ˆxt − x⋆t ∥ ≤ pκ(P⋆)∥x⋆
+
+> 0
+
+∥ ≤ pκ(P⋆)BX =⇒ ∥ ˆxt∥ ≤ 2pκ(P⋆)BX .
+
+Defining Lx as in (37) gives the desired bound. Showing that (14) holds with Lπ as defined in (37) follows similar arguments. We have by Cauchy-Schwarz and the above reasoning that 
+
+|c(x⋆, ˆπ(x⋆)) − c(x⋆, π ⋆(x⋆)) | = (x⋆)⊤(Q − Q + ˆK⊤R ˆK − K⊤ 
+
+> ⋆
+
+RK ⋆)x⋆
+
+= (( ˆK − K⋆)x⋆)⊤R( ˆKx ⋆) + ( K⋆x⋆)⊤R(( ˆK − K⋆)x⋆) ≤ ∥ x⋆∥∥ R∥(∥K⋆∥ + ∥ ˆK∥)∥(ˆ π − π⋆)( x)∥,
+
+where we again suppressed the t subscript. Using the same arguments, we define Lπ as in (37) to obtain the desired bound and complete the proof. ■
+
+B.5 Extended discussion on the numerical example 
+
+To improve reproducibility of our results, we provide some additional details on the implementation of the numerical example in §5.4. We will also provide extra plots, such as time-series simulations of the different deployed policies, and additional insights when hyperparameters in the DMP change. 
+
+B.5.1 Implementation aspects 
+
+As mentioned in §5.4, we estimate the values for C⋆i , ˆCi by fitting the functional form (21) with 10 randomly selected points of ∥(ˆ πT − π⋆)( x)∥ for different values of τ . Using the above derivations, we can elaborate on how we exactly computed these values for a given τ .The optimal policy is π⋆(xt) = K⋆xt, while the deployed policy is ˆ πT (xt) = Kτ,T ⋆ x[t]. We must evaluate the policies on trajectories of the baseline system, x⋆t , and the deployed system, ˆ xt, where the difficulty is in evaluation of x[t]. Using Prop. 8, we can write evaluation of x[t] on the baseline or deployed system as: 
+
+x⋆ 
+
+> [t]
+
+=
+
+
+
+eA(t−[t]) + ( eA(t−[t]) − I)A−1BK ⋆
+
+−1
+
+x⋆t =: G−1 
+
+> ⋆
+
+(t − [t]) x⋆t
+
+ˆx[t] =
+
+
+
+eA(t−[t]) + ( eA(t−[t]) − I)A−1BK τ,T ⋆
+
+−1
+
+ˆxt =: ˆG−1(t − [t])ˆ xt,
+
+29 Time t (s)                    
+
+> 012345
+> kxtk
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> 1.2
+> Timet(s)
+> 012345
+> R t
+> 0 c(xs; :(xs))ds
+> 0
+> 0.5
+> 1
+> 1.5
+> Baselinecontroller
+> DMP=?policy
+> Baselinecontroller
+> DMP=?policy
+
+(a) M0Time t (s)                             
+
+> 012345
+> kxtk
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> Timet(s)
+> 012345
+> R t
+> 0 c(xs; :(xs))ds
+> 0
+> 0.02
+> 0.04
+> 0.06
+> 0.08
+> 0.1
+> Baselinecontroller
+> (locally)optimal=?policy
+> DMP=?policy
+> Baselinecontroller
+> (locally)optimal=?policy
+> DMP=?policy
+
+(b) M1Time t (s)                            
+
+> 012345
+> kxtk
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> Timet(s)
+> 012345
+> R t
+> 0 c(xs; :(xs))ds
+> 0
+> 0.02
+> 0.04
+> 0.06
+> 0.08
+> 0.1
+> Baselinecontroller
+> (locally)optimal=?policy
+> DMP=?policy
+> Baselinecontroller
+> (locally)optimal=?policy
+> DMP=?policy
+
+(c) M2Time t (s)                             
+
+> 012345
+> kxtk
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1
+> Timet(s)
+> 012345
+> R t
+> 0 c(xs; :(xs))ds
+> 0
+> 0.02
+> 0.04
+> 0.06
+> 0.08
+> 0.1
+> Baselinecontroller
+> (locally)optimal=?policy
+> DMP=?policy
+> Baselinecontroller
+> (locally)optimal=?policy
+> DMP=?policy
+
+(d) M3
+
+Figure 3: Simulation of the baseline ( ) and deployed closed-loop systems, where the selected sampling time τ corresponds to either the locally optimal τ ( ), obtained using nonlinear opti-mization, or the τ that minimizes (22a) ( ). The left-hand plots show ∥xt∥2, with xt ∈ R97 . The right-hand plots shows the approximation of the closed-loop cumulative cost, i.e., R t
+
+0 c(xs, u s)d s.under the assumption that ˆG, G ⋆ are invertible, which holds for small enough τ . Hence, we can write for a given sampling time τ
+
+∥(ˆ πT − π⋆)( x⋆t )∥ = ∥(Kτ,T ⋆ G−1
+
+⋆ (t − [t]) − K⋆)( x⋆t )∥ ≤ ∥ Kτ,T ⋆ G−1
+
+⋆ (τ ) − K⋆∥∥ x⋆t ∥,
+
+∥(ˆ πT − π⋆)(ˆ xt)∥ = ∥(Kτ,T ⋆ ˆG−1(t − [t]) − K⋆)(ˆ xt)∥ ≤ ∥ Kτ,T ⋆ ˆG−1(τ ) − K⋆∥∥ ˆxt∥,
+
+where we used the fact that max 0≤s≤τ G−1
+
+⋆ = G−1
+
+⋆ (τ ) and max 0≤s≤τ ˆG−1 = ˆG−1(τ ). Using these explicit forms of the sector bounds, we can easily compute the norms for a given τ . In our imple-mentation, we used the standard spectral matrix norm. We used a similar approach to compute the (locally) optimal sampling time that minimizes 
+
+∥Alqr xt − (Ax t + BK T⋆,τ x[t])∥ for all xt for a given Mi. Minimizing this quantity is equivalent to minimizing the difference in response on the interval [ t, t + τ ]. The closed-loop response of the baseline system on this interval is xt+τ = eAlqr τ xt, while the closed-loop response of the deployed system on this interval is xt+τ = ˆG(τ )xt. Hence, to compute the (locally) optimal sampling time we can simply compute min 0≤τ ∥eAlqr τ − ˆG(τ )∥, which can be obtained using nonlinear optimization. 
+
+B.5.2 Time-series simulation 
+
+We simulate the baseline system together with the deployed system for the sampling times τ that correspond to the minima of the fits in the left-hand plots in Fig. 1, as well as the (locally) opti-mal sampling time. The obtained values are listed in Table 2. For these sampling times, we have simulated the deployed closed-loop for 10 seconds with a randomly generated x0, with ∥x0∥2 = 1. 30 Table 2: Values for the optimal sampling time obtained from the numerical example. Model (locally) optimal τ ⋆ τ ⋆ from DMP Note 
+
+M0 No solution found 1.0 · 10 −4 (22b) not satisfied 
+
+M1 2.0 · 10 −2 2.6 · 10 −2 (22b) not satisfied 
+
+M2 7.6 · 10 −3 1.1 · 10 −2
+
+M3 9.3 · 10 −4 4.2 · 10 −3 (22b) not satisfied Additionally, we simulate the baseline closed-loop system with the same initial condition for com-parison. Note that the deployed closed-loop is the true system (19b) controlled by the deployed policy ˆ πT (xt), while the baseline closed-loop is the true system controlled with the baseline pol-icy π⋆(xt). Due to the large state dimension of the true system, we only plot ∥xt∥2. For the obtained response, we have also computed an approximation of the closed-loop cumulative cost, i.e., R t 
+
+> 0
+
+c(xs, π (xs))d s, using a standard Riemann sum. The simulation results for the reduced-order models M0, . . . , M 3 are shown in Fig. 3. As already highlighted in §5.4, we could not find a deployable policy for M0, which is confirmed by the simulation of the resulting policy obtained after making the discussed approximations: unstable closed-loop behavior. Carefully inspecting the difference between Fig. 3b and Fig. 3c allows us to conclude that the deployed policy obtained with M2 shows the closest resemblance to the baseline simulation. The simulation in Fig. 3d shows a significant difference in behavior compared to the baseline closed-loop system, i.e., the reduced-order model M3 is a too crude approximation of the true system. Finally, we also want to remark that these simulations demonstrate the conservativeness of (22b): the sampling times that mini-mized (22a) for M1 and M3 did not satisfy (22b), while the resulting policies did result in stable behavior. To better show and compare the resulting suboptimality of the deployed controllers, we have simulated the aforementioned closed-loop systems for 1000 random initial conditions on the unit M1 M2 M3      
+
+> 10!6
+> 10!5
+> 10!4
+> 10!3
+> 10!2
+> 10!1
+> jJ (^:T ) ! J (:?)j where kx0k = 1
+> (locally)optimal=?
+> =?fromDMP
+
+Figure 4: Box plot showing the distribution of the suboptimality gap of the deployed policies corresponding to M1, M 2, M 3, based on a thousand 10-second simulations with initial conditions on the unit ball, i.e., ∥x0∥ = 1. The deployed policies are designed with a sampling time τ ⋆, obtained using nonlinear optimization or the DMP (22). Outliers in the distribution are indicated by ◦.31 ball, i.e., ∥x0∥2 = 1, and then computed 
+
+Z 10 0
+
+c(ˆ xt, ˆπT (ˆ xt))d t −
+
+Z 10 0
+
+c(x⋆t , π ⋆(x⋆t ))d t .
+
+These simulations lead to a distribution of values of the suboptimality of the deployed policy. We have depicted this distribution for the different reduced order models in Fig. 4. This box plot clearly underlines the conclusion drawn in §5.4: the sampling time that minimizes the DMP for M2
+
+provides the optimal tradeoff between the design parameters subject to the compute constraints. 
+
+B.5.3 Improving functional form 
+
+To generate the results in §5.4, we chose the form 
+
+∥(ˆ πT − π⋆)( xt)∥ ≤  C1τ + ( C2 + C3τ )e−αiT + LM(Mi) ∥xt∥,
+
+i.e., we chose to restrict Lτ in (26) to be linearly dependent on τ , and the exponential rate to be expressed in terms of αi. This inevitably affects the quality of the fit of the above functional form, which is the upper bound on ∥(ˆ πT − π⋆)( xt)∥ for 0 ≤ τ ≤ τ⋆. In this section, we study the effect =    
+
+> 00.010.020.030.04
+> L?(M1; =; T?)
+> 0
+> 2000
+> 4000
+> 6000
+> 8000
+> 10000
+
+=                                
+
+> 00.010.020.030.04
+> ^L(M1; =; T?)
+> 0
+> 0.5
+> 1
+> 1.5
+> 2
+> 2.5
+> kK=;T?G!1
+> ?(=)!K?k
+> FitfromSec.5.4
+> Pointsusedfor-t
+> 2ndorderL?
+> =
+> ,iasparameter
+> kK=;T?
+> ^G!1(=)!K?k
+> FitfromSec.5.4
+> Pointsusedfor-t
+> 2ndorder^L=
+> ,iasparameter
+
+(a) M1=    
+
+> 00.010.020.030.04
+> L?(M2; =; T?)
+> 0
+> 1000
+> 2000
+> 3000
+> 4000
+> 5000
+> 6000
+> 7000
+
+=                                 
+
+> 00.010.020.030.04
+> ^L(M2; =; T?)
+> 0
+> 0.5
+> 1
+> 1.5
+> 2
+> kK=;T?G!1
+> ?(=)!K?k
+> FitfromSec.5.4
+> Pointsusedfor-t
+> 2ndorderL?
+> =
+> ,iasparameter
+> kK=;T?
+> ^G!1(=)!K?k
+> FitfromSec.5.4
+> Pointsusedfor-t
+> 2ndorder^L=
+> ,iasparameter
+
+(b) M2=    
+
+> 00.010.020.030.04
+> L?(M3; =; T?)
+> 1000
+> 2000
+> 3000
+> 4000
+> 5000
+> 6000
+> 7000
+
+=                                
+
+> 00.010.020.030.04
+> ^L(M3; =; T?)
+> 0
+> 0.5
+> 1
+> 1.5
+> 2
+> kK=;T?G!1
+> ?(=)!K?k
+> FitfromSec.5.4
+> Pointsusedfor-t
+> 2ndorderL?
+> =
+> ,iasparameter
+> kK=;T?
+> ^G!1(=)!K?k
+> FitfromSec.5.4
+> Pointsusedfor-t
+> 2ndorder^L=
+> ,iasparameter
+
+(c) M3
+
+Figure 5: Plots demonstrating the effect of choosing linear dependence for Lτ on τ and restrict-ing the exponential rate to αi on the functional form (21) ( ). For the reduced-order models 
+
+M1, M 2, M 3, we fitted here the obtained functional form again, now with quadratic dependence for Lτ on τ ( ), and αi as a fittable parameter ( ). We used the same 10 randomly selected points ( ∗) from the computed “true” suboptimality gap of the deployed policy ( ). 32 of these choices by considering instead 2 nd order dependence on τ for Lτ and considering αi as a fittable parameter in the functional form. Fig. 5 shows the resulting fits with these modifications in the DMPs for M1, M 2, M 3. Specifically, for a given Mi, it shows the “true” suboptimality gap of the deployed policy in black, which we computed as discussed in §B.5.1. The fits presented in Fig. 1 are plotted in Fig. 5 with same color for convenience. Using the same randomly selected points as in §5.4 (indicated by yellow asterisks), we fitted the functional form ( C1,1τ + C1,2τ 2) + ( C2 + C3τ )e−αiT⋆(τ,M i) + LM(Mi), with respect to 
+
+∥x⋆t ∥ and ∥ˆxt∥, indicated by the purple dashed lines. The green dashed lines indicate the fit of the functional form C1τ + ( C2 + C3τ )e−αfit ,i T⋆(τ,M i) + LM(Mi), where αfit ,i is a value to be estimated. The results in Fig. 5 show that the quality of the fit is most affected by the decay rate αi. We have also increased the order for CT (τ ) (not shown), which did not noticeably improve the fit. 
+
+B.5.4 Improved computational resources 
+
+The results in §5.4 consider the implementation of the deployed policy on a simple Arduino Leonardo. Upgrading the hardware of the system design results in better computational resources, i.e., a smaller τg. The impact of the larger computational budget is visualized in Fig. 6 on Page 34, where for every following subplot, we doubled the number of flops per second, i.e., halved τg.We can draw an important conclusion from the consecutive subplots in Fig. 6. It is easy to see that more computational resources directly enlarge the feasibility region of the small gain condition (22b). Moreover, performing the same analysis for M1 (not shown) gives that, despite not feasible with an Arduino Leonardo, the DMP is feasible when, e.g., 1 /τ g = 128 MHz. Hence, increasing the computational budget will result in a larger range of feasible solutions across different design dimensions (e.g., state dimension of the reduced order model, sampling time, and related horizon length). 33 (a) 1/τ g = 16 MHz (i.e., Fig. 2) (b) 1/τ g = 32 MHz      
+
+> (c) 1/τ g= 64 MHz (d) 1/τ g= 128 MHz
+
+Figure 6: Evolution of L⋆ and ˆL when the computational resources grow. We showed here the computed values of the design-dependent sector bound over a grid of τ × ρ for the optimal and deployed systems for system M2 and a given τg. As in Fig. 2, the region for which the small-gain condition (22b) is satisfied is indicated with green. 34

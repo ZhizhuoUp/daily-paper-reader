@@ -1,0 +1,670 @@
+Title: Multi-robot obstacle-aware shepherding of non-cohesive target agents
+
+URL Source: https://arxiv.org/pdf/2604.22327v1
+
+Published Time: Mon, 27 Apr 2026 00:36:59 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Multi-robot obstacle-aware shepherding of non-cohesive target agents 
+
+Cinzia Tomaselli 1, Stefano Covone 1, Andreagiovanni Reina 2,3 , Mario di Bernardo 1,4,* 
+
+Abstract — This paper presents a novel control strategy for multi-agent shepherding of non-cohesive targets in obstacle-rich environments. Unlike previous approaches that assume cohesive flocking behavior, our method handles targets that interact only with nearby herders through repulsive forces and exhibit no inter-target coordination. Each herder employs a hybrid control policy that combines direct goal-oriented steering with obstacle-tangent maneuvering, enabling targets to circumnavigate obstacles while being guided toward a goal region. The herder dynamics integrate three key behaviors: return-to-goal motion when idle, target steering with adaptive directional control, and obstacle avoidance using both nor-mal and tangential force components. Numerical simulations demonstrate superior performance compared to existing shep-herding methods, achieving higher target confinement rates in cluttered environments. Experimental validation using Turtle-Bot4 herders and Osoyoo target robots in an indoor arena confirms the practical effectiveness of the proposed approach. 
+
+I. I NTRODUCTION 
+
+Multi-agent shepherding represents a challenging dis-tributed control problem where herder agents must coordi-nate to guide independently moving targets to desired spatial configurations [1]. This bio-inspired paradigm, observed in nature through examples like sheepdogs herding sheep [2] or orcas coordinating to hunt fish [3], has attracted significant attention in robotics due to its broad application potential in crowd control, search-and-rescue operations, area defense, and autonomous vehicle coordination (see [1] for a compre-hensive review of applications). Unlike traditional formation control or consensus prob-lems where all agents cooperate toward common objec-tives, shepherding involves non-cooperative targets that move independently according to their own dynamics [4]. This fundamental difference creates unique control challenges including heterogeneous agent populations, indirect influ-ence mechanisms [5], and the need for real-time distributed decision-making without direct target communication [6]. The transition from abstract models to real-world appli-cations introduces several additional challenges that must be addressed to ensure effective control. Among such chal-lenges, the presence of obstacles in the environment plays a crucial role, as it can significantly affect the motion of agents, requiring control strategies to account for complex navigation scenarios.        
+
+> 1Scuola Superiore Meridionale, Naples, Italy
+> 2Centre for the Advanced Study of Collective Behaviour, Universität Konstanz, Konstanz, Germany
+> 3Department of Collective Behaviour, Max Planck Institute of Animal Behavior, Konstanz, Germany
+> 4Department of Electrical Engineering and Information Technology, University of Naples Federico II, Naples, Italy
+> *Corresponding author (mario.dibernardo@unina.it)
+
+Most existing shepherding strategies rely on heuristic co-ordination rules or model-based nonlinear or optimal control approaches, e.g., [7], [5], [8]. A critical limitation is the common assumption that targets exhibit cohesive collective behavior (e.g., flocking), enabling the group to be treated as a single controllable entity [9]. However, cohesive behavior frequently fails in practical scenarios, requiring herders to influence each target individually and dramatically increasing control complexity [10], [11], [12]. This is also commonly exploited to drive targets around environmental obstacles by treating them as a cohesive group and aiming at controlling their centre of mass [7]. In this work, we extend existing shepherding strategies to the case of non-cohesive targets moving in obstacle-rich environments. Specifically, we augment the basic repulsive herder-target interaction with a hybrid control strategy that – inspired by [13] – combines repulsive and tangential forces around obstacle boundaries, enabling herders to guide targets around obstacles through circumnavigation maneuvers. This extension addresses the practical challenge of deploying shepherding algorithms in realistic environments where nav-igation constraints significantly impact system performance without requiring any assumption of cohesive behaviour in the targets. 
+
+A. Related work 
+
+In previous work, obstacles have been represented in shepherding problems either through explicit geometric de-scriptions, such as polygons with smoothed vertices or con-tinuous boundary curves [14], or implicitly through repulsive potential fields that influence agents’ motion [15]. Given these representation choices, shepherding approaches must address obstacle avoidance through task-specific strategies that ensure both herder safety during navigation and effective target steering around environmental constraints. Existing methods adopt different computational trade-offs to achieve these dual objectives, though most assume cohesive target behavior. Hybrid planning approaches pri-oritize herder safety through local reactive terms while using map-based planning to guide cohesive target groups toward the goal [16], achieving near-optimal global paths at significant computational expense. Similarly, other methods employ graph-based path planning for herder navigation while steering contained cohesive targets reactively through formation-level fields [17], reducing computational overhead but increasing susceptibility to local minima and deadlocks. Purely reactive approaches also typically assume target cohesion while employing uniform strategies for both herder navigation and target steering. Pierson and Schwager [7] 
+
+> arXiv:2604.22327v1 [eess.SY] 24 Apr 2026
+
+generate local viewpoints around obstacles to guide cohesive groups via unicycle dynamics, while Zhang et al. [8] apply identical radial potential fields to both herders and cohesive targets. These uniform approaches offer computational sim-plicity but may lack the specialized control needed for the distinct behavioral requirements of herders versus targets. Learning-based approaches such as that of Zhi and Lien [18] similarly focus on cohesive target groups, employing reinforcement learning where a single herder steers the collective while avoiding obstacles. Although effective in complex scenarios, learned policies lack interpretability and may not generalize beyond training conditions. In contrast to these methods, our strategy addresses the more challenging case of non-cohesive targets while incorporating obstacle avoidance capabilities. It combines computational efficiency with enhanced robustness by em-ploying differentiated, reactive control strategies for herders and targets. By avoiding map-based global planning while incorporating hybrid normal-tangential obstacle avoidance, we achieve low computational overhead while reducing the deadlock susceptibility that typically affects purely repulsive potential field methods. II. P RELIMINARIES AND PROBLEM STATEMENT 
+
+a) Notation: For any two points q, p ∈ R2, we denote their relative position vector as dqp = q − p. Given a closed set B ⊂ R2 with boundary ∂ B and any point q ∈ R2, the orthogonal projection of q onto ∂ B is defined as proj B(q) = 
+
+arg min p∈∂ B ∥q − p∥. Given two closed sets A, B ⊂ R2 with boundaries ∂ A and ∂ B respectively, the distance between these two sets is defined as d(∂ A, ∂ B) = inf x∈∂ A,y∈∂ B ∥x−y∥.We use R (θ ) to denote the standard planar rotation matrix by angle θ . When the subscript ⊥ is used, R ⊥θ ) denotes the fixed rotation matrix corresponding to a θ = ± π 
+
+> 2
+
+rad rotation (perpendicular direction). 
+
+b) Problem statement: We consider a spatial domain 
+
+Ω ≡ R2, populated by L obstacles, N active herder agents and M target agents, denoted by the sets O, H and T ,respectively. We denote by Ta, a = 1, . . . , M, the cartesian coordinates of the target agents, by Hi, i = 1, . . . , N, those of the herders and by P j, j = 1, . . . , L, those of the obstacles’ centroid. Obstacles are assumed to be convex, static in posi-tion, with boundaries such that d(∂ Oi, ∂ O j) > λo + εo ∀i, j ∈
+
+O, i̸ = j, where λo and εo are two positive constants. This separation constraint ensures that the influence regions of different obstacles do not overlap, simplifying the navigation dynamics and preventing conflicting repulsive forces. The goal is for the herders to corral and confine the targets within a desired region assumed to be, without lack of generality, a disc centered at the origin of radius ρg [10]. The target agents exhibit autonomous stochastic behavior without inherent coordination or communication capabilities. Each target Ta ∈ T is influenced by any herder only within a distance λ , forming the neighbor set defined as: 
+
+NH (Ta) = {Hi ∈ H : ∥Hi − Ta∥ < λ }. (1) The dynamics of each target follows the model in [11], with an additional term describing the local repulsion from nearby obstacles: ˙Ta = √2DW + β ∑ 
+
+> i∈NH(Ta)
+
+(λ − ∥ dHiTa ∥) ˆdHiTa + FTa,O (2) where W is a Brownian noise term with diffusion D > 0, β >
+
+0 scales the repulsive drift induced by nearby herders, and 
+
+FTa,O is the repulsive force felt by the targets near obstacles (see Fig. 1 for a schematic representation of the forces at play). Specifically, we set 
+
+FTa,O = −
+
+> L
+
+# ∑
+
+> j=1
+
+∇Uj(Ta) (3) where Uj is the repulsive potential field associated with obstacle O j ∈ O.Following [19], the repulsive potential associated with each obstacle O j is defined, for any point q ∈ R2, as 
+
+Uj(q) = 
+
+
+
+> ko
+> 2
+
+ 1
+
+∥s j(q)∥ − 1
+
+λo
+
+2
+
+, if ∥s j(q)∥ ≤ λo,
+
+0, if ∥s j(q)∥ > λo,
+
+(4) where s j(q) = q − proj O j (q) is the vector from q to its orthogonal projection on obstacle O j’s perimeter, and λo >
+
+0 denotes the obstacle influence radius. This potential is continuously differentiable for ∥s j(q)∥ > 0, diverges near the boundary of O j, and vanishes outside the influence radius λo,thus preventing collisions while keeping the effect local. We assume that each herder Hi ∈ H is capable of sensing all targets as well as the other herders in the environment. Furthermore, when operating within the influence zone of an obstacle, a herder is assumed to have knowledge of the obstacle’s centroid and to be able to associate each point on the obstacle boundary with its corresponding centroid. We assume the herders have a maximum speed vH > 0, with dynamics given by 
+
+˙Hi = ui (5) where the control input ui must be designed so as to successfully drive targets towards the goal region in the presence of obstacles. 
+
+Remark 1. Note that as often done in the literature [20], [8], [10], we assume targets follow first-order dynamics under the kinematic assumption that their motion is primarily governed by instantaneous behavioral responses rather than inertial effects, which is reasonable for lightweight agents or when response times are much slower than the mechanical time constants [21]. The same assumption is also made for herders under the hypothesis that higher-level motion planning generates velocity commands that are executed by lower-level dynamic controllers [22]. III. O BSTACLE -AWARE SHEPHERDING STRATEGY 
+
+When steering targets, herders must explicitly account for obstacle presence. We extend the target selection strategy from [11] to handle obstacle-rich environments through a two-stage process: target selection followed by obstacle-aware steering. Each herder employs the same target se-lection rule as in [11]: it selects the farthest target from the goal, provided that target is not closer to any other herder in the environment. When no such target exists, the herder returns to the goal region to maintain containment while simply avoiding obstacles. The key extension lies in the steering phase, where herders must guide selected targets along feasible paths that circumnavigate obstacles when direct routes are blocked by positioning themselves in appropriate steering points. To achieve this enhanced behavior, we choose ui in (5) as 
+
+ui = ( 1 − ηi) Fi(Hi) + ηi I′
+
+> i
+
+(T, H, O) + FHi,O (6) where ηi ∈ { 0, 1} indicates whether Hi is chasing a target (ηi = 1) or not (ηi = 0). (See Fig. 1 for a schematic representation of the forces acting on the herders.) If no target is selected ( ηi = 0), the herder returns to the goal region at a constant speed vH until reaching its boundary. This is achieved by setting: 
+
+Fi(Hi) = 
+
+(−vH Hi, ∥Hi∥ > ρg,
+
+0, ∥Hi∥ ≤ ρg. (7) Thus, idling herders do not wander but regroup near the goal region to keep the targets already driven therein confined. At the same time while navigating the environment herders need to avoid obstacles. This is achieved by setting FHi,O
+
+in (6) as a hybrid force combining normal and tangential components via a tunable parameter γ ∈ [0, 1]:
+
+FHi,O = −
+
+> L
+
+# ∑
+
+> j=1
+
+
+
+γ∇Uj(Hi) + ( 1 − γ)R⊥(θi) ∇Uj(Hi)
+
+
+
+(8) The first term provides normal repulsion using the same potential field form adopted for the targets in (4), while the second term represents an additional tangential force obtained by rotating the normal component by an angle θi,chosen as 
+
+θi =
+
+ 
+
+> π
+> 2
+
+, dHiP j × dCiP j > 0,
+
+− π 
+
+> 2
+
+, dHiP j × dCiP j ≤ 0,
+
+(9) where Ci denotes the herder’s steering point relative to its selected target if it is chasing a target, and Ci = 0 otherwise. The tangential component prevents deadlock situations that can occur with purely repulsive normal forces, en-abling herders to slide along obstacle boundaries toward their objectives. The rotation direction is determined by the relative geometry to avoid unnecessary detours and prevent oscillations. If a target T ∗ 
+
+> i
+
+is selected ( ηi = 1), while still avoiding obstacles through the force FHi,O, herders also need to drive the chosen target towards the goal region. This is achieved by activating the second term on the right-hand side of (6) 𝐻 1
+
+𝐻 2
+
+𝐻 3
+
+𝐅 1
+
+𝐻 4
+
+𝑇 1
+
+𝑇 2
+
+𝐈 2
+
+> ′
+
+𝜌 𝑔 
+
+# •𝐏 1
+
+𝐅 1,𝑂 
+
+> 𝐻
+
+𝛿 
+
+෡𝐓 2
+
+> ∗
+
+# •𝟎 
+
+Fig. 1: Schematic representation of the forces acting on targets and herders according to (2) and (5)-(6) when moving in the environment, possibly interacting with each other and an obstacle. Herder H1 is subject to the force F1 pulling it towards the goal region (in green) while being repelled by the obstacle (in red) through the force FH
+
+> 1,O
+
+. Herder H2 is moving towards the target T1 in the absence of any nearby obstacle. Herder H3 is moving towards target T2 while avoiding the obstacle, placing itself at a tangential direction so as to make the target circumnavigate the obstacle. Herder H4 is moving towards the goal region in the absence of nearby targets or obstacles. which we set as: 
+
+I′
+
+> i
+
+(T, H, O) = −α
+
+
+
+Hi −
+
+h
+
+T∗ 
+
+> i
+
++ δ  μi ˆT∗ 
+
+> i
+
++ ( 1 − μi) ˆνννi
+
+i 
+
+.
+
+(10) Here, α > 0 denotes a control gain, δ < λ specifies the offset distance, ˆ T∗ 
+
+> i
+
+is the unit vector pointing from the goal center toward the target, and ˆνννi represents the tangent direction along the obstacle boundary. The binary variable μi is set to μi = 1 for a purely straight push in the absence of nearby obstacles, and to μi = 0 when the target is at a distance λo + εo from an obstacle blocking its path to the goal. When this happens, the herder need to push the target tangentially to the obstacle, allowing the target to avoid it while being driven towards the goal region. The boundary-tangent direction is defined as a rotation of the vector s ˆj(T∗ 
+
+> i
+
+) = T∗ 
+
+> i
+
+− proj O ˆj (T∗ 
+
+> i
+
+), obtained by setting: 
+
+νννi =
+
+
+
+R⊥
+
+ − π
+
+> 2
+
+ s ˆj(T∗ 
+
+> i
+
+), dT∗   
+
+> iPˆj
+
+× dOP ˆj > 0,
+
+R⊥
+
+  π
+
+> 2
+
+ s ˆj(T∗ 
+
+> i
+
+), dT∗   
+
+> iPˆj
+
+× dOP ˆj ≤ 0, (11) so that the target is consistently driven along the most favorable direction. T0
+
+Tf
+
+H0
+
+Hf
+
+-20 0 20 40 -20 -10 010 20 30 40 Fig. 2: Example of obstacle-avoidance strategy in a single herder and single target setup. In order to drive the target, the herder first circumnavigates the obstacle, then it pushes the target tangentially. Color gradients represent the progression of positions over time, going from t = 0 to t = t f .IV. N UMERICAL VALIDATION 
+
+Numerical experiments are conducted in MATLAB to evaluate the proposed obstacle-aware shepherding strategy. The simulation environment consists of a circular domain 
+
+Ω0 ⊂ Ω with radius ρ0 = 50 m, from which initial positions of herders and targets are uniformly sampled. A single rectangular obstacle with dimensions 30 m × 10 m, centered at (15 m , 15 m ), with its major axis rotated of an angle of 3π/4 radians from the positive horizontal axis to create a challenging navigation scenario that blocks direct paths to the goal region. Figure 2 illustrates a representative trajectory demonstrat-ing the proposed obstacle circumnavigation strategy. The herder initially approaches the obstacle and utilizes the tangential force component to navigate around its bound-ary, maintaining forward progress toward the target. Once positioned appropriately, the herder applies repulsive forces to guide the target along a similar circumnavigation path, successfully steering it into the goal region while avoiding collision with the obstacle. The proposed strategy scales naturally to large multi-agent scenarios through decentralized decision-making, where each herder independently selects targets using simple local rules. Fig. 3a shows the initial configuration of 10 herders and 100 targets in the presence of L = 7 obstacles whose width and height are independently sampled from uniform distributions over the intervals [8, 20 ] m and [2, 20 ] m, respectively. Under the proposed control law, all targets first enter the goal region at time 177 .71 s, as illustrated in Fig. 3b. The temporal evolution of the agents’ distances from the goal over the full simulation horizon is reported in Fig. 3c, confirming both convergence and subsequent containment within the goal region. The 10:100 herder-to-target ratio is based on the herdability analysis in [11], ensuring sufficient herding capacity for the obstacle-free baseline case. To investigate the impact of non-cohesive target behavior, we compare our method against the state-of-the-art approach by Pierson and Schwager [7]. Their method assumes co-hesive targets and employs unicycle dynamics, positioning herders along an arc centered at the targets’ center of mass to push the group toward the goal. For obstacle avoidance, their approach generates waypoints to guide the unicycle around obstacles. Since the original work does not specify the waypoint generation algorithm, we implement the A∗
+
+path planning algorithm to ensure fair comparison through optimal path generation. Over 50 simulations with randomly initialized conditions in an environment containing a single rectangular obstacle, our strategy consistently succeeded in herding all targets, whereas, as expected, the approach of [7] failed consistently, capturing only χ = 0.05 ± 0.07 of the targets on average. This stark performance difference demonstrates that obstacle avoidance capabilities alone are insufficient for non-cohesive targets. In this latter case, effective shepherding requires indi-vidual target consideration rather than center-of-mass control strategies designed for cohesive groups. Model parameters and simulation details are provided in the Appendix. V. E XPERIMENTAL VALIDATION 
+
+To evaluate the effectiveness of the proposed control strategy, we conducted real-world experiments using an heterogeneous group of mobile robots comprising TurtleBot4 
+
+as herders and Osoyoo Robotic Car V4.0 as targets. The TurtleBot4 , equipped with wheel encoders and factory-calibrated odometry, provides precise motion control suitable for executing the deterministic herder control policy. The Osoyoo Robotic Car V4.0 is a low-cost differential-drive platform based on a Raspberry Pi that lacks wheel encoders, resulting in less precise motion control. This inherent im-precision makes it an appropriate platform for representing the stochastic, non-cohesive target behavior modeled in our approach. Experiments were carried out in a 2 m × 2 m indoor arena containing a rectangular obstacle of size 0 .7 m × 0.25 m and a goal region of radius 0 .35 m. The setup was monitored by a motion-tracking system providing ground-truth poses of all robots and obstacles. These data were processed by a central computer, resulting in a pseudo-distributed archi-tecture: although computations were centralized, each robot acted solely on local information. 
+
+A. Model adaptation for practical implementation 
+
+The theoretical model assumes point agents governed by single-integrator dynamics. In practice, robots have finite di-mensions requiring model adaptation to account for physical embodiment. Without this adaptation, agents would attempt to occupy the same spatial location, leading to unrealistic overlapping behaviors. To prevent inter-agent collisions, we introduce pairwise repulsive forces between agents of the same type. Following the obstacle avoidance potential field -50 0 50
+
+-50
+
+0
+
+50(a) -50 0 50
+
+-50
+
+0
+
+50 (b) Time (s) 
+
+50 100 150 200 250 
+
+> Radii (m)
+
+0
+
+10 
+
+20 
+
+30 
+
+40 
+
+50 
+
+Time (s) 
+
+50 150 250 
+
+> @
+
+0
+
+0.5 
+
+1
+
+(c) 
+
+Fig. 3: Validation of the proposed shepherding strategy in a scenario with N = 10 herders, M = 100 targets and L =
+
+7 rectangular obstacles with width and height uniformly sampled from [8, 20 ] m and [2, 20 ] m, respectively. (a) Initial positions of herders (blue diamonds) and targets (magenta points). (b) Configuration at time 177 .71 s, corresponding to the first time instant at which all targets enter the goal region. (c) Temporal evolution of the mean distance from the goal region center for herders (blue) and targets (magenta), with the corresponding standard deviations (shaded areas), relative to the goal region radius (green dashed line). The inset shows the evolution of the fraction of captured targets χ, which successfully converges to unity. design, this repulsive interaction vanishes when the inter-agent distance ∥dqiq j∥ exceeds threshold dth and diverges as agents approach each other. For two agents positioned at qi
+
+and q j, the repulsive potential is: 
+
+Vi j =
+
+
+
+> kd
+> 2
+
+1
+
+∥dqiq j ∥ − 1
+
+dth 
+
+!2
+
+, if ∥dqiq j ∥ ≤ dth ,
+
+0, if ∥dqiq j ∥ > dth ,
+
+(12) with the corresponding repulsive force GTi j = −∇Vi j if i and 
+
+j are targets, GHi j otherwise. Consider herder pursuing its selected target T ∗ 
+
+> i
+
+, with Ci
+
+denoting the steering point relative to T ∗ 
+
+> i
+
+. To prevent collision during approach while maintaining effective control, an orbiting term is introduced that enables the herder to circulate around the target when a direct approach is not feasible. In the absence of nearby obstacles, the orbiting direction is determined by pi = αoR⊥(φi) ˆdHiTi∗ +
+
+αr ˆdHiTi∗ (1 − ∥ dHiTi∗ ∥/rth ), where rth is a distance threshold, 
+
+αo > 0 is the orbiting tangential gain, αr is a radial gain regulating ∥dHiTi∗ ∥ to rth , and the rotation angle is given by: 
+
+φi =
+
+( π 
+
+> 2
+
+, if dHiT∗ 
+
+> i
+
+× dCiT∗ 
+
+> i
+
+≥ 0
+
+− π 
+
+> 2
+
+, if dHiT∗ 
+
+> i
+
+× dCiT∗ 
+
+> i
+
+< 0 (13) The resulting orbiting direction is illustrated in Fig. 4a for the obstacle-free case. However, when the selected target 
+
+T ∗ 
+
+> i
+
+is in proximity of an obstacle, the nominal orbiting direction may induce configurations that lead to collisions during circulation. This situation is depicted in Fig. 4b. To address this issue, the rotation angle is modified as ˜ φi = ψiφi,where ψi is defined as follows: 
+
+ψi =
+
+
+
+−1, ∠(dHiT∗ 
+
+> i
+
+, dCiT∗ 
+
+> i
+
+) > π
+
+> 2
+
+∧ ∠(−s j(T∗ 
+
+> i
+
+), dHiT∗ 
+
+> i
+
+) < π
+
+> 2
+
++1, otherwise. (14) which allows the herder to circulate the target without colliding with obstacles. The orbiting term is modulated by two scalar weights, denoted by σi, ζi ∈ [0, 1], that activate the orbiting action only when needed: the first depends on the distance between the herder and its selected target, and the second on the alignment between the vectors dHiT∗ 
+
+> i
+
+and dCiT∗ 
+
+> i
+
+.Specifically, let rth > 0 be a distance threshold and εh > 0a buffer distance, σi is given by: 
+
+σi =
+
+
+
+0, if ∥dHiT∗ 
+
+> i
+
+∥ ≥ rth + εh
+
+1, if ∥dHiT∗ 
+
+> i
+
+∥ ≤ rth   
+
+> ∥dHiT∗
+> i∥− rth −εh
+> εh
+
+, if rth < ∥dHiT∗ 
+
+> i
+
+∥ < rth + εh
+
+(15) Similarly, given βi = ∠
+
+
+
+dHiT∗ 
+
+> i
+
+, dCiT∗
+
+> i
+
+
+
+and two angle thresh-olds βorb and βth such that 0 < βorb < βth , ζi is defined as: 
+
+ζi =
+
+
+
+0, if |βi| ≤ βorb 
+
+1, if |βi| ≥ βth  
+
+> |βi|− βorb
+> βth −βorb
+
+, if βorb < |βi| < βth 
+
+(16) The region corresponding to the simultaneous saturation of both σi and ζi (i.e., σi = ζi = 1) is highlighted in yellow in Fig. 4. Given the additional orbiting term, d(∂ Oi, ∂ O j) ∀i, j ∈
+
+O, i̸ = j, has to be increased by dth to enable target circula-tion. Therefore, for experimental implementation, the control law in Eq. (6) is modified to incorporate the physical robot constraints and orbiting behavior described above: ˜ui = ( 1 − ηi) Fi(Hi) + ( 1 − σi) ηi I′
+
+> i
+
+(T, H, O)+ FHi,O + ∑
+
+> j∈H
+
+GHi j + σi ζi pi (17) where the function I′ 
+
+> i
+
+is also blended with σi to prevent overlapping. In addition, given the inaccurate motion of the Osoyoo 
+
+robots, D in Eq. (2) is set to 0 so that no additional noise is (a) (b) 
+
+Fig. 4: Orbiting direction selection for herder Hi pursuing its assigned target T ∗ 
+
+> i
+
+. (a) Obstacle-free case: the tangential orbiting direction is determined by the relative orientation between dHiT∗ 
+
+> i
+
+and dCiT∗ 
+
+> i
+
+, yielding φi = ± π 
+
+> 2
+
+according to Eq. (13) and enabling circulation toward the desired offset position Ci. (b) Target in proximity of obstacle O j: the nom-inal orbiting direction may steer the herder toward collision-prone configurations due to the obstacle-induced constraint represented by −s j(T∗ 
+
+> i
+
+). In this case, the modulation term 
+
+ψi, expressed in Eq. (14), reverses the orbiting direction to ensure safe circulation of T ∗ 
+
+> i
+
+around the obstacle. The shaded regions denote configurations in which the tangential contribution in pi dominates the radial one, corresponding to the simultaneous saturation of σi in Eq. (15) and ζi in Eq. (16). artificially introduced, and inter-agent repulsive forces are added for practical implementation. The target dynamics becomes: ˙˜Ta = β ∑ 
+
+> i∈NH(Ta)
+
+(λ − ∥ dHiTa ∥) ˆdHiTa + FTa,O + ∑
+
+> j∈T
+
+GTa j (18) Once the single-integrator velocities are computed, a uni-cycle mapping has to be applied to obtain feasible linear and angular commands [23]. Specifically, let usi = [ ux uy]T be the control input generated by the single-integrator model for a robot located at position p = [ x y ]T with orientation ϕ. The nominal linear and angular velocities (v, ω) are obtained via 
+
+ vnom 
+
+ωnom 
+
+
+
+=
+
+ cos ϕ sin ϕ
+
+− sin ϕ 
+
+> d
+> cos ϕ
+> d
+
+
+
+usi , (19) where d > 0 is a tuning parameter representing the look-ahead distance of the unicycle mapping. In addition, given the actuator limits of the robot wheels |vL|, |vR| ≤ vmax and the wheelbase l, a scaling factor s is applied: 
+
+s = min 
+
+(
+
+1, vmax 
+
+vnom + l 
+
+> 2
+
+ωnom + ε , vmax 
+
+vnom − l 
+
+> 2
+
+ωnom + ε
+
+)
+
+,
+
+(20) with ε > 0 arbitrarily small. This ensures that the commanded velocities respect the physical limits of both robot wheels while preserving the direction of the nominal control input. 
+
+B. Gazebo simulation 
+
+As an intermediate step between theoretical analysis and experimental implementation, the robotic system described 
+
+> (a)
+
+10 20 30 40 50 60 70 Time (s) 00.5 11.5 Radii (m) 
+
+> (b)
+
+Fig. 5: Gazebo simulation of the obstacle-aware shepherding strategy with two TurtleBot4 herders and three Osoyoo 
+
+targets, controlled via a ROS 2 control architecture. (a) Snapshot from Gazebo depicting initial robot configuration. (b) Time evolution of the distances of herders (blue) and targets (magenta) from the goal center. The green dashed line denotes the goal radius ( ρG = 0.35 m). above is simulated in a Gazebo/ROS-2 environment (whose details are reported in Appendix). While the TurtleBot4 
+
+model is publicly available, the Osoyoo implementation required a system identification procedure from the real robot, in order to determine its dynamical parameters. The control strategy from Sec. III, developed on point-particles, is enhanced via the low-level controllers from the previous paragraph, to make it compliant with the differential-drive kinematics of the mobile robots. Fig. 5a shows the initial robots’ configuation in a trial with two TurtleBot4 herders and three Osoyoo targets, while Fig. 5b depicts the agents’ distances from the goal center over an example run, showing how herders effectively confine the targets (see supplementary videos). 
+
+C. Real robot experiments 
+
+Next, we validate the proposed strategy on the real robotic platform, using the set of parameters reported in the Ap-pendix. In the first experiment, a single TurtleBot4 herder and one Osoyoo target are deployed. The target is initially positioned behind the obstacle (Fig. 6a), and the herder successfully reaches it, guiding it toward the goal region while avoiding collisions (Fig. 6b). Figure 6c shows the (a) (b) T0
+
+Tf
+
+H0
+
+Hf
+
+-1.5 -1 -0.5 0 0.5 1 1.5 -1 -0.5 00.5 11.5 2
+
+(c) 
+
+Fig. 6: Experimental validation of the obstacle-aware shep-herding strategy with one TurtleBot4 herder and one Osoyoo 
+
+target. (a) Initial configuration with target positioned be-hind a rectangular obstacle. (b) Final configuration showing the target successfully contained within the goal region. (c) Robots’ trajectories over time. Color gradients represent the progression of positions over time, going from t = 0 – agents indicated as H0 = H(0) and T0 = T(0) – to t = t f –agents indicated as H f = H(t f ) and T f = T(t f ).trajectories of the robots: the herder’s path clearly illustrates how it circumvents the obstacle by moving around it, then pushes the target tangentially along the most favorable side of the obstacle, before ultimately driving it into the goal region (see supplementary videos). A second experiment considers a more challenging config-uration with two herders and three targets, under the same ob-stacle placement. In this scenario, the herders autonomously select suitable targets and coordinate to effectively contain and steer the group toward the goal region. Figures 7a–7b illustrate the initial and final configurations of the robots, while Fig. 7c highlights the success of our strategy by depicting the agents’ distances from the goal center in time (see supplementary videos). VI. C ONCLUSIONS 
+
+This paper presents a control strategy for multi-agent shepherding of non-cohesive targets in obstacle-rich envi-ronments. The approach combines repulsive and tangential 
+
+(a) (b) 10 20 30 40 50 Time (s) 00.5 11.5 2Radii (m) 
+
+(c) 
+
+Fig. 7: Experimental validation of the obstacle-aware shep-herding strategy with one TurtleBot4 herder and one Osoyoo 
+
+target. (a) Initial configuration with a target robot placed behind an obstacle. (b) Final configuration showing all targets successfully contained within the goal region. (c) Time evolution of the radial distances of herders (blue) and targets (magenta) from the goal center. The green dashed line denotes the goal radius ( ρG = 0.35 m). forces to enable herders to guide targets around obstacles through circumnavigation maneuvers, addressing limitations of existing methods that assume cohesive target behavior. Numerical simulations demonstrate superior performance compared to state-of-the-art approaches, achieving higher target confinement rates with improved efficiency. Experi-mental validation using heterogeneous robot platforms con-firms practical viability under real-world constraints includ-ing actuator limitations and sensing uncertainties. Future work should address dynamic obstacles, theoretical conver-gence analysis, and extension to 3D environments. 
+
+Acknowledgments. A.R. acknowledges support from Ger-many’s DFG Excellence Strategy – EXC 2117-422037984. REFERENCES [1] N. K. Long, K. Sammut, D. Sgarioto, M. Garratt, and H. A. Abbass, “A comprehensive review of shepherding as a bio-inspired swarm-robotics guidance approach,” IEEE Transactions on Emerging Topics in Computational Intelligence , vol. 4, no. 4, pp. 523–537, 2020. [2] D. Strömbom, R. Mann, A. Wilson, S. Hailes, A. Morton, D. Sumpter, and A. King, “Solving the shepherding problem: Heuristics for herd-ing autonomous, interacting agents,” Journal of The Royal Society Interface , vol. 11, 2014. [3] M. A. Haque, A. R. Rahmani, and M. B. Egerstedt, “Biologically inspired confinement of multi-robot systems,” International Journal of Bio-Inspired Computation , vol. 3, no. 4, pp. 213–224, 2011. [4] C. Muro, R. Escobedo, L. Spector, and R. Coppinger, “Wolf-pack (Canis lupus) hunting strategies emerge from simple rules in compu-tational simulations,” Behavioural Processes , vol. 88, no. 3, pp. 192– 197, 2011. [5] R. A. Licitra, Z. I. Bell, E. A. Doucette, and W. E. Dixon, “Single agent indirect herding of multiple targets: A switched adaptive control approach,” IEEE Control Systems Letters , vol. 2, no. 1, pp. 127–132, 2018. [6] A. Li, M. Ogura, and N. Wakamiya, “Communication-free shepherd-ing navigation with multiple steering agents,” Frontiers in Control Engineering , vol. 4, p. 989232, 2023. [7] A. Pierson and M. Schwager, “Controlling Noncooperative Herds with Robotic Herders,” IEEE Transactions on Robotics , vol. 34, no. 2, pp. 517–525, 2018. [8] S. Zhang, X. Lei, M. Duan, X. Peng, and J. Pan, “A distributed outmost push approach for multirobot herding,” IEEE Transactions on Robotics , vol. 40, pp. 1706–1723, 2024. [9] J.-M. Lien, O. B. Bayazit, R. T. Sowell, S. Rodriguez, and N. M. Amato, “Shepherding behaviors,” in IEEE International Conference on Robotics and Automation , vol. 4, 2004, pp. 4159–4164. [10] F. Auletta, D. Fiore, M. J. Richardson, and M. di Bernardo, “Herding stochastic autonomous agents via local control rules and online target selection strategies,” Autonomous Robots , vol. 46, no. 3, pp. 469–481, 2022. [11] A. Lama and M. di Bernardo, “Shepherding and herdability in complex multiagent systems,” Physical Review Research , vol. 6, p. L032012, 2024. [12] D. Ko and E. Zuazua, “Asymptotic behavior and control of a “guidance by repulsion” model,” Mathematical Models and Methods in Applied Sciences , vol. 30, no. 04, pp. 765–804, 2020. [13] C. De Medio and G. Oriolo, “Robot obstacle avoidance using vortex fields,” in Advances in Robot Kinematics . Springer, 1991, pp. 227– 235. [14] Y. Gong, R. Laha, and L. Figueredo, “Geopf: Infusing geometry into potential fields for reactive planning in non-trivial environments,” in 
+
+arXiv:2505.19688 , 2025. [15] S. Van Havermaet, Y. Khaluf, and P. Simoens, “Reactive shepherding along a dynamic path,” Scientific Reports , vol. 14, p. 14915, 2024. [16] M. Hamandi, F. Khorrami, and A. Tzes, “Robotic shepherding in cluttered and unknown environments using control barrier functions,” in arXiv:2407.15701 , 2024. [17] V. S. Chipade and D. Panagou, “Multiagent planning and control for swarm herding in 2-d obstacle environments under bounded inputs,” 
+
+IEEE Transactions on Robotics , vol. 37, no. 6, pp. 1956–1972, 2021. [18] J. Zhi and J.-M. Lien, “Learning to herd agents amongst obstacles: Training robust shepherding behaviors using deep reinforcement learn-ing,” IEEE Robotics and Automation Letters , vol. 6, no. 2, pp. 4163– 4168, 2021. [19] O. Khatib, “Real-time obstacle avoidance for manipulators and mobile robots,” The International Journal of Robotics Research , vol. 5, no. 1, pp. 90–98, 1986. [20] E. Sebastián, E. Montijano, and C. Sagüés, “Adaptive Multirobot Implicit Control of Heterogeneous Herds,” IEEE Transactions on Robotics , vol. 38, no. 6, pp. 3622–3635, 2022. [21] G. Albi, M. Bongini, E. Cristiani, and D. Kalise, “Invisible control of self-organizing agents leaving unknown environments,” SIAM Journal on Applied Mathematics , vol. 76, no. 4, pp. 1683–1710, 2016. [22] R. Olfati-Saber, “Flocking for multi-agent dynamic systems: algo-rithms and theory,” IEEE Transactions on Automatic Control , vol. 51, no. 3, pp. 401–420, 2006. [23] B. Siciliano, L. Sciavicco, L. Villani, and G. Oriolo, Robotics: Mod-elling, Planning and Control . Springer, 2010. 
+
+APPENDIX 
+
+This appendix summarizes the key numerical settings used in the study. 
+
+a) Model parameters: Table A1 reports the physical constants defining herder and target dynamics (Section II). TABLE A1: Model parameters for herders, targets, and environment used in the simulation study Parameter Notation Value Herder’s maximum velocity vh 7.5 m/s Attraction strength to a selected target α 5Offset distance from selected target δ 1.25 m Balancing factor of obstacle avoidance for herders γ 0.3 Influence radius of targets λ 2.5 m Strength of the repulsive drift from sensed herders β 3Obstacle safety margin εo 1 m Noise diffusion D 0.5 Domain radius ρ0 50 m Goal region radius ρG 10 m Obstacle influence radius λo 2.5 m Repulsion strength from obstacles ko 10 Sampling time ∆t 0.01 s 
+
+b) ROS 2 implementation details: To handle Vicon tracking data and control robot velocities, we employ the ROS 2 environment. A ros_vicon_bridge node on the central computer publishes Vicon measurements in real time to a dedicated topic for each subject, denoted as 
+
+\vicon\subject , where subject corresponds to the namespace of each robot. A controller node subscribes to these topics, extracts the poses of all entities, and uses them as inputs to the control law. Based on the estimated positions of robots and obstacles, this node applies the dynamics in Eq. (5) for 
+
+TurtleBot4 units and Eq. (2) for Osoyoo robots, accounting for their physical bodies and dynamics. The resulting linear and angular velocity commands are then published to the corresponding ROS 2 topics for execution. Table A2 reports the physical constants defining herder and target dynamics during experiments (Section V-C). TABLE A2: Model parameters for herders, targets, and environment used in the experiments Parameter Notation Value Attraction strength to a selected target α 3Offset distance from selected target δ 0.375 m Balancing factor of obstacle avoidance for herders γ 0.3 Orbiting tangential gain αo 4.5 Orbiting radial gain αr 3Threshold distance for orbiting rth 0.375 m Offset distance for orbiting blend εh 0.1 m Orbiting activation angle βth pi  
+
+> 4
+
+rad Orbiting deadband angle βorb pi  
+
+> 18
+
+rad Repulsion strength between robots of the same type kd 1Distance threshold between robots of the same type di j 0.45 m Influence radius of targets λ 0.5 m Strength of the repulsive drift from sensed herders β 3Obstacle safety margin εo 0.1 m Noise diffusion D 0Obstacle influence radius λo 0.2 m Goal region radius ρG 0.35 m Repulsion strength from obstacles ko 10 Sampling time ∆t 0.002 s
