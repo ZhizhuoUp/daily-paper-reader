@@ -1,0 +1,866 @@
+Title: Iterative Model-Learning Scheme via Gaussian Processes for Nonlinear Model Predictive Control of (Semi-)Batch Processes
+
+URL Source: https://arxiv.org/pdf/2604.22672v1
+
+Published Time: Mon, 27 Apr 2026 01:02:49 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+# Iterative Model-Learning Scheme via Gaussian Processes for Nonlinear Model Predictive Control of (Semi-)Batch Processes 
+
+## Tai Xuan Tan a, Alexander Mitsos b,a,c and Eike Cramer d,∗
+
+> a
+
+Process Systems Engineering (AVT.SVT), RWTH Aachen University, Forckenbeckstraße 51, 52074 Aachen, Germany 
+
+> b
+
+JARA-CSD, 52056 Aachen, Germany 
+
+> c
+
+Institute of Climate and Energy Systems: Energy Systems Engineering (ICE-1), Forschungszentrum Jülich GmbH, 52425 Jülich, Germany 
+
+> d
+
+Department of Chemical Engineering, Sargent Centre for Process Systems Engineering, University College London, Torrington Place, London WC1E 7JE, United Kingdom 
+
+A R T I C L E I N F O 
+
+Keywords :Learning-based nonlinear control Batch Process Control Nonlinear Model Predictive Control Machine Learning Gaussian Processes Chance Constraints 
+
+A B S T R A C T 
+
+Batch processes are inherently transient and typically nonlinear, motivating nonlinear model predictive control (NMPC). However, adopting NMPC is hindered by the cost and unavailability of dynamic models. Thus, we propose to use Gaussian Processes (GP) in a model-learning NMPC scheme (GP-MLMPC) for batch processes. We initialize the GP-MLMPC using data from a single initial trajectory, e.g., from a PI controller. We iteratively apply the NMPC embedded with GPs to run batches and update the GP with new observations from each iteration, thereby achieving batch-wise improvements. Using uncertainty quantification from the GPs, we formulate chance constraints to enforce safe operation to the required confidence levels. We demonstrate our approach in silico on a semi-batch polymerization reactor for tracking and economic objectives over durations of two hours, and the reactor temperature is constrained in a range of ±2 ◦𝐶 around its setpoint. After only four batch iterations, tracking error from the GP-MLMPC scheme converged to a reduction of 83% , compared to the initial trajectory. Furthermore, under an economic objective, the GP-MLMPC resulted in a 17-fold increase in final product mass by iteration 8, compared to the initial trajectory. In both cases, the resulting GP-MLMPC performance is on par with the full-model NMPC, which shows that the optimal controller can be learned by the approach. By collecting samples around the optimal trajectory, the GP-MLMPC remains sample-efficient across iterations and achieves quick convergence. Thus, the proposed GP-MLMPC scheme presents a promising data-efficient approach for the control of nonlinear batch processes without mechanistic knowledge. 
+
+## 1. Introduction 
+
+Batch processes with extensions to semi-batch remain one of the primary manufacturing processes for products in small to medium quantities, as well as for diverse consumer specifications [ 1], e.g., specialty polymers and pharmaceuti-cals. Batch processes are transient in operation, and therefore are exposed to nonlinearities in the system dynamics, as there are no steady operating points for control design to linearize around [ 2]. Therefore, conventional linear optimal controllers cannot be easily utilized for satisfactory control of batch processes. For specialty products, these processes also often have to adhere to tight process constraints cor-responding to narrow ranges of quality requirements [ 1]. To address the aforementioned challenges, batch processes require control methods that differ from those used in con-tinuous, steady-state processes. (Nonlinear) Model predictive control ((N)MPC) is a well-established advanced feedback control method [ 3] and has been extensively studied for many constrained processes, including batch process systems [ 4, 5]. Detailed explanation of (N)MPC can be found here [ 3]. (N)MPC relies on an accu-rate dynamic model of the system to perform well. However, developing accurate mechanistic models and experimentally validating these can be prohibitively expensive, especially for batch units that produce a wide range of products, each 
+
+> ∗
+
+Corresponding author: e.cramer@ucl.ac.uk 
+
+> ORCID
+
+(s): 0000-0002-6882-5469 (E. Cramer) 
+
+directly affecting the dynamic behavior of the process. The cost of obtaining a model for MPC is not often justifiable for batch processes, which typically produce small quantities of products. Thus, the lack of available models for control is one of the main limiting factors for the wide adoption of NMPC in the batch process industry [ 6]. Data-driven models have the potential to overcome this challenge by acting as surrogate models of the system dy-namics. For batch processes, Marquez-Ruiz et al. [ 7] pro-posed an alternative approach named model learning predic-tive control. The method features an iterative scheme where the linear parameter varying models (LPV) used for control are updated between batches using new measurement data from performed batches. The approach demonstrated robust performance in the time domain and showed significant improvement along the batch iteration domain. However, LPV models depend on a measurable scheduling variable, which might not be clearly defined for all systems. It can also occur that the nonlinear dynamics from complex reactions cannot be sufficiently described by LPV models. Therefore, this work aims to extend the learning-based MPC scheme to NMPC controllers by using flexible nonlinear surrogate models. Gaussian Processes (GPs) regression is a class of prob-abilistic universal approximators [ 8]. Commonly used for surrogate modeling, GPs have been applied to many different applications, including NMPC [ 9, 10 , 11 , 12 , 13 , 14 ]. 
+
+T.X.Tan et al.: Preprint submitted to Elsevier Page 1 of 12 
+
+> arXiv:2604.22672v1 [cs.LG] 24 Apr 2026 Iterative GP-MLMPC for (Semi-)Batch Processes
+
+The GPs’ probabilistic regression quantifies the model un-certainty associated with the predictions given available data, which can be utilized in the NMPC framework to identify regions of confidence. The earliest example of GP based NMPC (GP-NMPC) was introduced by Murray-Smith et al. [ 9] for reference tracking problems without constraints. Bradford et al. [ 12 ] utilized the mean and vari-ance functions from GPs to implement stochastic NMPC, where back-off constants for chance constraints were pre-computed via Monte Carlo samples of the offline GPs. Hewing et al. [ 13 ] used GPs to account for residuals given a nominal model in constrained NMPC for autonomous vehicles. For GP updates, Maiworm et al. [ 14 ] implemented online GP updates with system measurements for model predictive control, with a simulated continuous reactor. The aforementioned works illustrate the potential of GP-NMPC in learning-based control. However, there is a literature gap where most works only consider offline learning of the GP model before using it for NMPC. And while Mai-worm et al. [ 14 ] showed GP updates, the initial dataset in the work was designed to cover the state-action space evenly, with excitation signals. In realistic scenarios, data is often scarce and comes from control trajectories, which often lie clustered in the state-action space domain. Hence, we study iterative updates of GP-NMPC where only small initial data are available, instead of relying on a designed initial dataset covering the operating region. We propose a model learning scheme for GP-NMPC (GP-MLMPC) in batch processes, where the GP model is updated iteratively after every completed batch, with noisy measurements of the system, as inspired by the ML-MPC scheme [ 7]. By the proposed iterative scheme, the GP-NMPC collects measurements mostly towards and around the optimal trajectory. As the surrogate model only re-quires accurate predictions around the optimal trajectory for control, the scheme provides a sample-efficient method of learning for the GP model. As opposed to existing works on GP-NMPC, we study the iterative performance of the controller after each update. Furthermore, we implement chance constraints with uncertainty quantification from the GP surrogate model. When system measurements are lim-ited, the resulting surrogate model can have large uncer-tainties in certain operating regions. The chance constraints restrict the likelihood of constraint violation by selecting safer actions, thus probabilistically ensuring constraint sat-isfaction. In summary, our contribution is three-fold: First, we propose the GP-MLMPC scheme for batch processes as a framework for NMPC without an existing model. Second, we show empirically that the GP-MLMPC control perfor-mance converges quickly towards the full-model NMPC for both tracking and economic objectives, indicating high data-efficiency. Lastly, we demonstrate the effect of chance con-straints for safe learning and operation of uncertain systems. The article is comprised of the following sections. Sec-tion 2 describes GP regression for state space modeling, including the sparse GP variant and multi-step ahead predic-tions. In Section 3, we detail the implementation of NMPC with fitted GP as a surrogate model. In Section 4, we elab-orate on the GP-MLMPC scheme to iteratively improve the control performance by using GP updates. In Section 5, we describe the semi-batch polymerization reactor case study and discuss the results from applying the proposed learning method. Finally, Section 6 concludes this work and points to future directions. 
+
+## 2. Gaussian Process-based State Space Modeling 
+
+We briefly introduce the Gaussian Process (GP) and its sparse variant. We then describe the use of GPs for state space modeling and outline multi-step ahead predictions. 
+
+2.1. Gaussian Processes 
+
+We use Gaussian Processes for probabilistic nonlinear regression, i.e., GPs are applied to learn nonlinear latent functions 𝑓 ∶ ℝ𝑑 𝒛 → ℝ. For a more complete description of GPs, refer to [ 8]. Each noisy observation 𝑦 ∈ ℝ is given by: 
+
+𝑦 = 𝑓 (𝒛 ) + 𝜖 
+
+Here, 𝒛 ∈ ℝ𝑑 𝒛 is the function vector input, while the Gaussian noise 𝜖 ∼ 𝑁 (0 , 𝜎 2 
+
+> 𝜖
+
+). We denote the dataset as 
+
+ = {𝒀 , 𝒁 }, where 𝒀 = [𝑦 1, 𝑦 2, ..., 𝑦 𝑛 𝐷 ]𝑇 , and 𝒁 =[𝒛 1, 𝒛 2, ..., 𝒛 𝑛 𝐷 ]𝑇 , i.e., the vector of 𝑛 𝐷 noisy measurement data and the corresponding matrix of input data, respec-tively. By conditioning the GP on dataset , we analytically obtain the posterior distribution 𝑝 (𝑓 (𝒛 )ð). These are the main GP equations used to infer Gaussian predictions: 
+
+𝑝 (𝑓 (𝒛 )ð) ∼  (𝜇 𝑓 (𝒛 ), 𝜎 2 
+
+> 𝑓
+
+(𝒛 )) 
+
+𝜇 𝑓 (𝒛 ) = 𝒌 𝑇 (𝒛 )( 𝑲 + 𝜎 2 
+
+> 𝑛
+
+𝑰 )−1 𝒀 
+
+𝜎 2 
+
+> 𝑓
+
+(𝒛 ) = 𝑘 (𝒛 , 𝒛 ) − 𝒌 (𝒛 )𝑇 (𝑲 + 𝜎 2 
+
+> 𝑛
+
+𝑰 )−1 𝒌 (𝒛 )
+
+(1) The vector 𝒌 = [ 𝑘 (𝒛 , 𝒛 1), ..., 𝑘 (𝒛 , 𝒛 𝑛 𝐷 )] 𝑇 ∈ ℝ𝑛 𝐷 contains the covariances between the prediction point and the training points, while the symmetric covariance matrix 𝑲 ∈ ℝ𝑛 𝐷 ×𝑛 𝐷 
+
+contains the covariances between the training points, i.e., the element 𝑲 𝑖𝑗 = 𝑘 (𝒛 𝑖 , 𝒛 𝑗 ) and 𝒛 𝑖 , 𝒛 𝑗 ∈ 𝒁 . The hyperparameter 
+
+𝜎 2 
+
+> 𝑛
+
+represents the estimated variance of measurement noise. A GP is fully specified by a prior mean function, 𝑚 (𝒛 ),and a covariance function, 𝑘 (𝒛 𝑖 , 𝒛 𝑗 ). We implement the prior mean 𝑚 (𝒛 ) = 0 for a standardized dataset without loss of generality. For the covariance function, we implement the popular squared exponential (SE) function, due to its flexibility and universal approximation property [ 15 ]. 
+
+𝑘 (𝒛 𝑖 , 𝒛 𝑗 ) = 𝜎 2 
+
+> 𝑓
+
+exp 
+
+
+
+− 1
+
+2 (𝒛 𝑖 − 𝒛 𝑗 )𝑇 𝚲 −1 (𝒛 𝑖 − 𝒛 𝑗 )
+
+
+
+The diagonal matrix 𝚲 = diag (𝓁 21 , 𝓁 22 , ..., 𝓁 2 
+
+> 𝑑 𝑧
+
+) contains the squared length scale hyperparameter for each input dimen-sion. The hyperparameter 𝜎 2 
+
+> 𝑓
+
+is defined as the so-called signal variance. The hyperparameter set Θ = { 𝜎 2 
+
+> 𝑛
+
+, 𝜎 2 
+
+> 𝑓
+
+, 𝚲 }  
+
+> T.X.Tan et al.: Preprint submitted to Elsevier Page 2 of 12 Iterative GP-MLMPC for (Semi-)Batch Processes
+
+is optimized to maximize the log marginal likelihood, i.e., probability of GP describing the given dataset. Please refer to Appendix A for the expression of the log marginal likeli-hood. 
+
+2.2. Sparse Gaussian Processes 
+
+One main disadvantage of exact GPs is that the com-plexity of one prediction step scales quadratically with the dataset size 𝑛 𝐷 [13 ], impacting real-time capabilities, e.g., as a surrogate model for NMPC. Sparse GPs address this issue by either optimally selecting a subset of the full dataset, or by optimizing for a set of pseudo points 𝒎 ∈ ℝ𝑛 𝑚 ×𝑑 𝑧 that we call “inducing input” [ 8] as a smaller inference dataset. Although this method requires solving a larger optimization problem compared to training an exact GP, the prediction cost is reduced from 𝑂 (𝑛 𝐷 2) to 𝑂 (𝑛 2
+
+> 𝑚
+
+), where 𝑛 𝑚 is the number of inducing points [ 13 ]. The selected inference dataset is then used to approximate the true GP posterior distribution, while reducing computational effort. We implement the pseudo point method, specifically the Variational Free Energy (VFE) approach [ 16 ], wherein the points 𝒎 are chosen to minimize the Kullback-Leibler (KL) divergence between the sparse GP and the true GP posterior, to provide a close sparse GP approximation. The sparse GP posterior is specified by the mean and covariance, shown in Eq. ( 2). 
+
+𝜇 𝑓 (𝒛 ) = 𝜎 −2  
+
+> 𝑛
+
+𝒌 𝑇 
+
+> 𝒎
+
+(𝑲 𝒎𝒎 + 𝜎 −2  
+
+> 𝑛
+
+𝑲 𝒎𝒏 𝑲 𝒏𝒎 )−1 𝑲 𝒎𝒏 𝒀 
+
+𝜎 2 
+
+> 𝑓
+
+(𝒛 ) = 𝑘 (𝒛 , 𝒛 ) − 𝒌 𝑇 
+
+> 𝒎
+
+𝑲 −1 
+
+> 𝒎𝒎
+
+𝒌 𝒎 
+
++ 𝒌 𝑇 
+
+> 𝒎
+
+(𝑲 𝒎𝒎 + 𝜎 −2  
+
+> 𝑛
+
+𝑲 𝒎𝒏 𝑲 𝒏𝒎 )−1 𝒌 𝒎 
+
+(2) The scalar 𝜎 −2  
+
+> 𝑛
+
+is the inverse of the noise variance parameter. Similar to Eq. ( 1), the vector 𝒌 𝒎 ∈ ℝ𝑛 𝑚 contains the covariances between the prediction point and 𝑛 𝑚 inducing inputs. Analogously, the matrix 𝑲 𝒎𝒎 ∈ ℝ𝑛 𝑚 ×𝑛 𝑚 contains the covariances between inducing points and the matrix 𝑲 𝒎𝒏 ∈
+
+ℝ𝑛 𝑚 ×𝑛 𝐷 contains the covariances between inducing points and true data inputs 𝒁 .
+
+2.3. State Space Modeling 
+
+We model the dynamic system in a discrete-time nonlin-ear state space form with the additive measurement noise [ 3]: 
+
+𝒙 [𝑗 + 1] = 𝒇 (𝒙 [𝑗 ], 𝒖 [𝑗 ]) 
+
+𝒚 [𝑗 ] = 𝒙 [𝑗 ] + 𝝐 [𝑗 ]
+
+𝒚 [𝑗 + 1] = 𝒇 (𝒙 [𝑗 ], 𝒖 [𝑗 ]) + 𝝐 [𝑗 ]
+
+(3) Here, 𝑗 is the discrete time index, 𝑡 = 𝑗 Δ𝑡 , where Δ𝑡 is a fixed time interval, and 𝑡 is the real process time. Furthermore, 
+
+𝒚 [𝑗 ] ∈ ℝ𝑑 𝑦 , 𝒙 [𝑗 ] ∈ ℝ𝑑 𝑥 , and 𝒖 [𝑗 ] ∈ ℝ𝑑 𝑢 are now vectors of system measurements, states, and control inputs at time step 
+
+𝑗 , respectively. We assume all states can be measured, per-turbed by i.i.d. Gaussian measurement noise. The function 
+
+𝒇 (⋅) represents the one-step nonlinear transition function of the time-invariant system, to be approximated using GPs. To model the state-space as described in Eq.( 3), we fit each state output via an independent scalar output GP, which is a common simplification done by assuming independent state predictions [ 12 , 13 ]. Each output GP takes the full state and control vectors from the previous time step as input. We outline the procedure of fitting the function 𝒇 (⋅) from system trajectories. From each trajectory of the system, time-series data is presented in the form of {𝒚 [0] , 𝒖 [0] , ..., 𝒚 [𝑇 −1] , 𝒖 [𝑇 − 1] , 𝒚 [𝑇 ]} where 𝑇 is the total number of discrete time steps in each simulation run. The training dataset for each output GP is given by: 
+
+𝒀 𝑖 =
+
+⎡⎢⎢⎢⎢⎣
+
+𝑦 𝑖 [1] ,..., 𝑦 𝑖 [𝑗 + 1] ,..., 𝑦 𝑖 [𝑇 ]
+
+⎤⎥⎥⎥⎥⎦
+
+, 𝒁 =
+
+⎡⎢⎢⎢⎢⎣
+
+[𝒚 [0] , 𝒖 [0]] ,..., 
+
+[𝒚 [𝑗 ], 𝒖 [𝑗 ]] ,..., 
+
+[𝒚 [𝑇 − 1] , 𝒖 [𝑇 − 1]] 
+
+⎤⎥⎥⎥⎥⎦
+
+,
+
+∀𝑖 ∈ {1 , ..., 𝑑 𝑥 }
+
+(4) Note that in the input matrix 𝒁 , since we do not have access to the true state data 𝒙 [𝑗 ] for input, the common approach is to substitute with noisy measurements 𝒚 [𝑗 ] as state inputs, and allowing the output noise variance to be inflated [ 17 ]. To meet the GP prior mean assumption, the input and output data are standardized to zero mean and unit variance. We fit the sparse GP as outlined in Subsection 
+
+2.2 with the dataset from Eq. ( 4), to obtain 𝑑 𝑥 output GPs. Hence, the final GPs read as follows: 
+
+𝑥 𝑖 [𝑗 + 1] = 𝑓  ,𝑖 ([ 𝒙 [𝑗 ], 𝒖 [𝑗 ]]) 
+
+𝑓  ,𝑖 ([ 𝒙 [𝑗 ], 𝒖 [𝑗 ]]) ∼ 𝑁 (𝜇 𝑓 ,𝑖 ([ 𝒙 [𝑗 ], 𝒖 [𝑗 ]]) , 𝜎 2
+
+> 𝑓 ,𝑖
+
+(([ 𝒙 [𝑗 ], 𝒖 [𝑗 ]])) 
+
+(5) 
+
+2.4. Multi-Step Predictions 
+
+For multi-step ahead prediction of the states given a control sequence, we iterate the functions 𝑓  ,𝑖 in Eq. ( 5) by taking predicted output states as input for predicting further time steps. However, as the predicted GP outputs are random variables, this uncertainty needs to be propagated through the nonlinear GP, where inputs are deterministic in the exact case. Other than Monte-Carlo sampling methods [ 12 ], there have been multiple approximation methods proposed [ 13 ,
+
+18 ]. We utilize a moment matching method with a first-order Taylor approximation of the GP mean around prediction points, due to its computational efficiency [ 13 ]. By prop-agating via linear transformation, the resulting posterior is Gaussian, and allows us to reiterate for further time steps. For the random input 
+
+4𝒙 [𝑗 ]
+
+𝒖 [𝑗 ]
+
+5
+
+, the next predicted state can be expressed by their moments as: 
+
+𝜇 𝑖 [𝑗 + 1] = 𝜇 𝑓 ,𝑖 ([ 𝝁 𝒙 [𝑗 ], 𝒖 [𝑗 ]]) 
+
+𝜎 2𝑖 [𝑗 + 1] = 𝜎 2
+
+> 𝑓 ,𝑖
+
+([ 𝝁 𝒙 [𝑗 ], 𝒖 [𝑗 ]]) + 𝜕𝜇 𝑓 ,𝑖 
+
+𝜕 𝒙 ([ 𝝁 𝒙 [𝑗 ], 𝒖 [𝑗 ]]) 𝑇 𝚺 𝒙 [𝑗 ] 𝜕𝜇 𝑓 ,𝑖 
+
+𝜕 𝒙 ([ 𝝁 𝒙 [𝑗 ], 𝒖 [𝑗 ]]) 
+
+(6) The functions 𝜇 𝑓 ,𝑖 and 𝜎 2𝑓 ,𝑖 are the indexed GP functions from Eq. ( 2) for the predicted state output of 𝑖 𝑡ℎ dimension,   
+
+> T.X.Tan et al.: Preprint submitted to Elsevier Page 3 of 12 Iterative GP-MLMPC for (Semi-)Batch Processes
+
+𝑥 𝑖 [𝑗 + 1] . The vector 𝝁 𝒙 [𝑗 ] consists of the mean value of each state dimension as input. By assuming independent prediction states, the covariance matrix between the inputs is a diagonal matrix of the state variances, i.e., 𝚺 𝒙 𝑖𝑖 = 𝜎 2𝑥 𝑖 . The term 𝜕𝜇 𝑖  
+
+> 𝜕 𝒙
+
+is the partial derivative of the GP mean function with respect to its state inputs. 
+
+## 3. Stochastic (economic) GP-based nonlinear model predictive control 
+
+3.1. Gaussian process-based nonlinear model predictive control (GP-NMPC) 
+
+We formulate the stochastic optimal control problem (OCP) for the GP-NMPC controller at sampling instant 𝑙 :min ̂
+
+> 𝒖
+> 𝑁 ℎ−1
+
+É
+
+> 𝑗 =0
+
+𝔼 [𝑙 (̂𝒙 [𝑗 ],̂ 𝒖 [𝑗 ])] + 𝛽 𝔼 [𝑙 𝑓 (̂ 𝒙 [𝑁 ℎ])] 
+
+𝑠.𝑡.̂ 𝑥 𝑖 [𝑗 + 1] ∼ 𝑁 (𝜇 𝑥 𝑖 [𝑗 + 1] , 𝜎 2 
+
+> 𝑖
+
+[𝑗 + 1]) 
+
+𝜇 𝑖 [𝑗 + 1] = 𝜇 𝑓 ,𝑖 ([ 𝝁 𝒙 [𝑗 ],̂ 𝒖 [𝑗 ]]) 
+
+𝜎 2𝑖 [𝑗 + 1] = 𝜎 2
+
+> 𝑓 ,𝑖
+
+([ 𝝁 𝒙 [𝑗 ],̂ 𝒖 [𝑗 ]]) + 𝜕𝜇 𝑓 ,𝑖 
+
+𝜕 𝒙 ([ 𝝁 𝒙 [𝑗 ],̂ 𝒖 [𝑗 ]]) 𝑇 𝚺 𝒙 [𝑗 ] 𝜕𝜇 𝑓 ,𝑖 
+
+𝜕 𝒙 ([ 𝝁 𝒙 [𝑗 ],̂ 𝒖 [𝑗 ]]) 
+
+𝜇 𝑖 [0] = 𝑦 𝑖 [𝑙 ], 𝜎 2 
+
+> 𝑖
+
+[0] = 𝜎 2
+
+> 𝑛,𝑖
+
+̂
+
+𝒙 [𝑗 ] = ̂𝑥 1[𝑗 ], ...,̂𝑥 𝑑 𝑥 [𝑗 ]𝑇 
+
+𝑖 ∈ [1 , 𝑑 𝑥 ], 𝑗 ∈ [0 , 𝑁 ℎ − 1] 
+
+(7) The NMPC variables ̂ 𝒙 ,̂ 𝒖 represent the NMPC states and control input computed for the prediction horizon 𝑁 ℎ. The expected value of the objective function 𝑙 (⋅, ⋅) and terminal objective 𝑙 𝑓 (⋅) over the probabilistic state predictions is minimized in this formulation. The terminal objective is weighted by the constant 𝛽 .The mean 𝜇 𝑖 [𝑗 ] and variance 𝜎 2 
+
+> 𝑖
+
+[𝑗 ] of each independent state are predicted by their corresponding GP functions from Eq. ( 6). The GP functions take the full state vector and control vectors as input, as outlined in Section 2.As we have no access to the true state values of the system at each sampling instant, we approximate the initial state ̂𝑥 [0] as a normal distribution for every OCP during the control loop, since Gaussian noise is assumed. This state distribution has a mean at the deterministic measurements 
+
+𝑦 𝑖 [𝑙 ]. Since the noise variance hyperparameter 𝜎 2 
+
+> 𝑛,𝑖
+
+from GP training provides an approximation of the true system noise variance 𝜎 2 
+
+> 𝜖
+
+, they are used as variance for the initial state distribution 𝜎 2 
+
+> 𝑖
+
+[0] .The OCP in Eq. ( 7) is solved for the prediction horizon at each sampling instant 𝑙 , with new feedback state val-ues 𝑥 [𝑙 ] as the system moves forward in time. This online optimization results in the optimal control profile, ̂ 𝒖 ∗. The moving horizon implementation gives the MPC control law as 𝒖 [𝑙 ] = ̂ 𝒖 ∗[𝑗 = 0] , where the first element of the optimal control sequence, ̂ 𝒖 ∗, is applied to the system. 
+
+3.2. Objective functions 
+
+Given that the predicted states are Gaussian variables, we minimize the expected value of the objective functions 
+
+𝑙 () over the state distributions. As a simplification, we look at common quadratic and linear functions, which cover most general control objectives. Specifically, we investigate a quadratic tracking objective and a linear economic objective. For the common setpoint-tracking task with quadratic cost, the expected value can be reformulated in terms of the mean and variance of states with distributed values [ 19 ]. For the tracking of a single state ̂ 𝒙 𝑖 at setpoint 𝑥 𝑠𝑒𝑡 , the objective function is written as: 
+
+𝔼 [𝑙 𝑡𝑟𝑎𝑐𝑘𝑖𝑛𝑔 (̂ 𝒙 [𝑗 ],̂ 𝒖 [𝑗 ])] = 𝔼 [( ̂𝑥 𝑖 [𝑗 ] − 𝑥 𝑠𝑒𝑡 )2]= ( 𝜇 𝑖 [𝑗 ] − 𝑥 𝑠𝑒𝑡 )2 + 𝜎 2 
+
+> 𝑖
+
+[𝑗 ]
+
+The terminal objective function 𝑙 𝑓 () is specified to be equivalent to the stage cost function 𝑙 () . Note that the trace of the state covariance matrix appears in this reformulation of the quadratic form of a random variable. This minimization of the expected squared deviation penalizes control actions that lead to high predicted state variances. Therefore, the objective favors control sequences that result in high con-fidence predictions. We investigate the formulation of an economic objective, e.g., the sum of product mass over duration. We maximize the expected value of the objective function, where ̂𝑥 𝑒𝑐𝑜𝑛 is the state to be maximized in Eq. ( 3.2 ). The objective to be maximized is simply the sum over the state mean vector. 
+
+𝔼 [𝑙 𝑒𝑐𝑜𝑛 (̂ 𝒙 [𝑗 ],̂ 𝒖 [𝑗 ])] = 𝔼 ̂𝑥 𝑒𝑐𝑜𝑛 [𝑗 ]
+
+= 𝜇 𝑝𝑟𝑜𝑑 [𝑗 ]
+
+3.3. Chance Constraints for Safe Control under Uncertainty 
+
+A significant advantage of GP models is that they pro-vide prediction uncertainty based on observed data. The uncertainty quantification allows the controller to identify high and low confidence regions of the prediction model. By implementing chance constraints [13 , 19 ], the prob-ability mass of constraint violations is restricted, i.e., the optimizer only selects control actions that fulfill the specified confidence of safety. Thus, the chance constraints enforce cautious behavior during learning and operation, and address safety issues such as over-extrapolation. These constraints are especially important when the GP model has limited observations of the system and is susceptible to plant-model mismatch. Even though the probability distribution for nonlinear constraint violations is generally intractable and can only be evaluated with Monte-Carlo methods, we consider simple linear inequality constraints, which are common in appli-cations. As described in [ 13 ], probabilistic formulations of linear inequality constraints 𝒉 𝑇 ̂ 𝒙 [𝑗 ] ≤ 𝑏 can be reformulated   
+
+> T.X.Tan et al.: Preprint submitted to Elsevier Page 4 of 12 Iterative GP-MLMPC for (Semi-)Batch Processes
+
+in terms of the moments as such: 
+
+𝑃 𝑟 (𝒉 𝑇 ̂ 𝒙 [𝑗 ] ≤ 𝑏 ) ≥ 𝜖 
+
+𝒉 𝑇 ̂ 𝝁 𝑥 [𝑗 ] ≤ 𝑏 − 𝜙 −1 (𝜖 )
+
+t
+
+𝒉 𝑇 Σ𝑥 [𝑗 ]𝒉 
+
+Σ𝑥 [𝑗 ] = 𝑑𝑖𝑎𝑔 (𝝈 2
+
+> 𝑥
+
+[𝑗 ]) 
+
+(8) The constant 𝜖 represents the desired minimum probabil-ity of constraint violation at each time step. Function 𝜙 −1 () 
+
+is the inverse cumulative distribution function (CDF) of a standard Gaussian. This reformulation in the explicit form allows fast online evaluations of these chance constraints. It occurs that these constraints can be over-restrictive given a sparse dataset and tight bounds on certain states. These tight constraints lead to an infeasible solution space of the OCP, and no resulting output from the NMPC controller. Therefore, we implement selected chance constraints ( 8) as soft constraints in the objective: min ̂
+
+> 𝒖 ,𝑠 𝑁 ℎ−1
+
+É
+
+> 𝑗 =0
+
+𝔼 [𝑙 (̂𝒙 [𝑗 ],̂ 𝒖 [𝑗 ])] + 𝔼 [𝑙 𝑓 (̂ 𝒙 [𝑁 ℎ],̂ 𝒖 [𝑁 ℎ])] + 𝛼𝑠 𝑠.𝑡. 𝑠 ≥ 𝒉 𝑇 ̂ 𝝁 𝑥 [𝑗 ] − 𝑏 + 𝜙 −1 (1 − 𝜖 )
+
+t
+
+𝒉 𝑇 Σ𝑥 [𝑗 ]𝒉 
+
+𝑠 ≥ 0.
+
+(9) The soft constraints are implemented via the addition of slack variables 𝑠 , which avoids infeasible solution spaces for the optimization problem. The coefficient 𝛼 represents the weight for the soft constraint in the objective. With soft constraints, we can no longer guarantee the satisfaction of selected constraints to the desired confidence, but the controller is still heavily penalized for unsafe actions, hence minimizing the risk of constraint violation. 
+
+## 4. Model Learning GP-NMPC for (Semi-)Batch Processes 
+
+In this section, we present our concept of the GP-MLMPC for (semi-)batch processes. The proposed model learning scheme alternates between updating the GP state space model and applying the GP-NMPC controller over a batch duration. As illustrated in Fig. 1, the scheme consists of two loops, where the outer loop performs batch-to-batch updates of the GP model to progressively improve control performance, while the inner loop corresponds to the temporal feedback control loop. After each batch iteration 
+
+𝐵 ∈ {1 , ..., 𝑁 𝑏𝑎𝑡𝑐ℎ }, the training dataset 𝐵 , is augmented with measurement data collected during the previous batch, i.e., 
+
+𝐵 =
+
+> 𝐵
+
+Í
+
+> 𝑏 =0
+
+𝑏 (10) We refit the sparse GP state space model in Eq. ( 5) with 
+
+𝐵 and obtain the updated GP parameters. In the feedback control loop, we apply the updated GP-NMPC to the system in a moving-horizon fashion, as described in Section 3. The inner loop is completed once the fixed batch duration has been reached and the batch is completed. The system measurements collected during the com-pleted batch are passed to the next batch iteration loop, for updating the dataset 𝐵 +1 . The updated dataset en-compasses all measurements collected up to and including batch iteration 𝐵 . Using this dataset, we re-optimize the GP hyperparameters and inducing points to update the GP state space model for the controller, as described in Section 2. The re-optimization ensures that the resulting GP distribution provides the most probable representation of the underlying system dynamics, given the available data. Particularly dur-ing the early batch iterations of the learning scheme, when the dataset is small, re-optimizing the hyperparameters is crucial to capture significant changes as new data becomes available. With each batch iteration loop, we hypothesize that the learning-based GP-NMPC controller efficiently explores the operating space. Starting from a sub-optimal trajectory, the controller utilizes high-confidence predictions from the GP model, which results in subsequent improvements, and more importantly, exploration towards the optimal trajec-tory. Therefore, the proposed approach allows for iterative learning of uncertain systems via GP-NMPC, starting from a suboptimal initial trajectory. 
+
+4.1. Initial dataset generation 
+
+To initiate the batch iteration loop, we collect obser-vations from a single system trajectory generated using a tuned Proportional-Integral (PI) controller. From the col-lected measurements, we construct the initial dataset 0, as defined in Eq. ( 4). This setup reflects a practical scenario in which suboptimal control is applied using a conventional PI controller due to limited knowledge of the system dynamics. In practice, any available dataset of the system may be used for initialization, e.g., data obtained from manual operation by a technician. In related work, surrogate models such as GPs or other machine learning models are often trained to accurately represent the system dynamics over a wide region of the state-control space. This is commonly achieved through homogeneous sampling of high-fidelity simulations [ 12 ] or the design of excitation control signals [ 20 ]. As a result, a much larger and more informative initial dataset can be obtained to fit the surrogate model to the system. However, high-fidelity models and highly exciting control signals are often not applicable to real industrial systems, hence limiting the deployment of learning MPC. In contrast, to mimic the challenge of small data in real industrial settings, we utilize only a single trajectory for initialization. Thus, the quantity of data and its coverage over the operating space are deliberately limited. The collected measurements lie sparsely across the state space and are determined by the applied controller and system dynamics.   
+
+> T.X.Tan et al.: Preprint submitted to Elsevier Page 5 of 12
+
+Iterative GP-MLMPC for (Semi-)Batch Processes 
+
+## u [0] 
+
+Figure 1: Batch iteration learning scheme via GP-MLMPC. The inner loop represents feedback control within a batch duration. 
+
+## 5. GP-MLMPC on Semi-batch Polymerization Reactor 
+
+We apply the proposed GP-MLMPC to a semi-batch polymerization reactor case study and show the improve-ment over batch iterations with the proposed learning loop. We discuss the results for two different control objectives, namely setpoint-tracking and economic. 
+
+5.1. Semi-batch Polymerization Reactor 
+
+For the control of polymerization reactors, MPC of dif-ferent varieties has been widely studied [ 21 , 22 , 23 ]. The reactor case study used in this paper was modeled and inves-tigated by Lucia et al. [ 5] and Rostampour et al. [ 24 ], both for the implementation of NMPC. It consists of a semi-batch reactor, into which monomer is fed for reaction, illustrated in Fig. 2. The highly exothermic polymerization reaction is regulated via two cooling loops, the reactor cooling jacket and an external heat exchanger. Tight temperature control is crucial, both for safety and for the consistent quality of the resulting product. The system consists of 10 states and 3 control variables, and measurements are obtained by adding noise to all states. The states are mass of water, monomer, and polymer in the system (respectively 𝑚 𝑊 , 𝑚 𝐴 , 𝑚 𝑃 ) and temperature of reactor, vessel, jacket, and heat exchanger cold and hot sides (respectively 𝑇 𝑅 , 𝑇 𝑆 , 𝑇 𝑀 , 𝑇 𝐸𝐾 , 𝑇 𝐴𝑊 𝑇 ). The control variables refer to the feed inlet flowrate ̇ 𝑚 𝑓 𝑒𝑒𝑑 , jacket in-let temperature 𝑇 𝑀 ,𝑖𝑛 , and heat exchanger cold side inlet 
+
+𝑇 𝐴𝑊 𝑅,𝑖𝑛 . For detailed modeling equations and parameters,   
+
+> M
+> TC
+> TC TC
+> FC
+> heating cooling Monomer A Product B heating cooling EHE
+> A→B
+
+Figure 2: Schematic of semi-batch polymerization reactor with external heat exchanger and cooling jacket, adapted from [ 5]. 
+
+please refer to Appendix B and the original publication by Lucia et al. [ 5]. The process noise 𝜖 [𝑗 ] for measurements 𝒚 [𝑗 ] is sampled from normal distributions. We determine nominal standard deviation values from common equipment specifications for temperature measurements, 𝜎 𝜖,𝑡𝑒𝑚𝑝 = 0 .1◦C [ 25 ], and mass measurements, 𝜎 𝜖,𝑚𝑎𝑠𝑠 = 33 kg [ 26 ]. We study the tracking and economic objectives in Sub-section 3.2 . For the tracking objective, the reactor tempera-ture 𝑇 𝑅 is to be maintained at 𝑇 𝑠𝑒𝑡 = 90 ◦C, i.e., 𝑙 𝑡𝑟𝑎𝑐𝑘𝑖𝑛𝑔 =(𝑇 𝑅 − 𝑇 𝑠𝑒𝑡 )2. The economic objective involves maximization of polymer mass 𝑚 𝑃 over the prediction horizon, i.e., 𝑙 𝑒𝑐𝑜𝑛 =
+
+𝑚 𝑃 .
+
+T.X.Tan et al.: Preprint submitted to Elsevier Page 6 of 12 Iterative GP-MLMPC for (Semi-)Batch Processes                 
+
+> 90 .092 .5
+> TR[◦C]tracking economic 95 100 105
+> Tadiab [◦C]01
+> mpolymer [kg ] ×10 4
+> 01000 2000 3000 4000 5000 6000 7000 time[s] 75 100
+> Tj,in [◦C]
+> Figure 3: Reactor temperature, adiabatic temperature, mass of polymer, and jacket inlet temperature for tracking and economic NMPC using the perfect model without noise. Constraints are shown in red.
+
+Both tracking and economic objectives are investigated by simulating the process in silico , and are discussed in subsequent sections. The process is operated under a couple of important constraints. First, the reactor temperature is required to remain within a tight band of ±2 ◦C around the desired reaction temperature 𝑇 𝑠𝑒𝑡 = 90 ◦C. This constraint should be satisfied to reach the desired properties of the product [ 5]. In addition, the adiabatic temperature, 𝑇 𝑎𝑑𝑖𝑎𝑏 ,which is defined as the maximum temperature the reactor could reach under a complete cooling failure, is constrained to ensure process safety. The temperature value of 𝑇 𝑎𝑑𝑖𝑎𝑏 
+
+should be maintained below 109 ◦C throughout operation. The total duration of the reaction is fixed at 2 hours. As a reference for later results, Fig. 3 shows the open-loop control solution from dynamic optimization of the full model, where results from both tracking and economic objectives are shown. Both optimal trajectories serve as a benchmark for GP-MLMPC results in later sections. The system is modeled and simulated in Pyomo.DAE [ 27 ] and solved with IPOPT [ 28 ]. For the tracking task, a very steady reaction temperature can be achieved in the optimal case. We observe significantly different control regimes between the two objectives, especially when the polymer mass stays constant for the tracking task to avoid any reaction heat. For the economic task, we observe that the optimal reactor temperature trajectory stays on the upper constraint for most of the batch duration. This trend in reactor temperature illustrates that the economic objectives tend to push systems towards the constraint bounds. 
+
+5.2. Closed-Loop Tracking GP-MLMPC 
+
+We apply the GP-MLMPC scheme on the polymeriza-tion case study for 𝑁 𝑏𝑎𝑡𝑐ℎ = 10 batch iterations to observe improvement in control performance. We run 20 indepen-dent simulations to demonstrate variance from measurement noise, and this is shown in the following figures. In this implementation, the NMPC sampling interval is set at Δ𝑡 = 50 s, with both prediction and control horizons defined as 𝑁 ℎ = 12 steps. The GP state space model is set up with a zero mean prior, while the package GPy [ 29 ] is used for training the sparse GP models. We set the number of inducing points for the sparse GP to 𝑚 = 20 . The NMPC problem is solved with the optimization tool CasADi [ 30 ]with IPOPT [ 28 ] as solver. To provide the starting dataset, we implement the PI control on the system for tracking. The PID control with derivative term leads to large oscillations in states and con-trols, due to the high noise variance. Therefore, we imple-ment PI control for this system. Using the Ziegler-Nichols tuning rule [ 31 ], we tune the PI controller with the fol-lowing settings, 𝑘 𝑃 = 114 , 𝑘 𝐼 = 0.3, to perform the tracking task at 𝑇 𝑠𝑒𝑡 . The PI controller is implemented to manipulate the cooling jacket inlet temperature, 𝑇 𝑗,𝑖𝑛 . The cooling jacket inlet temperature is chosen out of the three available control variables due to its linear response and low delay. Although the PI controller can be extended to multiple input systems via control allocation or decoupling, the single-input controller here is sufficient to provide a starting dataset and benchmark as a suboptimal trajectory. The other control variables are left with nominal constant profiles, where ̇ 𝑚 𝑓 𝑒𝑒𝑑 = 5000 kg h −1 , 𝑇 𝐴𝑊 𝑇 ,𝑖𝑛 = 70 ◦C. Fig. 4 shows the closed-loop state and control trajectories of the tracking GP-NMPC, which compares batch iteration 1 and 10 to demonstrate the learning capabilities of the approach. We also plot here the PI trajectory as a benchmark to observe the difference in performance. We also compare the effectiveness of chance constraints, where in the left plots only the mean state trajectory is constrained (no chance constraint), while in the right plots chance constraints are applied. We implemented a chance constraint probability of 
+
+𝜖 = 95% , alongside a soft constraint coefficient of 𝛼 = 1000 ,as described in Eq. ( 9). From Fig. 4, both plots show a signif-icant improvement in tracking performance in comparison to the PI controller. Already for 𝐵 = 1 , we obtain much less deviation when observing the start of the batch process, where an overshoot in 𝑇 𝑅 is clearly present from the PI controller. The more conservative action is attributed to the predictive capabilities of the controller. The controller also manipulates multiple control variables to steer the system, utilizing all degrees of freedom. By 𝐵 = 10 , nearly no deviation can be observed from the setpoint, and we obtain near-optimal performance compared to Fig. 3. Hence, the GP-MLMPC scheme demonstrates the capability to learn the nonlinear system dynamics starting from a single suboptimal trajectory. Notably, there is no observable difference between ap-plying and not applying chance constraints in this scenario. Both plots in Fig. 4 have no constraint violations. This lack of violation likely stems from inherent variance minimization through the stochastic quadratic objective as discussed in   
+
+> T.X.Tan et al.: Preprint submitted to Elsevier Page 7 of 12
+
+Iterative GP-MLMPC for (Semi-)Batch Processes          
+
+> 90 .092 .5
+> TR[◦C]PI control batch1 batch10 100 110
+> Tadiab [◦C]05
+> mpolymer [kg ] ×10 3
+> 01000 2000 3000 4000 5000 6000 7000 time[s] 75 100
+> Tj,in [◦C]
+
+(a) No chance constraint.          
+
+> 90 .092 .5
+> TR[◦C]PI control batch1 batch10 95 100 105
+> Tadiab [◦C]05
+> mpolymer [kg ] ×10 3
+> 01000 2000 3000 4000 5000 6000 7000 time[s] 75 100
+> Tj,in [◦C]
+
+(b) With chance constraint. 
+
+Figure 4: Reactor temperature, adiabatic temperature, mass of polymer, and jacket inlet temperature from tracking GP-NMPC without chance constraints ( a) and with chance constraints ( b). Batch Iterations 𝐵 = 1 and 𝐵 = 10 are shown, with PI control as the benchmark. Each light dashed line represents a simulation run, and the solid line represents the median value. Constraints are shown in red. 
+
+Figure 5: Root mean square deviation from setpoint of tracking MPC decreases over batch iterations to achieve on-par performance with full-model NMPC. PI and full model NMPC are shown as benchmarks. The shaded Region represents the 5th -95th percentile, and the solid line represents the median values. 
+
+Subsection 3.2 . In this scenario, the reactor temperature setpoint is positioned at the midpoint of the two inequality constraints. Thus, the controller steers the system towards a safe operating region far from constraints. Thus, chance constraints are not needed in this scenario; still, it is practi-cally important that they are present to provide guarantees for process safety up to a high confidence level. In Fig. 5, the root-mean-squared deviation from 𝑇 𝑅,𝑠𝑒𝑡 
+
+for each batch iteration is plotted. The solid line represents median values over 20 simulations, while the shaded region represents the 5th-95th percentile. Fig. 5 confirms an overall decreasing trend for both GP-NMPC controllers, where it converges by around 𝐵 = 3 . The shrinking of the shaded region further supports this convergence. The results show that the GP-MLMPC achieved signif-icant improvement when compared to the PI control bench-mark. In both GP-MLMPC, with and without chance con-straints, the tracking performance converges closely with that of the full-model NMPC benchmark. Interestingly, in later iterations, the error from GP-MLMPC is lower than the full-model NMPC benchmark. Here, the variance minimiza-tion of the GP-NMPC controller offers a plausible expla-nation. As the controller selects control actions that lead to less uncertainty, aggressive actions that overcompensate are avoided as they lead to regions of high uncertainty. Instead, more conservative actions are chosen, leading to a slightly steadier performance overall. On the other hand, the full-model NMPC is susceptible to measurement noise in the system feedback loop. These noise signals trigger responses from the full-model NMPC to steer back the system, even though there is no actual deviation in the simulated system. The fast convergence in performance can be attributed to the data efficiency of GPs as a non-parametric model. The re-sult agrees with the literature where GPs have been shown to perform well in modeling accuracy with limited data, as their flexibility is adapted to the sample size [ 32 ]. Furthermore, the RBF kernel has a strong prior assumption of smooth functions, which acts as a strong inductive bias [ 15 ]. This 
+
+T.X.Tan et al.: Preprint submitted to Elsevier Page 8 of 12 Iterative GP-MLMPC for (Semi-)Batch Processes                        
+
+> 90 100
+> TR[◦C]batch1 batch10 100 125
+> Tadiab [◦C]02
+> mpolymer [kg ] ×10 4
+> 01000 2000 3000 4000 5000 6000 7000 time[s] 75 100
+> Tj,in [◦C]
+> (a)
+> 90 .092 .5
+> TR[◦C]batch1 batch10 90 100 110
+> Tadiab [◦C]01
+> mpolymer [kg ] ×10 4
+> 01000 2000 3000 4000 5000 6000 7000 time[s] 75 100
+> Tj,in [◦C]
+> (b)
+> Figure 6: Reactor temperature, adiabatic temperature, mass of polymer, and jacket inlet temperature from economic GP-NMPC without chance constraints ( a) and with chance constraints ( b). Batch Iterations 𝐵 = 1 and 𝐵 = 10 are shown. Each light dashed line represents a simulation run, and the solid line represents the median values. Constraints are shown in red.
+
+performs well if the underlying kernel assumption matches the system dynamics, as it is for this case study, where only smooth dynamics are present. In comparison, although neural networks are very flexible, they are also more prone to overfitting, especially when a large amount of weights are trained on small data [ 33 ]. Therefore, the data-efficient property of Gaussian Processes is advantageous for learning from limited operational measurements in real systems. With the learning scheme, the GPs are updated with new observations every batch iteration along the operating region near the setpoint. Thus, the fitted GPs for higher iterations show higher accuracy near the space of optimal decisions and state trajectories. This, in turn, supports optimal control decisions for later iterations. Although the fitted GPs do not generalize to accurate surrogate models over the whole domain, this selective learning around optimal trajectories presents a data-efficient approach to achieve an equal level of performance as shown by the full model NMPC. 
+
+5.3. Closed-Loop Economic GP-MLMPC 
+
+We show results from the economic task under the same NMPC settings as the tracking task. Fig. 6 shows the closed-loop trajectories for the GP-MLMPC, for batch iteration 
+
+𝐵 = 1 and 𝐵 = 10 . Similarly to the plots in Subsection 5.2 ,in the left plots only the state means are constrained, while in the right plots chance constraints are applied. In the economic case, the chance constraints do play a significant role in the constraint satisfaction of the system. In the case without chance constraints (Fig. 6a ), severe violations in both quality and safety constraints for 𝐵 = 1 ,when only mean predictions of the state, 𝜇 𝑥 , are constrained. This setup mimics cases where surrogate models without uncertainty quantification are used. So, the prediction un-certainty is not accounted for by the objective function or the constraints. Therefore, the controller is allowed to choose actions that lead to high prediction uncertainty, even though these actions are often extrapolating from data and have a high probability of leading to unsafe regions. Such unsafe learning and operation is unrealistic and not applicable for the control of chemical processes. On the contrary, under 95% chance constraint in Fig. 6b ,we observe a more conservative and consistent performance on 𝐵 = 1 . We observe no constraint violation in 𝐵 = 1 
+
+across 20 simulations. With the presence of chance con-straints, we see that in the first batch iteration, the perfor-mance is actually similar to that of the tracking objectives. The trajectory shows that the controller chooses to operate within a high-confidence state-action space, in this case, where PI data are most concentrated. The comparison clearly indicates the advantage of uncertainty quantification by the probabilistic GPs to operate in unknown and uncertain sys-tems. In Fig. 7a , we observe the batch-wise improvement by the GP-MLMPC scheme in final product mass, with the PI control and full model NMPC as benchmark. Fig. 7b shows the mean constraint violation across discrete time steps in full batch duration, for the GP-MLMPC schemes. The solid lines represent the mean value of 20 runs, while the shaded region shows the 5th to 95th percentile. The Fig. 7a shows that GP-MLMPC without chance constraints has a higher final product mass for all batch iterations, even at the starting iteration 𝐵 = 1 . However, Fig. 7b shows the complete picture. We observe that without chance constraints, significant constraint violations occur for     
+
+> T.X.Tan et al.: Preprint submitted to Elsevier Page 9 of 12 Iterative GP-MLMPC for (Semi-)Batch Processes
+> (a) (b)
+> Figure 7: (a) Final polymer mass at end of batch duration of economic GP-MLMPC. ( b) Mean constraint violation over the full batch duration of the system, comparing the effect of chance constraints (CC). PI and full model NMPC are shown as benchmarks. The shaded Region represents the 5th -95th percentile, and the solid line represents the mean values.
+
+the first few batches, in line with Fig. 6a . Even though the task of achieving a high final yield is achieved, the added difficulty lies in satisfying the imposed constraints. Without taking into account the prediction confidence, the controller frequently steers the system towards uncertain operating regions. In these uncertain regions, the model frequently extrapolates, and the mean constraints are insufficient in maintaining safe control. On the other hand, the same con-troller with chance constraints (in orange) started with much lower product mass, and steadily increases over the batch iterations. Although slower improvement is seen, we can ob-serve that the constraint violations are 1-2 magnitudes lower than those of the GP-NMPC without chance constraints. The introduction of chance constraints is advantageous in guiding the GP-NMPC controller in the safe operation of unknown systems. Note that, in the event of constraint violations, we allow the simulation of the batch process to proceed and collect trajectory data for further iterations. However, this setup is an unrealistic scenario that we use for comparison. In the absence of chance constraints, Fig. 7b indicates that the controller still allows for large violations in subsequent iterations, even though examples of control actions leading to constraint violation are available to the controller. This result further justifies the importance of learning-based con-trollers that take into account the confidence level of their predictions. In Fig. 7, convergence is reached around 𝐵 = 7 for both GP-based controllers, achieving good economic per-formance when compared to the full-model benchmark. The final converged operating trajectory is similar to that from the full-model solution, as observed in Fig. 6b and Fig. 3. We observe that the shaded region also shrinks in the first few batches, in both final product mass and constraint violation, supporting the convergence of the system. As discussed in Subsection 5.2 , by obtaining more data around the optimal operating trajectory, the GP-MLMPC is able to take increas-ingly aggressive actions under certainty, leading to itera-tive improvements. By mostly collecting samples around the optimal trajectory, the GP-MLMPC remains sample-efficient in converging towards the optimum. Therefore, the results indicate that the proposed GP-MLMPC scheme is data efficient in learning an ideal controller for (semi-)batch processes. It should also be noted that the initial PI trajectory is for the tracking task, and this is significantly different from the optimal trajectory for the economic task. Therefore, this safe model learning approach enables a steady exploration of the feasible operating space, from a suboptimal trajectory that is far away from the optimal trajectory. Results from the economic objective also indicate that the reaction rates are implicitly learned, in order to predict and optimize for product mass, while keeping the heat generated controlled. These findings further support the GP-MLMPC as an effec-tive learning scheme for optimal control. Overall, the proposed GP-MLMPC scheme is able to achieve the same level of performance when compared to the full model benchmark by iterative improvement. Thus, this method offers the option of implementing eNMPC without an existing model of system dynamics to achieve satisfactory control in constrained batch processes. 
+
+## 6. Conclusions and Outlook 
+
+The proposed GP-MLMPC scheme enables the adoption of NMPC without existing models and well-distributed data for the control of batch processes. The GP-MLMPC con-troller samples closely around the optimal trajectory while adhering to the tight safety thresholds. Furthermore, we demonstrate empirically that GP-MLMPC is able to con-verge to optimal control within 8 iterations, highlighting the   
+
+> T.X.Tan et al.: Preprint submitted to Elsevier Page 10 of 12
+
+Iterative GP-MLMPC for (Semi-)Batch Processes 
+
+data efficiency of the approach. With each batch iteration, the GP-MLMPC samples closer towards the optimal trajectory, thus reducing the need to sample across the whole operating space. This sample efficiency presents a critical advance-ment over established surrogate modeling approaches and points to a wide range of possible applications with low bar-riers. However, the convergence towards the optimal perfor-mance is not guaranteed by iterative sampling: a suboptimal trajectory may no longer provide new information to further iterations, resulting in the controller performing the same suboptimal trajectory, given little improvement in model accuracy. Since the control objective is purely ’exploitative’, there is no exploration mechanism by the controller to select actions that lead to probable improvement. Thus, further work direction includes the investigation of active learning methods by further utilizing GP uncertainty quantification. This work assumes that all system states are measurable with noise, while in real applications, variables such as species mass are usually not accessible in real time as mea-surements and require additional estimators. Thus, the pro-posed approach should be extended to learn such estimators for more realistic systems. Furthermore, this work is limited to the analysis of disturbance-free systems, where the only source of stochasticity is measurement noise. Therefore, a further aim can also be to extend the approach to batch systems with disturbances. 
+
+## CRediT authorship contribution statement 
+
+Tai Xuan Tan: Conceptualization, Methodology, Soft-ware, Formal Analysis, Investigation, Writing - original draft, Visualization. Alexander Mitsos: Conceptualization, Writing - review & editing, Supervision, Funding Acquisi-tion. Eike Cramer: Conceptualization, Writing - original draft, Supervision, Funding Acquisition. 
+
+## Declaration of competing interest 
+
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper. 
+
+## Acknowledgments 
+
+This project (GA number 101072732) has received fund-ing from the HORIZON-MSCA-2021-DN-01 call of the research and innovation program of Horizon Europe 2021 under the Marie Skłodowska-Curie actions. 
+
+## Appendix A. Log Marginal Likelihood for GP with SE Kernel 
+
+For a GP with an SE kernel, the log marginal likelihood can be expressed in exact form in terms of Θ [8]: 
+
+𝑙𝑜𝑔 𝑝 (𝒀 ð𝒁 , Θ) = − 1
+
+2 𝒀 𝑇 (𝑲 + 𝜎 2 
+
+> 𝑛
+
+𝐼 )−1 𝒀 
+
+− 1
+
+2 𝑙𝑜𝑔 ðð 𝑲 + 𝜎 2 
+
+> 𝑛
+
+𝐼 ðð − 𝑛 𝐷 
+
+2 𝑙𝑜𝑔𝜋 
+
+## Appendix B. Semi-batch Reactor Model 
+
+We simulate the semi-batch polymerization model from [ 5]as a case study. We use the following ODEs for the simula-tion of the reactor: 
+
+𝑑𝑚 W
+
+𝑑𝑡 
+
+óóóó𝑡 
+
+=̇ 𝑚 F(𝑡 )𝜔 W, F
+
+𝑑𝑚 A
+
+𝑑𝑡 
+
+óóóó𝑡 
+
+=̇ 𝑚 F(𝑡 )𝜔 A, F − 𝑘 R1 (𝑡 )𝑚 A,R(𝑡 )− 𝑘 R2 (𝑡 )𝑚 AWT 𝑚 A(𝑡 )∕ 𝑚 ges (𝑡 )
+
+𝑑𝑚 P
+
+𝑑𝑡 
+
+óóóó𝑡 
+
+= 𝑘 R1 (𝑡 )𝑚 A,R(𝑡 ) + 𝑝 1𝑘 R2 (𝑡 )𝑚 AWT 𝑚 A(𝑡 )∕ 𝑚 ges (𝑡 )
+
+𝑑𝑇 R
+
+𝑑𝑡 
+
+óóóó𝑡 
+
+= 1
+
+𝑐 p,R𝑚 ges (𝑡 )
+
+̇𝑚 F(𝑡 )𝑐 p, F
+
+ 𝑇 F − 𝑇 R(𝑡 )
+
++ Δ 𝐻 R𝑘 R1 (𝑡 )𝑚 A,R(𝑡 ) − 𝑘 K (𝑡 )𝐴  𝑇 R(𝑡 ) − 𝑇 S(𝑡 )
+
+−̇𝑚 AWT 𝑐 p,R
+
+ 𝑇 R(𝑡 ) − 𝑇 EK (𝑡 ) 
+
+𝑑𝑇 S
+
+𝑑𝑡 
+
+óóóó𝑡 
+
+= 1
+
+𝑐 p, S𝑚 S
+
+𝑘 K (𝑡 )𝐴  𝑇 R(𝑡 ) − 𝑇 S(𝑡 )
+
+−𝑘 K (𝑡 )𝐴  𝑇 S(𝑡 ) − 𝑇 M(𝑡 ) 
+
+𝑑𝑇 M
+
+𝑑𝑡 
+
+óóóó𝑡 
+
+= 1
+
+𝑐 p, W𝑚 M,KW 
+
+̇𝑚 M,KW 𝑐 p, W
+
+ 𝑇 IN M (𝑡 ) − 𝑇 M(𝑡 )
+
++𝑘 K (𝑡 )𝐴  𝑇 S(𝑡 ) − 𝑇 M(𝑡 ) 
+
+𝑑𝑇 EK 
+
+𝑑𝑡 
+
+óóóó𝑡 
+
+= 1
+
+𝑐 p,R𝑚 AWT 
+
+̇𝑚 AWT 𝑐 p, W
+
+ 𝑇 R(𝑡 ) − 𝑇 EK (𝑡 )
+
+− 𝛼  𝑇 EK (𝑡 ) − 𝑇 AWT (𝑡 )
+
++𝑘 R2 (𝑡 )𝑚 A(𝑡 )𝑚 AWT Δ𝐻 R∕𝑚 ges (𝑡 )
+
+𝑑𝑇 AWT 
+
+𝑑𝑡 
+
+óóóó𝑡 
+
+= ̇𝑚 AWT ,KW 𝑐 p W 
+
+ 𝑇 IN AWT (𝑡 ) − 𝑇 AWT (𝑡 )
+
+−𝛼  𝑇 AWT (𝑡 ) − 𝑇 EK (𝑡 ) ∕  𝑐 p, W𝑚 AWT ,KW 
+
+
+
+𝑑𝑇 adiab 
+
+𝑑𝑡 
+
+óóóó𝑡 
+
+= Δ𝐻 R
+
+𝑚 ges (𝑡 )𝑐 p,R
+
+𝑑𝑚 A
+
+𝑑𝑡 
+
+óóóó𝑡 
+
+−
+
+0 𝑑𝑚 W
+
+𝑑𝑡 
+
+óóóó𝑡 
+
++ 𝑑𝑚 A
+
+𝑑𝑡 
+
+óóóó𝑡 
+
++ 𝑑𝑚 P
+
+𝑑𝑡 
+
+óóóó𝑡 
+
+1
+
+⋅
+
+H 𝑚 A(𝑡 )Δ 𝐻 R
+
+𝑚 2ges (𝑡 )𝑐 p,R
+
+I
+
++ 𝑑𝑇 R
+
+𝑑𝑡 
+
+óóóó𝑡 
+
+where 
+
+𝑈 (𝑡 ) = 𝑚 P(𝑡 )
+
+𝑚 A(𝑡 ) + 𝑚 P(𝑡 )
+
+𝑚 ges (𝑡 ) = 𝑚 W(𝑡 ) + 𝑚 A(𝑡 ) + 𝑚 P(𝑡 )
+
+𝑘 R1 (𝑡 ) = 𝑘 0𝑒  
+
+> −𝐸𝑎
+> 𝑅 (𝑇 R(𝑡 )+273 .15 )
+
+ 𝑘 U1 (1 − 𝑈 (𝑡 )) + 𝑘 U2 𝑈 (𝑡 )
+
+𝑘 R2 (𝑡 ) = 𝑘 0𝑒  
+
+> −𝐸𝑎
+> 𝑅 (𝑇 EK (𝑡 )+273 .15 )
+
+ 𝑘 U1 (1 − 𝑈 (𝑡 )) + 𝑘 U2 𝑈 (𝑡 )
+
+𝑘 K (𝑡 ) =  𝑚 W(𝑡 )𝑘 WS + 𝑚 A(𝑡 )𝑘 AS + 𝑚 P(𝑡 )𝑘 PS 
+
+ ∕𝑚 ges (𝑡 )
+
+𝑚 A,R(𝑡 ) = 𝑚 A(𝑡 ) − 𝑚 A(𝑡 )𝑚 AWT ∕𝑚 ges (𝑡 )
+
+T.X.Tan et al.: Preprint submitted to Elsevier Page 11 of 12 Iterative GP-MLMPC for (Semi-)Batch Processes 
+
+## References 
+
+[1] H. Yoo, H. E. Byun, D. Han, J. H. Lee, Reinforcement learning for batch process control: Review and perspectives, Annual Reviews in Control 52 (2021) 108–119. doi:10.1016/J.ARCONTROL.2021.10.006 .[2] J. H. Lee, K. S. Lee, ITERATIVE LEARNING CONTROL APPLIED TO BATCH PROCESSES: AN OVERVIEW, IFAC Proceedings Volumes 39 (2) (2006) 1037–1046.  
+
+> doi:10.3182/20060402-4-BR-2902.01037
+
+.[3] J. B. Rawlings, D. Q. Mayne, M. Diehl, Model predictive control : theory, computation, and design, Nob Hill Publishing, 2017. [4] D. Laurí, B. Lennox, J. Camacho, Model predictive control for batch processes: Ensuring validity of predictions, Journal of Process Con-trol 24 (1) (2014) 239–249. doi:10.1016/J.JPROCONT.2013.11.005 .[5] S. Lucia, J. A. Andersson, H. Brandt, M. Diehl, S. Engell, Handling uncertainty in economic nonlinear model predictive control: A com-parative case study, Journal of Process Control 24 (8) (2014) 1247– 1259. doi:10.1016/j.jprocont.2014.05.008 .[6] F. Fiedler, B. Karg, L. Lüken, D. Brandner, M. Heinlein, F. Braben-der, S. Lucia, do-mpc: Towards FAIR nonlinear and robust model predictive control, Control Engineering Practice 140 (2023) 105676.  
+
+> doi:10.1016/J.CONENGPRAC.2023.105676
+
+.[7] A. Marquez-Ruiz, M. Loonen, M. B. Saltlk, L. Özkan, Model Learning Predictive Control for Batch Processes: AReactive Batch Distillation Column Case Study, Industrial and Engineering Chemistry Research 58 (30) (2019) 13737–13749.  
+
+> doi:10.1021/ACS.IECR.8B06474/ASSET/IMAGES/MEDIUM/IE-2018-06474P_0015.GIF
+
+.[8] C. E. Rasmussen, C. K. I. Williams, Gaussian Processes for Machine Learning, The MIT Press, 2006. [9] R. Murray-Smith, D. Sbarbaro, C. E. Rasmussen, A. Girard, Adaptive, cautious, predictive control with gaussian process pri-ors, IFAC Proceedings Volumes 36 (16) (2003) 1155–1160.  
+
+> doi:10.1016/S1474-6670(17)34915-7
+
+.[10] J. M. Maciejowski, X. Yang, Fault tolerant control using Gaussian processes and model predictive control, Conference on Control and Fault-Tolerant Systems, SysTol (2013) 1– 12 doi:10.1109/SYSTOL.2013.6693820 .[11] E. D. Klenske, M. N. Zeilinger, B. Schölkopf, P. Hennig, Gaussian Process-Based Predictive Control for Periodic Error Correction, IEEE Transactions on Control Systems Technology 24 (1) (2016) 110–121.  
+
+> doi:10.1109/TCST.2015.2420629
+
+.[12] E. Bradford, L. Imsland, D. Zhang, E. A. del Rio Chanona, Stochastic data-driven model predictive control using gaussian pro-cesses, Computers & Chemical Engineering 139 (2020) 106844. 
+
+> arXiv:1908.01786
+
+, doi:10.1016/J.COMPCHEMENG.2020.106844 .[13] L. Hewing, J. Kabzan, M. N. Zeilinger, Cautious Model Predic-tive Control Using Gaussian Process Regression, IEEE Transac-tions on Control Systems Technology 28 (6) (2020) 2736–2743. 
+
+> arXiv:1705.10702
+
+, doi:10.1109/TCST.2019.2949757 .[14] M. Maiworm, D. Limon, R. Findeisen, Online learning-based model predictive control with Gaussian process models and stability guar-antees, International Journal of Robust and Nonlinear Control 31 (18) (2021) 8785–8812. arXiv:1911.03315 , doi:10.1002/RNC.5361 .[15] C. A. Micchelli, Y. Xu, H. Zhang, Universal Kernels, Journal of Machine Learning Research 7 (2006) 2651–2667. [16] M. Titsias, Variational learning of inducing variables in sparse gaus-sian processes, in: D. van Dyk, M. Welling (Eds.), Proceedings of the Twelfth International Conference on Artificial Intelligence and Statistics, Vol. 5 of Proceedings of Machine Learning Research, PMLR, Hilton Clearwater Beach Resort, Clearwater Beach, Florida USA, 2009, pp. 567–574. [17] A. Mchutchon, C. E. Rasmussen, Gaussian Process Training with Input Noise, Advances in Neural Information Processing Systems 24 (2011). [18] A. Girard, C. E. Rasmussen, J. Q. Qui~, Q. Candela, R. Murray-Smith, Gaussian Process Priors with Uncertain Inputs Application to Multiple-Step Ahead Time Series Forecasting, Advances in Neural Information Processing Systems 15 (2002). [19] J. A. Paulson, E. A. Buehler, R. D. Braatz, A. Mesbah, Stochastic model predictive control with joint chance constraints, International Journal of Control 93 (1) (2020) 126–139.  
+
+> doi:10.1080/00207179.2017.1323351
+
+.[20] L. Hewing, K. P. Wabersich, M. Menner, M. N. Zeilinger, Learning-Based Model Predictive Control: Toward Safe Learning in Control, Annual Review of Control, Robotics, and Autonomous Systems 3 (Volume 3, 2020) (2020) 269–296.  
+
+> doi:10.1146/ANNUREV-CONTROL-090419-075625/CITE/REFWORKS
+
+.[21] B. da Silva, P. Dufour, N. Sheibat-Othman, S. Othman, Model Pre-dictive Control of Free Surfactant Concentration in Emulsion Poly-merization, IFAC Proceedings Volumes 41 (2) (2008) 8375–8380.  
+
+> doi:10.3182/20080706-5-KR-1001.01416
+
+.[22] P. Joy, K. Rossow, F. Jung, H. U. Moritz, W. Pauer, A. Mit-sos, A. Mhamdi, Model-based control of continuous emulsion co-polymerization in a lab-scale tubular reactor, Journal of Process Control 75 (2019) 59–76. doi:10.1016/J.JPROCONT.2018.12.014 .[23] J. M. Faust, S. Hamzehlou, J. R. Leiza, J. M. Asua, A. Mhamdi, A. Mitsos, Closed-loop in-silico control of a two-stage emulsion polymerization to obtain desired particle morphologies, Chem-ical Engineering Journal 414 (October 2020) (2021) 128808.  
+
+> doi:10.1016/j.cej.2021.128808
+
+.[24] V. Rostampour, P. Mohajerin Esfahani, T. Keviczky, Stochastic Nonlinear Model Predictive Control of an Uncertain Batch Poly-merization Reactor**This research was supported by the Nether-lands Organization for Scientific Research (NWO) under the grant number 408-13-030., IFAC-PapersOnLine 48 (23) (2015) 540–545.  
+
+> doi:10.1016/j.ifacol.2015.11.334
+
+.[25] AN-021 - Determining Temperature Accuracy | Arroyo Instruments (2026). [26] Types of Flow Sensors Used in Industrial Automation - Supmea Automation Co.,Ltd (2026). [27] B. Nicholson, J. D. Siirola, J. P. Watson, V. M. Zavala, L. T. Biegler, pyomo.dae: a modeling and automatic discretization frame-work for optimization with differential and algebraic equations, Mathematical Programming Computation 10 (2) (2018) 187–223.  
+
+> doi:10.1007/S12532-017-0127-0/FIGURES/4
+
+.[28] A. Wächter, L. T. Biegler, On the implementation of an interior-point filter line-search algorithm for large-scale nonlinear pro-gramming, Mathematical Programming 106 (1) (2006) 25–57.  
+
+> doi:10.1007/S10107-004-0559-Y/METRICS
+
+.[29] GPy, GPy: A gaussian process framework in python,  
+
+> http://github.com/SheffieldML/GPy
+
+(since 2012). [30] J. A. E. Andersson, J. Gillis, G. Horn, J. B. Rawlings, M. Diehl, CasADi – A software framework for nonlinear optimization and optimal control, Mathematical Programming Computation 11 (1) (2019) 1–36. doi:10.1007/s12532-018-0139-4 .[31] J. G. Ziegler, N. B. Nichols, Optimum Settings for Automatic Controllers, Journal of Fluids Engineering 64 (8) (1942) 759–765. 
+
+> doi:10.1115/1.4019264
+
+.[32] S. Myren, E. Lawrence, A comparison of Gaussian processes and neural networks for computer model emulation and calibra-tion, Statistical Analysis and Data Mining 14 (6) (2021) 606–623.  
+
+> doi:10.1002/SAM.11507;WGROUP:STRING:PUBLICATION
+
+.[33] M. A. Goldin, S. Virgili, M. Chalk, Scalable Gaussian process inference of neural responses to natural images, Proceedings of the National Academy of Sciences of the United States of America 120 (34) (2023) e2301150120.  
+
+> doi:10.1073/PNAS.2301150120;WEBSITE:WEBSITE:PNAS-SITE;WGROUP:STRING:PUBLICATION
+
+.
+
+T.X.Tan et al.: Preprint submitted to Elsevier Page 12 of 12

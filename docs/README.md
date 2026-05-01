@@ -6,67 +6,64 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-04-30
-- 运行时间：2026-04-30 20:24:19 UTC
+- 最新运行日期：2026-05-01
+- 运行时间：2026-05-01 20:20:37 UTC
 - 运行状态：成功
-- 本次总论文数：15
-- 精读区：4
+- 本次总论文数：14
+- 精读区：3
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 15 篇前沿论文，深度聚焦双重控制理论与复杂环境下的高效空间建模。
-核心突破在于利用信念空间 MPC 优化线性系统控制，以及通过星形集滤波实现噪声环境下的快速自由空间近似。
-建议关注动态绳索操作与人类意图先验在机器人操纵中的结合，探索感知与决策在复杂任务中的深度融合。
-- 详情：[/202604/30/README](/202604/30/README)
+今日精选 14 篇机器人前沿论文，深度攻克接触密集型操作与复杂环境下的动态避障难题。
+重点推荐 KernelSOS 带来的全局采样轨迹优化新突破，以及 RAY-TOLD 在稠密动态障碍物规避上的卓越表现。
+建议优先研读高分论文的全局优化思路，并关注 KinDER 基准以提升机器人的物理推理与规划水平。
+- 详情：[/202605/01/README](/202605/01/README)
 
 ### 精读区论文标签
-1. [Dual Control of Linear Systems from Bilinear Observations with Belief Space Model Predictive Control](/202604/30/2604.24663v1-dual-control-of-linear-systems-from-bilinear-observations-with-belief-space-model-predictive-control)  
-   标签：评分：8.0/10、query:q2
-   evidence：用于规划的信念空间模型预测控制
-2. [STAR-Filter: Efficient Convex Free-Space Approximation via Starshaped Set Filtering in Noisy Environments](/202604/30/2604.26626v1-star-filter-efficient-convex-free-space-approximation-via-starshaped-set-filtering-in-noisy-environments)  
+1. [Global Sampling-Based Trajectory Optimization for Contact-Rich Manipulation via KernelSOS](/202605/01/2604.27175v1-global-sampling-based-trajectory-optimization-for-contact-rich-manipulation-via-kernelsos)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：具有全局探索能力的接触密集型操作轨迹优化
+2. [RAY-TOLD: Ray-Based Latent Dynamics for Dense Dynamic Obstacle Avoidance with TDMPC](/202605/01/2604.27450v1-ray-told-ray-based-latent-dynamics-for-dense-dynamic-obstacle-avoidance-with-tdmpc)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：利用潜动力学和 MPPI 进行动态避障
+3. [Flying by Inference: Active Inference World Models for Adaptive UAV Swarms](/202605/01/2604.27935v1-flying-by-inference-active-inference-world-models-for-adaptive-uav-swarms)  
    标签：评分：8.0/10、query:q1
-   evidence：用于机器人规划和避障的凸自由空间近似
-3. [STARRY: Spatial-Temporal Action-Centric World Modeling for Robotic Manipulation](/202604/30/2604.26848v1-starry-spatial-temporal-action-centric-world-modeling-for-robotic-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：机器人操作的动作生成策略
-4. [Safe Navigation using Neural Radiance Fields via Reachable Sets](/202604/30/2604.26899v1-safe-navigation-using-neural-radiance-fields-via-reachable-sets)  
-   标签：评分：8.0/10、query:q1
-   evidence：针对拥挤环境路径规划的约束最优控制
+   evidence：具有避障功能的无人机集群轨迹规划
 
 ### 速读区论文标签
-1. [Wiggle and Go! System Identification for Zero-Shot Dynamic Rope Manipulation](/202604/30/2604.22102v1-wiggle-and-go-system-identification-for-zero-shot-dynamic-rope-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：绳索的动态操作
-2. [Multi-robot obstacle-aware shepherding of non-cohesive target agents](/202604/30/2604.22327v1-multi-robot-obstacle-aware-shepherding-of-non-cohesive-target-agents)  
-   标签：评分：7.0/10、query:q1
-   evidence：具有避障行为的多机器人障碍感知引导策略
-3. [Learning Human-Intention Priors from Large-Scale Human Demonstrations for Robotic Manipulation](/202604/30/2604.24681v1-learning-human-intention-priors-from-large-scale-human-demonstrations-for-robotic-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：机器人操作以及基于人类演示的3D轨迹预测
-4. [MotionBricks: Scalable Real-Time Motions with Modular Latent Generative Model and Smart Primitives](/202604/30/2604.24833v1-motionbricks-scalable-real-time-motions-with-modular-latent-generative-model-and-smart-primitives)  
-   标签：评分：7.0/10、query:q8
-   evidence：实时运动控制与轨迹生成
-5. [ANCHOR: A Physically Grounded Closed-Loop Framework for Robust Home-Service Mobile Manipulation](/202604/30/2604.25323v1-anchor-a-physically-grounded-closed-loop-framework-for-robust-home-service-mobile-manipulation)  
+1. [KinDER: A Physical Reasoning Benchmark for Robot Learning and Planning](/202605/01/2604.25788v1-kinder-a-physical-reasoning-benchmark-for-robot-learning-and-planning)  
    标签：评分：7.0/10、query:q4
-   evidence：移动操作的闭环框架
-6. [Sensitivity-Based Tube NMPC for Cooperative Aerial Structures Under Parametric Uncertainty](/202604/30/2604.25766v1-sensitivity-based-tube-nmpc-for-cooperative-aerial-structures-under-parametric-uncertainty)  
+   evidence：机器人规划和运动学约束的基准测试
+2. [HiPAN: Hierarchical Posture-Adaptive Navigation for Quadruped Robots in Unstructured 3D Environments](/202605/01/2604.26504v1-hipan-hierarchical-posture-adaptive-navigation-for-quadruped-robots-in-unstructured-3d-environments)  
+   标签：评分：7.0/10、query:q4
+   evidence：四足机器人的分层导航与运动规划
+3. [Bi-Level Optimization for Contact and Motion Planning in Rope-Assisted Legged Robots](/202605/01/2604.26910v1-bi-level-optimization-for-contact-and-motion-planning-in-rope-assisted-legged-robots)  
+   标签：评分：7.0/10、query:q3
+   evidence：用于运动规划和控制输入的双层优化
+4. [Robust Constrained Optimization via Sliding Mode Control](/202605/01/2604.27587v1-robust-constrained-optimization-via-sliding-mode-control)  
    标签：评分：7.0/10、query:q2
-   evidence：具有约束收紧的协作结构非线性模型预测控制
-7. [An Efficient Beam Search Algorithm for Active Perception in Mobile Robotics](/202604/30/2604.23327v1-an-efficient-beam-search-algorithm-for-active-perception-in-mobile-robotics)  
+   evidence：将受限优化作为动力系统的滑模控制
+5. [Hi-WM: Human-in-the-World-Model for Scalable Robot Post-Training](/202605/01/2604.21741v1-hi-wm-human-in-the-world-model-for-scalable-robot-post-training)  
    标签：评分：6.0/10、query:q4
-   evidence：用于移动机器人主动感知的束搜索算法
-8. [A Quantitative Framework for Navigating Controller Design Tradeoffs under Computational Constraints](/202604/30/2604.24897v1-a-quantitative-framework-for-navigating-controller-design-tradeoffs-under-computational-constraints)  
-   标签：评分：6.0/10、query:q5
-   evidence：计算约束下的控制器设计
-9. [HANDFUL: Sequential Grasp-Conditioned Dexterous Manipulation with Resource Awareness](/202604/30/2604.25126v1-handful-sequential-grasp-conditioned-dexterous-manipulation-with-resource-awareness)  
-   标签：评分：6.0/10、query:q6
-   evidence：序列灵巧操作框架
-10. [Optimal UGV-UAV Cooperative Partitioning and Inspection of Shortest Paths](/202604/30/2604.25284v1-optimal-ugv-uav-cooperative-partitioning-and-inspection-of-shortest-paths)  
-   标签：评分：6.0/10、query:q4
-   evidence：无人车与无人机协作的最短路径规划
-11. [Reference-Augmented Learning for Precise Tracking Policy of Tendon-Driven Continuum Robots](/202604/30/2604.25698v1-reference-augmented-learning-for-precise-tracking-policy-of-tendon-driven-continuum-robots)  
+   evidence：机器人策略改进与针对失败状态的运动规划
+6. [Iterative Model-Learning Scheme via Gaussian Processes for Nonlinear Model Predictive Control of (Semi-)Batch Processes](/202605/01/2604.22672v1-iterative-model-learning-scheme-via-gaussian-processes-for-nonlinear-model-predictive-control-of-semi-batch-processes)  
    标签：评分：6.0/10、query:q2
-   evidence：通过增强参考分布优化控制策略
+   evidence：基于高斯过程的非线性模型预测控制
+7. [Libra-VLA: Achieving Learning Equilibrium via Asynchronous Coarse-to-Fine Dual-System](/202605/01/2604.24921v1-libra-vla-achieving-learning-equilibrium-via-asynchronous-coarse-to-fine-dual-system)  
+   标签：评分：6.0/10、query:q6
+   evidence：分层机器人操作与到达
+8. [Variational Neural Belief Parameterizations for Robust Dexterous Grasping under Multimodal Uncertainty](/202605/01/2604.25897v1-variational-neural-belief-parameterizations-for-robust-dexterous-grasping-under-multimodal-uncertainty)  
+   标签：评分：6.0/10、query:q6
+   evidence：不确定性下的鲁棒灵巧抓取优化
+9. [Co-Learning Port-Hamiltonian Systems and Optimal Energy-Shaping Control](/202605/01/2604.26172v1-co-learning-port-hamiltonian-systems-and-optimal-energy-shaping-control)  
+   标签：评分：6.0/10、query:q2
+   evidence：最优能量整形控制与轨迹数据
+10. [Lyapunov-Guided Self-Alignment: Test-Time Adaptation for Offline Safe Reinforcement Learning](/202605/01/2604.26516v1-lyapunov-guided-self-alignment-test-time-adaptation-for-offline-safe-reinforcement-learning)  
+   标签：评分：6.0/10、query:q2
+   evidence：用于安全控制的李雅普诺夫引导轨迹选择
+11. [Robot Planning and Situation Handling with Active Perception](/202605/01/2604.26988v1-robot-planning-and-situation-handling-with-active-perception)  
+   标签：评分：6.0/10、query:q4
+   evidence：规划与情境处理框架
 
 
 <div class="dpr-home-promo-card">
