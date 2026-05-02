@@ -6,64 +6,58 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-05-01
-- 运行时间：2026-05-01 20:20:37 UTC
+- 最新运行日期：2026-05-02
+- 运行时间：2026-05-02 20:20:11 UTC
 - 运行状态：成功
-- 本次总论文数：14
-- 精读区：3
+- 本次总论文数：12
+- 精读区：1
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 14 篇机器人前沿论文，深度攻克接触密集型操作与复杂环境下的动态避障难题。
-重点推荐 KernelSOS 带来的全局采样轨迹优化新突破，以及 RAY-TOLD 在稠密动态障碍物规避上的卓越表现。
-建议优先研读高分论文的全局优化思路，并关注 KinDER 基准以提升机器人的物理推理与规划水平。
-- 详情：[/202605/01/README](/202605/01/README)
+今日聚焦非线性控制的安全性突破，深度研读了可保障系统稳定性的约束提升新框架。
+重点结论指出，利用约束提升技术能有效解决复杂动力学下的安全控制难题，而结合视觉语言模型（VLA）则显著增强了机器人的通用操作与技能更新能力。
+建议优先研读安全控制框架，并关注大模型如何通过元技能与原子探测技术提升多任务策略的泛化性。
+- 详情：[/202605/02/README](/202605/02/README)
 
 ### 精读区论文标签
-1. [Global Sampling-Based Trajectory Optimization for Contact-Rich Manipulation via KernelSOS](/202605/01/2604.27175v1-global-sampling-based-trajectory-optimization-for-contact-rich-manipulation-via-kernelsos)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：具有全局探索能力的接触密集型操作轨迹优化
-2. [RAY-TOLD: Ray-Based Latent Dynamics for Dense Dynamic Obstacle Avoidance with TDMPC](/202605/01/2604.27450v1-ray-told-ray-based-latent-dynamics-for-dense-dynamic-obstacle-avoidance-with-tdmpc)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：利用潜动力学和 MPPI 进行动态避障
-3. [Flying by Inference: Active Inference World Models for Adaptive UAV Swarms](/202605/01/2604.27935v1-flying-by-inference-active-inference-world-models-for-adaptive-uav-swarms)  
-   标签：评分：8.0/10、query:q1
-   evidence：具有避障功能的无人机集群轨迹规划
+1. [A Constraint-Lifting Framework for Safe and Stable Nonlinear Control](/202605/02/2604.25007v1-a-constraint-lifting-framework-for-safe-and-stable-nonlinear-control)  
+   标签：评分：8.0/10、query:q2
+   evidence：确保安全性和稳定性的非线性系统显式控制律
 
 ### 速读区论文标签
-1. [KinDER: A Physical Reasoning Benchmark for Robot Learning and Planning](/202605/01/2604.25788v1-kinder-a-physical-reasoning-benchmark-for-robot-learning-and-planning)  
-   标签：评分：7.0/10、query:q4
-   evidence：机器人规划和运动学约束的基准测试
-2. [HiPAN: Hierarchical Posture-Adaptive Navigation for Quadruped Robots in Unstructured 3D Environments](/202605/01/2604.26504v1-hipan-hierarchical-posture-adaptive-navigation-for-quadruped-robots-in-unstructured-3d-environments)  
-   标签：评分：7.0/10、query:q4
-   evidence：四足机器人的分层导航与运动规划
-3. [Bi-Level Optimization for Contact and Motion Planning in Rope-Assisted Legged Robots](/202605/01/2604.26910v1-bi-level-optimization-for-contact-and-motion-planning-in-rope-assisted-legged-robots)  
-   标签：评分：7.0/10、query:q3
-   evidence：用于运动规划和控制输入的双层优化
-4. [Robust Constrained Optimization via Sliding Mode Control](/202605/01/2604.27587v1-robust-constrained-optimization-via-sliding-mode-control)  
+1. [WSINDy for Model Predictive Control with Applications to Fusion, Drones, and Chaos](/202605/02/2604.23269v1-wsindy-for-model-predictive-control-with-applications-to-fusion-drones-and-chaos)  
    标签：评分：7.0/10、query:q2
-   evidence：将受限优化作为动力系统的滑模控制
-5. [Hi-WM: Human-in-the-World-Model for Scalable Robot Post-Training](/202605/01/2604.21741v1-hi-wm-human-in-the-world-model-for-scalable-robot-post-training)  
+   evidence：复杂动力系统的模型预测控制
+2. [$M^2$-VLA: Boosting Vision-Language Models for Generalizable Manipulation via Layer Mixture and Meta-Skills](/202605/02/2604.24182v1-m2-vla-boosting-vision-language-models-for-generalizable-manipulation-via-layer-mixture-and-meta-skills)  
+   标签：评分：7.0/10、query:q6
+   evidence：用于通用机器人操作的视觉语言模型
+3. [Atomic-Probe Governance for Skill Updates in Compositional Robot Policies](/202605/02/2604.26689v1-atomic-probe-governance-for-skill-updates-in-compositional-robot-policies)  
+   标签：评分：7.0/10、query:q6
+   evidence：操作任务中组合机器人策略的技能更新
+4. [Function-based Parametric Co-Design Optimization of Dexterous Hands](/202605/02/2604.27557v1-function-based-parametric-co-design-optimization-of-dexterous-hands)  
+   标签：评分：7.0/10、query:q6
+   evidence：用于操作任务的灵巧手优化
+5. [Can Tabular Foundation Models Guide Exploration in Robot Policy Learning?](/202605/02/2604.27667v1-can-tabular-foundation-models-guide-exploration-in-robot-policy-learning)  
+   标签：评分：7.0/10、query:q2
+   evidence：机器人高维连续控制中的策略优化
+6. [RopeDreamer: A Kinematic Recurrent State Space Model for Dynamics of Flexible Deformable Linear Objects](/202605/02/2604.28161v1-ropedreamer-a-kinematic-recurrent-state-space-model-for-dynamics-of-flexible-deformable-linear-objects)  
+   标签：评分：7.0/10、query:q6
+   evidence：柔性可变形线性物体的机器人操纵
+7. [UAV Trajectory and Bandwidth Allocation for Efficient Data Collection in Low-Altitude Intelligent IoT: A Hierarchical DRL Approach](/202605/02/2604.23132v1-uav-trajectory-and-bandwidth-allocation-for-efficient-data-collection-in-low-altitude-intelligent-iot-a-hierarchical-drl-approach)  
+   标签：评分：6.0/10、query:q3
+   evidence：使用深度强化学习的无人机轨迹分配
+8. [Characterizing Vision-Language-Action Models across XPUs: Constraints and Acceleration for On-Robot Deployment](/202605/02/2604.24447v1-characterizing-vision-language-action-models-across-xpus-constraints-and-acceleration-for-on-robot-deployment)  
+   标签：评分：6.0/10、query:q5
+   evidence：机器人部署的实时推理
+9. [asRoBallet: Closing the Sim2Real Gap via Friction-Aware Reinforcement Learning for Underactuated Spherical Dynamics](/202605/02/2604.24916v1-asroballet-closing-the-sim2real-gap-via-friction-aware-reinforcement-learning-for-underactuated-spherical-dynamics)  
+   标签：评分：6.0/10、query:q2
+   evidence：欠驱动控制的强化学习与MPC对比
+10. [Three-Step Nav: A Hierarchical Global-Local Planner for Zero-Shot Vision-and-Language Navigation](/202605/02/2604.26946v1-three-step-nav-a-hierarchical-global-local-planner-for-zero-shot-vision-and-language-navigation)  
    标签：评分：6.0/10、query:q4
-   evidence：机器人策略改进与针对失败状态的运动规划
-6. [Iterative Model-Learning Scheme via Gaussian Processes for Nonlinear Model Predictive Control of (Semi-)Batch Processes](/202605/01/2604.22672v1-iterative-model-learning-scheme-via-gaussian-processes-for-nonlinear-model-predictive-control-of-semi-batch-processes)  
-   标签：评分：6.0/10、query:q2
-   evidence：基于高斯过程的非线性模型预测控制
-7. [Libra-VLA: Achieving Learning Equilibrium via Asynchronous Coarse-to-Fine Dual-System](/202605/01/2604.24921v1-libra-vla-achieving-learning-equilibrium-via-asynchronous-coarse-to-fine-dual-system)  
-   标签：评分：6.0/10、query:q6
-   evidence：分层机器人操作与到达
-8. [Variational Neural Belief Parameterizations for Robust Dexterous Grasping under Multimodal Uncertainty](/202605/01/2604.25897v1-variational-neural-belief-parameterizations-for-robust-dexterous-grasping-under-multimodal-uncertainty)  
-   标签：评分：6.0/10、query:q6
-   evidence：不确定性下的鲁棒灵巧抓取优化
-9. [Co-Learning Port-Hamiltonian Systems and Optimal Energy-Shaping Control](/202605/01/2604.26172v1-co-learning-port-hamiltonian-systems-and-optimal-energy-shaping-control)  
-   标签：评分：6.0/10、query:q2
-   evidence：最优能量整形控制与轨迹数据
-10. [Lyapunov-Guided Self-Alignment: Test-Time Adaptation for Offline Safe Reinforcement Learning](/202605/01/2604.26516v1-lyapunov-guided-self-alignment-test-time-adaptation-for-offline-safe-reinforcement-learning)  
-   标签：评分：6.0/10、query:q2
-   evidence：用于安全控制的李雅普诺夫引导轨迹选择
-11. [Robot Planning and Situation Handling with Active Perception](/202605/01/2604.26988v1-robot-planning-and-situation-handling-with-active-perception)  
-   标签：评分：6.0/10、query:q4
-   evidence：规划与情境处理框架
+   evidence：机器人导航的分层全局-局部规划器
+11. [Compressing ACAS-Xu Lookup Tables with Binary Decision Diagrams](/202605/02/2604.27008v1-compressing-acas-xu-lookup-tables-with-binary-decision-diagrams)  
+   标签：评分：6.0/10、query:q1
+   evidence：机载避障系统决策逻辑的压缩
 
 
 <div class="dpr-home-promo-card">
