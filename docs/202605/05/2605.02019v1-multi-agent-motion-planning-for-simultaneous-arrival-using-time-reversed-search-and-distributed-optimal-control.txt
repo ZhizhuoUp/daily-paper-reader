@@ -1,0 +1,798 @@
+Title: Multi-Agent Motion Planning for Simultaneous Arrival using Time-Reversed Search and Distributed Optimal Control
+
+URL Source: https://arxiv.org/pdf/2605.02019v1
+
+Published Time: Tue, 05 May 2026 01:21:24 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+# Multi-Agent Motion Planning for Simultaneous Arrival using Time-Reversed Search and Distributed Optimal Control 
+
+Anja Hellander 1 and Daniel Axehill 1
+
+Abstract — In this work we consider the multi-agent motion planning (MAMP) problem with the constraint that agents arrive at their respective goals at the same time. For the special case where all agents are initially at rest we propose a two-step method for finding optimized and kinematically feasible solu-tions. The first step finds an initial feasible solution by applying a state-of-the-art MAMP algorithm (conflict-based search and safe interval path planning with interval projection) backward. The algorithm is complete, and we provide necessary conditions for when it is also optimal. The second step is an improvement step where a receding-horizon optimal control problem (OCP) is posed and the solution found in the first step is used to warm-start the solver. To improve scalability we propose to solve the OCP in a distributed manner using the nonlinear alternating direction method of multipliers (NADMM). We evaluate the proposed framework in numerical experi-ments on a car-like vehicle. The results show that the backward planning algorithm successfully finds feasible and collision-free solutions, and that the improvement step further improves the quality of the solutions. Compared to solving the OCPs in a centralized manner, using nonlinear ADMM reduces the computation time. 
+
+I. INTRODUCTION The problem of finding feasible and collision-free trajec-tories for autonomous agents has been well-studied. In this paper we consider the problem of finding locally optimal fea-sible and collision-free trajectories for multiple agents under the constraint that all agents reach their goal simultaneously. 
+
+A. Related work 
+
+The multi-agent pathfinding problem, where collision-free paths for multiple agents are computed, has been well-studied. Current state-of-the-art methods include the com-plete and optimal Conflict-Based Search (CBS) [1]–[3] and the incomplete and suboptimal Priority-Based Search (PBS) [4]. Both these methods rely on repeatedly solving single-agent pathfinding problems using, e.g., A* search [5] or safe interval path planning (SIPP) [6]. More recently there has been increased interest in multi-agent motion planning (MAMP), an extension of MAPF that considers kinodynamic constraints on the agents. Examples of such work are [7]–[11]. In [12] an extension of SIPP called safe interval path planning with safe intervals (SIPP-IP) is presented that considers that real-life agents cannot            
+
+> *This work was partially supported by the Wallenberg AI, Autonomous Systems and Software Program (WASP) funded by the Knut and Alice Wallenberg Foundation. A. Hellander and D. Axehill are with the Division of Auto-matic Control, Link¨ oping University, Sweden
+
+{anja.hellander, daniel.axehill }@liu.se 
+
+instantaneously transition between maximum velocity and standstill. For some applications it may be desirable that all agents reach their goal simultaneously. This has been considered in [13]–[15]. Most work considers fixed-wing UAVs and model the agents as Dubins car. A common approach is then to compute Dubins paths and adjust the arrival time by modifying the velocity and/or the minimum turning radius [16], [17]. Similarly, [18] uses Dubins paths with clothoid arcs. The problem with many of these approaches is that they first compute collision-free paths and then modify the velocity/turning radius without ascertaining that the resulting trajectories are still collision-free. This is, however, done in [19] which uses a single-agent planner similar to probabilistic roadmaps and performs resampling of the roadmap if it fails to construct collision-free trajectories. As solving motion-planning problems to (global) opti-mality is generally intractable for non-holonomic agents in the presence of obstacles many approaches rely on first computing a candidate solution and then improving it. For single-agent planning this is done in, e.g., [20]. Our previous work [21] extended the framework in [22] to multiple agents, but as the resulting optimization problem is solved centrally the computational effort and time required scales poorly with the number of agents. Trajectory optimization for multiple agents can be per-formed in a distributed manner. For a more complete overview on distributed optimization and its applications to multi-robot systems, see [23], [24]. In [25] and [26], the non-linear alternating direction method of multipliers (NADMM) [27] is used for distributed trajectory optimization. Like in this work, this is done in a receding-horizon fashion. 
+
+B. Contributions  
+
+> •
+
+We show that multi-agent motion planning problems under simultaneous arrival constraints where agents initially have zero velocity can be solved using stan-dard MAMP algorithms by applying backwards search. Further, we proved sufficient conditions for when using an optimal MAMP algorithm for the backwards search guarantees that the solution is optimal with respect to the initial simultaneous arrival MAMP problem,  
+
+> •
+
+We propose a framework for multi-agent motion plan-ning with simultaneous arrival consisting of two steps: a computation step where an initial feasible solution is computed followed by an improvement step where the initial solution is improved by posing and solving an 
+
+> arXiv:2605.02019v1 [math.OC] 3 May 2026
+
+optimal control problem (OCP) in a receding-horizon manner.  
+
+> •
+
+We show that NADMM can be applied to solve the OCP in the improvement step in a distributed manner. We show using numerical examples that the computation time scales better with the number of agents than if the OCP is solved in a centralized manner. II. P RELIMINARIES 
+
+This section presents the MAMP problem with simultane-ous arrival constraints as well as a state-of-the-art algorithm for MAMP. 
+
+A. Problem formulation 
+
+We consider K agents operating within a workspace W ⊂R2. The (nonlinear) dynamics of each agent i are described by 
+
+˙xi(t) = fi(xi(t), u i(t)) , x(t0) = xs,i (1) where xi ∈ X i ⊂ R ni is the state vector, ui ∈ U i ⊂ R mi is the control input, t ≥ 0 is the time elapsed, and xs,i is the initial state of the agent. Further, we denote the area occupied by agent i while it is in state xi by Ri(xi) ⊂ R 2 and the state space of each agent by Xi = {xi ∈ R ni |Ri(xi) ⊂ W }.The workspace also contains an obstacle region O ∈ W
+
+that the agents may not collide with. The obstacle space for each agent is then Xi, obs = {xi ∈ X i|Ri(x)∩O̸ = ∅} . Agents must therefore satisfy 
+
+xi(t) ∈ X i \ X i, obs = Xi, free , (2) where Xi, free is the free space. Additionally, agents may not collide with each other and must therefore satisfy 
+
+Ri(xi(t)) ∩ Rj (xj (t)) = ∅ i̸ = j. (3) Given the initial states xs,i and final states xf,i for each agent, the multi-agent motion-planning problem consists of finding a set of feasible and collision-free trajectories 
+
+(xi(t), u i(t), t f,i ) such that xi(t0) = xs,i and xi(tf,i ) = xf,i 
+
+for all agents i. The MAMP problem with simultaneous arrival requires that tf, 1 = · · · = tf,K = tf .The optimal MAMP problem with simultaneous arrival for 
+
+k agents can then be posed as 
+
+minimize 
+
+> {xi(t),u i(t)}Ki=1 ,t f
+
+J =
+
+> k
+
+X
+
+> i=1
+
+Ji(xi, u i, t f ) (4a) s.t. ˙xi(t) = fi(xi(t), u i(t)) (4b) 
+
+xi(t) ∈ X i, free i = 1 , . . . , K (4c) 
+
+ui(t) ∈ U i (4d) 
+
+Ri(xi(t)) ∩ Rj (xj (t)) = ∅ i̸ = j (4e) 
+
+xi(t0) = xs,i (4f) 
+
+xi(tf ) = xf,i (4g) where the cost functions Ji are defined as 
+
+Ji =
+
+Z tf
+
+> t0
+
+l(xi(t), u i(t)) dt (5) where l(x(t), u (t)) ≥ 0 is the user-defined running cost. For example, selecting l(x, u ) = 1 results in a minimum-time problem. 
+
+B. Solving the MAMP problem 
+
+A popular MAMP algorithm is CBS. The idea behind CBS is to plan for each agent separately using a single-agent motion planner and to create a search tree where each node corresponds to a set of constraints on the trajectories. When conflicts (collisions) between agents occur new nodes are created with additional constraints to solve them. A general outline of this is shown in Algorithm 1. First, the root node is created without any constraints and a plan consisting of trajectories for each agent is computed (line 5). Next, nodes are iteratively selected from the open list (line 8). The open list is sorted based on the cost of the corresponding solution which ensures optimality. The selected node is checked for conflicts, i.e., collisions between agents. A conflict between a pair of agents ai, a j is selected (line 12) and two new nodes are created to which constraints on the trajectories of ai and 
+
+aj , respectively, are added so as to solve the conflict (line 15). These constraints are constructed from the conflict using the makeConstraint() function. Depending on implementation, constraints may specify that an agent is not allowed to be in a certain state at a certain time, or is not allowed to apply a certain motion primitive from a certain state at a certain time. The trajectories of the agents are updated so that the newly added constraints are satisfied (line 16) and the new nodes are inserted into the open list. This requires a single-agent motion planner. A popular choice for single-agent motion planner is SIPP. SIPP uses A* search and motion primitives and is com-parably efficient as it searches over time intervals rather than points in time. However, the original SIPP algorithm assumes that agents can always remain at their current state and wait. In real life many systems such as cars cannot instantaneously go from full speed to standstill and plans obtained by SIPP may therefore not be kinodynamically feasible. Instead, the extension SIPP-IP can be used which considers such kinodynamic constraints. III. S IMULTANEOUS ARRIVAL 
+
+In this section we first present an algorithm that solves the MAMP problem with simultaneous arrival constraints. Additionally, we show that the algorithm is (resolution) complete and discuss under what conditions on the cost function the algorithm is also (resolution) optimal. 
+
+A. An algorithm for MAMP with simultaneous arrival con-straints 
+
+Several approaches to MAMP with simultaneous arrival follow the general idea of first computing a trajectory for each agent, fixing the arrival time to the one of the slowest agent, and finally extending the trajectories to the desired duration. The challenge with this approach is that for a general system it is not immediately straightforward how to extend a trajectory to a desired duration, in particular not Algorithm 1 Conflict-based search (CBS)  
+
+> 1:
+
+procedure CBS  
+
+> 2:
+
+Input: initial state xs,i , terminal state xf,i for each agent, set of motion primitives  
+
+> 3:
+
+Output: trajectory (xi(t), u i(t)) and final time tf,i 
+
+for each agent  
+
+> 4:
+
+Root.constraints = ∅ 
+
+> 5:
+
+Root.plan = updatePlan(Root, Root.constraints)  
+
+> 6:
+
+Q.insert(Root)  
+
+> 7:
+
+while not Q.empty() do  
+
+> 8:
+
+n = Q.pop()  
+
+> 9:
+
+if n.conflicts() = 0 then  
+
+> 10:
+
+return n.plan  
+
+> 11:
+
+end if  
+
+> 12:
+
+C = n.firstConflict()  
+
+> 13:
+
+for agent i involved in C do  
+
+> 14:
+
+n′ = n 
+
+> 15:
+
+n′.constraints= 
+
+n. constraints ∪ makeConstraint (C, i ) 
+
+> 16:
+
+n′.plan = updatePlan( n′, n′.constraints)  
+
+> 17:
+
+Q.insert( n′) 
+
+> 18:
+
+end for  
+
+> 19:
+
+end while  
+
+> 20:
+
+end procedure 
+
+while avoiding collision with other agents. There is, however, one exception: if all trajectories end with the agent at rest, each agent may safely extend its trajectory to remain at rest for any period of time without causing a collision. Under the assumption that all agents are at rest at their 
+
+initial states , we note that any search-based MAMP algo-rithm can be applied to solve MAMP with simultaneous arrival problems by searching backwards from the goal. In particular, we show how this is done for CBS using SIPP-IP as single-agent planner. This is outlined in Algorithm 2. Given the initial states xs and final states xf and a set of feasible motion primitives P, CBS (as described in Algorithm 1) is applied to the backward problem (line 2). In the backward problem, the initial states are xf , the final states are xs, and the available motion primitives are the primitives of P reversed in time, denoted rev( P). Motion primitives in SIPP-IP are represented as alist of the cells swept through together with the time the cell is first swept through and the duration of the sweep. Each such instance is represented as the tuple 
+
+(dx, dy, f tt, swt, isEndCell ), where (dx, dy ) represents the location of the cell relative to the state the primitive is applied in, f tt is the time of first touch, swt is the duration of the sweep, and isEndCell indicates if the cell is still touched at the end of the primitive execution. Denoting the total relative translation of the primitive as (δx, δy ) and the total duration as tp, the corresponding backward instance is 
+
+(dx − δx, dy − δy, t p − f tt − swt, swt, f tt == 0) . (6) An example of this is illustrated in Figure 1. Note that this reversal in time does not require any assumptions on the t t            
+
+> 00
+> 2
+> 0
+> 2
+> 44
+> 66
+> c1
+> c2c3cr1
+> cr2cr3
+> c1c2c3cr1cr2cr3
+> Cell occupancy
+> cr1
+> Cell occupancy
+> Original motion primitive Backward motion primitive
+> Fig. 1. Illustrative example of the reversal of a motion primitive to obtain the backward primitive.
+
+Algorithm 2 MAMP with simultaneous arrival  
+
+> 1:
+
+Input: initial state xs,i and final state xf,i for each agent 
+
+i such that vi(0) = 0 , a set of feasible motion primitives 
+
+P 
+
+> 2:
+
+{xrev ,i , t f,i }Kki 1 = CBS( xf , xs, rev( P))  
+
+> 3:
+
+tf = max i tf,i  
+
+> 4:
+
+for i = 1 , . . . , K do  
+
+> 5:
+
+xi(t) = xrev ,i (tf −t) if t ≥ tf −tf,i , else xi(t) = xs,i  
+
+> 6:
+
+end for  
+
+> 7:
+
+return {xi(t)}Ki=1 
+
+backward primitives actually being possible to execute. The backward primitives are used only for planning purposes to ensure collision-free trajectories, and the primitives in the final plan that will be executed are the original primitives. When the backward problem has been solved, the time required tf is then computed as the maximum duration of any individual trajectory (line 3). Finally, the trajectories are reversed in time to obtain a solution to the original problem. To ensure that all agents reach their targets simultaneously, each agent remains at its initial position for a duration of 
+
+tf − tf,i (line 5). This corresponds to each agent remaining at its final state in the backward problem for a duration of 
+
+tf − tf,i , which is guaranteed to not lead to collisions. 
+
+B. Algorithm properties 
+
+The properties of the algorithm varies depending on the cost function used and the choice of MAMP planner on line 2 in Algorithm 2 that we here assumed to be CBS with SIPP-IP. Theorem 1: If the MAMP algorithm used on line 2 in Algorithm 2 is complete, so is the entire Algorithm 2. 
+
+Proof: It is clear that if there exists a feasible solution to the backward MAMP problem then performing the steps on lines 4-6 in Algorithm 2 results in a feasible solution to the simultaneous arrival MAMP as all agents arrive at their goals at time tf and all trajectories must be collision free as a collision between agents i and j at time t ∈ [0 , t f ]
+
+would indicate a collision between the same agents at time 
+
+tf − t in the solution to the backward MAMP. Similarly, it is clear that if x(t), t ∈ [0 , t f ] is a feasible solution to the simultaneous arrival MAMP, then xrev (t) = x(tf − t) is a feasible and collision free solution to the backward MAMP problem. Hence, if the algorithm used to solve the backward MAMP is complete, so is Algorithm 2. It is of interest to determine under what conditions, if any, the solution computed by Algorithm 2 can be guaranteed to be optimal. It will now be shown that optimality of the MAMP algorithm used to solve the backward MAMP problem does not guarantee that the solution is an optimal solution to (4). Suppose that the backward problem is solved using CBS, which is optimal. The principle behind CBS is to iteratively add collision avoidance constraints for one agent and re-compute its optimal trajectory, i.e., optimize Ji. The optimal trajectory at each such step depends only on these constraints and not on the trajectories of the other agents. Therefore, as constraints are added the feasible set is reduced and hence it is guaranteed that the new individual trajectory will have a cost function value no lower than the previous individual trajectory and the new plan (i.e., set of trajectories for all agents) will have a cost function value no lower than the previous plan. The nodes explored by Algorithm 1 will then have non-decreasing cost function values and thus the first conflict-free plan found during the search is an optimal plan. In the simultaneous MAMP problem, however, the con-straint that all agents arrive at the same time might break this guarantee. The cost function for each agent (5) depends on tf , which is the duration of the trajectories. This duration is not known when computing the initial trajectories in the backward problem, so the cost function used for agent i must then be 
+
+˜Ji =
+
+Z tf,i 
+
+> 0
+
+l(xrev ,i (t), u rev ,i (t)) dt (7) where tf,i denotes the duration of the trajectory without the necessary padding to achieve the same duration of all trajectories. Note that this implies that the cost function ˜J
+
+minimized by the backward problem is not necessarily equal to the original cost function J. As additional constraints are added for an agent it is clear that ˜Ji cannot decrease, but for the resulting solution to be optimal it must also be guaranteed that the total cost J cannot decrease. This leads us to the following results. 
+
+Lemma 2: Assume an optimal algorithm is used to solve the backward MAMP problem on line 2 in Algorithm 2. Then the solution from Algorithm 2 is in general not an optimal solution to (4). A
+
+# B 
+
+> Fig. 2. Example problem with two agents illustrating that the algorithm is not optimal for all choices of cost function.
+
+Proof: It is enough to find an example where this holds. Consider the example in Figure 2. Suppose that there are two primitives available for forward motion: p1 that moves two squares forward and p2 that moves one square forward. Suppose further that the durations are 6 and 4 time units, respectively, that the total cost of executing the primitives are J(p1) = 9 and J(p2) = 5 , and that there is also a primitive pw for remaining at the current square for 1 time unit that has cost J(pw) = 1 . The solution obtained by finding an optimal solution to the backward problem and reversing it will be that agent A should execute (p1, p 1) and agent B (pw, p w, p w, p w, p w, p w, p 1). This plan in reverse is an optimal solution to the backward problem, with cost 
+
+˜J = 3 J(p1) = 27 , as the cost of the wait primitives is not considered in the backward problem. However, in the original problem the cost is J = 3 J(p1) + 6 J(pw) = 33 . An alternative trajectory for agent B with the same arrival time is (pw, p w, p w, p w, p 2, p 2). For the backward problem, such a plan would result in a total cost ˜J = 2 J(p1)+2 J(p2) = 28 
+
+which is suboptimal. However, for the original problem the total cost is then J = 2 J(p1) + 2 J(p2) + 4 J(pw) = 32 . This shows that although the solution the backward problem is optimal, the resulting solution to the original problem is not. Theorem 3: The solution (x(t), u (t), t f ) obtained by ap-plying Algorithm 2 using an optimal algorithm to solve the backward MAMP problem on line 2 is optimal if 
+
+Z t
+
+> 0
+
+l(x, 0)dt = 0 (8) for all states x and all t ∈ [0 , t f ], i.e., if waiting at the initial state for time t has zero cost. 
+
+Proof: We have 
+
+Ji =
+
+Z tf
+
+> 0
+
+l(xi(t), u i(t) dt ==
+
+Z tf −tf,i 
+
+> 0
+
+l(xs,i , 0) dt +
+
+Z tf 
+
+> tf−tf,i
+
+l(xi(t), u i(t)) dt == 0 + 
+
+Z tf,i 
+
+> 0
+
+l(xrev ,i (t), u rev ,i (t) dt = ˜Ji.
+
+(9) Suppose that (x(t), u (t), t f ) is not an optimal solution to the simultaneous arrival MAMP problem. Then there exists another solution (x∗(t), u ∗(t), t ∗ 
+
+> f
+
+) such that J(x∗(t), u ∗(t), t ∗ 
+
+> f
+
+) < J(x(t), u ∗(t), t f ). However, then there must exist a corresponding solution to the backward problem (x∗
+
+> rev
+
+(t), u ∗
+
+> rev
+
+(t), t ∗ 
+
+> f
+
+) such that ˜J(x∗
+
+> rev
+
+(t), u ∗
+
+> rev
+
+(t), t ∗ 
+
+> f
+
+) = J(x∗(t), u ∗(t), t ∗ 
+
+> f
+
+) <J(x(t), u ∗(t), t f ) = ˜J(xrev (t), u rev (t), t f ) which contradicts that the algorithm used to solve the backward MAMP is optimal. Hence, the solution found by Algorithm 2 must be optimal as well. We have assumed that J = P 
+
+> i
+
+= Ji and ˜J = P 
+
+> i
+
+˜Ji.It is also possible to use ˜J = max i ˜Ji. Doing so makes it clear that the condition in Theorem 3 is sufficient but not necessary as there is another special case of cost function such that Algorithm 2 is optimal. 
+
+Theorem 4: If J = ct f for any constant c > 0, then Algorithm 2 is optimal. 
+
+Proof: Select ˜J = max i ˜Ji where ˜Ji = ct f,i . Then 
+
+J = ˜J and by the same reasoning as in the proof of Theorem 3 the solution found by Algorithm 2 must be optimal. IV. I MPROVEMENT USING NADMM Consider again the optimal MAMP problem with simulta-neous arrival (4). Applying the approach outlined in Section III yields a feasible and in general suboptimal solution. We propose to improve this solution, i.e., to try to compute a solution with a better objective function value. In our previous work [21] this was done by posing (4) as an OCP and solving it using the available feasible solution to warm-start the numerical solver. In that previous approach, a single OCP is posed, jointly optimizing the trajectories of all agents. As this approach scales poorly with the number of agents we will here propose to instead reformulate (4) as a NADMM problem, allowing it to be solved in a distributed manner. We also propose to improve the solution in a receding-horizon fashion where only parts of the trajectories are improved at a time to, e.g., reduce latency. 
+
+A. NADMM 
+
+The alternating direction method of multipliers (ADMM) is an algorithm that is well-suited for distributed convex optimization, combining aspects of dual decomposition and augmented Lagrangian methods [28]. A version of ADMM that can be applied to a larger range of problems is NADMM proposed by [27]. The NADMM considers problems on the form 
+
+minimize  
+
+> w,v
+
+f (w) + g(v) (10a) s.t. Aw + Bv = b. (10b) The problem (10) is solved by iteratively applying the steps 
+
+z+1 /2 = z − β(1 − λ)( Aw + Bv − b)
+
+w+ = arg min Lβ (·, v, z +1 /2)
+
+z+ = z+1 /2 + β(Aw + Bv − b)
+
+v+ = arg min Lβ (w, ·, z +1 /2)
+
+(11) where β > 0 is the penalty parameter, λ ∈ (0 , 2) is the relaxation parameter, z is the Lagrange multiplier and 
+
+Lβ (w, v, z ) = f (w) + g(v) + ⟨z, Aw + Bv − b⟩
+
++ β
+
+2 ∥Aw + Bv − b∥2 (12) is the augmented Lagrangian. To formulate (4) as a distributed optimization problem we introduce local decision variables for each agent. The global decision variables (corresponding to v in (4)) are 
+
+ξ = [xT 
+
+> 1
+
+(t0 : tf ), . . . , x TK (t0 : tf ), t f ]T . Each agent i
+
+has the local decision variables (corresponding to w in (4)) 
+
+˜xij , j = 1 , . . . K denoting the trajectory of agent j. That is, in addition to deciding its own trajectory ˜xii agent i
+
+also proposes trajectories ˜xij , i̸ = j, for the other agents that are collision-free with respect to ˜xii . Agent i also has local variables ˜ui denoting its own control signals, and tf,i 
+
+denoting its terminal time. Previous work that used NADMM for trajectory optimiza-tion [25], [26] considered a model predictive control (MPC) formulation where the terminal time of the trajectories con-sidered is always fixed. In this work we extend the class of trajectory optimization problems that NADMM can be applied to by including the terminal time tf as a decision variable, allowing for tf to be part of the objective function to minimize. The distributed optimization problem to be solved by each agent i is then formulated as minimize 
+
+> ˜xii (t),˜ui(t),t f,i
+
+Ji(xii , u i, t f,i ) (13a) s.t. ˙˜xii (t) = fi(˜ xii (t), ˜ui(t)) (13b) 
+
+˜xii (t) ∈ X i, free i = 1 , . . . , k (13c) 
+
+˜ui(t) ∈ U i (13d) 
+
+g(˜ xii (t), ˜xij (t)) ≤ 0 (13e) 
+
+˜xii (t0) = xs,i (13f) 
+
+˜xii (tf,i ) = xi,f (13g) 
+
+Wij xij (t) = Wij xj (t), i̸ = j (13h) 
+
+Wttf,i = Wttf (13i) where g(xii (t), x ij (t)) ≤ 0 represents the collision avoid-ance constraint and Ji is as in (5). The last two constraints denote that the values of the local variables should equal the values of the global consensus variables. Following [26], we weigh these constraints using Wij and Wt. These weights do not affect the solution if solving (13) directly, but as they appear in the augmented Lagrangian they affect the solution when NADMM is applied. To solve the infinite-dimensional OCP in (13), we apply a direct transcription method. We assume a zero-order hold on the control inputs 
+
+u and discretize the state trajectories and constraints at N time steps, resulting in a finite-dimensional nonlinear programming problem. The resulting NADMM algorithm is outlined in Algorithm 3. For a given number of iterations smax each agent in parallel performs the steps on lines 5 to 11. First, they receive the global variable estimates from other agents and update the global variables (lines 5-6). Next, the Lagrangian multiplier and local variables are updated (lines 7-9) which involves minimizing the augmented Lagrangian 
+
+Li = Ji + ⟨z, W ( ¯ξ − ξ)⟩ + β
+
+2 ∥W ( ¯ξ − ξ)∥2. (14) Finally, a global variable estimate is computed and sent to the other agents (lines 10-11). 
+
+B. A receding-horizon improvement algorithm 
+
+The improvement of the nominal solution is performed using an iterative receding-horizon approach. The approach is an extension of the approach for single-agent systems pre-sented in [20]. The principle idea of this approach is that at each iteration k at time kδ , a new trajectory (¯ x(k)(t), ¯u(k)(t)) 
+
+is computed by solving an OCP over the sliding time window 
+
+[kδ, kδ + T ].The receding-horizon improvement is outlined in Algo-rithm 4. Inputs to the algorithm are the feasible and collision-free trajectories {(xi(t), u i(t)) }Ki=1 , each of length tf , as well as the user-defined horizon length T and step length δ.At each iteration k the algorithm considers the trajectories during the time interval [kδ, kδ + Tk] where 0 < T k ≤ T .These trajectories are optimized using Algorithm 3, with 
+
+xi(kδ ) and xi(kδ + T ) as the initial and terminal states, respectively, for agent i (line 6). This results in the optimized trajectories (x∗(t), u ∗(t)) of duration T ∗ 
+
+> k
+
+. As in [20], the 
+
+Algorithm 3 Nonlinear ADMM for simultaneous MAMP  
+
+> 1:
+
+Given: ξ0 
+
+> 2:
+
+s = 0  
+
+> 3:
+
+while s ≤ smax do  
+
+> 4:
+
+for agents i = 1 , . . . , K in parallel do  
+
+> 5:
+
+Receive ˆξj from neighbours  
+
+> 6:
+
+ξs+1 = 1
+
+> K
+
+PKj=1 ˆξj 
+
+> 7:
+
+zs+1 /2 
+
+> i
+
+= zsi + β(1 − λ)( ˜ξsi − ξs+1 )
+
+> 8:
+
+˜us+1 
+
+> i
+
+˜ξs+1 
+
+> i
+
+
+
+= arg min ξ,u Li(( ξ, u ), ξ s+1 , z s+1 /2 
+
+> i
+
+) 
+
+> 9:
+
+zs+1  
+
+> i
+
+= zs+1 /2 
+
+> i
+
++ β( ˜ξs+1  
+
+> i
+
+− ξs+1 ) 
+
+> 10:
+
+ˆξi = ˜ξs+1  
+
+> i
+
++ 1 
+
+> β
+
+zs+1  
+
+> i
+> 11:
+
+Transmit ˆξi to neighbours  
+
+> 12:
+
+end for  
+
+> 13:
+
+s = s + 1  
+
+> 14:
+
+end while 
+
+horizon length Tk is a decision variable. Note that the resulting trajectory may therefore have a duration that is shorter than the original duration T .A new candidate solution is then constructed (line 7) by assigning the control signal 
+
+ui, cand (t) = 
+
+
+
+¯u(k) 
+
+> i
+
+(t) t ∈ [0 , kδ )
+
+u∗(t − kδ ) t ∈ [kδ, kδ + T ∗ 
+
+> k
+
+]¯u(k) 
+
+> i
+
+(t − ∆T ) t ∈ (kδ + T ∗ 
+
+> k
+
+, t f − ∆T ]
+
+(15) where ∆T = T −T ∗ 
+
+> k
+
+and applying it to xi(0) to obtain xi(t).The time duration of the new solution is tcand ,f = tf − ∆T
+
+and is the same for all agents. Note that if ¯x(k) is feasible and collision-free, and x∗(t), t ∈ [kδ, kδ + T ∗ 
+
+> k
+
+] is also feasible and collision-free, then this also holds for ¯x(k+1) . All agents simultaneously reach the position ¯x(k)(kδ + T ) at the same time kδ + T ∗ 
+
+> k
+
+without collision (since x∗(t) is feasible and collision-free) and then follow the trajectories ¯x(k)(t), t ∈
+
+[kδ + T, t f ] displaced in time by ∆T which are also feasible and collision-free. An illustrative example of one receding-horizon iteration is shown in Figure 3. If the candidate solution is feasible and better than the previous solution it is accepted as the new current solution (line 9), otherwise the previous solution is kept (line 11). Thus, it is ensured that the current solution is always feasible and further that 
+
+J(¯ x(k+1) , ¯u(k+1) ) ≤ J(¯ x(k), ¯u(k)) ≤ · · · ≤ J(¯ x(0) , ¯u(0) ).
+
+(16) V. N UMERICAL EXPERIMENTS 
+
+In this section the proposed planning algorithms are im-plemented and evaluated in problems with a car-like vehicle. The computation of the motion primitives and the im-provement step are both implemented in Python using CasADi [29] with IPOPT [30] and the ma57 solver from HSL. Algorithm 4 Improvement  
+
+> 1:
+
+Input: feasible and collision-free trajectories 
+
+{(xi(t), u i(t)) }Ki=1 of length tf , horizon length T ,step length δ 
+
+> 2:
+
+tcurr = 0  
+
+> 3:
+
+¯x(0)  
+
+> i
+
+(t) = xi(t), ¯u(0)  
+
+> i
+
+(t) = ui(t), ¯t(0)  
+
+> f
+
+= tf 
+
+> 4:
+
+k = 0  
+
+> 5:
+
+while tcurr + T ≤ ¯t(k) 
+
+> f
+
+do  
+
+> 6:
+
+(x∗(t), u ∗(t), T ∗) = NADMM( (¯ x(k)(tcurr : tcurr +
+
+T ), ¯u(k)(tcurr : tcurr + T )) 
+
+> 7:
+
+xcand , u cand , t cand ,f = computeCandidate()  
+
+> 8:
+
+if feasible and J(xcand , u cand ) ≤ J(¯ x(k), ¯u(k)) then  
+
+> 9:
+
+¯xk+1 , ¯uk+1 , ¯tk+1  
+
+> f
+
+= xcand , u cand , t cand ,f  
+
+> 10:
+
+else  
+
+> 11:
+
+¯xk+1 , ¯uk+1 , ¯tk+1  
+
+> f
+
+= ¯ xk, ¯uk, ¯tkf 
+
+> 12:
+
+end if  
+
+> 13:
+
+k = k + 1  
+
+> 14:
+
+tcurr = tcurr + δ 
+
+> 15:
+
+end while -60 -40 -20 0 20 40  
+
+> x [m]
+> -80 -60 -40 -20 020 40
+> y [m]
+> Fig. 3. Illustrative example of receding-horizon improvement. Optimization over the horizon has resulted in the green trajectory. Beyond the horizon the previous solution shown in blue is used to guarantee feasibility.
+
+A. Vehicle Model 
+
+The car-like vehicle is modelled as a kinematic bicycle [31] with augmented state x(t) =[x(t), y (t), θ (t), α (t), ω (t), v (t), a (t)] T . Here, (x, y ) denotes the position of the car and θ its orientation. Further, α and 
+
+ω are the steering angle and steering angle rate, respectively, of the car and v and a are the longitudinal velocity and acceleration, respectively. The control signals to the system are u = [ uω , u a]T . The system can then be described by 
+
+˙x = f (x, u) = 
+
+
+
+v cos θv sin θv tan αL
+
+ωuω
+
+aua
+
+
+
+(17) where L is the wheelbase of the car. The cost function used is 
+
+l(x, u) = 1 + 12 (α2 + 10 ω2 + a2 + uT u). (18) This is the cost function used for primitive generation, by SIPP-IP and by the continuous improvement step. The primitive generation is performed as described in [21] to generate synchronized primitives as required by SIPP-IP. A total of 1376 primitives are generated. 
+
+B. Simultaneous arrival 
+
+We randomly generate 100 problem instances for n =2, 3, 4, 5 agents in an obstacle-free 200 × 200 map. All problem instances are generated so as to assure no collisions at the initial and terminal positions. For comparison, we implement a baseline algorithm that follows the outline in [18] of (i) finding trajectories, (ii) ensuring no collisions, (iii) ensuring the same duration. To find trajectories and ensure that there are no collisions we use CBS with the original motion primitives. To ensure simultaneous arrival, all trajectories are extended to the same duration by padding with waiting at the initial positions. Note that, as in [18] this may result in the trajectories no longer being collision-free. The resulting success rate, i.e., the number of problems where a feasible and collision-free solution was found within a time limit of 100 s is shown in Figure 4. It can be seen that the proposed algorithm outperforms the baseline algo-rithm. For two agents the performance is similar, with both algorithms having a success rate of 96% , but as the number of agents increases the difference between the algorithms increases. For five agents the baseline algorithm solves only 
+
+58% whereas the proposed algorithm solves 84% .The computation times required by the algorithms for the successfully solved problems are shown in Figure 5. It can be seen that the proposed algorithm generally does not perform worse than the baseline algorithm. The only exception is for five agents where the algorithms show a similar median computation time but the proposed algorithm shows a greater variation. It can also be seen that the computation time increases with the number of agents. 
+
+C. Improvement step 
+
+We applied the proposed improvement step to selected problems with n = 2 , 3, 4, 5 agents. The number of iterations used by the NADMM algorithm was set to smax = 5.For comparison we also applied the same receding-horizon algorithm but instead of solving (13) as a distributed opti-mization problem we solve it in a centralized manner where all trajectories are optimized by a single solver. Examples of resulting trajectories are shown in Figure 6. The resulting cost function improvement for varying horizon lengths is shown in Figure 7. The full duration of the original plan is just over 160 s for n = 2 , 4, 5 agents and just over 140 s for 
+
+n = 3 agents. It can be seen that in general the centralized algorithm achieves a larger improvement than the distributed algorithm using NADMM. For shorter horizon lengths ( < 60 
+
+s) the algorithm using NADMM performs similar to the 2 3 4 5     
+
+> Number of agents
+> 010 20 30 40 50 60 70 80 90 100
+> Success rate [%]
+> Proposed Baseline Fig. 4. Success rate for the proposed and baseline algorithms. 2345
+> Number of agents
+> 01234567
+> Computation time [s]
+> Proposed Baseline
+> Fig. 5. Distribution of computation times for the proposed and baseline algorithms.
+
+centralized, but for longer horizon lengths the gap increases. It can also be seen that as the horizon becomes longer the additional improvement decreases. Interesting to note is also that when the horizon length reaches the full duration, the improvement achieved by the algorithm using NADMM suddenly decreases drastically. This will be discussed in greater detail later in this section. To evaluate the two algorithms we also compared their latency times, i.e., the computation time required for the first horizon. The results are shown in Figure 8. It can be seen that the general trend is that the latency increases linearly with the horizon length and the number of agents. The distributed algorithm with NADMM scales much better than the centralized algorithm. For two agents the compu-tation times are very similar, but already for three agents the higher performance of the proposed NADMM scheme becomes clear since the time required for three agents by the centralized algorithm is similar to the time required for five agents by the NADMM algorithm. The improvement in mission time is shown in Figure 9. The trend is similar to that of the cost function improvement -100 -50 0 50 100  
+
+> x [m]
+> -80 -60 -40 -20 020 40 60
+> y [m]
+> Nominal T=80, NADMM T=80, centralized T=160, centralized
+> Fig. 6. Examples of resulting trajectories after the improvement step.
+
+in Figure 7. The proposed algorithm that uses NADMM performs worse than the centralized algorithm and the gap increases with the horizon length. When the full horizon is reached, the algorithm using NADMM performs worse than for short horizon lengths. For, e.g., five agents the resulting time improvement is less than the latency time in Figure 8. For the centralized algorithm, using the full horizon results in a large increase in time improvement. That the distributed algorithm performs worse when using the full horizon might seem counterintuitive. In general, a longer horizon should mean a higher degree of freedom and make it possible to achieve greater improvement as in the centralized case. However, the number of NADMM iterations is limited to smax and the constraints (11h)-(11i) limits the steps taken in tf in each such iteration. This limits the improvement that is possible each time NADMM is called. For shorter horizon lengths the NADMM algorithm will be called many times until the condition on line 5 in Algorithm 4 does not hold anymore so that even if the improvement each time the algorithm is executed is small it will build up over the trajectory since the improved trajectory from the last sample is used as a start. When the horizon T is very close to the full duration the NADMM algorithm will only be called a few times as the condition on line 5 in Algorithm 4 stops holding after only a few iterations of the receding-horizon algorithm. This limits the improvement that can be achieved. This can be seen in Figure 10, where the improvement achieved on the problem with five agents and horizon length 160 s for varying number of NADMM iterations is shown. The improvement increases roughly linearly with the number of iterations up until around 65 iterations when it reaches a plateau and achieves similar improvement as the centralized algorithm. It can also be seen that the latency time increases linearly with the number of iterations and that it is always higher than the mission time improvement with the proof-of-concept implementation and hardware available for the experiments. 0 20 40 60 80 100 120 140 160 
+
+> Horizon length [s]
+> 0123456789
+> Improvement [%]
+> 2 agents 3 agents 4 agents 5 agents NADMM Centralized
+
+Fig. 7. Cost function improvement by the proposed receding-horizon algo-rithm using NADMM as well as a centralized receding-horizon algorithm. 0 20 40 60 80 100 120 140 160 
+
+> Horizon length [s]
+> 0510 15
+> Latency time [s]
+> 2 agents 3 agents 4 agents 5 agents NADMM Centralized
+
+Fig. 8. The latency time, i.e., the computation time required for the first horizon. 
+
+VI. C ONCLUSIONS 
+
+In this work we have considered a multi-agent motion planning (MAMP) problem with the additional constraint that all agents reach their goals simultaneously. We have proposed a framework for optimized simultaneous arrival MAMP consisting of two steps. In the first step an initial solution, which is feasible and collision-free, is computed. Under the assumption that the agents are initial at rest we have proposed to use conflict-based search backwards which allows for easy padding of the trajectories to ensure simultaneous arrival. For certain choices of cost function to optimize, such as the arrival time, this provides an optimal solution. The second step is an improvement step where a receding-horizon optimal control problem (OCP) is posed and solved. In this step the solution found in the first step is used to warm-start the numerical solver. For the OCP solution to scale better with the number of agents we propose to solve the OCP in a distributed manner using the nonlin-ear alternating direction method of multipliers (NADMM). 0 20 40 60 80 100 120 140 160 
+
+> Horizon length [s]
+> 0510 15 20 25
+> Time reduction [s]
+> 2 agents 3 agents 4 agents 5 agents NADMM Centralized
+
+Fig. 9. The improvement in mission time, i.e., the improvement in tf .0 10 20 30 40 50 60 70 80 90 
+
+> NADMM iterations
+> 0510 15 20 25 30
+> [s]
+> 3.5 44.5 55.5 66.5 77.5 88.5
+> Improvement [%]
+> Latency Saved time Objective function improvement
+
+Fig. 10. Objective function improvement, latency time and time improve-ment for varying number of NADMM iterations for the problem with five agents and horizon length 160 s. 
+
+Numerical experiments show that the improvement step is able to improve the solutions found in the first step, and that the proposed solution scales better with the number of agents than solving the OCPs in a centralized manner. The results also show that for the proposed solution the performance drops when the full horizon length is used as the improvement by each call to NADMM is limited. For this reason it is better to use a shorter horizon length which allows for many calls to NADMM. For future work, it is interesting to consider replacing the proof-of-concept implementation with a high-performance one. REFERENCES [1] G. Sharon, R. Stern, A. Felner, and N. R. Sturtevant, “Conflict-based search for optimal multi-agent pathfinding,” Artificial intelligence ,vol. 219, pp. 40–66, 2015. [2] H. Lee, J. Motes, M. Morales, and N. M. Amato, “Parallel hierarchical composition conflict-based search for optimal multi-agent pathfind-ing,” IEEE Robotics and Automation Letters , vol. 6, no. 4, pp. 7001– 7008, 2021. [3] E. Boyarski, A. Felner, R. Stern, G. Sharon, O. Betzalel, D. Tolpin, and E. Shimony, “ICBS: The improved conflict-based search algorithm for multi-agent pathfinding,” in Proceedings of the International Symposium on Combinatorial Search , vol. 6, pp. 223–225, 2015. [4] H. Ma, D. Harabor, P. J. Stuckey, J. Li, and S. Koenig, “Searching with consistent prioritization for multi-agent path finding,” in Proceedings of the AAAI conference on artificial intelligence , vol. 33, pp. 7643– 7650, 2019. [5] P. E. Hart, N. J. Nilsson, and B. Raphael, “A formal basis for the heuristic determination of minimum cost paths,” IEEE Transactions on Systems Science and Cybernetics , vol. 4, no. 2, pp. 100–107, 1968. [6] “SIPP: Safe interval path planning for dynamic environments, au-thor=Phillips, Mike and Likhachev, Maxim,” in 2011 IEEE interna-tional conference on robotics and automation , pp. 5628–5635, IEEE, 2011. [7] L. Wen, Y. Liu, and H. Li, “CL-MAPF: Multi-agent path finding for car-like robots with kinematic and spatiotemporal constraints,” 
+
+Robotics and Autonomous Systems , vol. 150, p. 103997, 2022. [8] J. Kottinger, S. Almagor, and M. Lahijanian, “Conflict-based search for multi-robot motion planning with kinodynamic constraints,” in 2022 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , pp. 13494–13499, IEEE, 2022. [9] J. Yan and J. Li, “Multi-agent motion planning with B´ ezier curve optimization under kinodynamic constraints,” IEEE Robotics and Automation Letters , vol. 9, no. 3, pp. 3021–3028, 2024. [10] A. Moldagalieva, J. Ortiz-Haro, M. Toussaint, and W. H¨ onig, “DB-CBS: Discontinuity-bounded conflict-based search for multi-robot kin-odynamic motion planning,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) , pp. 14569–14575, IEEE, 2024. [11] L. Su, M. Yue, X. Sun, H. Wang, and X. Zhao, “Collaborative Motion Planning for Multiple Tractor-Trailer Vehicles Based on Local Conflict Search and Priority Game Inheritance,” IEEE Robotics and Automation Letters , 2025. [12] Z. A. Ali and K. Yakovlev, “Safe interval path planning with kinody-namic constraints,” in Proceedings of the AAAI conference on artificial intelligence , vol. 37, pp. 12330–12337, 2023. [13] H. Jiang, G. Liu, and R. Zhou, “Multi-agent Path Planning for Simultaneous Arrival Based on Conflict-Based Search,” in Interna-tional Conference on Guidance, Navigation and Control , pp. 359–369, Springer, 2024. [14] H. Su, H. Yun, J. He, F. Zhang, and Y. Wang, “Multi-aircraft path planning method based on cooperative search A-star algorithm,” in 
+
+2019 IEEE International Conference on Unmanned Systems (ICUS) ,pp. 267–272, IEEE, 2019. [15] S. Yin, N. Xu, Z. Shi, and Z. Xiang, “Collaborative path planning of multi-unmanned surface vehicles via multi-stage constrained multi-objective optimization,” Advanced Engineering Informatics , vol. 65, p. 103115, 2025. [16] Y. Zhong, Y. Hu, Y. Chen, N. He, G. Xu, C. Xu, and F. Gao, “Efficient Trajectory Planning for Coordinated Arrival of Fixed-Wing UAV Swarm,” in International Conference on Intelligent Robotics and Applications , pp. 414–426, Springer, 2023. [17] Y. Gao-yang, Z. Shao-lei, and Y. Shi, “Cooperative path planning of multi-missiles,” in Proceedings of 2014 IEEE Chinese Guidance, Navigation and Control Conference , pp. 767–772, IEEE, 2014. [18] M. Shanmugavel, A. Tsourdos, B. White, and R. ˙Zbikowski, “Co-operative path planning of multiple UAVs using Dubins paths with clothoid arcs,” Control engineering practice , vol. 18, no. 9, pp. 1084– 1092, 2010. [19] L. Babel, “Coordinated target assignment and UAV path planning with timing constraints,” Journal of Intelligent & Robotic Systems , vol. 94, no. 3, pp. 857–869, 2019. [20] K. Bergman, O. Ljungqvist, T. Glad, and D. Axehill, “An optimization-based receding horizon trajectory planning algorithm,” 
+
+IFAC-PapersOnLine , vol. 53, no. 2, pp. 15550–15557, 2020. [21] A. Hellander, K. Bergman, and D. Axehill, “Optimized and kine-matically feasible multi-agent motion planning,” DiVA preprint urn:nbn:se:liu:diva-223455 , 2026. [22] K. Bergman, O. Ljungqvist, and D. Axehill, “Improved path planning by tightly combining lattice-based path planning and optimal control,” 
+
+IEEE Transactions on Intelligent Vehicles , vol. 6, no. 1, pp. 57–66, 2020. [23] T. Yang, X. Yi, J. Wu, Y. Yuan, D. Wu, Z. Meng, Y. Hong, H. Wang, Z. Lin, and K. H. Johansson, “A survey of distributed optimization,” 
+
+Annual Reviews in Control , vol. 47, pp. 278–305, 2019. [24] T. Halsted, O. Shorinwa, J. Yu, and M. Schwager, “A survey of dis-tributed optimization methods for multi-robot systems,” arXiv preprint arXiv:2103.12840 , 2021. [25] L. Ferranti, L. Lyons, R. R. Negenborn, T. Keviczky, and J. Alonso-Mora, “Distributed nonlinear trajectory optimization for multi-robot motion planning,” IEEE Transactions on Control Systems Technology ,vol. 31, no. 2, pp. 809–824, 2022. [26] H. A. Tran, T. A. Johansen, and R. R. Negenborn, “Parallel distributed collision avoidance with intention consensus based on ADMM,” IFAC-PapersOnLine , vol. 58, no. 10, pp. 302–309, 2024. [27] A. Themelis and P. Patrinos, “Douglas–Rachford splitting and ADMM for nonconvex optimization: Tight convergence results,” SIAM Journal on Optimization , vol. 30, no. 1, pp. 149–181, 2020. [28] S. Boyd, N. Parikh, E. Chu, B. Peleato, and J. Eckstein, “Distributed optimization and statistical learning via the alternating direction method of multipliers,” Machine Learning , vol. 3, no. 1, pp. 1–122, 2010. [29] J. A. Andersson, J. Gillis, G. Horn, J. B. Rawlings, and M. Diehl, “CasADi: a software framework for nonlinear optimization and opti-mal control,” Mathematical Programming Computation , vol. 11, pp. 1– 36, 2019. [30] A. W¨ achter and L. T. Biegler, “On the implementation of an interior-point filter line-search algorithm for large-scale nonlinear program-ming,” Mathematical programming , vol. 106, pp. 25–57, 2006. [31] S. M. LaValle, Planning algorithms . Cambridge university press, 2006.

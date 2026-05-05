@@ -6,59 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-05-04
-- 运行时间：2026-05-04 20:31:19 UTC
+- 最新运行日期：2026-05-05
+- 运行时间：2026-05-05 20:20:54 UTC
 - 运行状态：成功
-- 本次总论文数：13
-- 精读区：4
-- 速读区：9
+- 本次总论文数：17
+- 精读区：6
+- 速读区：11
 
 ### 今日简报（AI）
-今日聚焦机器人操纵新范式，深度研读了 STARRY 时空世界模型与 E^2DT 高效
-- 详情：[/202605/04/README](/202605/04/README)
+今日深度解析 17 篇机器人领域论文，重点聚焦点云避障与多智能体协同规划的算法突破。
+核心结论指出，结合平滑避障约束的 NMPC 与具备运动学可行性的多机规划是提升复杂环境导航性能的关键。
+建议优先研读两篇 9.0 分佳作，并关注 NeRF 与神经算子在安全保障及柔性操作中的前沿应用。
+- 详情：[/202605/05/README](/202605/05/README)
 
 ### 精读区论文标签
-1. [STARRY: Spatial-Temporal Action-Centric World Modeling for Robotic Manipulation](/202605/04/2604.26848v2-starry-spatial-temporal-action-centric-world-modeling-for-robotic-manipulation)  
+1. [Point-to-Cloud NMPC with Smooth Avoidance Constraints](/202605/05/2605.01431v1-point-to-cloud-nmpc-with-smooth-avoidance-constraints)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：具有平滑避障约束的非线性模型预测控制框架，适用于复杂几何形状
+2. [Optimized and kinematically feasible multi-agent motion planning](/202605/05/2605.01996v1-optimized-and-kinematically-feasible-multi-agent-motion-planning)  
+   标签：评分：9.0/10、query:q3
+   evidence：用于运动学可行运动规划的多阶段最优控制问题
+3. [Neural Backward Reach-Avoid Tubes with MPC Supervision for High-Dimensional Systems: An Application to Safe Spacecraft Docking](/202605/05/2605.02021v1-neural-backward-reach-avoid-tubes-with-mpc-supervision-for-high-dimensional-systems-an-application-to-safe-spacecraft-docking)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：使用MPC和可达性分析的航天器安全对接与避障
+4. [Robotic Desk Organization: A Multi-Primitive Approach to Manipulating Heterogeneous Objects via Environmental Constraints](/202605/05/2605.02135v1-robotic-desk-organization-a-multi-primitive-approach-to-manipulating-heterogeneous-objects-via-environmental-constraints)  
+   标签：评分：9.0/10、query:q6
+   evidence：通过环境约束操纵物体的任务导向框架
+5. [Zero-Shot Signal Temporal Logic Planning with Disjunctive Branch Selection in Dynamic Semantic Maps](/202605/05/2605.01222v1-zero-shot-signal-temporal-logic-planning-with-disjunctive-branch-selection-in-dynamic-semantic-maps)  
    标签：评分：8.0/10、query:profile-1
-   evidence：机器人操作和动作生成的时空世界建模
-2. [E$^2$DT: Efficient and Effective Decision Transformer with Experience-Aware Sampling for Robotic Manipulation](/202605/04/2605.00159v1-e2dt-efficient-and-effective-decision-transformer-with-experience-aware-sampling-for-robotic-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：用于机器人操纵任务的决策Transformer
-3. [Controlling the Swarm: Sparse Actuation and Collision Avoidance under Stochastic Delay](/202605/04/2605.00395v1-controlling-the-swarm-sparse-actuation-and-collision-avoidance-under-stochastic-delay)  
-   标签：评分：8.0/10、query:q1
-   evidence：随机延迟下的避障
-4. [Stereo Multistage Spatial Attention for Real-Time Mobile Manipulation Under Visual Scale Variation and Disturbances](/202605/04/2605.00471v1-stereo-multistage-spatial-attention-for-real-time-mobile-manipulation-under-visual-scale-variation-and-disturbances)  
-   标签：评分：8.0/10、query:q6
-   evidence：实时移动操纵与动作预测
+   evidence：用于实时轨迹生成的零样本STL规划求解器
+6. [Robust Adaptive Predictive Control for Hook-Based Aerial Transportation Between Moving Platforms](/202605/05/2605.02370v1-robust-adaptive-predictive-control-for-hook-based-aerial-transportation-between-moving-platforms)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：用于空中机械臂取放任务的鲁棒自适应MPC
 
 ### 速读区论文标签
-1. [Dyna-Style Safety Augmented Reinforcement Learning: Staying Safe in the Face of Uncertainty](/202605/04/2604.25508v1-dyna-style-safety-augmented-reinforcement-learning-staying-safe-in-the-face-of-uncertainty)  
-   标签：评分：7.0/10、query:q1
-   evidence：高维系统避障安全过滤器
-2. [Sensitivity-Based Tube NMPC for Cooperative Aerial Structures Under Parametric Uncertainty](/202605/04/2604.25766v2-sensitivity-based-tube-nmpc-for-cooperative-aerial-structures-under-parametric-uncertainty)  
-   标签：评分：7.0/10、query:q2
-   evidence：基于灵敏度的管状NMPC鲁棒控制
-3. [World Model for Robot Learning: A Comprehensive Survey](/202605/04/2605.00080v1-world-model-for-robot-learning-a-comprehensive-survey)  
+1. [Safe Navigation using Neural Radiance Fields via Reachable Sets](/202605/05/2604.26899v2-safe-navigation-using-neural-radiance-fields-via-reachable-sets)  
+   标签：评分：8.0/10、query:q2
+   evidence：用于路径规划的约束最优控制
+2. [Online Safety Filter for Deformable Object Manipulation with Horizon Agnostic Neural Operators](/202605/05/2605.01069v1-online-safety-filter-for-deformable-object-manipulation-with-horizon-agnostic-neural-operators)  
+   标签：评分：8.0/10、query:q8
+   evidence：实时操纵的在线安全过滤器
+3. [A Universal Optimal Control Strategy for a Tailsitter UAV](/202605/05/2605.01556v1-a-universal-optimal-control-strategy-for-a-tailsitter-uav)  
+   标签：评分：8.0/10、query:q3
+   evidence：基于非线性规划的轨迹优化
+4. [Zero-Shot, Safe and Time-Efficient UAV Navigation via Potential-Based Reward Shaping, Control Lyapunov and Barrier Functions](/202605/05/2605.01787v1-zero-shot-safe-and-time-efficient-uav-navigation-via-potential-based-reward-shaping-control-lyapunov-and-barrier-functions)  
+   标签：评分：8.0/10、query:q1
+   evidence：使用控制屏障函数的无人机导航与避障
+5. [Multi-Agent Motion Planning for Simultaneous Arrival using Time-Reversed Search and Distributed Optimal Control](/202605/05/2605.02019v1-multi-agent-motion-planning-for-simultaneous-arrival-using-time-reversed-search-and-distributed-optimal-control)  
+   标签：评分：8.0/10、query:q3
+   evidence：使用分布式最优控制的多智能体运动规划
+6. [KinDER: A Physical Reasoning Benchmark for Robot Learning and Planning](/202605/05/2604.25788v2-kinder-a-physical-reasoning-benchmark-for-robot-learning-and-planning)  
    标签：评分：7.0/10、query:q4
-   evidence：用于机器人学习和规划的世界模型
-4. [ProDrive: Proactive Planning for Autonomous Driving via Ego-Environment Co-Evolution](/202605/04/2604.25329v1-prodrive-proactive-planning-for-autonomous-driving-via-ego-environment-co-evolution)  
+   evidence：机器人规划和运动学推理的基准测试
+7. [Dynamic-TD3: A Novel Algorithm for UAV Path Planning with Dynamic Obstacle Trajectory Prediction](/202605/05/2605.00059v1-dynamic-td3-a-novel-algorithm-for-uav-path-planning-with-dynamic-obstacle-trajectory-prediction)  
+   标签：评分：7.0/10、query:q1
+   evidence：具有严格安全约束的无人机路径规划
+8. [Thinking in Text and Images: Interleaved Vision--Language Reasoning Traces for Long-Horizon Robot Manipulation](/202605/05/2605.00438v1-thinking-in-text-and-images-interleaved-vision--language-reasoning-traces-for-long-horizon-robot-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：长程机器人操作的视觉语言推理
+9. [VOFA: Visual Object Goal Pushing with Force-Adaptive Control for Humanoids](/202605/05/2605.01518v1-vofa-visual-object-goal-pushing-with-force-adaptive-control-for-humanoids)  
+   标签：评分：7.0/10、query:q6
+   evidence：人形机器人操纵的实时反馈循环
+10. [A Principled Approach for Creating High-fidelity Synthetic Demonstrations for Imitation Learning](/202605/05/2605.01232v1-a-principled-approach-for-creating-high-fidelity-synthetic-demonstrations-for-imitation-learning)  
    标签：评分：6.0/10、query:q3
-   evidence：自动驾驶的轨迹规划器与世界模型
-5. [PRTS: A Primitive Reasoning and Tasking System via Contrastive Representations](/202605/04/2604.27472v1-prts-a-primitive-reasoning-and-tasking-system-via-contrastive-representations)  
-   标签：评分：6.0/10、query:q4
-   evidence：用于机器人控制的视觉-语言-动作模型
-6. [Robust Geometric Control of Catenary Robots under Unstructured Force Uncertainties](/202605/04/2604.27705v1-robust-geometric-control-of-catenary-robots-under-unstructured-force-uncertainties)  
-   标签：评分：6.0/10、query:q2
-   evidence：悬链线机器人的鲁棒几何控制
-7. [LaST-R1: Reinforcing Action via Adaptive Physical Latent Reasoning for VLA Models](/202605/04/2604.28192v1-last-r1-reinforcing-action-via-adaptive-physical-latent-reasoning-for-vla-models)  
+   evidence：用于合成演示生成的轨迹优化
+11. [Decompose and Recompose: Reasoning New Skills from Existing Abilities for Cross-Task Robotic Manipulation](/202605/05/2605.01448v1-decompose-and-recompose-reasoning-new-skills-from-existing-abilities-for-cross-task-robotic-manipulation)  
    标签：评分：6.0/10、query:q6
-   evidence：用于复杂机器人操作的VLA模型
-8. [Task-Conditioned Uncertainty Costmaps for Legged Locomotion](/202605/04/2605.00261v1-task-conditioned-uncertainty-costmaps-for-legged-locomotion)  
-   标签：评分：6.0/10、query:q4
-   evidence：足式机器人的运动规划与路径选择
-9. [A Model-based Visual Contact Localization and Force Sensing System for Compliant Robotic Grippers](/202605/04/2605.00307v1-a-model-based-visual-contact-localization-and-force-sensing-system-for-compliant-robotic-grippers)  
-   标签：评分：6.0/10、query:q6
-   evidence：机器人操作与夹爪力感知
+   evidence：跨任务机器人操作的技能推理
 
 
 <div class="dpr-home-promo-card">
