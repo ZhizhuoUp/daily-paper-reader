@@ -1,0 +1,785 @@
+Title: Bi-Level Reinforcement Learning Control for an Underactuated Blimp via Center-of-Mass Reconfiguration
+
+URL Source: https://arxiv.org/pdf/2605.01289v1
+
+Published Time: Tue, 05 May 2026 00:35:19 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+# Bi-Level Reinforcement Learning Control for an Underactuated Blimp via Center-of-Mass Reconfiguration 
+
+Xiaorui Wang †, Hongwu Wang †, Yue Fan, Hao Cheng and Feitian Zhang *
+
+Abstract —This paper investigates goal-directed tracking con-trol of underactuated blimps with center-of-mass (CoM) recon-figuration. Unlike conventional overactuated blimp designs that rely on redundant actuation for simplified control, this paper focuses on a compact architecture consisting of two thrusters and a movable internal slider, aiming to improve energy efficiency and payload capacity. This hardware-efficient configuration intro-duces significant underactuation and strong nonlinear coupling between CoM dynamics and vehicle motion. To address these challenges, this paper proposes a bi-level reinforcement learning framework that explicitly decouples task-level CoM planning from continuous thrust control. The outer policy determines a target-dependent CoM configuration prior to flight, while the inner policy generates thrust commands to track straight-line references. To ensure stable learning, this paper introduces a two-stage learning strategy, supported by a convergence analysis of the resulting bi-level process. Extensive simulations and real-world experiments on a 27-goal evaluation set demonstrate that the proposed method consistently outperforms fixed-CoM baselines and PID-based controllers, achieving higher tracking accuracy, enhanced robustness, and reliable sim-to-real transfer. 
+
+Index Terms —Blimp Control, Underactuated Systems, Hierar-chical Reinforcement Learning, Center-of-Mass Reconfiguration, Sim-to-Real Transfer 
+
+I. I NTRODUCTION 
+
+# LIGHTER-than-air (LTA) aerial vehicles have attracted increasing attention due to their low power consumption, extended endurance, and inherently safe operation in cluttered or human-centered environments [1]–[3]. These characteris-tics make robotic blimps well-suited for persistent sensing, inspection, search and rescue, and indoor service tasks where quiet flight and long-duration flight are critical [4]–[6]. Con-sequently, LTA platforms have emerged as a key direction for energy-efficient aerial autonomy [7], [8]. To enhance maneuverability, existing blimps often employ multiple distributed actuators, typically comprising four or more propulsion units [1], [3], [9], [10]. While such config-urations improve control authority, they inevitably introduce additional mass, increased mechanical complexity, and higher power consumption [4], [11], [12]. For LTA systems, these trade-offs are particularly restrictive, as actuation overhead  
+
+> †
+
+These authors contributed equally to this work. The authors are with the Robotics and Control Laboratory, School of Advanced Manufacturing and Robotics, and the State Key Labo-ratory of Turbulence and Complex Systems, Peking University, Bei-jing, 100871, China (email: jnswxr@stu.pku.edu.cn; whw@stu.pku.edu.cn; 2301213157@stu.pku.edu.cn; h-cheng@stu.pku.edu.cn; feitian@pku.edu.cn). 
+
+directly constrains endurance and payload capability. This has motivated the development of minimally actuated and structurally reconfigurable designs that exploit morphology rather than actuator redundancy for control. A representative direction is the class of underactuated blimps with CoM reconfiguration, which employ limited thrust actuation combined with movable mass for attitude and tra-jectory modulation. While this design improves hardware efficiency, it fundamentally alters the system dynamics by introducing strong nonlinear coupling between translational motion, attitude evolution, and buoyancy-induced effects. Con-ventional control methods [13]–[15], including PID, feedback linearization, and backstepping, rely heavily on accurate sys-tem modeling and extensive tuning, and exhibit degraded performance under severe underactuation [1], [12], [16]. More-over, CoM modulation is often treated as an external distur-bance rather than as an explicit control degree of freedom, limiting its potential for task-oriented optimization [10], [17]. Reinforcement learning (RL) offers a data-driven alternative capable of handling nonlinear dynamics and model uncertainty [18]–[20]. Prior work has demonstrated promising results in blimp stabilization and waypoint tracking [6], [21]. However, directly applying a monolithic RL policy is suboptimal for underactuated blimp systems with reconfigurable mass distri-bution. In particular, CoM adjustment and thrust generation operate on distinct time scales and induce qualitatively differ-ent dynamical responses. In-flight mass redistribution intro-duces transient disturbances that complicate stabilization and control, as illustrated in Fig. 1, thereby leading to increased training difficulty and degraded convergence behavior when learned jointly. This observation motivates a hierarchical formulation of the control problem. Hierarchical and bi-level RL methods decompose decision making across distinct functional or tem-poral levels [22], [23]. While such approaches in robotics have predominantly focused on navigation and planning [24], [25], the underlying principle is well aligned with underactuated blimps with CoM adjustment, where configuration planning and continuous control are naturally decoupled. In this work, we propose a bi-level RL framework for underactuated blimps with CoM reconfiguration. Using a rep-resentative RGBlimp platform [26], we address goal-directed tracking as a coupled configuration-control problem. The outer policy optimizes the CoM configuration by selecting the slider position conditioned on the target, thereby shaping the system dynamics prior to flight. The inner policy generates continuous    
+
+> arXiv:2605.01289v1 [cs.RO] 2 May 2026 Thrusters ×2 Movable Slider (Static)
+> High Goal
+> Mid Goal Low Goal Slide Rail Disturbances Arise From The Slider Motion
+> In-Flight Adjustment CoM: Disturbance Underactuated: Static CoM Failures Actuator Decoupling Hierarchical Control ! Bi-Level RL Framework Success Flights
+
+PROBLEM & KEY INSIGHT 
+
+> High Goal Mid Goal Low Goal
+
+SOLUTION: BI-LEVEL RL  
+
+> Movable Slider CoM Morphology
+> At Task Start
+> Slow/Global
+> Soft Policy Gradient (SPG)
+> Slider Position
+> Outer-Level
+> During Flight
+> Fast/Local Force Vectoring ×2 Thruster
+> Soft Actor Critic (SAC) Inner-Level ×2
+
+ζ 
+
+> Goal Position State
+
+# s
+
+# cc
+
+> Thrust
+
+# a
+
+> Wide Range Precise Goal-Directed Tracking Moving Fig. 1. Problem setting, key insight, and proposed bi-level RL solution for goal-directed tracking control of RGBlimp. The platform is severely underactuated, with only two thrusters and a movable slider for CoM reconfiguration. A fixed slider configuration is insufficient for different goals, whereas in-flight slider motion introduces additional disturbance due to internal relative dynamics. The key idea is to decouple the slow task-level CoM adjustment from fast thrust control. Accordingly, a bi-level reinforcement learning framework is proposed. The outer level uses Soft Policy Gradient to determine the slider position prior to flight, and the inner level uses Soft Actor-Critic to generate continuous thruster commands during flight. This hierarchical design enables stable and precise goal-directed tracking over a wide range of target positions.
+
+thrust commands to track a straight-line reference trajectory. The inner controller is learned using Soft Actor-Critic (SAC), while the outer policy is optimized via Soft Policy Gradient (SPG). This decomposition explicitly separates configuration planning and continuous control, thereby mitigating in-flight disturbances induced by mass reconfiguration and improving training efficiency. To improve optimization stability, we introduce a two-stage training strategy. The first stage pretrains the inner controller under randomized CoM configurations to establish a robust control basis. The second stage then jointly optimizes the outer and inner policies to coordinate CoM selection and thrust control. We further provide a convergence analysis for the resulting bi-level learning dynamics. For sim-to-real transfer [27]–[29], extensive experiments on a real RGBlimp platform across 27 goal locations demonstrate that the proposed method consistently outperforms fixed-configuration and PID-based baselines, achieving improved tracking accuracy and robust-ness under varying reconfiguration. The main contributions of this paper are threefold. First, we propose a bi-level RL framework for underactuated blimps with CoM reconfiguration, explicitly decoupling task-dependent configuration optimization from continuous thrust control. Second, we develop a two-stage training strategy and provide convergence analysis for the resulting bi-level learning framework, improving optimization stability and tractability. Third, we validate the proposed method through compre-hensive simulation and real-world experiments, demonstrating successful sim-to-real transfer and consistent performance improvements over classical and fixed-configuration baselines. II. T ASK DESCRIPTION 
+
+A. Platform Overview 
+
+The RGBlimp is used as a representative underactuated LTA platform in this study. It is equipped with a helium envelope, passive lifting surfaces, two main thrusters, and a longitudinally movable gondola, as illustrated in Fig. 2. The envelope dimensions are approximately 1.0 × 1.1 × 0.5 m , and the underactuated design is intended to reduce weight, power consumption, and mechanical complexity. The two thrusters provide forward propulsion and differential yaw control, while the movable mass changes the CoM along the body longitudi-nal axis within a range of ±5 cm . This CoM reconfiguration modifies the equilibrium pitch behavior of the vehicle and provides an additional configuration degree of freedom. The platform is also equipped with passive aerodynamic surfaces, including main wings and tail structures, to improve low-speed flight stability. For state measurement and exper-imental evaluation, twelve active LED markers are mounted on the envelope and tracked using an external motion-capture system. Overall, RGBlimp adopts a highly compact and under-actuated architecture, enabling lightweight and energy-efficient operation but also significantly increasing control complexity. 
+
+B. Dynamic Modeling 
+
+We adopt a control-oriented 6-DoF model of RGBlimp. Let 
+
+p = [ x, y, z ]⊤ denote the position in the inertial frame and 
+
+e = [ ϕ, θ, ψ ]⊤ denote the Euler angles. Let vb = [ u, v, w ]⊤
+
+and ωb = [ p, q, r ]⊤ denote the body-frame linear and angular velocities, respectively. The kinematics are 
+
+˙p = R(e) vb, ˙e = J(e) ωb, (1) where R(e) is the body-to-inertial rotation matrix and J(e)
+
+is the standard Euler-angle transformation matrix. Define the generalized velocity and control input as 
+
+ν =
+
+vb
+
+ωb
+
+
+
+∈ R6, F =
+
+fl
+
+fr
+
+
+
+∈ R2, (2) where fl and fr represent the left and right thruster forces. Let 
+
+c denote the slider position. Since the slider is reconfigured before each episode and remains fixed during flight, c is modeled as an episode-wise constant configuration parameter Tail Fin Wings ×2 Tailplanes ×2 Envelope Thrusters ×2 Markers ×12 Movable Gondola Fig. 2. RGBlimp prototype design includes an envelope, a pair of main wings, a tail fin, two tailplanes, and a movable gondola that consists of a pair of propellers, a controller unit, and a battery. 
+
+rather than a dynamic state. Under this setting, the blimp dynamics are expressed in a compact state-space form [26] 
+
+M (c) ˙ ν + C(ν, c )ν + g(e, c ) + da(ν) = B(c)F . (3) Here, M (c) is the inertia matrix including the effect of the movable mass, C(ν, c ) collects the Coriolis and cen-tripetal terms, g(e, c ) denotes the gravity-buoyancy restoring term induced by the CoM–CoB offset, da(ν) represents the aerodynamic forces and moments, and B(c) is the control allocation matrix. The aerodynamic terms depend on the flight state through the angle of attack, the sideslip angle, and the body rates, while the dependence on c captures the effect of CoM configuration on equilibrium and actuation. This model provides the dynamic foundation for the bi-level control formulation presented in the next section. All model parameters were identified from extensive flight experiments under diverse thruster inputs and slider configurations. 
+
+C. Goal-Directed Tracking Task 
+
+We consider a goal-directed tracking task in which the blimp starts from the origin and is required to reach a target position 
+
+ζ ∈ R3 while tracking the straight-line reference from the start to the goal. The target is sampled from the forward workspace, and the reference line is defined as 
+
+L(ζ) = {λζ | λ ∈ [0 , 1] } . (4) The objective is therefore not only to reach the goal but also to minimize deviation from this straight-line path. The corresponding cross-track error is 
+
+etrk (pt, ζ) = min  
+
+> λ∈[0 ,1]
+
+∥pt − λζ∥2 . (5) III. B I-L EVEL REINFORCEMENT LEARNING FRAMEWORK 
+
+A. Hierarchical Optimization Architecture 
+
+Building on the platform model and goal-directed tracking task, we formulate RGBlimp control as a bi-level hierarchical decision-making problem. At time step t, let st denote the system state, at the inner-level control action (thruster com-mands), and c the slider position that reconfigures CoM. The task is specified by a target position ζ ∈ R3. The inner-level thrust controller is represented by the policy πϕa (at | st),parameterized by ϕa. The outer-level CoM reconfiguration policy is πϕc (c | ζ), parameterized by ϕc, which selects a fixed slider position for the episode. The augmented state explicitly includes the task specifi-cation and CoM configuration, and the inner action is the continuous thrust command 
+
+st ≜ p⊤ 
+
+> t
+
+, e⊤ 
+
+> t
+
+, v⊤
+
+> b,t
+
+, ω⊤
+
+> b,t
+
+, ζ⊤, c ⊤ ∈ R16 , (6) 
+
+at ≜ fl,t , f r,t 
+
+⊤ ∈ R2. (7) The hierarchical architecture induces a joint optimization over πϕc and πϕa . For each episode, ζ is sampled from a task distribution D, the outer policy selects c ∼ πϕc (c | ζ),and the inner policy generates a trajectory τ under the result-ing closed-loop dynamics. The objective is to maximize the expected discounted return 
+
+max  
+
+> ϕc,ϕa
+
+Eζ∼D 
+
+"
+
+Ec∼πϕc (c|ζ)
+
+"
+
+Eτ ∼πϕa
+
+" TX
+
+> t=0
+
+γt r(st, at)
+
+### 
+
+,
+
+(8) where τ = (s0, a0, s1, a1, . . . , sT ) denotes the trajectory generated by πϕa with c fixed, T is the episode horizon, 
+
+r(st, at) is the per-step reward, and γ ∈ (0 , 1) is the discount factor. To optimize the joint objective in (8), we decompose it into a bi-level optimization with distinct time scales. The inner policy πϕa (at | st) handles step-wise thrust control and is trained using Soft Actor-Critic (SAC), while the outer policy 
+
+πϕc (c | ζ) selects an episode-wise slider configuration c and is optimized via Soft Policy Gradient (SPG). 
+
+a) Inner Level (SAC): We optimize the inner-level thrust controller by maximizing the maximum-entropy return 
+
+JI (ϕa) = Eτ ∼πϕa 
+
+" TX
+
+> t=0
+
+γt
+
+r(st, at) + αH πϕa (· | st)#
+
+,
+
+(9) where τ = ( s0, a0, s1, a1, . . . , sT ) denotes the induced tra-jectory, and α is the entropy temperature. SAC is well suited for the inner loop, which involves continuous thruster com-mands under strongly coupled and underactuated dynamics. The entropy term H(·) encourages exploration and improves training stability. Two critic networks Qθi , i ∈ { 1, 2}, are learned using transitions sampled from the replay buffer DR
+
+yt ≜ rt + γ Eat+1 ∼πϕa (·| st+1 )
+
+h
+
+min  
+
+> j=1 ,2
+
+Q¯θj (st+1 , at+1 )
+
+−α log πϕa (at+1 | st+1 )
+
+i
+
+, (10) 
+
+LQ(θi) = E(st,at,r t,st+1 )∼D R
+
+h Qθi (st, at) − yt
+
+2i
+
+. (11) Target networks are updated using Polyak averaging 
+
+¯θ ← ρθ + (1 − ρ) ¯θ, ρ ∈ (0 , 1) . (12) The twin-critic architecture mitigates overestimation bias, and the soft target update improves training smoothness. The actor and temperature are updated by minimizing 
+
+Lπ (ϕa) = Est∼D R
+
+Eat∼πϕa (·| st) [α log πϕa (at|st)− min 
+
+> i=1 ,2
+
+Qθi (st, at)
+
+ 
+
+, (13) 
+
+L(α) = Est∼D R, at∼πϕa (·| st)
+
+h
+
+−α
+
+
+
+log πϕa (at | st) + ˆH
+
+i 
+
+.
+
+(14) where ˆH is the target entropy. 
+
+b) Outer Level (SPG): The outer policy πϕc (c | ζ)
+
+selects an episode-wise slider configuration c that maximizes the task return achieved by the inner-level controller 
+
+JO (ϕc) = Eζ∼D 
+
+h
+
+Ec∼πϕc (·| ζ)
+
+R(c; ζ) + βH πϕc (· | ζ) i
+
+,
+
+(15) where 
+
+R(c; ζ) = Eτ ∼πϕa 
+
+" TX
+
+> t=0
+
+γtr(st, at)
+
+#
+
+(16) is the cumulative reward obtained under configuration c using the inner controller πϕa . SPG is suitable for the outer level because the decision is low-dimensional and executed once per episode. The outer-level entropy term encourages exploration across target-dependent slider configurations. We deliberately exclude the inner-level entropy in R(c; ζ), so that the outer policy evaluates the actual task reward obtained under config-uration c. We optimize πϕc via SPG using stochastic gradient ascent on minibatches, and tune the entropy coefficient β by 
+
+L(β) = Eζ∼D , c ∼πϕc (·| ζ)
+
+h
+
+−β
+
+
+
+log πϕc (c | ζ) + ˆH
+
+i 
+
+. (17) 
+
+B. Two-Stage Training 
+
+The bi-level formulation couples the outer CoM reconfig-uration policy πϕc (c | ζ) with the inner thrust controller 
+
+πϕa (at | st) through the realized return R(c; ζ). As a result, the learning signal for the outer policy critically depends on the quality of the inner controller. Early in training, when πϕa is still inaccurate and unstable, the estimated return can be noisy, potentially driving πϕc toward suboptimal or misleading slider strategies. To address this dependency, we adopt a two-stage training procedure. In Stage 1 (inner pretraining), the slider position is randomized each episode by sampling c uniformly from 
+
+(cmin , c max ), while training only the inner-level SAC con-troller πϕa . This stage encourages the inner controller πϕa
+
+to develop reliable thrust control across the full range of CoM configurations before introducing the outer-level decision making. In Stage 2 (joint training), both levels are trained si-multaneously. The outer policy selects slider configuration 
+
+c ∼ πϕc (c | ζ) for the episode, and the inner controller is updated online under the resulting closed-loop dynamics. This stage enables coordinated exploration and refinement of both 
+
+πϕc and πϕa .Algorithm 1 summarizes the complete bi-level RL pipeline, including the two-stage training schedule and the correspond-ing update rules for both levels. Fig. 3 provides an intuitive illustration of the overall algorithmic framework. Outer SPG Actor Target State Inner SAC Actor Inner SAC Critic Environment Inner Replay Buffer Outer SPG Mini-batch Update Inner Mini-batch Sampling Inner SAC Actor Update Inner SAC Critic Update Outer Level Inner Level Stage 1: Inner SAC Pre-training (Randomized c) Stage 2: Joint Bi-Level Training Episode Reward COM Config Thrust Data Flow Network Update              
+
+> ζ
+> cR = ∑γ trtstatQθDR
+> πФс
+> πФa
+> (st, a t, r t, s t+1 )
+
+Fig. 3. Overview of the proposed Bi-Level RL framework for RGBlimp. The outer level uses SPG to select the episode-wise slider position for CoM reconfiguration, while the inner level uses SAC to generate continuous thruster commands. Training proceeds in two stages. In Stage 1, the inner SAC controller is pretrained with randomly sampled slider positions in each episode. In Stage 2, the outer and inner policies are jointly optimized through bi-level training. 
+
+Algorithm 1 Two-Stage Bi-Level RL Training 
+
+1: Initialize inner SAC: critics Qθ1 , Q θ2 , actor πϕa , tem-perature α, target critics Q¯θ1 , Q ¯θ2 with ¯θi ← θi for 
+
+i ∈ { 1, 2}, and replay buffer DR.
+
+2: Initialize outer SPG: policy πϕc and temperature β.
+
+3: for each episode j = 1 to M do 
+
+4: Sample target position ζ ∼ (ζmin , ζmax ).
+
+5: if j < N then 
+
+6: Sample slider configuration c ∼ (cmin , c max ).
+
+7: else 
+
+8: Sample c ∼ πϕc (c | ζ).
+
+9: end if 
+
+10: for each time step t = 0 to T − 1 do 
+
+11: Execute at ∼ πϕa (at | st), observe rt, st+1 , and store (st, at, r t, st+1 ) in DR.
+
+12: Sample minibatch Ba from DR and compute 
+
+∇θi LQ(θi), ∇ϕa Lπ (ϕa), and ∇αL(α).
+
+13: Update critics θi ← θi − λQ∇θi LQ(θi) for i ∈{1, 2}, actor ϕa ← ϕa − λπ ∇ϕa Lπ (ϕa), and tem-perature α ← α − λα∇αL(α).
+
+14: Update target critics ¯θi ← ρ θi + (1 − ρ) ¯θi for i ∈{1, 2}.
+
+15: end for 
+
+16: if j ≥ N then 
+
+17: Compute R(c; ζ) = PTt=0 γtr(st, at) and add 
+
+(ζ, c, R (c; ζ)) to minibatch Bc.
+
+18: Compute ∇ϕc JO (ϕc) and ∇β L(β).
+
+19: Update outer policy ϕc ← ϕc + η∇ϕc JO (ϕc) and temperature β ← β − λβ ∇β L(β).
+
+20: end if 
+
+21: end for C. Convergence Analysis 
+
+We now analyze the convergence of the proposed bi-level RL algorithm. A key property is that the inner-level controller does not depend on the outer-level policy parameters. The inner policy πϕa (at | st) is trained from environment interac-tions under the augmented state, which contains the episode-wise configuration c. Hence, convergence of the inner-level controller is treated following standard SAC results [30]. We therefore focus on the outer policy πϕc (c | ζ) and characterize how a non-converged inner controller affects the outer updates. Let k = 0 , 1, 2, . . . denote the outer-update iteration index in Stage 2, where k = 0 is the first outer update after Stage 1 pretraining. Let π k 
+
+> ϕa
+
+denote the inner policy at iteration k, and let Rk(c; ζ) denote the realized discounted return when executing π k 
+
+> ϕa
+
+with the episode-wise configuration c.Let π∗ 
+
+> ϕa
+
+denote the converged inner policy for a fixed configuration c with corresponding optimal discounted return 
+
+R∗(c; ζ) ≜ Eτ ∼π∗ 
+
+> ϕa (·| c, ζ)
+
+" TX
+
+> t=0
+
+γt r(st, at)
+
+#
+
+, (18) where t = 0 , . . . , T indexes time steps within an episode trajectory τ .Denote the inner critic approximation error at iteration k
+
+by nonnegative δ kQ, and assume δ kQ → 0 as k → ∞ [31]. The induced return discrepancy is bounded by 
+
+R∗(c; ζ) − Rk(c; ζ) ≤ CR(γ) δ kQ, (19) where CR(γ) > 0 depends on the discount factor and reward bounds. The ideal outer objective is 
+
+J∗O (ϕc) ≜ Eζ∼D 
+
+h
+
+Ec∼πϕc (·| ζ)
+
+R∗(c; ζ) + β H πϕc (· | ζ) i
+
+,
+
+(20) and the corresponding optimal outer-level parameters are 
+
+ϕ∗ 
+
+> c
+
+≜ arg max 
+
+> ϕc
+
+J∗O (ϕc). (21) The gradient of the ideal objective is 
+
+∇ϕc J∗O (ϕc) = Eζ∼D 
+
+h
+
+Ec∼πϕc (·| ζ) [∇ϕc log πϕc (c | ζ) R∗(c; ζ)
+
++β ∇ϕc H πϕc (· | ζ) , (22) In practice, the outer update at iteration k uses rollouts generated by the current inner policy, yielding 
+
+Jk 
+
+> O
+
+(ϕc) ≜ Eζ∼D 
+
+h
+
+Ec∼πϕc (·| ζ)
+
+Rk(c; ζ) + β H πϕc (· | ζ) i
+
+,
+
+(23) with gradient 
+
+∇ϕc Jk 
+
+> O
+
+(ϕc) = Eζ∼D 
+
+h
+
+Ec∼πϕc (·| ζ)
+
+h
+
+∇ϕc log πϕc (c | ζ) Rk (c; ζ)
+
++β ∇ϕc H πϕc (· | ζ) . (24) We define the gradient bias at iteration k as 
+
+∆k ≜ ∇ϕc J∗O (ϕc) − ∇ ϕc Jk 
+
+> O
+
+(ϕc). (25) Since the entropy-gradient terms cancel, the bias reduces to 
+
+∆k = Eζ∼D 
+
+h
+
+Ec∼πϕc (·| ζ) [∇ϕc log πϕc (c | ζ) ( R∗(c; ζ)
+
+−Rk(c; ζ) . (26) Assume the score function is uniformly bounded 
+
+∇ϕc log πϕc (c | ζ) ≤ Γ. (27) Then 
+
+∆k ≤ Γ Eζ∼D 
+
+h
+
+Ec∼πϕc (·| ζ)
+
+ R∗(c; ζ) − Rk(c; ζ) i
+
+,
+
+(28) and combining (28) with (19) yields 
+
+∆k ≤ Γ C R(γ) δ kQ. (29) Stage 2 stochastic gradient ascent follows 
+
+ϕk+1  
+
+> c
+
+= ϕkc + ηk b∇ϕc Jk
+
+> O
+
+
+
+ϕkc
+
+
+
+,
+
+= ϕkc + ηk ∇ϕc Jk
+
+> O
+
+
+
+ϕkc
+
+
+
++ ηk ξk, (30) where ξk is zero-mean noise with bounded second moment. Let Fk denote the training history up to iteration k, and σ2 <
+
+∞ denote a uniform bound on the conditional second moment. Following conventional stochastic approximation and actor– critic analysis [32], we assume 
+
+E
+
+h
+
+ξk | F ki
+
+= 0, E
+
+h
+
+∥ξk∥2 | F ki
+
+≤ σ2, (31) We also adopt the Robbins–Monro step-size conditions [33] 
+
+> ∞
+
+X
+
+> k=0
+
+ηk = ∞,
+
+> ∞
+
+X
+
+> k=0
+
+(ηk)2 < ∞. (32) Using (25), we have 
+
+∇ϕc Jk 
+
+> O
+
+(ϕc) = ∇ϕc J∗O (ϕc) − ∆k. (33) Substituting (33) into (30) gives 
+
+ϕk+1  
+
+> c
+
+= ϕkc + ηk ∇ϕc J∗O
+
+
+
+ϕkc
+
+
+
+− ηk ∆k + ηk ξk. (34) To ensure convergence of SPG on the ideal objective J∗O ,it suffices that the gradient bias is asymptotically negligible in the stochastic approximation sense. A standard sufficient condition is ∞X
+
+> k=0
+
+ηk ∆k < ∞, (35) together with the standard regularity assumptions, such as Lipschitz continuity of ∇J∗O and bounded iterates [32]. Un-der (31)–(32) and (35), the sequence {ϕkc } converges almost surely to the set of stationary points of J∗O .A sufficient condition for (35) follows from (29). Specifi-cally, if 
+
+δ kQ = O
+
+ 1
+
+√k + 1 
+
+
+
+, (36) and 
+
+ηk = O
+
+ 1
+
+k + 1 
+
+
+
+, (37) then ηk ∆k = O(( k + 1) −3/2) and (35) holds. Stage 1 pretraining ensures that the inner controller is close to convergence at the start of Stage 2, so δ 0 
+
+> Q
+
+and ∥∆0∥ are small. This mitigates early perturbations in the outer updates and improves practical stability. Moreover, if J∗O is concave or admits a unique maximizer, the stationary point coincides with the global optimum ϕ∗ 
+
+> c
+
+in (21), i.e., 
+
+lim  
+
+> k→∞
+
+ϕkc = ϕ∗ 
+
+> c
+
+. (38) IV. T RAINING 
+
+A. Training Setup 1) Domain Randomization: To reduce the sim-to-real gap, we employ domain randomization during training. At the beginning of each episode, the initial state is perturbed by small random offsets to mimic variations in launch conditions and state estimation errors. In addition, the aerodynamic parameters are uniformly randomized within ±10% of their nominal identified values, whereas the mass, buoyancy, and inertia terms are randomized within ±5% . This setting cap-tures moderate parameter uncertainty and unmodeled effects in the simulator. 
+
+2) Parameter Setup: During the training process, the target position ζ is sampled uniformly from a 3D workspace defined by x ∈ [4 , 5] m , y ∈ [−2, 2] m , and z ∈ [−1, 1] m . Each episode lasts up to 15 s and terminates early when the blimp reaches a goal region defined as a ball of radius 0.2 m centered at ζ. The slider position is constrained to [−5, 5] cm . The Stage 1 pretraining comprises N = 15000 episodes, and the total number of training episodes is M = 30000 . The SAC critic and actor are implemented as MLPs with hidden sizes 512 and 128, respectively. 
+
+3) Reward Function: We use a shaped reward to encourage accurate and efficient goal-directed tracking control. At each time step, the reward is designed as 
+
+rt = −2.0 etrk ,t − ehead ,t + 2 .0 ∆ dt + rtarget ,t , (39) where etrk ,t is the shortest distance from the current position 
+
+pt to the straight-line path from the origin to the target ζ,
+
+ehead ,t is the heading error between the velocity direction and the direction to the target ζ, and ∆dt denotes the forward progress between two consecutive time steps 
+
+∆dt ≜ ∥pt−1 − ζ∥ − ∥ pt − ζ∥. (40) A terminal bonus is applied upon reaching the goal 
+
+rtarget ,t =
+
+(
+
+20 , ∥pt − ζ∥ ≤ rg ,
+
+0, otherwise , (41) Reward weights are empirically tuned to balance tracking accuracy, heading alignment, and forward progress. 
+
+B. Training Results 
+
+The proposed bi-level training procedure converges reliably in simulation. Fig. 4 visualizes the learned outer-loop slider policy πϕc (c | ζ) over different target locations. Each voxel corresponds to a target ζ, and the color encodes the episode-wise slider configuration c in cm. Two main trends are observed. First, although the slider is allowed to move within [−5, 5] cm, the learned policy concentrates on a narrower interval of roughly [−2, 5] cm, reflecting that c = 0             
+
+> Fig. 4. Learned outer-level slider policy πϕc(c|ζ). Each voxel represents a target ζ= [ ζx, ζ y, ζ z]⊤, with color indicating the selected slider configura-tion c(cm). The policy shows strong symmetry with respect to ζyand varies primarily with target height, moving the slider backward for higher targets and forward for lower targets.
+
+denotes the mechanical zero of the slider rather than a phys-ically critical CoM. Second, the policy aligns with physical intuition. For higher targets (smaller ζz ), the slider moves backward to promote nose-up pitch and facilitate climbing; for lower targets, it moves forward to induce nose-down pitch and assist descending. The learned map exhibits strong left–right symmetry about 
+
+ζy = 0 , indicating consistent lateral behavior. Along the ζx
+
+direction, the dependence is weaker but still visible. Closer targets require slightly more backward slider positions to achieve the same altitude change. Overall, the learned outer-loop strategy is coherent and physically interpretable. V. E XPERIMENT 
+
+A. Experimental Setup 
+
+Experiments are conducted in a 6 m × 4 m × 3 m motion-capture arena equipped with 20 OptiTrack cameras, streaming at 60 Hz and providing position estimates with 0.76 mm RMS accuracy. Twelve active markers are mounted on the blimp envelope to provide state measurements for feedback control. The goal-directed tracking control task consists of 27 target positions arranged on a 3 × 3 × 3 grid: ζx ∈ { 4.0, 4.5, 5.0} m,
+
+ζy ∈ {− 2.0, 0, 2.0} m, and ζz ∈ {− 1.0, 0, 1.0} m. All trials start from p0 = [0 , 0, 0] ⊤ with the blimp facing the positive 
+
+x direction. This setting covers climbing, level-flight, and descending motions, as well as lateral and forward maneuvers. Each target is tested in three repeated trials under nominal initial conditions. Five controllers are evaluated. The proposed method, Bi-Level RL , uses the learned outer policy πϕc (c | ζ) and inner policy πϕa (at | st). To isolate the effect of CoM reconfiguration, three baselines use the same learned inner SAC thrust controller with fixed slider positions, denoted as 
+
+SAC-Fixed ( −5), SAC-Fixed ( 0), and SAC-Fixed ( 5), where the number represents c ∈ {− 5, 0, 5} cm .We further evaluate the inner-level controller by replacing the learned SAC with a conventional PID while retaining the learned outer policy, denoted as PID-SPG . At each time step, the PID computes desired attitude angles from the current position pt and the target ζ. Let ep,t = ζ − pt and 
+
+ˆep,t = ep,t /∥ep,t ∥. The yaw and pitch references are 
+
+ψref  
+
+> t
+
+= atan2(ˆ ep,t,y , ˆep,t,x ), (42) 
+
+θref  
+
+> t
+
+= atan2 
+
+
+
+− ˆep,t,z ,
+
+q
+
+ˆe2 
+
+> p,t,x
+
++ ˆ e2
+
+> p,t,y
+
+
+
+. (43) Two PID loops then generate the pitch and yaw moment commands (τθ,t , τ ψ,t ), which are mapped to the left and right thruster forces via the previously defined allocation matrix 
+
+B ∈ R2×6. Let Bθψ ∈ R2×2 denote the submatrix formed by the pitch and yaw columns of B. Then 
+
+fl,t 
+
+fr,t 
+
+
+
+= Bθψ 
+
+τθ,t 
+
+τψ,t 
+
+
+
++ fff (ζ)
+
+11
+
+
+
+, (44) where fff (ζ) is a goal-dependent feedforward term tuned to ensure sufficient forward motion. Owing to the severe underactuation and strong coupling of the blimp dynamics, designing an effective PID baseline requires careful heuristics and is less straightforward than learning-based control. In the following, we first assess the outer-level CoM re-configuration strategy and then compare the inner-level thrust controller against the PID baseline. 
+
+B. Outer-Level Slider Policy Evaluation 
+
+We first evaluate the learned outer-level slider strategy by comparing Bi-Level RL against three fixed-slider baselines, all using the same trained inner SAC controller. This comparison isolates the effect of target-dependent slider adaptation on tracking performance. Fig. 5 shows RMSE distributions across the 3 × 3 × 3
+
+target grid. Tracking performance is strongly correlated with target height ζz . The fixed-slider controllers exhibit a clear height-dependent trend. SAC-Fixed ( −5) performs well for climbing targets but degrades for level and descending targets. SAC-Fixed (0) achieves moderate performance but wors-ens for descending targets. SAC-Fixed (5) performs well for level and descending targets but becomes much worse for climbing targets. For example, at the climbing target 
+
+ζ = (4 .0, −2.0, −1.0) m , the RMSE of SAC-Fixed (5)reaches 0.308 m . These trends align with physical intuition. A rearward slider favors nose-up motion and climbing, while a forward slider favors nose-down motion and descending. Hence, no single fixed slider performs consistently across all tasks. Table I quantifies this observation. For climbing targets with 
+
+ζz = −1, the mean RMSE values are 0.150 m for SAC-Fixed ( −5), 0.103 m for SAC-Fixed ( 0), and 0.249 m for SAC-Fixed ( 5). For descending targets with ζz = 1 , the ordering reverses, and SAC-Fixed ( 5) achieves the best 0.106 m RMSE, compared with 0.166 m for SAC-Fixed ( 0) and 0.234 m for SAC-Fixed ( −5). These results confirm that the optimal fixed-slider placement depends on target height, motivating task-dependent outer-loop adaptation. Bi-Level RL achieves the lowest RMSE in all height groups. Its mean RMSE is 0.082 m for climbing, 0.088 m for level flight, and 0.098 m for descending, with an overall average of 
+
+0.089 m over all 27 targets. As illustrated in Fig. 5, the learned                                                                                
+
+> TABLE I RMSE of 3D tracking error grouped by target height ζz. Each entry reports mean ±standard deviation over all targets in the corresponding height group, in units of ×10 −1m. The three groups correspond to
+> ζz∈ {− 1,0,1}m, and “Overall” summarizes all 27 targets.
+> Controller Target height group (×10 −1m)
+> Climb
+> (ζz=−1)Level
+> (ζz=0 )Descent
+> (ζz=1 )Overall
+> (all targets)
+> SAC-Fixed (-5) 1.50 ±0.20 1.94 ±0.23 2.34 ±0.24 1.93 ±0.41 SAC-Fixed (0) 1.03 ±0.18 1.16 ±0.24 1.66 ±0.22 1.28 ±0.34 SAC-Fixed (5) 2.49 ±0.24 1.16 ±0.14 1.06 ±0.12 1.57 ±0.69 PID-SPG 1.97 ±0.36 1.38 ±0.29 1.60 ±0.28 1.65 ±0.47 Bi-Level RL 0.82 ±0.09 0.88 ±0.17 0.98 ±0.16 0.89 ±0.16
+
+policy exhibits no region-specific weaknesses, maintaining uniformly low errors. Beyond target height, it fine-tunes slider positions for different ζx and ζy , further improving tracking accuracy. Representative flight snapshots are illustrated in Fig. 6. The slider is adjusted per target, after which the blimp follows the reference path with minimal deviation, demonstrating effective task-dependent CoM configuration. Fig. 7 presents the time histories of the cross-track error etrk 
+
+for nine targets on the ζx = 4 .5 m slice. Bi-Level RL maintains errors below 0.1 m for most of the flight. In comparison, fixed-slider baselines show larger errors in their non-preferred regimes. SAC-Fixed ( −5) struggles with descending targets, with final error exceeding 0.3 m , and SAC-Fixed ( 5) performs poorly for climbing targets, where the error approaches up to 
+
+0.4 m . SAC-Fixed ( 0) is more stable but still less consistent than Bi-Level RL. Overall, these results demonstrate that slider configuration is highly task-dependent, with target height as the dominant factor. Bi-Level RL consistently selects suitable positions, achieving lower tracking errors across the full 27-goal evalu-ation set. 
+
+C. Inner-Level Controller Evaluation 
+
+We evaluate the inner-level controller by comparing the learned SAC controller in Bi-Level RL with PID-SPG. Three representative targets are considered, namely ζ =(5 .0, 2.0, 1.0) m , (5 .0, 0.0, 0.0) m , and (5 .0, −2.0, −1.0) m .Fig. 8 illustrates the corresponding trajectory projections on the x–y and x–z planes. For ζ = (5 .0, 2.0, 1.0) m , Bi-Level RL closely follows the straight-line reference, whereas PID-SPG deviates in both y
+
+and z after x exceeds 4 m . For (5 .0, 0.0, 0.0) m , Bi-Level RL again tracks more tightly with a mean lateral deviation of approximately 0.03 m , compared to over 0.08 m for PID-SPG. In the x–z plane, PID-SPG drops more than 0.2 m below the reference around x ≈ 1.5 m . For (5 .0, −2.0, −1.0) m ,PID-SPG accumulates over 0.4 m lateral deviation and exhibits noticeable vertical oscillation in the x–z plane. By contrast, Bi-Level RL maintains mean tracking errors of about 0.05 m 
+
+in both projections. The same trend is observed in the RMSE voxel plots in Fig. 5. Over all 27 targets, PID-SPG yields consistently larger (a) Flight Schematic Target × 27 Fig. 5. 3D cross-track RMSE for flights from the origin to 27 target points. (a) Task setup of goal-directed tracking from a common start position to different targets. (b)–(f) RMSE distributions of different controllers over the 3 × 3 × 3 target grid. Each voxel represents the mean RMSE over repeated trials for one target. Upper Left     
+
+> = 0.79 cm Slider Position
+> (a) ζ= (4 .5,−2.0,−1.0) m
+
+Center      
+
+> = 0.12 cm Slider Position (b) ζ= (4 .5,0.0,0.0) m
+
+Lower Right      
+
+> = 4.78 cm Slider Position (c) ζ= (4 .5,2.0,1.0) m
+> Fig. 6. Flight snapshots of Bi-Level RL for three representative targets. The slider position is adaptively adjusted according to the target, after which the blimp follows the reference path and reaches the goal.
+
+errors than Bi-Level RL. Although the outer-level slider policy still adapts the CoM configuration, the manually tuned PID inner loop struggles with the blimp’s strong coupling and severe underactuation, leading to systematically larger tracking errors. Table I further supports this result. PID-SPG exhibits an overall standard deviation of 0.047 m , roughly three times that of Bi-Level RL at 0.016 m , indicating greater sensitivity to initial conditions and disturbances. Overall, the learned SAC inner policy provides superior robustness and more consistent flight performance. 
+
+D. Overall Discussion 
+
+The experimental results demonstrate the effectiveness of the proposed bi-level reinforcement learning framework. As summarized in Table I, Bi-Level RL achieves the lowest overall 3D tracking RMSE among all compared methods. Relative to SAC-Fixed ( −5), SAC-Fixed ( 0), and SAC-Fixed (5), the total RMSE is reduced by 53 .9% , 30 .5% , and 43 .3% ,respectively, and by 46 .1% compared with PID-SPG. These results indicate that neither a fixed slider configuration nor a manually tuned inner-loop controller is sufficient for the complete goal-directed tracking control task. The best per-formance is obtained only when the outer loop adaptively configures the CoM according to the target and the inner loop simultaneously learns a thrust control strategy suited to the highly underactuated and strongly coupled blimp dynamics. Overall, the proposed bi-level design improves tracking ac-curacy, robustness, and consistency across the entire 27-goal evaluation set. VI. C ONCLUSION 
+
+This paper presented a bi-level RL framework for goal-directed tracking control of an underactuated blimp with CoM reconfiguration. The proposed method decouples task-level slider selection from continuous thrust control, and combines a two-stage training strategy with convergence guarantees to improve learning stability. Experimental results in real flight demonstrated that the proposed framework consistently outperformed fixed-slider and PID-based baselines, confirming the effectiveness of integrating CoM adaptation with learned inner-loop control for this highly underactuated system. Future work will focus on improving disturbance rejection under wind and model uncertainty, and extending the proposed framework to more challenging outdoor autonomous flight scenarios. REFERENCES [1] J. Dong, H. Yu, B. Lu, H. Liu, and Y. Fang, “Adaptive output feedback trajectory tracking control of an indoor blimp: Controller design and experiment validation,” IEEE Transactions on Industrial Electronics ,vol. 72, no. 4, pp. 3960–3971, 2025. [2] A. Ollero, M. Tognon, A. Suarez, D. Lee, and A. Franchi, “Past, present, and future of aerial robotic manipulators,” IEEE Transactions on Robotics , vol. 38, no. 1, pp. 626–645, 2022. Fig. 7. Time histories of cross-track error etrk for nine representative targets on the ζx = 4 .5 m slice. (a)–(i) correspond to different combinations of 
+
+ζy ∈ {− 2, 0, 2} m and ζz ∈ {− 1, 0, 1} m. The dashed curves denote the fixed-slider baselines SAC-Fixed ( −5), SAC-Fixed ( 0), and SAC-Fixed ( 5), while the solid curve denotes Bi-Level RL. 
+
+Fig. 8. Comparison of trajectories between the learned inner SAC controller (Bi-Level RL) and the PID inner controller with the learned slider policy (PID-SPG). Top and bottom rows show x–y and x–z plane projections, respectively. Columns (a)–(c) correspond to targets ζ = (5 .0, 2.0, 1.0) m , (5 .0, 0.0, 0.0) m ,and (5 .0, −2.0, −1.0) m . Dashed lines denote the straight-line references from the start to the target. [3] H. Zhong, J. Liang, Y. Chen, H. Zhang, J. Mao, and Y. Wang, “Prototype, modeling, and control of aerial robots with physical interaction: A review,” IEEE Transactions on Automation Science and Engineering ,vol. 22, pp. 3528–3542, 2025. [4] S. Sharma, M. Verhoeff, F. Joosen, R. Venkatesha Prasad, and S. Hamaza, “A morphing quadrotor-blimp with balloon failure resilience for mobile ecological sensing,” IEEE Robotics and Automation Letters ,vol. 9, no. 7, pp. 6408–6415, 2024. [5] N. Yao, E. Anaya, Q. Tao, S. Cho, H. Zheng, and F. Zhang, “Monocular vision-based human following on miniature robotic blimp,” in 2017 IEEE International Conference on Robotics and Automation (ICRA) ,2017, pp. 3244–3249. [6] S. S. Bhat, S. G. Anavatti, M. Garratt, and S. Ravi, “Review of autonomous outdoor blimps and their applications,” Drone Systems and Applications , vol. 12, pp. 1–21, 2024. [7] V. Mai, M. Kamel, M. Krebs, A. Schaffner, D. Meier, L. Paull, and R. Siegwart, “Local positioning system using uwb range measurements for an unmanned blimp,” IEEE Robotics and Automation Letters , vol. 3, no. 4, pp. 2971–2978, 2018. [8] M. Hou and F. Zhang, “Human pointing motion during interaction with an autonomous blimp,” Scientific Reports , vol. 12, p. 11402, 07 2022. [9] J. Xu, D. S. D’Antonio, D. J. Ammirato, and D. Salda˜ na, “Sblimp: Design, model, and translational motion control for a swing-blimp,” in 2023 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2023, pp. 6977–6982. [10] Q. Tao, J. Wang, Z. Xu, T. X. Lin, Y. Yuan, and F. Zhang, “Swing-reducing flight control system for an underactuated indoor miniature autonomous blimp,” IEEE/ASME Transactions on Mechatronics , vol. 26, no. 4, pp. 1895–1904, 2021. [11] H. Cheng and F. Zhang, “Rgblimp-q: Robotic gliding blimp with moving mass control based on a bird-inspired continuum arm,” IEEE Transactions on Robotics , vol. 41, pp. 5097–5116, 2025. [12] M. Kasmalkar, L. Baird, and S. Coogan, “Feedback linearization of an underactuated miniature blimp with zero dynamics mitigation using high order control barrier functions,” IEEE Control Systems Letters , vol. 8, pp. 2589–2594, 2024. [13] R. J. Suitor, D. Sofge, and D. A. Paley, “Bioinspired intermittent control of a miniature autonomous blimp for tracking a moving target,” in 
+
+OCEANS 2024 - Halifax , 2024, pp. 1–9. [14] C. Wan, N. Kingry, and R. Dai, “Design and autonomous control of a solar-power blimp,” 01 2018. [15] J. L´ opez, G. P, R. Sanz, and W. Burgard, “Developing a low-cost autonomous indoor blimp,” Journal of Physical Agents , vol. 3, 01 2009. [16] F. Mazzei, L. Teofili, F. Curti, and C. Gargiulo, “Mission analysis, dynamics and robust control of an indoor blimp in a cern detector magnetic environment,” Frontiers in Robotics and AI , vol. 10, 10 2023. [17] S. Baldi, S. Roy, K. Yang, and D. Liu, “An underactuated control system design for adaptive autopilot of fixed-wing drones,” IEEE/ASME Transactions on Mechatronics , vol. 27, no. 5, pp. 4045–4056, 2022. [18] Q. Chen, C. Ye, W. Lin, Z. Liu, X. Yu, J. Qiu, and H. Gao, “Action-based contrastive unsupervised representations for reinforcement learn-ing toward robotic manipulation,” IEEE Transactions on Industrial Electronics , vol. 73, no. 2, pp. 3104–3113, 2026. [19] J. Zhang, Z. Jin, Z. Zhao, and C. Yang, “A novel robotic skill learning approach for assembly task with dynamical system and broad learning,” 
+
+IEEE Transactions on Industrial Electronics , vol. 72, no. 9, pp. 9304– 9313, 2025. [20] Z. Zhao, Y. Weng, Z. Liu, C. Yang, and C. L. P. Chen, “Broad reinforcement learning for adaptive control of a 2-dof helicopter system with unknown dead zone,” IEEE Transactions on Industrial Electronics ,vol. 72, no. 4, pp. 3984–3993, 2025. [21] Y. Zuo, Y. T. Liu, and A. Ahmad, “Autonomous blimp control via h∞
+
+robust deep residual reinforcement learning,” in 2023 IEEE 19th Inter-national Conference on Automation Science and Engineering (CASE) ,2023, pp. 1–8. [22] R. Jiang, X. Cheng, H. Sang, Z. Wang, Y. Zhou, and B. He, “Gthsl: A goal-task-driven hierarchical sharing learning method to learn long-horizon tasks autonomously,” IEEE Transactions on Industrial Electron-ics , vol. 72, no. 4, pp. 3994–4005, 2025. [23] X. Yang, Z. Ji, J. Wu, Y.-K. Lai, C. Wei, G. Liu, and R. Setchi, “Hierarchical reinforcement learning with universal policies for multi-step robotic manipulation,” IEEE Transactions on Neural Networks and Learning Systems , vol. 33, no. 9, pp. 4727–4741, 2022. [24] W. Zhu and M. Hayashibe, “A hierarchical deep reinforcement learning framework with high efficiency and generalization for fast and safe navigation,” IEEE Transactions on Industrial Electronics , vol. 70, no. 5, pp. 4962–4971, 2023. [25] R. Gieselmann and F. T. Pokorny, “Planning-augmented hierarchical reinforcement learning,” IEEE Robotics and Automation Letters , vol. 6, no. 3, pp. 5097–5104, 2021. [26] H. Cheng, Z. Sha, Y. Zhu, and F. Zhang, “Rgblimp: Robotic gliding blimp - design, modeling, development, and aerodynamics analysis,” 
+
+IEEE Robotics and Automation Letters , vol. 8, no. 11, pp. 7273–7280, 2023. [27] S. Yan, Z. Wu, J. Wang, Y. Huang, M. Tan, and J. Yu, “Real-world learning control for autonomous exploration of a biomimetic robotic shark,” IEEE Transactions on Industrial Electronics , vol. 70, no. 4, pp. 3966–3974, 2023. [28] H. Zhang, C. Hua, J. Chen, X. Luo, and J. Wei, “Chaos-augmented reinforcement learning with diffusion models for robust legged robot locomotion,” IEEE Transactions on Industrial Electronics , vol. 73, no. 2, pp. 2600–2609, 2026. [29] Y. T. Liu, N. Singh, and A. Ahmad, “Task and domain adaptive rein-forcement learning for robot control,” in 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2024, pp. 656– 663. [30] T. Haarnoja, A. Zhou, P. Abbeel, and S. Levine, “Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor,” in Proceedings of the 35th International Conference on Machine Learning , ser. Proceedings of Machine Learning Research, J. Dy and A. Krause, Eds., vol. 80. PMLR, 10–15 Jul 2018, pp. 1861–1870. [31] S. Zhang, B. Liu, H. Yao, and S. Whiteson, “Provably convergent two-timescale off-policy actor-critic with function approximation,” in 
+
+Proceedings of the 37th International Conference on Machine Learning ,ser. Proceedings of Machine Learning Research, H. D. III and A. Singh, Eds., vol. 119. PMLR, 13–18 Jul 2020, pp. 11 204–11 213. [32] V. R. Konda and J. N. Tsitsiklis, “On actor-critic algorithms,” SIAM J. Control Optim. , vol. 42, no. 4, p. 1143–1166, Apr. 2003. [33] H. Robbins and S. Monro, “A stochastic approximation method,” The annals of mathematical statistics , pp. 400–407, 1951. 
+
+Xiaorui Wang (Student Member, IEEE) received the bachelor’s degree in robotics engineering in 2025 from Peking University, Beijing, China, where he is currently working toward the Ph.D. degree in general mechanics and foundation of mechanics with the School of Advanced Manufacturing and Robotics, Peking University, Beijing, China. His research interests include aerial vehicles, dy-namical modeling, and learning-based control. 
+
+Hongwu Wang received the bachelor’s degree in Robotics Engineering from Harbin Institute of Tech-nology, Harbin, China, in 2024. He is currently working toward the M.S. degree in mechanical engi-neering with the School of Advanced Manufacturing and Robotics, Peking University, Beijing, China. His research interests include aerial vehicles, mechatronics systems, reinforcement learning and robotic control. 
+
+Yue Fan received the B.S. degree in Software Engineering from China University of Geosciences (Beijing), Beijing, China, in 2023. She is currently working toward the M.S. degree in mechanical engi-neering with the School of Advanced Manufacturing and Robotics, Peking University, Beijing, China. Her research interests include aerial vehicles, deep learning, and robot learning. 
+
+Hao Cheng (Student Member, IEEE) received the Bachelor’s degree in New Energy Science and En-gineering (Wind Power) from North China Electric Power University, China, in 2017, and the Master’s degree in Control Engineering from Tsinghua Uni-versity, China, in 2021. He is currently working toward the Ph.D. degree in general mechanics and foundation of mechanics with the School of Ad-vanced Manufacturing and Robotics, Peking Univer-sity, Beijing, China. His research interests include lighter-than-air aerial vehicles, bio-inspired robotics, and continuum robots. 
+
+Feitian Zhang (Member, IEEE) received the bache-lor’s and master’s degrees in automatic control from the Harbin Institute of Technology, Harbin, China, in 2007 and 2009, respectively, and the Ph.D. degree in electrical and computer engineering from Michigan State University, East Lansing, MI, USA, in 2014. He was a Postdoctoral Research Associate with the Department of Aerospace Engineering and Insti-tute for Systems Research, University of Maryland, College Park, MD, USA, from 2014 to 2016, and an Assistant Professor of Electrical and Computer Engineering with George Mason University, Fairfax, VA, USA, from 2016 to 2021. He is currently an Associate Professor of Robotics Engineering with Peking University, Beijing, China. His research interests include mechatronics systems, robotics and controls, aerial vehicles, and underwater vehicles.
