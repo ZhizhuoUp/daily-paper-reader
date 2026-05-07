@@ -1,0 +1,968 @@
+Title: Reachability-Based Design Optimization for Aircraft Maneuverability
+
+URL Source: https://arxiv.org/pdf/2604.26134v1
+
+Published Time: Thu, 30 Apr 2026 00:16:16 GMT
+
+Number of Pages: 32
+
+Markdown Content:
+# Reachability-Based Design Optimization for Aircraft Maneuverability 
+
+Steven Nguyen ∗, Nicholas Orndorff †, Jorge Cortés ‡, and Boris Kramer §
+
+University of California San Diego, La Jolla, CA, 92093 
+
+This paper presents a method for incorporating control analysis into design optimization for highly-maneuverable aircraft. By studying reachable sets for aircraft dynamics, we ensure that the optimizer will take the aircraft’s controlled capabilities into account. We compute reachable sets of linear dynamics for computational efficiency, and account for aircraft trim points to factor in asymmetric magnitude bounds on the input signals. We demonstrate the proposed method in design optimization of a blended-wing-body aircraft. Considering its wing half-span and center half-span as design variables, we optimize the aircraft based on its longitudinal dynamics’ reachable sets to yield improvements in its controlled performance. When designing a reference tracking controller, we find up to 30% less tracking error for angle of attack of the optimized model’s nonlinear dynamics. 
+
+# Nomenclature 
+
+X0 = set of allowable initial conditions 
+
+U = set of allowable control inputs 
+
+D = set of design parameters 
+
+𝑓 = design optimization objective function; 𝑓 : D → R
+
+𝑔 𝑖 = design optimization constraint functions, 𝑖 ∈ [ 1, 𝑘 ]; 𝑔 𝑖 : D → R
+
+d = design parameters, d ∈ D 
+
+A, B = linear system matrices, A ∈ R𝑛 ×𝑛 , B ∈ R𝑛 ×𝑚 
+
+x(𝑡 ) = state of dynamical system at time 𝑡 , x(𝑡 ) ∈ R𝑛 
+
+u(𝑡 ) = input to dynamical system at time 𝑡 , u(𝑡 ) ∈ U 
+
+𝑐 = center half-span, m 
+
+𝑤 = wing half-span, m 
+
+𝐷 = induced drag, N 
+
+> ∗
+
+Ph.D. Student, Department of Mechanical and Aerospace Engineering 
+
+> †
+
+PhD Candidate, Department of Mechanical and Aerospace Engineering, AIAA Student Member. 
+
+> ‡
+
+Professor, Department of Mechanical and Aerospace Engineering 
+
+> §
+
+Associate Professor, Department of Mechanical and Aerospace Engineering, and AIAA Senior Member. 
+
+> arXiv:2604.26134v1 [math.OC] 28 Apr 2026
+
+𝐿 = lift, N 
+
+𝐹 th = thrust force, N 
+
+𝑀 = pitching moment, Nm 
+
+𝑚 = mass, kg 
+
+𝐽 𝑦 = pitching moment of inertia, Nm 2
+
+Z+ = set of natural numbers excluding zero Subscripts 
+
+0 = trimmed values th = thrust e = elevator 
+
+# I. Introduction 
+
+Traditional aircraft design separates the analyses of structural stability and controlled performance due to the daunting complexity of the design problem. Whereas the forces and stresses an aircraft must withstand are well-studied and predictable, control-theoretic performance metrics could range from measuring an aircraft’s capacity for disturbance rejection to its agility throughout the flight envelope. Even when one aspect of the controlled performance is prioritized, designing a metric to quantify it often depends on assumptions about the model or controller architecture. Given the flexibility of control-theoretic tools and the ease of software-level changes, the challenge of simultaneous control and design is often avoided by reserving control analysis for late stages of design, after the aircraft’s physical features are established. However, the design-control separation naturally comes with disadvantages and can lead to the design of less efficient systems [ 1] that are costly to resolve as the design pinballs between control and design teams. Famously, NASA’s Explorer 1 suffered from instabilities after launching due to unexpected interactions between its flexible structures and the control modes [ 2]. NASA also conducted a large study between numerous universities and aerospace companies to redesign the pointing control system of the Hubble telescope when it suffered problematic perturbations after launch [ 3, 4 ]. In the design of next-generation aircraft, control theory is critical to ensuring that new aircraft are more capable than their predecessors, and incorporating control-theoretic metrics into the early stages of design optimization could be paramount to unlocking performance gains in new aircraft. Designing metrics that strike a balance between identifying key characteristics of flight behavior without restrictive assumptions on the control architecture is an open challenge whose answer varies greatly depending on the desired aircraft capabilities. In this paper, we consider metrics based on reachability theory for control co-design of aircraft. Leveraging controller-agnostic insights regarding the capabilities of aircraft from reachability theory, we propose optimization methods based on linear analysis that yield improvements in the controlled performance of the nonlinear dynamics. In 2Section I.A, we review the study of control co-design, which entails simultaneously solving problems of control and design of structures. In Section I.B, we survey the role that control theory has played historically in aircraft design. In Section I.C, we review the history for blended-wing-body aircraft, a special type of aircraft on which we apply the proposed design optimization. Lastly, in Section I.D, we provide context on the study of reachability theory. 
+
+A. Control Co-Design 
+
+The interconnection between control theory and the design of systems to be controlled have long been studied by engineers seeking to push the limits of performance. Control co-design refers to the simultaneous consideration of the design of physical and control components, and has shown success in a number of applications [ 5], such as design of vehicles [ 6], chemical reactors [ 7 , 8], and networked control systems [ 9]. In structural engineering, the use of passive control to improve structural stability has a long history dating back to the introduction of tuned mass dampers [ 10 ], which form critical components of some of the world’s tallest structures today [ 11 ]. Many studies of design with active control have shown that considering the effects of feedback can eliminate structural inefficiencies and reduce the effort required to stabilize structures [ 12 ]. Similar results have been found for helicopter rotors designed simultaneously with their flight control systems [ 13 ] and flexible robotic arms designed for specific input-output responses [ 14 ]. More broadly, the optimization of systems that connect multiple disciplines has been considered in the field of multidisciplinary design optimization (MDO) since the 1980s [ 12 ]. Due to the coupling between structures, controls, and aerodynamics, aircraft systems have been popular subjects for MDO since its inception [15, 16, 16–19]. 
+
+B. Control in Aircraft Design 
+
+Despite the numerous investigations of control as a discipline within MDO for aicraft design, no standard modeling approach exists. One idea is to parameterize a control scheme so that the design optimization chooses the best design simultaneously with the best controller – this approach has been employed in MDO to optimize over airfoils while simultaneously optimizing over a predetermined control architecture [ 12 , 15 , 20 ]. However, this approach can prove restrictive by focusing on one specific control scheme. Deviations from that predetermined control synthesis technique would invalidate the optimization analysis. On the other hand, a controller-agnostic design metric grants flexibility when designing control, but can be challenging to formulate due to the complexities of different approaches to nonlinear control. Leveraging improvements in computational power, controller-agnostic approaches have become popular in recent years in combination with robust and optimal control techniques for aircraft design [ 21 – 23 ]. Specifically, linearized aircraft dynamics are considered in [ 22 ], where the eigenvalues of the reachability Gramian are used as a measure of the aircraft’s controllability. By identifying the eigenvalues associated with desirable or non-desirable modes, they choose design parameters that maximize and minimize those characteristics in the controlled aircraft dynamics. Robustness metrics are considered in [ 23 ], where the Bode sensitivity integral is leveraged to capture the aircraft’s 3capacity for disturbance rejection. Although both of these metrics quantify desired performance characteristics, they assume that the aircraft will be linearly controlled. In [ 21 ], nonlinear control design techniques are used by optimizing the aircraft according to a nonlinear optimal control problem that encodes a desired flight maneuver. This approach precisely characterizes an aircraft’s capabilites in performing desired maneuvers at the cost of increased computational expense and the knowledge of exact maneuvers to follow. Building on these works in controller-agnostic control co-design, we propose using reachability theory to inform the design of highly-maneuverable aircraft. 
+
+C. Blended-Wing-Body Aircraft 
+
+As a motivating platform, recent investigations into blended-wing-body (BWB) airplanes have exposed the importance of aircraft design techniques that can handle the complex coupling between different subsystems. Blended-wing-body airplanes promise higher lift-to-drag ratios and lower empty weight compared to traditional tube-and-wing airplanes for equivalent missions. This contributes to decreased fuel burn and lower operating costs on the order of 20-30% [ 24 ]. Boeing’s X48, later named BWB450, was one of the first BWB concepts that progressed from concept to sub-scale flight test, intending to compete against Airbus’s A380 with a purported 32% reduction in fuel consumption for a 7750 nm route [ 25 ]. However, these first experiments with BWB airplanes exposed serious challenges with control authority and control allocation, which were sometimes at odds with design choices which were made to optimize performance [ 25 ]. This highlights the multidisciplinary nature of BWB aircraft, where the lack of distinct features (e.g., fuselage and wing) leads to complex and sometimes unintuitive tradeoffs in the design space, motivating the need for MDO with control-related metrics as a comprehensive tool for designing BWBs [ 26 ]. Aerodynamic shape optimization of the BWB450 and its variants has been performed [ 27 ], but these results consider only the most simple static stability constraints. Recent commercial BWB variants [ 28 ] are targeting mid-size markets that compete with airplanes such as the Boeing 767-300 with around 200 passengers. Many concepts are sized such that they can be multi-role, including tanker and cargo variants. 
+
+D. Reachability Theory 
+
+In control theory, the study of reachability considers the set of states that a dynamical system can reach starting from an initial set [ 29 ]. The methods developed to compute reachable sets depend upon the type of system, constraints, and objective. For linear systems, forward reachable sets are often computed by propagating the set of initial states through the dynamics [ 30 , 31 ]. In particular, some classes of convex subsets of Euclidean space, such as ellipsoids and zonotopes, yield particularly efficient computation of reachable sets due to closure properties under linear transformations [ 32 – 34 ]. Computational packages such as SpaceEx [ 35 ] and CORA [ 36 ] are designed specifically to handle these computations. For nonlinear systems, these methods become less efficient due to the lack of closure guarantees, but some extensions exist for propagating zonotopic sets [ 37 ]. For the general case of nonlinear dynamical systems, the problem of 4reachability is instead typically framed through backwards reachable sets, which require solving the Hamilton-Jacobi partial differential equation and suffers from the curse of dimensionality [ 38 – 40 ]. Alternatively, sampling-based approaches use simulated trajectories of the system to approximate the reachable set and can be applied to systems with black-box models. This approach to reachability has been studied for the nonlinear setting [ 41 – 43 ], modeled as a disturbance affecting the system, and in the linear setting [ 44 ] for the purpose of finding component-wise bounds on the system dynamics. In the aerospace field, reachability has previously been studied for improving autonomous landing systems and air traffic control by accurately modeling for unsafe flight trajectories [ 45 – 47 ]. However, reachability theory has not yet been incorporated into the design of aircraft. 
+
+E. Contributions 
+
+We propose incorporating reachable sets of linearized dynamics in the design optimization of aircraft for high maneuverability. We restrict our analysis to reachable sets of linear systems because the curse of dimensionality leads to prohibitively expensive computation for nonlinear reachability, and we develop the metrics to be computationally cheap for incorporation into MDO. Whereas previous works use the controllability Gramian [ 22 ], which characterizes the reachable set under bounded energy inputs [ 48 ], we consider all possible trajectories under bounded magnitude inputs. The proposed optimization procedure is depicted in Figure 1. At each iteration, the reachability module receives design variables for the aircraft from the optimization solver, generates the linearized model, and computes the reachable set of the system. Then, properties of the reachable set, such as its volume and projections, guide the design optimization problem to improve the aircraft’s maneuverability. By analyzing reachable sets of linearized dynamics at various points in the flight envelope of an aircraft, we gain insight into the maneuverability of the aircraft in a controller-agnostic manner. We apply this analysis to the BWB aircraft outlined in Section III, using a panel method code to compute control and stability derivatives. The optimization results produce linearized models with improved performance in disturbance rejection and reference tracking. Furthermore, we find that the optimization problems also lead to improvements in the controlled performance for the nonlinear dynamics. This work builds on our previous conference submission [ 49 ] by (i) extending the analysis to reachable sets under asymmetrically bounded magnitude inputs, (ii) solving design optimization problems for a more complex BWB geometry, and (iii) providing a deeper investigation of the improvements in the optimized aircraft designs, including the nonlinear setup. 
+
+# II. Problem Setting 
+
+We consider the problem of mission-informed design optimization and propose to incorporate reachability analysis as a measure of the aircraft’s maneuverability. Inspired by the use of the reachability Gramian [ 22 ] and nonlinear 5MDO optimizer              
+
+> Aero Analysis
+> Linearized Model
+> ¤x=A(d)x+B(d)u
+> Computation of Reachable Set, R ( 𝑇 )
+> Evaluation of Reach-able Set Properties
+> Force and moment derivatives
+> A(d),B(d)matrices, trimmed parameters
+> Design variables, d
+> Metrics 𝑓 (R ( 𝑇 )) ,
+> 𝑔 𝑖 (R ( 𝑇 ),d)based on reachability theory
+
+Fig. 1 Proposed optimization procedure incorporating reachability-based metrics. 
+
+optimal control [ 21 ] for aircraft design, we propose to employ reachable sets of the linearized dynamics. For the design optimization problem, we consider a design vector d ∈ D ⊆ R𝑛 𝑑 , describing the aircraft design, where D is the set of possible design choices. We define a function 𝑓 : D → R as the objective for maximization and constraints 
+
+𝑔 1, . . . , 𝑔 𝑘 : D → R, where evaluating 𝑓 or any 𝑔 𝑖 may require reachability analysis. Whereas reachability Gramian-based metrics consider the reachable sets of linear systems under bounded-energy inputs and optimal control problems consider specific maneuvers, we propose to consider the reachable sets of linearized dynamics under bounded-magnitude inputs, which capture the entire set of states that can be attained by a linear system subject to actuation limits. In Section II.A, we cover preliminary results and define the reachable sets we are interested in computing. In Section II.B, we introduce metrics based on reachable sets for use in design optimization problems. 
+
+A. Reachable Sets of Linearized Dynamical Systems 
+
+We consider parameterized linear dynamics of the form 
+
+¤x(𝑡 ) = A(d)x(𝑡 ) + B(d)u(𝑡 ), (1) 6where x(𝑡 ) ∈ R𝑛 is the state, u(𝑡 ) ∈ U ( d) ⊆ R𝑚 the input, and A(d), B(d) have appropriate dimensions. The dependency of the input set U ( d) and the matrices A(d), B(d) on d highlights the fact that the dynamics depend on the design parameters. We omit this dependency when clear. We consider initial conditions starting in a set X0 ⊆ R𝑛 .We denote by x(𝑡 ; x0, 𝑡 0, u(·) , d) the solution at time 𝑡 of (1) starting from x(𝑡 0) = x0 ∈ X 0, driven by control signal 
+
+u(·) : [𝑡 0, 𝑇 ] → U ( d). The initial condition, initial time, control signal, and design parameters are omitted when clear, in which case we use x(𝑡 ) instead. Fixing the terminal time 𝑇 > 𝑡 0, we define the reachable set at time 𝑡 ∈ [ 𝑡 0, 𝑇 ] as: 
+
+R ( 𝑡 ; X0, U ( d), d) = {x(𝑡 ; x0, 𝑡 0, u(·) , d) | x0 ∈ X 0, u(𝜏 ) ∈ U ( d) ∀ 𝜏 ∈ [ 𝑡 0, 𝑡 ]} . (2) Moving forward, we consider reachable sets with X0 = {0}. We note that there is no loss of generality here because nonzero initial conditions simply shift the reachable set of a linear system by the vector 𝑒 A𝑇 x(𝑡 0). Since we are interested in reachable sets of aircraft, we model their capabilities under actuator saturation by considering bounded magnitude inputs and set U ( d) = u ∈ R𝑚 | u(d) ≤ u ≤ u(d) , where u(d), u(d) : D → R𝑚 and the inequalities are applied component-wise. Note that the case where u = −u and u𝑖 = 𝐶 for all 𝑖 = 1, . . . , 𝑚 and a constant 𝐶 ∈ R≥0
+
+corresponds to input signals with bounded L∞ norms, where ∥u(·)∥ L∞ = max     
+
+> 𝑡 ∈ [ 𝑡 0,𝑇 ],1≤𝑖 ≤𝑚
+
+|𝑢 𝑖 (𝑡 )| . In this case, any input 
+
+u(·) : [𝑡 0, 𝑇 ] → U clearly satisfies ∥u(·)∥ L∞ ≤ u. For the remainder of the paper, when it is clear what the initial states, admissible inputs, and design variables are, we simply refer to the reachable set at time 𝑡 as R ( 𝑡 ). The following result characterizes the control signals that determine the exposed points of these reachable sets. 
+
+Lemma 1. Consider the linear system (1) associated with a fixed design parameter d. Let U = u ∈ R𝑚 | u ≤ u ≤ u
+
+where u, u ∈ R𝑚 are constants. Then, for any exposed point p ∈ R ( 𝑇 ), there exists a vector c such that the control 
+
+u∗ (𝑡 ), with components defined as 
+
+𝑢 ∗ 
+
+> 𝑖
+
+(𝑡 ) =
+
+
+
+𝑢 𝑖 , sgn (𝜓 𝑖 (𝑡 ; c)) ≥ 0
+
+𝑢 𝑖 , sgn (𝜓 𝑖 (𝑡 ; c)) < 0,
+
+(3) 
+
+where 𝝍 (𝑡 ; c) = c⊤𝑒 A(𝑇 −𝑡 ) B ∈ R𝑚 , drives the system from x(𝑡 0) = 0 to x(𝑇 ) = p.Proof. Note that by definition of exposed points for convex sets, there exists a vector 𝜻 ∈ R𝑛 such that 𝜻 ⊤p > 𝜻 ⊤q, ∀q ∈R ( 𝑇 )\ { p}. Setting c = 𝜻 , we first show that the components of 𝝍 (𝑡 ; c) are zero only on a set of measure zero. Without loss of generality, consider the single input case (so 𝜓 (𝑡 ; c) is a scalar and B is a column vector) and suppose there exists an interval [𝑡 1, 𝑡 2] ⊂ [ 𝑡 0, 𝑇 ] such that 𝜓 (𝑡 ; c) = 0 ∀𝑡 ∈ [ 𝑡 1, 𝑡 2]. Consider the two controllers 
+
+𝑢 (1) (𝑡 ) =
+
+
+
+𝑢 ∗ (𝑡 ), 𝑡 ∈ [ 𝑡 0, 𝑇 ]\[ 𝑡 1, 𝑡 2]
+
+0, 𝑡 ∈ [ 𝑡 1, 𝑡 2]
+
+𝑢 (2) (𝑡 ) =
+
+
+
+𝑢 ∗ (𝑡 ), 𝑡 ∈ [ 𝑡 0, 𝑇 ]\[ 𝑡 1, 𝑡 2]
+
+˜𝑢 (𝑡 ), 𝑡 ∈ [ 𝑡 1, 𝑡 2],
+
+(4) 7where ˜𝑢 (𝑡 ) : [𝑡 1, 𝑡 2] → U is an arbitrary function. Then, x(1) = x(𝑇 ; 𝑢 (1) ) and x(2) = x(𝑇 ; 𝑢 (2) ) satisfy c⊤x(1) = c⊤x(2) .To see this, recall the solution of LTI systems: 
+
+x(1) =
+
+> 𝑡 1
+
+∫
+
+> 𝑡 0
+
+𝑒 A(𝑇 −𝑡 ) B𝑢 (1) (𝑡 ) d𝑡 +
+
+> 𝑡 2
+
+∫
+
+> 𝑡 1
+
+0 d 𝑡 +
+
+> 𝑇
+
+∫
+
+> 𝑡 2
+
+𝑒 A(𝑇 −𝑡 ) B𝑢 (1) (𝑡 ) d𝑡 (5) 
+
+x(2) =
+
+> 𝑡 1
+
+∫
+
+> 𝑡 0
+
+𝑒 A(𝑇 −𝑡 ) B𝑢 (2) (𝑡 ) d𝑡 +
+
+> 𝑡 2
+
+∫
+
+> 𝑡 1
+
+𝑒 A(𝑇 −𝑡 ) B ˜𝑢 (𝑡 ) d𝑡 +
+
+> 𝑇
+
+∫
+
+> 𝑡 2
+
+𝑒 A(𝑇 −𝑡 ) B𝑢 (2) (𝑡 ) d𝑡 (6) Due to the assumption that 𝜓 (𝑡 ; c) = c⊤𝑒 A(𝑇 −𝑡 ) B = 0 on [𝑡 1, 𝑡 2], we find that 
+
+c⊤x(1) =
+
+> 𝑡 1
+
+∫
+
+> 𝑡 0
+
+c⊤𝑒 A(𝑇 −𝑡 ) B𝑢 (1) (𝑡 ) d𝑡 +
+
+> 𝑇
+
+∫
+
+> 𝑡 2
+
+c⊤𝑒 A(𝑇 −𝑡 ) B𝑢 (1) (𝑡 ) d𝑡 = c⊤x(2) . (7) However, x(1) ≠ x(2) . To see this, assume x(1) = x(2) . This assumption implies that 
+
+> 𝑡 2
+
+∫
+
+> 𝑡 1
+
+𝑒 A(𝑇 −𝑡 ) B ˜𝑢 (𝑡 ) d𝑡 = 0
+
+for any arbitrary ˜𝑢 (𝑡 ). This can only be the case if B is in the null space of 𝑒 A(𝑇 −𝑡 ) for all 𝑡 ∈ [ 𝑡 1, 𝑡 2]. However, the matrix exponential is always full rank, so by contradiction, we have that x(1) ≠ x(2) . This further contradicts the assumption that there was a unique point p maximizing c⊤p, so by contradiction, we also have that 𝜓 (𝑡 ; c) cannot be zero on a set of nonzero measure. Finally, to see that u∗ (𝑡 ) steers the system to a state that maximizes the linear functional of c, note that for any arbitrary controller u(𝑡 ),
+
+c⊤x(𝑇 ; u(𝑡 )) =
+
+> 𝑇
+
+∫
+
+> 𝑡 0
+
+c⊤𝑒 A(𝑇 −𝑡 ) Bu (𝑡 ) d𝑡 
+
+=
+
+> 𝑇
+
+∫
+
+> 𝑡 0
+> 𝑚
+
+∑︁ 
+
+> 𝑖 =1
+
+𝜓 𝑖 (𝑡 )𝑢 𝑖 (𝑡 ) d𝑡. 
+
+Clearly, 𝜓 𝑖 (𝑡 )𝑢 𝑖 (𝑡 ) ≤ 𝜓 𝑖 (𝑡 )𝑢 ∗ 
+
+> 𝑖
+
+(𝑡 ), ∀𝑡 ∈ [ 𝑡 0, 𝑇 ], and p = x(𝑇 ; u∗).Lemma 1 extends the results of [ 50 ] to the case where u ≠ −u and applies [ 51 , Thm. 9] to the computation of reachable sets. Lemma 1 clarifies that the set of exposed points of R ( 𝑡 ) is composed of states driven by bang-bang controls, which are control signals that are saturated at all times. In combination with the standard result that reachable sets of linear systems with convex initial sets and control sets are themselves convex, Lemma 1 allows us to approximate 
+
+R ( 𝑇 ) using the convex hull of its exposed points. To do this, we sample 𝑘 values c(1) , c(2) , . . . , c(𝑘 ) ⊆ R𝑛 for a 8𝑘 ∈ Z+. Then, each c(𝑖 ) corresponds to a controller u(𝑖 ) (·) : [𝑡 0, 𝑇 ] → U that optimally steers the system from the origin at time 𝑡 0 to a point x(𝑖 ) at time 𝑇 . By definition, each point x(𝑖 ) ∈ R ( 𝑇 ). Finally, we take the convex hull of the set x(1) , x(2) , . . . , x(𝑘 ) ⊆ R𝑛 as our approximation of the reachable set R ( 𝑇 ). This approach is similar to the reachable set computation method proposed in [ 41 ] for the case of linear systems, but does not require assuming full control authority. It is also similar to the method proposed in [ 44 ], but extends beyond computing component-wise state bounds to approximating the reachable set. 
+
+B. Reachable Set Metrics 
+
+Once the reachable set of the linearized dynamics is available, one can consider various metrics to inform design. One candidate metric is the volume of the reachable set, which gives a holistic view of the maneuverability of the aircraft. Placing no emphasis on maneuverability in any axis, optimizing for the volume of the reachable set simply enlarges the set of states that can be reached in finite time. We compute that volume using Scipy’s implementation of QHull [52], which uses Delaunay triangulation. Another metric we consider is the extent of the reachable set in an axis of interest, which improves how quickly the aircraft can move along that axis. For example, maximizing the set along the direction of [0, 1, 0, 0]⊤ ensures that the aircraft can achieve a greater change in its angle of attack for the same input signal. For a unit vector v along the chosen axis, we measure this by taking the Euclidean length of the orthogonal projection of the reachable set onto v. We consider these metrics as both objective functions to maximize and constraints to enforce in Section IV. Although we do not consider it in this paper, another candidate metric may be to check for the inclusion of specific points or trajectories in the reachable set, as done in [21]. 
+
+Fig. 2 Blended-wing-body airplane concept used herein. The elevator control surface is located at the rear of the BWB, and we consider its center half-span 𝑐 and wing half-span 𝑤 as design variables in the optimization problems herein. 
+
+9III. Blended-Wing-Body Aircraft 
+
+We consider a notional BWB that is sized similarly to the smaller 747 variants with approximately 160,000 lb payload capacity and a maximum takeoff weight of 350,000 lb. The airplane is powered by two GE CF6-80A turbofans, each of which is assumed to provide 48,000 lb maximum thrust. We only consider longitudinal control, which is provided by distinct elevator control surfaces at the rear of the center-body section, shown in Figure 2. The elevator surfaces deflect simultaneously, acting effectively as a single control surface. This provides greater longitudinal control authority, and allows the airplane to trim without requiring significant washout in the outer wing sections. The elevator surfaces are deflected smoothly during simulation using free-form deformations, where a simplified bounding volume maps a commanded elevator deflection directly to the B-spline coefficients of the BWB center body. The BWB’s outer mold line geometry is designed in NASA’s OpenVSP software [53]. In Section III.A, we provide the longitudinal equations of motion used for modeling and reachable set computations. In Section III.B, we describe an interpolatory approach for querying the panel method results during optimization. 
+
+A. Linearized Longitudinal Model 
+
+Using airspeed 𝑉 in meters per second, angle of attack 𝛼 in radians, pitch rate 𝑄 in radians per second, and pitch angle 𝜃 in radians as states, we consider the longitudinal model from [54]: 
+
+¤𝑉 (𝑡 ) = 𝐹 th 
+
+𝑚 cos (𝛼 (𝑡 )) − 𝐷 𝑚 − 𝑔 sin (𝜃 (𝑡 ) − 𝛼 (𝑡 )) ¤𝛼 (𝑡 ) = − 𝐹 th 
+
+𝑚𝑉 (𝑡 ) sin (𝛼 (𝑡 )) − 𝐿 𝑚𝑉 (𝑡 ) + 𝑔 𝑉 (𝑡 ) cos (𝜃 (𝑡 ) − 𝛼 (𝑡 )) + 𝑄 (𝑡 ) (8) 
+
+¤𝑄 (𝑡 ) = 𝑀 𝐽 𝑦 
+
+¤𝜃 (𝑡 ) = 𝑄 (𝑡 ),
+
+where the dependence of the scalars 𝐹 th , 𝐷, 𝐿 , and 𝑀 on the aircraft flight conditions are omitted. We formulate the reachability analysis for linearized aircraft dynamics about the trim point, [𝑉 0, 𝛼 0, 𝑄 0, 𝜃 0]⊤,with trimmed thrust and elevator inputs [𝛿 th 0 , 𝛿 e0 ]⊤ [54][55]: 
+
+
+
+¤𝑉 (𝑡 )¤𝛼 (𝑡 )¤𝑄 (𝑡 )¤𝜃 (𝑡 )
+
+
+
+=
+
+
+
+𝑋 𝑉 𝑋 𝛼 0 −𝑔 cos 𝛾 0 
+
+> 𝑍 𝑉
+> 𝑉 0
+> 𝑍 𝛼
+> 𝑉 0
+
+1 + 𝑍 𝑄  
+
+> 𝑉 0
+
+− 𝑔 sin 𝛾 0
+
+> 𝑉 0
+
+𝑀 𝑉 𝑀 𝛼 𝑀 𝑄 00 0 1 0
+
+
+
+𝑉 (𝑡 )
+
+𝛼 (𝑡 )
+
+𝑄 (𝑡 )
+
+𝜃 (𝑡 )
+
+
+
++
+
+
+
+𝑋 𝛿 th cos 𝛼 0 𝑋 𝛿 e
+
+−𝑋 𝛿 th sin 𝛼 0 𝑍 𝛿 e
+
+> 𝑉 0
+
+𝑀 𝛿 th 𝑀 𝛿 e
+
+0 0
+
+
+
+𝛿 th (𝑡 )
+
+𝛿 e (𝑡 )
+
+
+
+, (9) where 𝛿 th ∈ [ 0, 1] is the linearized thrust throttle and 𝛿 e ∈ [− 0.523 , 0.523 ] rad is the linearized elevator rotation. All 10 other terms with subscripts are stability derivatives, as discussed in [ 54 ], where 𝑋, 𝑍 , and 𝑀 refer to the 𝑥 -axis forces, 
+
+𝑧 -axis forces, and pitching moment (in the wind frame of reference). Since linearized models are based on perturbations of the nonlinear model, the trimmed inputs are also considered when computing input bounds. The aircraft is linearized around operating conditions of 𝑉 0 = 200 m/s, 𝑄 0 = 0 rad/s, and a flight path angle of 
+
+𝛾 0 = 𝛼 0 − 𝜃 0 = 0 rad. During design optimization, as the BWB geometry changes, we recompute the trimmed values of 
+
+𝛼 0, 𝜃 0, 𝛿 th 0 , 𝛿 e0 . The values of the aerodynamic force and moment derivatives are computed using a panel method code, as discussed in Section III.B. Due to constraints in the solver, derivatives with respect to the pitch rate are not computed, so 𝑍 𝑄 = 𝑀 𝑄 = 0.
+
+B. Aerodynamic Data Collection 
+
+Aerodynamic modeling and initial MDO results for this BWB concept can be found in [ 56 ], which use a fully-differentiable panel method to perform a multi-point optimization consisting of several cruise conditions, climb, and structural sizing. Rather than evaluating the panel method code at every iteration of the optimization problem, the aerodynamic data for the BWB is pre-computed offline and interpolated during optimization. We collect aerodynamic data sweeping over five input parameters. These inputs sweep over airspeeds 𝑉 ∈ [ 100 , 295 ] m/s, angle of attack 
+
+𝛼 ∈ [− 0.0873 , 0.2618 ] rad, center half-span 𝑐 ∈ [ 3, 7] m, wing half-span 𝑤 ∈ [ 10 , 20 ] m, and elevator rotation 
+
+𝛿 e ∈ [− 0.523 , 0.523 ] rad. The outputs consist of longitudinal forces in 𝑥 - and 𝑧 -axes, pitching moment, lift, drag, and all aerodynamic derivatives required for the linearized dynamics (except for 𝑍 𝑄 and 𝑀 𝑄 ) (9) . The offline computation is motivated by the fact that the derivatives are expensive to compute. Each simulation took approximately 20 seconds of wall-clock time on a 10-core M1 Pro MacBook Pro laptop, so with five swept parameters, collecting data with a resolution of six in each direction requires approximately 87 hours of wall-clock time. An example of the aerodynamic data is shown in Figure 3a, where variation of the aerodynamic force in the 
+
+𝑥 -direction, 𝐹 𝑥 , is shown for sweeps across the aircraft pitch and elevator angles. The 𝑥 -axis is taken parallel to the wind in this data. A clear trend can be observed in Figure 3a, where the magnitude of 𝐹 𝑥 increases as the aircraft pitches up and rotates the elevator surface down, and is minimized when both pitch and elevator angle are approximately zero. This is intuitive because drag forces will increase as the aircraft maximizes its surface area perpendicular to the wind and decrease when the aircraft faces the wind head-on. A visualization of the BWB geometry with the forces acting on it from the panel method code is shown in Figure 3b. 
+
+# IV. Optimization Problem 
+
+We consider three optimization problems, outlined in Section IV.A, for the BWB geometry using the reachability metrics discussed in Section II.B. The solutions to these problems are discussed in Section IV.B. In all of the design optimization problems, we consider the design variables d = [𝑐, 𝑤 ]⊤ where 𝑐 is the center half-span and 𝑤 is the wing 11 (a) Sample of aerodynamic data that shows variation in 𝑥 -axis forces while sweeping over aircraft pitch and elevator angle. Other parameters, such as the airspeed, center half-span, and wing half-span are kept constant in this data. 
+
+> (b) Sample visualization of the panel method computation of coefficient of pressure for the BWB.
+
+Fig. 3 Outputs from panel method code for BWB aircraft. 
+
+half-span of the BWB, as labeled in Figure 2. Since we collect aerodynamic data a priori, as discussed in Section III.B, we apply the bounds 𝑐 ∈ [ 3, 7] m and 𝑤 ∈ [ 10 , 20 ] m and use initial values [𝑐 0, 𝑤 0]⊤ = [5, 12 ]⊤ m for all optimization problems. These initial values correspond with the original, undeformed outer mold line, which is sized according to the semi-empirical planform sizing equations for transport-category aircraft [ 57 ]. As outlined in Section II.A, the reachable set is defined with initial set X0 = {0}. At each step of the iteration, given design d, the aircraft is trimmed with an airspeed of 𝑉 0 = 200 m/s, pitch rate of 𝑄 0 = 0 rad/s, and climb angle of 𝛾 0 = 0 rad. The resulting trimmed values of angle of attack 𝛼 0, pitch angle 𝜃 0, elevator 𝛿 e0 , and thrust 𝛿 th 0 are used to compute the linear model matrices 
+
+A(d), B(d) and U ( d) = [− 𝛿 th 0 , 1 − 𝛿 th 0 ] × [− 0.523 − 𝛿 e0 , 0.523 − 𝛿 e0 ]. This choice of allowable inputs ensures the controls for thrust and throttle stay within their respective ranges once the trimmed inputs are factored in. 
+
+A. Design Optimization Formulations 
+
+The first optimization problem (cf. Section IV.A.1) is to maximize the volume of the reachable set, denoted by 
+
+vol (R ( 𝑇 )) . The second optimization problem (cf. Section IV.A.2) is to maximize the length of the reachable set in a predetermined axis of interest v, denoted by Proj v (·) . The third optimization problem (cf. Section IV.A.3) combines the first two by maximizing the volume of the reachable set while imposing that the length of the reachable set in the specified direction is increased. We refer to the solutions of these three optimization problems as the volume-maximized ,
+
+directionally-maximized , and volume-maximized, directionally-constrained designs, respectively. 12 1. Volume-Maximized Optimization 
+
+The first optimization problem we consider is volume-maximization: 
+
+max  
+
+> 𝑐,𝑤
+
+vol (R ( 𝑇 ; [𝑐, 𝑤 ]⊤)) (VM) s.t. 3 ≤ 𝑐 ≤ 710 ≤ 𝑤 ≤ 20 ,
+
+Taking the volume of the reachable set serves as a general notion of maneuverability for the aircraft, as a larger set of reachable states implies that the aircraft can maneuver around a larger swath of the state space. However, since the volume gives no priority to any state, this approach can lead to designs that have more limited maneuverability in specific axes after optimization. 
+
+2. Direction-Maximization Optimization 
+
+In cases where the engineer knows that some states are more important for the aircraft’s desired maneuver at the given trim point, then using the volume of the reachable set may be too general of a consideration in the optimization problem. Instead, the second optimization problem we consider, directional-maximization, maximizes the length of the reachable set in a pre-specified direction v:
+
+max  
+
+> 𝑐,𝑤
+
+∥Proj vR ( 𝑇 ; [𝑐, 𝑤 ]⊤)∥ 2 (DM) s.t. 3 ≤ 𝑐 ≤ 710 ≤ 𝑤 ≤ 20 ,
+
+Solving (DM) chooses 𝑐 and 𝑤 such that the projection of R ( 𝑇 ; [𝑐, 𝑤 ]⊤) onto v is as large as possible. 
+
+3. Volume-Maximized, Directionally-Constrained Optimization 
+
+The third optimization problem we consider, volume-maximized and directionally-constrained, blends optimization problems (VM) and (DM) by maximizing the volume of the reachable set, but imposing a constraint on the projection 13 of the reachable set: 
+
+max  
+
+> 𝑐,𝑤
+
+vol (R ( 𝑇 ; [𝑐, 𝑤 ]⊤)) (VMDC) s.t. ∥Proj vR ( 𝑇 ; [𝑐, 𝑤 ]⊤)∥ 2 ≥ ( 1 + 𝜅 )∥ Proj vR ( 𝑇 ; [𝑐 0, 𝑤 0]⊤)∥ 2
+
+3 ≤ 𝑐 ≤ 710 ≤ 𝑤 ≤ 20 ,
+
+where [𝑐 0, 𝑤 0]⊤ is the initial design and 𝜅 ∈ ( 0, 1] ensures an enlargement of the reachable set in the desired projection direction. Taking this approach balances between (VM) and (DM) by finding values for the design variables that enlarge the reachable set without compromising along axis v.
+
+B. Optimization Results 
+
+We solve problems (VM) , (DM) , and (VMDC) using sequential quadratic programming via PySLSQP [ 58 ]. Although this is a gradient-based approach, we do not provide an analytic expression for the gradient of the reachable set metrics due to the complexity of computing reachable sets. However, we note that it is reasonable to expect the gradients to be well-defined. This is because the reachable set met-rics require computing trimmed states from the design parameters, approximating linear dynamics matrices A(d), B(d)
+
+from the trimmed states, and sampling solutions of linear systems by computing x(𝑇 ) = ∫ 𝑇  
+
+> 0
+
+𝑒 A(𝑑 ) ( 𝑇 −𝑡 ) B(d)u(𝑡 ) d𝑡 .Sampling the solutions of linear systems involves composing a matrix exponential, product, and integral, which are continuously differentiable operations. We approximate the system matrices from the trimmed states by linearly interpolating the aerodynamic data collected from the panel method code, as described in Section III.B, which is continuously differentiable everywhere outside of the sampled points themselves, which form a set of measure zero. Lastly, the mapping from design variables to trimmed states is locally continuously differentiable, which can be shown using the implicit function theorem [ 59 ]. More details on this are shown in the appendix. Thus, we assume the gradients are well-defined and use finite-difference gradients. Comparisons of the BWB geometries before and after each optimization problem are shown in Figure 4. 
+
+1. Solution of Volume Maximization 
+
+Solving the optimization problem (VM) , we find optimal values of [𝑐 ∗, 𝑤 ∗] = [7, 10 .5] m. Compared with the initial design of [𝑐 0, 𝑤 0]⊤ = [5, 12 ]⊤ m, this is an increase in the center half-span and a decrease in wing half-span. The volume of the reachable set associated with this design change increases 267% from 0.0088 to 0.0321. The reachable set is four-dimensional, and its projections into two dimensions are shown in Figures 5. Figure 5a reflects increases in the BWB’s ability to quickly change its angle of attack and airspeed, exceeding its capabilities from before 14 (a) BWB design after prob-lem (VM) shown in red with dashed outline.         
+
+> (b) BWB design after problem (DM) shown in blue with dashed outline.
+> (c) BWB design after prob-lem (VMDC) shown in green with dashed outline.
+
+Fig. 4 Comparisons of optimized BWB designs with the initial design, shown in yellow with solid outline.  
+
+> (a) Projection onto the axes of airspeed and angle of attack. (b) Projection onto the axes of pitch rate and pitch angle.
+
+Fig. 5 Projections of four-dimensional reachable set for problem (VM) into two dimensions. 
+
+optimization. As seen in Figure 5b, even though the volume of the reachable set for the optimized system is larger than for the initial design of the BWB, its projection onto pitch rate and pitch angle appears more lopsided after optimization. 
+
+2. Solution of Direction-Maximization 
+
+The optimization problem (DM) allows us to prevent the lopsidedness in Figure 5b if we consider its projection onto 
+
+v = [0, 0, cos (110 ◦), sin (110 ◦)] ⊤. With this choice of v, the solution yields [𝑐 ∗, 𝑤 ∗] = [7, 18 .0] m. Compared with the solution of (VM) , the optimal center half-span is the same, but the optimal wing half-span is larger than the initial value of 12 meters. Comparisons of the reachable sets and their projections onto v for the optimized and initial designs are shown in Figure 6. For the optimized design, the projection of the reachable set onto v has Euclidean length 0.637, which is approximately 27.4% larger than for the initial design, which has a projection with length 0.500. As seen in Figures 6a and 6b, even though the focus on the reachable set projection improves the aircraft’s maneuverability with respect to pitching motion, there appears to be worse maneuverability in airspeed and angle of attack. 15 (a) Projection onto the axes of airspeed and angle of attack. (b) Projection onto the axes of pitch rate and pitch angle. 
+
+Fig. 6 Projections of reachable set for problem (DM) into two dimensions.  
+
+> (a) Projection onto the axes of airspeed and angle of attack. (b) Projection onto the axes of pitch rate and pitch angle.
+
+Fig. 7 Projections of reachable set for problem (VMDC) into two dimensions. 
+
+3. Solution of Volume-Maximization with Directional Constraint 
+
+The optimization problem (VMDC) blends the results of the previous two problems. By maximizing the volume while imposing that the projection along v increases by 15% (using 𝜅 = 0.15 ), we find [𝑐 ∗, 𝑤 ∗] = [7, 12 .6] m. Similarly to the previous optimization problems (VM) and (DM) , the optimal value for 𝑐 is still seven meters, but the optimal wing half-span 𝑤 lies in between the optimal value of 𝑤 for the other two problems. These design variables lead to a 247% increase in the reachable set volume from 0.0088 to 0.0304. The projection of the optimized reachable set onto v
+
+is 0.580, which is 16.2% larger than for the initial design and satisfies the directional constraint. Comparisons between the reachable sets and their projections of the initial and optimized design for (VMDC) are shown in Figure 7. It is clear from Figure 7b that the additional constraint on the set projection prevents the optimized reachable set from becoming overly lopsided, while still increasing the volume of the reachable set. 16 V. Improvements in Controlled Performance Through Reachability-Based Design Optimization 
+
+We analyze the controlled capabilities of the BWB aircraft by comparing its performances in control tasks using the initial and optimized aircraft designs. Taking advantage of the controller-agnostic nature of the proposed reachability analysis, we consider an optimal linear-quadratic (LQ) reference tracking controller in Section V.A and an linear-quadratic-integral (LQI) controller for reference tracking in Section V.B, both applied to the linearized dynamics of the aircraft. In Section V.C, we apply LQI control for the nonlinear dynamics. In all of the following simulations, we apply bounds on the inputs to capture the effects of actuator saturation. To compare the controlled performance between designs, we use the L2-norm, defined for 𝝈 : [𝑡 0, 𝑇 ] → R𝑛 𝜎 as: 
+
+∥𝝈 (·)∥ L2 = ©«
+
+> 𝑇
+
+∫
+
+> 𝑡 0
+> 𝑛 𝜎
+
+∑︁ 
+
+> 𝑖 =1
+
+𝜎 𝑖 (𝑡 )2 d𝑡 ª®¬
+
+> 1/2
+
+. (10) 
+
+A. Optimal Linear-Quadratic Tracking 
+
+We apply the optimal linear-quadratic (LQ) reference tracking controller, as outlined in [ 60 ], to the linearized model (9). Given a starting point x0 at time 𝑡 0, this controller minimizes the quadratic cost: 
+
+u∗ (· ; x0, 𝑡 0, 𝑇 ) = arg min   
+
+> u(·) :[𝑡 0,𝑇 ]→U
+> 𝑇
+
+∫
+
+> 𝑡 0
+
+u(𝜏 )⊤Ru (𝜏 ) (11) 
+
++ ( x(𝜏 ; x0, 𝑡 0, u(·)) − xref (𝜏 )) ⊤ Q (x(𝜏 ; x0, 𝑡 0, u(·)) − xref (𝜏 ))  d𝜏, 
+
+where xref (·) is the reference trajectory, Q is symmetric nonnegative definite, and R is symmetric positive definite. The reference is assumed to be given in its entirety a priori. We consider two separate cases of a constant velocity reference at four m/s and constant pitch reference at 0.5 rad. For the case of velocity tracking, we use Q = diag ([ 1000 , 0, 0, 0]) and R = diag ([ 1000 , 1000 ]) , where diag (𝛽 )
+
+refers to the matrix with elements of 𝛽 on its diagonal. For the pitch tracking, we use Q = diag ([ 0, 0, 0, 1000 ]) and 
+
+R = diag ([ 100 , 100 ]) The system trajectories and control signals for the initial and three optimized designs are shown in Figures 8, 9, and 10. The L2 norms of the tracking errors and control costs of each design in both the velocity and pitch tracking problems are shown in Table 2. The volume-maximized (VM) design, shown in Figure 8, has lower tracking errors and control costs than the initial model in both tracking cases. For the velocity reference, the tracking error is reduced by 0.1% and the control cost is reduced by 0.9%. For the pitch reference, the tracking error is reduced by 20.5% with a 2.5% increase in control cost. This result is intuitive because this design is optimized for the reachable set volume. Although the reachable set is 17 (a) Comparison of velocity reference tracking. (b) Comparison of pitch reference tracking. 
+
+Fig. 8 Comparisons of the BWB linear-longitudinal dynamics for initial design and volume-maximized (VM) 
+
+design using optimal LQ reference tracking controllers.  
+
+> (a) Comparison of velocity reference tracking. (b) Comparison of pitch reference tracking.
+
+Fig. 9 Comparisons of the BWB linear-longitudinal dynamics for initial design and directionally-maximized design using optimal LQ reference tracking controllers. 
+
+more lopsided in the pitch rate and pitch angle axes, this design significantly reduced error in the pitch tracking with an increase in control effort. The direction-maximized (DM) design, shown in Figure 9, has lower tracking error than the initial design in both cases, reducing the velocity tracking error by 1.9% and pitch tracking error by 3.2%. Although this improvement is accompanied by a 1.4% lower control cost for the velocity tracker, the pitch tracking requires 0.9% more control energy. While it doesn’t achieve as drastic of an improvement in its pitch angle tracking error when compared with the VM design, the DM design is able to attain good tracking with lower control costs. The vector v was chosen to prevent the lopsidedness of the reachable set in Figure 5, but is not necessarily the optimal choice for improving maneuverability in either velocity or pitch tracking. Moreover, the results for the DM model imply that careful selection of v could yield large improvements. 18 (a) Comparison of velocity reference tracking. (b) Comparison of pitch reference tracking. 
+
+Fig. 10 Comparisons of the BWB linear-longitudinal dynamics for initial design and volume-maximized directionally-constrained design using optimal LQ reference tracking controllers. 
+
+Design Velocity Tracking 
+
+L2 Error (% Improvement) Velocity Tracking Control L2 Cost (% Improvement) Pitch Tracking 
+
+L2 Error (% Improvement) Pitch Tracking Control L2 Cost (% Improvement) Initial Model 2.802 1.023 0.458 0.614 Vol. Max. Opt. (VM) 2.799 (0.1%) 1.014 (0.9%) 0.364 (20.5%) 0.629 (-2.5%) Dir. Max. Opt. (DM) 2.749 (1.9%) 1.009 (1.4%) 0.443 (3.2%) 0.619 (-0.9%) Vol. Max. Dir. Con. Opt. (VMDC) 2.792 (0.4%) 1.020 (0.3%) 0.369 (19.4%) 0.431 (29.7%) 
+
+Table 2 Tracking errors and control costs in optimal LQ reference tracking of velocity and pitch commands. Percent improvement shows decrease in cost or error with respect to initial design (positive is reduction, negative is increase). 
+
+Lastly, the volume-maximized, directionally constrained (VMDC) design, shown in Figure 10 appears to split the difference between the VM and DM designs, decreasing the velocity tracking error by 0.4% and pitch tracking error by 19.4%. Although there is only a 0.3% decrease in control cost for the velocity case, there is a 29.7% decrease in control cost for the pitch case, which exceeds both of the previous two models. This result signifies that, although both metrics based on the reachable set’s volume and eccentricity yielded beneficial design modifications for control, combining them improves the aircraft’s controlled performance even further. 
+
+B. Linear-Quadratic-Integral Control Tracking 
+
+In addition to the analysis of the linearized dynamics in reference tracking with optimal LQ controllers, we also consider integral controllers with LQR. In this setting, we consider an output of interest, 𝑦 = Cx , where C ∈ R1×𝑛 .As in Section V.A, we consider both velocity and pitch angle tracking, using C = [1, 0, 0, 0] and C = [0, 0, 0, 1]
+
+19 respectively. Appending an integrator 𝑧 to our state, we have the dynamics: 
+
+¤ˆx =
+
+
+
+¤x
+
+¤𝑧 
+
+
+
+=
+
+
+
+A 0𝑛 ×1
+
+C 0
+
+
+
+x
+
+𝑧 
+
+
+
++
+
+
+
+B01×𝑚 
+
+
+
+u +
+
+
+
+0𝑛 ×1
+
+−𝑟 ref 
+
+
+
+= ˆAˆx + ˆB + u +
+
+
+
+0𝑛 ×1
+
+−𝑟 ref 
+
+
+
+(12) where ˆx = [x, 𝑧 ]⊤, 𝑟 ref is the reference velocity or pitch angle, and ˆA, ˆB are the block matrices. Then, we solve for the LQR controller, which minimizes the cost function 
+
+u∗ (· ; ˆ x0, 𝑡 0) = arg min  
+
+> u(·) :[𝑡 0,∞]→U ∞
+
+∫
+
+> 𝑡 0
+
+u(𝜏 )⊤Ru (𝜏 ) + ˆx(𝜏 ; ˆ x0, 𝑡 0, u(·)) ⊤Qˆx(𝜏 ; ˆ x0, 𝑡 0, u(·))  d𝜏. (13) In the velocity tracking case, we use Q = diag ([ 1, 1, 1, 1, 1]) and R = diag ([ 0.1, 0.1]) . For pitch angle tracking, we use Q = diag ([ 0, 1, 0, 1, 100 ]) and R = diag ([ 0.1, 10 ]) .As before, we use a velocity reference of four m/s and a pitch angle reference of 0.5 rad for the two cases. The system trajectories and control signals for the designs associated with optimization problems (VM) , (DM) , and (VMDC) are shown in Figures 11, 12, and 13. Tracking errors and control costs associated with each problem are given in Table 3.  
+
+> (a) Comparison of velocity reference tracking. (b) Comparison of pitch reference tracking.
+
+Fig. 11 Comparisons of the BWB linear-longitudinal dynamics for initial design and volume-maximized (VM) 
+
+design using integral control. 
+
+The VM design has worse performance than the initial design in velocity tracking, with 0.04% larger tracking error and 21.5% larger control cost. However, its pitch angle tracking has 1.6% lower error using 31.8% less control energy. Given the results of the reachable set optimization, this may seem surprising, as the VM design should be able to achieve a greater airspeed in a shorter amount of time than the initial design. However, this capability may not be reflected in this tracking problem because the controller is designed to minimize a quadratic cost function that also attempts to stabilize the states that lack a reference. The DM design achieves a 0.1% lower tracking error in velocity tracking using 1.8% less control energy. However, it 20 (a) Comparison of velocity reference tracking. (b) Comparison of pitch reference tracking. 
+
+Fig. 12 Comparisons of the BWB linear-longitudinal dynamics for initial design and directionally-maximized (DM) design using integral control.  
+
+> (a) Comparison of velocity reference tracking. (b) Comparison of pitch reference tracking.
+
+Fig. 13 Comparisons of the BWB linear-longitudinal dynamics for initial design and volume-maximized, directionally-constrained (VMDC) design using integral control. 
+
+has worse performance in pitch tracking, increasing the tracking error by 0.5% with 2.9% greater control cost. Similarly to the results of the optimal LQ controller design, the DM design has worse performance in its pitch tracking when compared with the VM design. This further reinforces that reducing the lopsidedness of the reachable set when projected onto certain states does not necessarily improve the aircraft’s ability to track those states. Lastly, the VMDC design also achieves a 0.1% lower tracking error, but has a 12.4% greater control cost when compared with the initial design. In pitch angle tracking, this design reduces tracking error by 4.0% using 62.5% less control energy. Across the three optimized designs, only the VMDC design improves on the tracking errors of the initial model for both velocity and pitch angle tracking. Although it had a higher control cost for velocity tracking, its drastic improvements in pitch tracking align with the results from the optimal LQ tracking, further reinforcing that blending these reachable set metrics can yield large improvements. 21 Design Velocity Tracking 
+
+L2 Error (% Improvement) Velocity Tracking Control L2 Cost (% Improvement) Pitch Tracking 
+
+L2 Error (% Improvement) Pitch Tracking Control L2 Cost (% Improvement) Initial Design 3.126 1.091 0.488 0.684 Opt. Design with (VM) 3.128 (-0.04%) 1.326 (-21.5%) 0.481 (1.6%) 0.466 (31.8%) Opt. Design with (DM) 3.124 (0.1%) 1.072 (1.8%) 0.490 (-0.5%) 0.703 (-2.9%) Opt. Design with (VMDC) 3.123 (0.1%) 1.227 (-12.4%) 0.469 (4.0%) 0.257 (62.5%) 
+
+Table 3 Tracking errors and control costs for integral control in velocity and pitch tracking. Percent improvement shows decrease in cost or error with respect to initial design (positive is reduction, negative is increase). C. Nonlinear Reference Tracking 
+
+Although the design optimization problems (VM) , (DM) , and (VMDC) leverage reachable sets based on linearized dynamics, the linear analysis still provides performance benefits when evaluating the nonlinear longitudinal dynamics (8) .To compare the controlled performance of the nonlinear dynamics before and after optimizing the BWB, we consider a nonlinear control task that first completes a quasi-steady climb before transitioning to level flight. The first maneuver is to climb with a flight path angle of 𝛾 = 10 ◦ at 𝑉 0 = 190 m/s for 20 seconds. The second maneuver is to fly level at 
+
+𝑉 0 = 210 m/s for 20 seconds. We design two controllers, using LQR with an integrator on the pitch angle, around the trim points for both of these maneuvers, and we set an initial condition of level flight at 𝑉 0 = 190 m/s. The cost matrices are Q = diag ([ 1, 100 , 1, 100 , 100 ]) and R = diag ([ 0.1, 1000 ]) . We use the sampled aerodynamic data from solving the design optimization problem, as described in Section III.B, to capture the drag, lift, and pitching moment the aircraft experiences at each point in time. Trajectories comparing each optimized model with the initial model are presented in Figures 14, 15, and 16. Since each model has a different trim point, these figures plot the differences between the states of the nonlinear systems and their desired trim points. The spikes in each figure at the 20 second mark signify the switch to the second maneuver and new trim point. Similarly to the linear simulations, Table 4 shows the L2-norms of the aircraft deviations from trim, 
+
+x − x0 and L2-norms of the control costs are shown in Table 4 and visualized with a bar graph in Figure 17. In each case, it is clear from the plots of the system responses that the optimized designs stabilize with less overshoot and less oscillation than the initial design. This is reflected in the errors, as the L2-norms of all the state errors decrease between the initial and optimized models, with the exception of the pitch angle for the VMDC design. In each case, the improvements in stabilization of the aircraft velocity are small because the thrust input only affects the velocity and can stabilize it with minimal effect on the other states. The most drastic improvements can be seen in the pitch rate and angle of attack signals, where the optimization problems (VM) ,(DM) , and (VMDC) achieves reductions in error of at least 11.5% and up to 38%. Moreover, the cost of control for each of the optimized designs is slightly lower than for 22 Fig. 14 Deviation of nonlinear dynamics from trim point using design from (VM) .
+
+the initial design. These improvements signify that the three optimization problems are most useful for smoothening angular control of the BWB and improving the controlled performance with less control effort. 
+
+# VI. Conclusions 
+
+In the design of next-generation aircraft, incorporating control concepts and resulting constraints into early stages of the design process could build critical checks for controllability and maneuverability into the first prototypes. Rather than waiting until the design is finalized before checking its capabilities under feedback, we propose using reachability analysis to augment design optimization with control-oriented metrics. Since computing reachable sets is notoriously expensive, we restrict to linear analysis to reduce the complexity of the problem while still gaining insight into the aircraft dynamics. Application of this analysis to the BWB aircraft revealed that analysis of the linearized dynamics can still uncover design changes that improve the aircraft’s controlled performance, even in the nonlinear case. For future work, further investigation of computing exact derivatives for metrics based on reachability could improve the speed and convergence of optimization for larger design problems. Building on the analysis with the BWB, a more comprehensive design optimization problem with additional design variables could reveal more insight into the design tradeoffs that can be made to improve maneuverability. Furthermore, since the reachability analysis is based on the 23 Fig. 15 Deviation of nonlinear dynamics from trim point using design from (DM) .
+
+linear dynamics, optimizing the aircraft while computing reachable sets about multiple trim points could yield insight into larger swaths of the flight envelope and ensure improved control performance throughout dynamic maneuvers. 
+
+# A. Appendix: Smoothness of Trim 
+
+Here, we show that the trim procedure is locally continuously differentiable. For a given design vector [𝑐, 𝑤 ]⊤,the trim problem is to find the trimmed values 𝛼 0, 𝛿 e0 , 𝛿 th 0 , and 𝜃 0 such that the ¤𝑉 = ¤𝛼 = ¤𝑄 = 0 and 𝜃 − 𝛼 = 𝛾 
+
+for a desired flight path angle 𝛾 in (8) . We consider 𝑐 ∈ [ 3, 7] m, 𝑤 ∈ [ 10 , 20 ] m, 𝛼 ∈ [− 0.0873 , 0.2618 ] rad, 
+
+𝛿 e ∈ [− 0.5236 , 0.5236 ] rad, 𝛿 th ∈ [ 0, 1], and 𝜃 ∈ [− 0.5236 , 0.5236 ] rad. We denote A = [3, 7] × [ 10 , 20 ],
+
+B = [− 0.0873 , 0.2618 ] × [− 0.5236 , 0.5236 ] × [ 0, 1] × [− 0.5236 , 0.5236 ], and Ω = A × B . Then, we define 
+
+F : Ω → R4 as the right hand side of (8) . Letting x = [𝑐, 𝑤 ]⊤ ∈ A and y = [𝛼, 𝛿 e, 𝛿 th , 𝜃 ]⊤ ∈ B , we aim to show that there exists a continuously differentiable mapping between the design variables and trimmed variables. 
+
+Proposition 1. Assume that for fixed values of x0 = [𝑐 0, 𝑤 0]⊤, there exists [𝛼 0, 𝛿 e0 , 𝛿 th 0 , 𝜃 0]⊤ such that F(x0, y0) = 0.Then, 𝚽 is continuously differentiable in a neighborhood of [𝑐 0, 𝑤 0]⊤.Proof. By assumption, F(x0, 𝚽 (x0)) = 0. If we can show that 𝜕 F
+
+𝜕 y is invertible in a neighborhood of [x0, y0]⊤, then by the implicit function theorem, there exists a mapping 𝚽 : ˜A → B that solves the trim problem, where ˜A ⊆ A is a 24 Fig. 16 Deviation of nonlinear dynamics from trim point using design from (VMDC) .
+
+neighborhood of x0. In (8) , the drag, lift, and moment terms are all computed using linear interpolations of sampled aerodynamic data points (Section III.B), so F is continuously differentiable over Ω. Taking the partial derivative with respesct to y, we get: 
+
+𝜕 F
+
+𝜕 y =
+
+©«
+
+−𝐹 𝑡 (𝛿 th )
+
+𝑚 sin (𝛼 ) − 1
+
+𝑚 𝜕𝐷 (x, y)
+
+𝜕𝛼 + 𝑔 cos (𝜃 − 𝛼 ) −1
+
+𝑚 𝜕𝐷 (x, y)
+
+𝜕𝛿 e
+
+cos (𝛼 )
+
+𝐶 · 𝑚 
+
+−1
+
+𝑚 𝜕𝐷 (x, y)
+
+𝜕𝜃 − 𝑔 cos (𝜃 − 𝛼 )−𝐹 𝑡 (𝛿 th )
+
+𝑚 · 𝑉 0
+
+cos (𝛼 ) − 1
+
+𝑚 · 𝑉 0
+
+𝜕𝐿 (x, y)
+
+𝜕𝛼 + 𝑔 𝑉 0
+
+sin (𝜃 − 𝛼 ) −1
+
+𝑚 · 𝑉 0
+
+𝜕𝐿 (x, y)
+
+𝜕𝛿 e
+
+− sin (𝛼 )
+
+𝐶 · 𝑚 · 𝑉 0
+
+−1
+
+𝑚 · 𝑉 0
+
+𝜕𝐿 (x, y)
+
+𝜕𝜃 − 𝑔 𝑉 0
+
+sin (𝜃 − 𝛼 )
+
+𝜕𝑀 (x, y)
+
+𝜕𝛼 𝜕𝑀 (x, y)
+
+𝜕𝛿 e
+
+0 𝜕𝑀 (x, y)
+
+𝜕𝜃 
+
+−1 0 0 1
+
+ª®®®®®®®®®®®¬
+
+(14) First note that 𝜕𝑀 𝜕𝛼 = 𝜕𝑀 𝜕𝜃 , so clearly, the third and fourth rows of (14) are linearly independent. For any nonzero value of 𝛼 , cos (𝛼 ) ≠ 0 and sin (𝛼 ) ≠ 0, so clearly, the first two rows of (14) are linearly independent from the last two rows. It remains to be seen that the first two rows are linearly independent from each other. To see this, suppose there exist scalar multipliers ℎ, 𝑘 ∈ R>0 such that ℎv1 + 𝑘 v2 = 0, where v1, v2 are the first two rows of (14) . Considering the 25 Design L2 Velocity Error (% improvement) 
+
+L2 Angle of Attack Error (% improvement) 
+
+L2 Pitch Rate Error (% improvement) 
+
+L2 Pitch Angle Error (% improvement) 
+
+L2 Control Cost (% improvement) Initial Design 30.43 0.23 0.26 0.21 3.64 Opt. Design with (VM) 30.30 (0.43%) 0.16 (32.88%) 0.16 (36.97%) 0.21 (1.31%) 3.41 (6.30%) Opt. Design with (DM) 29.96 (1.58%) 0.17 (25.58%) 0.23 (9.80%) 0.18 (15.39%) 3.55 (2.55%) Opt. Design with (VMDC) 30.15 (0.94%) 0.19 (19.98%) 0.20 (23.37%) 0.22 (-6.09%) 3.34 (8.14%) 
+
+Table 4 Tracking errors and control costs for control of nonlinear dynamics. Percent improvement shows decrease in cost or error with respect to initial design (positive is reduction, negative is increase) 
+
+third column of 𝜕 F
+
+𝜕 y , this implies: 
+
+ℎ cos (𝛼 )
+
+𝑚𝐶 − 𝑘 sin (𝛼 )
+
+𝑚𝑉 0𝐶 = 0
+
+ℎ cos (𝛼 ) = 𝑘 sin (𝛼 )
+
+𝑉 0
+
+ℎ = 𝑘 𝑉 0
+
+tan (𝛼 ). (15) Considering the fourth column of 𝜕 F
+
+𝜕 y , we find: 
+
+−ℎ𝑚 𝜕𝐷 (x, y)
+
+𝜕𝛼 − ℎ𝑔 cos (𝜃 − 𝛼 ) − 𝑘 𝑚𝑉 0
+
+𝜕𝐿 (x, y)
+
+𝜕𝜃 − 𝑘𝑔 𝑉 0
+
+sin (𝜃 − 𝛼 ) = 0tan (𝛼 )
+
+𝑚 𝜕𝐷 (x, y)
+
+𝜕𝛼 − 𝑔 cos (𝜃 − 𝛼 ) tan (𝛼 ) + 1
+
+𝑚 𝜕𝐿 (x, y)
+
+𝜕𝛼 − 𝑔 sin (𝜃 − 𝛼 ) = 0tan (𝛼 )
+
+𝑚 𝜕𝐷 (x, y)
+
+𝜕𝛼 = 𝑔 cos (𝜃 − 𝛼 ) tan (𝛼 ) − 1
+
+𝑚 𝜕𝐿 (x, y)
+
+𝜕𝛼 + 𝑔 sin (𝜃 − 𝛼 ), (16) where the second line applies (15). Lastly, considering the first column of 𝜕 F
+
+𝜕 y , we find: 
+
+ℎ
+
+ −𝐹 𝑡 (𝛿 th )
+
+𝑚 sin (𝛼 ) − 1
+
+𝑚 𝜕𝐷 (x, y)
+
+𝜕𝛼 + 𝑔 cos (𝜃 − 𝛼 )
+
+
+
++ 𝑘 
+
+ −𝐹 𝑡 (𝛿 th )
+
+𝑚𝑉 0
+
+cos (𝛼 ) − 1
+
+𝑚𝑉 0
+
+𝜕𝐿 (x, y)
+
+𝜕𝛼 + 𝑔 𝑉 0
+
+sin (𝜃 − 𝛼 )
+
+
+
+= 0
+
+𝐹 𝑡 (𝛿 th )
+
+𝑚 
+
+
+
+−ℎ sin (𝛼 ) − 𝑘 𝑉 0
+
+cos (𝛼 )
+
+
+
+− ℎ𝑚 𝜕𝐷 (x, y)
+
+𝜕𝛼 + ℎ𝑔 cos (𝜃 − 𝛼 ) − 𝑘 𝑚𝑉 0
+
+𝜕𝐿 (x, y)
+
+𝜕𝛼 + 𝑘𝑔 𝑉 0
+
+sin (𝜃 − 𝛼 ) = 0
+
+−𝐹 𝑡 (𝛿 th )
+
+𝑚 cos (𝛼 ) − 𝑘 𝑉 0
+
+tan (𝛼 )
+
+𝑚 𝜕𝐷 (x, y)
+
+𝜕𝛼 + 𝑘 𝑉 0
+
+
+
+𝑔 cos (𝜃 − 𝛼 ) tan (𝛼 ) + 𝑔 sin (𝜃 − 𝛼 ) − 1
+
+𝑚 𝜕𝐿 (x, y)
+
+𝜕𝛼 
+
+
+
+= 0.
+
+26 Fig. 17 Decrease in L2 tracking error between initial design and optimized designs (VM) ,(DM) , and (VMDC) 
+
+in nonlinear control task. 
+
+Applying (16), we find: 
+
+0 = −𝐹 𝑡 (𝛿 th )
+
+𝑚 cos (𝛼 ) − 𝑘 𝑉 0
+
+
+
+𝑔 cos (𝜃 − 𝛼 ) tan (𝛼 ) + 𝑔 sin (𝜃 − 𝛼 ) − 1
+
+𝑚 𝜕𝐿 (x, y)
+
+𝜕𝛼 
+
+
+
++ 𝑘 𝑉 0
+
+
+
+𝑔 cos (𝜃 − 𝛼 ) tan (𝛼 ) + 𝑔 sin (𝜃 − 𝛼 ) − 1
+
+𝑚 𝜕𝐿 (x, y)
+
+𝜕𝛼 
+
+
+
+0 = −𝐹 𝑡 (𝛿 th )
+
+𝑚 cos (𝛼 )
+
+This cannot be true for all values of 𝛼 and 𝛿 th so there cannot exist any ℎ, 𝑘 as assumed above. Thus, the first two rows of 𝜕 F
+
+𝜕 y are linearly independent, and 𝜕 F
+
+𝜕 y is invertible. Then, applying the implicit function theorem, the trim problem is continuously differentiable in a neighborhood of the solution (x0, y0).
+
+# Funding Sources 
+
+S.N., N.O., and B.K. would like to acknowledge the Multidisciplinary Science and Technology Center of the Aerospace Systems Directorate, Air Force Research Laboratory for funding and supporting this effort through the Collaborative Center for Design and Research of Interdisciplinary Systems program. J.C.’s work was partially supported by AFOSR Award FA9550-23-1-0740. 27 Acknowledgments 
+
+Distribution A: Approved for public release; distribution unlimited. Case no. AFRL-2026-1943. The authors would like to thank John Hwang, Gregory Reich, David Doman, and Michael Bolender for their contributions to this project through many discussions. 
+
+# References 
+
+[1] Smith, M. J., Grigoriadis, K. M., and Skelton, R. E., “Optimal Mix of Passive and Active Control in Structures,” Journal of Guidance, Control, and Dynamics , Vol. 15, No. 4, 1992, pp. 912–919. https://doi.org/10.2514/3.20924. [2] Deyst, J., “A Survey of Structural Flexibility Effects on Spacecraft Control Systems,” 7th Aerospace Sciences Meeting , American Institute of Aeronautics and Astronautics, New York, NY, U.S.A., 1969. https://doi.org/10.2514/6.1969-116. [3] Nurre, G. S., Sharkey, J. P., and Waites, H. B., “Initial Performance Improvements Due to Design Modifications for the Pointing Control System on the Hubble Space Telescope,” Guidance and Control 1991 , 1991, pp. 493–511. [4] Bukley, A. P., “Hubble Space Telescope Pointing Control System Design Improvement Study Results,” Journal of Guidance, Control, and Dynamics , Vol. 18, No. 2, 1995, pp. 194–199. https://doi.org/10.2514/3.21369. [5] Garcia-Sanz, M., “Control Co-Design: An Engineering Game Changer,” Advanced Control for Applications , Vol. 1, No. 1, 2019, p. 18. https://doi.org/10.1002/adc2.18. [6] Evangelou, S., Limebeer, D. J. N., Sharp, R. S., and Smith, M. C., “Control of Motorcycle Steering Instabilities,” IEEE Control Systems , Vol. 26, No. 5, 2006, pp. 78–88. https://doi.org/10.1109/MCS.2006.1700046. [7] Luyben, M., and Floudas, C., “Analyzing the Interaction of Design and Control—1. A Multiobjective Framework and Application to Binary Distillation Synthesis,” Computers & Chemical Engineering , Vol. 18, No. 10, 1994, pp. 933–969. https://doi.org/10.1016/0098-1354(94)E0013-D. [8] Luyben, M., and Fluodas, C., “Analyzing the Interaction of Design and Control—2. Reactor-Separator-Recycle System,” 
+
+Computers & Chemical Engineering , Vol. 18, No. 10, 1994, pp. 971–993. https://doi.org/10.1016/0098-1354(94)85006-2. [9] Branicky, M., Phillips, S., and Wei Zhang, “Scheduling and Feedback Co-Design for Networked Control Systems,” Proceedings of the 41st IEEE Conference on Decision and Control, 2002. , Vol. 2, IEEE, Las Vegas, NV, USA, 2002, pp. 1211–1217. https://doi.org/10.1109/CDC.2002.1184679. [10] Frahm, H., “Device for Damping Vibrations of Bodies,” , Apr. 1911. [11] Li, Q. S., Zhi, L.-H., Tuan, A. Y., Kao, C.-S., Su, S.-C., and Wu, C.-F., “Dynamic Behavior of Taipei 101 Tower: Field Measurement and Numerical Analysis,” Journal of Structural Engineering , Vol. 137, No. 1, 2011, pp. 143–155. https://doi.org/10.1061/(ASCE)ST.1943-541X.0000264. 
+
+28 [12] Khot, N. S., “Multicriteria Optimization for Design of Structures with Active Control,” Journal of Aerospace Engineering ,Vol. 11, No. 2, 1998, pp. 45–51. https://doi.org/10.1061/(ASCE)0893-1321(1998)11:2(45). [13] Sahasrabudhe, V., Celi, R., and Tits, A. L., “Integrated Rotor-Flight Control System Optimization with Aeroelastic and Handling Qualities Constraints,” Journal of Guidance, Control, and Dynamics , Vol. 20, No. 2, 1997, pp. 217–224. https://doi.org/10.2514/2.4034. [14] Asada, H., Park, J.-H., and Rai, S., “A Control-Configured Flexible Arm: Integrated Structure Control Design,” Proceedings. 1991 IEEE International Conference on Robotics and Automation , IEEE Comput. Soc. Press, Sacramento, CA, USA, 1991, pp. 2356–2362. https://doi.org/10.1109/ROBOT.1991.131755. [15] Livne, E., Schmit, L. A., and Friedmann, P. P., “Towards Integrated Multidisciplinary Synthesis of Actively Controlled Fiber Composite Wings,” Journal of Aircraft , Vol. 27, No. 12, 1990, pp. 979–992. https://doi.org/10.2514/3.45972. [16] Grossman, B., Gurdal, Z., Strauch, G. J., Eppard, W. M., and Haftka, R. T., “Integrated Aerodynamic/Structural Design of a Sailplane Wing,” Journal of Aircraft , Vol. 25, No. 9, 1988, pp. 855–860. https://doi.org/10.2514/3.45670. [17] Ashley, H., “On Making Things the Best-Aeronautical Uses of Optimization,” Journal of Aircraft , Vol. 19, No. 1, 1982, pp. 5–28. https://doi.org/10.2514/3.57350. [18] Grossman, B., Haftka, R. T., Kao, P.-J., Polen, D. M., Rais-Rohani, M., and Sobieszczanski-Sobieski, J., “Integrated Aerodynamic-Structural Design of a Transport Wing,” Journal of Aircraft , Vol. 27, No. 12, 1990, pp. 1050–1056. https://doi.org/10.2514/3.45980. [19] Wrenn, G. A., and Dovi, A. R., “Multilevel Decomposition Approach to the Preliminary Sizing of a Transport Aircraft Wing,” 
+
+Journal of Aircraft , Vol. 25, No. 7, 1988, pp. 632–638. https://doi.org/10.2514/3.45634. [20] Zeiler, T. A., and Weisshaar, T. A., “Integrated Aeroservoelastic Tailoring of Lifting Surfaces,” Journal of Aircraft , Vol. 25, No. 1, 1988, pp. 76–83. https://doi.org/10.2514/3.45544. [21] Cunis, T., Kolmanovsky, I., and Cesnik, C. E. S., “Integrating Nonlinear Controllability into a Multidisciplinary Design Process,” 
+
+Journal of Guidance, Control, and Dynamics , Vol. 46, No. 6, 2023, pp. 1026–1037. https://doi.org/10.2514/1.G007067. [22] Gupta, R., Zhao, W., and Kapania, R. K., “Controllability Gramian as Control Design Objective in Aircraft Structural Design Optimization,” AIAA Journal , Vol. 58, No. 7, 2020, pp. 3199–3220. https://doi.org/10.2514/1.J059102. [23] Bahia Monteiro, B., Kolmanovsky, I., and Cesnik, C. E., “Design Metrics for the Landing of Supersonic Aircraft under Stochastic Turbulence,” AIAA SCITECH 2024 Forum , American Institute of Aeronautics and Astronautics, Orlando, FL, 2024. https://doi.org/10.2514/6.2024-0901. [24] Liebeck, R. H., “Design of the Blended Wing Body Subsonic Transport,” Journal of Aircraft , Vol. 41, No. 1, 2004, pp. 10–25. https://doi.org/10.2514/1.9084. 
+
+29 [25] Larrimer, B. I., Beyond Tube-and-Wing: The X-48 Blended Wing-Body and NASA’s Quest to Reshape Future Transport Aircraft ,NASA, 2020. [26] Wakayama, S., and Kroo, I., “The Challenge and Promise of Blended-Wing-Body Optimization,” 7th AIAA/USAF/NASA/ISSMO Symposium on Multidisciplinary Analysis and Optimization , American Institute of Aeronautics and Astronautics, St. Louis, MO, U.S.A., 1998. https://doi.org/10.2514/6.1998-4736. [27] Lyu, Z., and Martins, J. R. R. A., “Aerodynamic Design Optimization Studies of a Blended-Wing-Body Aircraft,” Journal of Aircraft , Vol. 51, No. 5, 2014, pp. 1604–1617. https://doi.org/10.2514/1.C032491. [28] Ahuja, J., Perron, C., Bermudez Rivera, R. D., Tai, J. C., and Mavris, D. N., “Comparison of Blended Wing Body and Tube-and-Wing Performance Characteristics,” The Aeronautical Journal , Vol. 129, No. 1337, 2025, pp. 1764–1790. https://doi.org/10.1017/aer.2025.8. [29] Bansal, S., Chen, M., Herbert, S., and Tomlin, C. J., “Hamilton-Jacobi Reachability: A Brief Overview and Recent Advances,” 
+
+2017 IEEE 56th Annual Conference on Decision and Control (CDC) , IEEE, Melbourne, Australia, 2017, pp. 2242–2253. https://doi.org/10.1109/CDC.2017.8263977. [30] Maler, O., “Computing Reachable Sets : An Introduction,” Tech. rep., 2008. [31] Althoff, M., Frehse, G., and Girard, A., “Set Propagation Techniques for Reachability Analysis,” Annual Review of Control, Robotics, and Autonomous Systems , Vol. 4, No. 1, 2021, pp. 369–395. https://doi.org/10.1146/annurev-control-071420-081941. [32] Girard, A., “Reachability of Uncertain Linear Systems Using Zonotopes,” Hybrid Systems: Computation and Control , Vol. 3414, edited by D. Hutchison, T. Kanade, J. Kittler, J. M. Kleinberg, F. Mattern, J. C. Mitchell, M. Naor, O. Nierstrasz, C. Pandu Rangan, B. Steffen, M. Sudan, D. Terzopoulos, D. Tygar, M. Y. Vardi, G. Weikum, M. Morari, and L. Thiele, Springer Berlin Heidelberg, Berlin, Heidelberg, 2005, pp. 291–305. https://doi.org/10.1007/978-3-540-31954-2_19. [33] Kurzhanski, A. B., and Varaiya, P., “Ellipsoidal Techniques for Reachability Analysis,” Hybrid Systems: Computation and Control , Vol. 1790, edited by G. Goos, J. Hartmanis, J. Van Leeuwen, N. Lynch, and B. H. Krogh, Springer Berlin Heidelberg, Berlin, Heidelberg, 2000, pp. 202–214. https://doi.org/10.1007/3-540-46430-1_19. [34] Kurzhanskiy, A. A., and Varaiya, P., “Ellipsoidal Techniques for Reachability Analysis of Discrete-Time Linear Systems,” IEEE Transactions on Automatic Control , Vol. 52, No. 1, 2007, pp. 26–38. https://doi.org/10.1109/TAC.2006.887900. [35] Frehse, G., Le Guernic, C., Donzé, A., Cotton, S., Ray, R., Lebeltel, O., Ripado, R., Girard, A., Dang, T., and Maler, O., “SpaceEx: Scalable Verification of Hybrid Systems,” Computer Aided Verification , Vol. 6806, edited by G. Gopalakrishnan and S. Qadeer, Springer Berlin Heidelberg, Berlin, Heidelberg, 2011, pp. 379–395. https://doi.org/10.1007/978-3-642-22110-1_30. [36] Althoff, M., “An Introduction to CORA 2015,” ARCH14-15. 1st and 2nd International Workshop on Applied veRification for Continuous and Hybrid Systems , EPiC Series in Computing, Vol. 34, EasyChair, 2015, pp. 120–87. https://doi.org/10.29007/zbkv. 
+
+30 [37] Althoff, M., and Krogh, B. H., “Zonotope Bundles for the Efficient Computation of Reachable Sets,” IEEE Conference on Decision and Control and European Control Conference , IEEE, Orlando, FL, USA, 2011, pp. 6814–6821. https: //doi.org/10.1109/CDC.2011.6160872. [38] Mitchell, I. M., “Application of Level Set Methods to Control and Reachability Problems in Continuous and Hybrid Systems,” Ph.D. thesis, 2002. [39] Tomlin, C., Lygeros, J., and Sastry, S., “Synthesizing Controllers for Nonlinear Hybrid Systems,” Hybrid Systems: Computation and Control , Vol. 1386, edited by G. Goos, J. Hartmanis, J. Leeuwen, T. A. Henzinger, and S. Sastry, Springer Berlin Heidelberg, Berlin, Heidelberg, 1998, pp. 360–373. https://doi.org/10.1007/3-540-64358-3_51. [40] Mitchell, I., Bayen, A., and Tomlin, C., “A Time-Dependent Hamilton-Jacobi Formulation of Reachable Sets for Continuous Dynamic Games,” IEEE Transactions on Automatic Control , Vol. 50, No. 7, 2005, pp. 947–957. https://doi.org/10.1109/TAC. 2005.851439. [41] Lew, T., Bonalli, R., and Pavone, M., “Convex Hulls of Reachable Sets,” IEEE Transactions on Automatic Control , Vol. 70, No. 12, 2025, pp. 8195–8209. https://doi.org/10.1109/TAC.2025.3586777. [42] Lew, T., and Pavone, M., “Sampling-Based Reachability Analysis: A Random Set Theory Approach with Adversarial Sampling,” 
+
+Proceedings of the 2020 Conference on Robot Learning , Proceedings of Machine Learning Research, Vol. 155, edited by J. Kober, F. Ramos, and C. Tomlin, PMLR, 2021, pp. 2055–2070. [43] Lew, T., Janson, L., Bonalli, R., and Pavone, M., “A Simple and Efficient Sampling-Based Algorithm for General Reachability Analysis,” Proceedings of the 4th Annual Learning for Dynamics and Control Conference , Proceedings of Machine Learning Research, Vol. 168, edited by R. Firoozi, N. Mehr, E. Yel, R. Antonova, J. Bohg, M. Schwager, and M. Kochenderfer, PMLR, 2022, pp. 1086–1099. [44] Villegas Pico, H. N., and Aliprantis, D. C., “Reachability Analysis of Linear Dynamic Systems with Constant, Arbitrary, and Lipschitz Continuous Inputs,” Automatica , Vol. 95, 2018, pp. 293–305. https://doi.org/10.1016/j.automatica.2018.05.026. [45] Bayen, A. M., Mitchell, I. M., Oishi, M. M. K., and Tomlin, C. J., “Aircraft Autolander Safety Analysis Through Optimal Control-Based Reach Set Computation,” Journal of Guidance, Control, and Dynamics , Vol. 30, No. 1, 2007, pp. 68–77. https://doi.org/10.2514/1.21562. [46] Teo, R., Jang, J. S., and Tomlin, C., “Flight Demonstration of Provably Safe Closely Spaced Parallel Approaches,” AIAA Guidance, Navigation, and Control Conference and Exhibit , American Institute of Aeronautics and Astronautics, San Francisco, California, 2005. https://doi.org/10.2514/6.2005-6197. [47] Bayen, A., Santhanam, S., Mitchell, I., and Tomlin, C., “A Differential Game Formulation of Alert Levels in ETMS Data for High Altitude Traffic,” AIAA Guidance, Navigation, and Control Conference and Exhibit , American Institute of Aeronautics and Astronautics, Austin, Texas, 2003. https://doi.org/10.2514/6.2003-5341. 
+
+31 [48] Kalman, R., “Contributions to the Theory of Optimal Control,” Boletin de la Sociedad Matematica Mexicana , Vol. 5, No. 2, 1960, pp. 102–119. [49] Nguyen, S., Cortés, J., and Kramer, B., “Reachability Analysis for Design Optimization,” 2026 American Control Conference (ACC) , IEEE, 2026. [50] Pecsvaradi, T., and Narendra, K. S., “Reachable Sets for Linear Dynamical Systems,” Information and Control , Vol. 19, No. 4, 1971, pp. 319–344. https://doi.org/10.1016/S0019-9958(71)90173-2. [51] Pontryagin, L., Mathematical Theory of Optimal Processes , 1 st ed., Routledge, 2018. https://doi.org/10.1201/9780203749319. [52] Barber, C. B., Dobkin, D. P., and Huhdanpaa, H., “The Quickhull Algorithm for Convex Hulls,” ACM Transactions on Mathematical Software , Vol. 22, No. 4, 1996, pp. 469–483. https://doi.org/10.1145/235815.235821. [53] McDonald, R. A., and Gloudemans, J. R., “Open Vehicle Sketch Pad: An Open Source Parametric Geometry and Analysis Tool for Conceptual Aircraft Design,” AIAA SciTech 2022 Forum , 2022, p. 0004. [54] Stevens, B. L., Lewis, F. L., and Johnson, E. N., Aircraft Control and Simulation: Dynamics, Controls Design, and Autonomous Systems: Dynamics, Controls Design, and Autonomous Systems , 1 st ed., Wiley, 2015. https://doi.org/10.1002/9781119174882. [55] Lavretsky, E., and Wise, K. A., Robust and Adaptive Control: With Aerospace Applications , Advanced Textbooks in Control and Signal Processing, Springer International Publishing, Cham, 2024. https://doi.org/10.1007/978-3-031-38314-4. [56] Scotzniovsky, L., and Hwang, J. T., “A Fast, Memory-Efficient Panel Method for Large-Scale Multidisciplinary Design Optimization under Uncertainty Using Graph-Based Modeling,” Aiaa Aviation Forum and Ascend 2025 , 2025, p. 3021. [57] Raymer, D. P., and Cummings, R. M., Aircraft Design: A Conceptual Approach , seventh edition ed., AIAA Education Series, The American Institute of Aeronautics and Astronautics, Inc, Reston, Virginia, 2024. [58] Joshy, A. J., and Hwang, J. T., “PySLSQP: A Transparent Python Package for the SLSQPoptimization Algorithm Modernized with Utilities for Visualization Andpost-Processing,” Journal of Open Source Software , Vol. 9, No. 103, 2024, p. 7246. https://doi.org/10.21105/joss.07246. [59] Rudin, W., Principles of Mathematical Analysis , 3 rd ed., International Series in Pure and Applied Mathematics, McGraw-Hill, New York, 1976. [60] Anderson, B., and Moore, J., Optimal Control: Linear Quadratic Methods , Dover Books on Engineering, Dover Publications, 2007. 
+
+32
