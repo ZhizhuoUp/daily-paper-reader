@@ -1,0 +1,927 @@
+Title: Adaptive Gait Generation for Multi-Terrain Exoskeletons via Constrained Kernelized Movement Primitives
+
+URL Source: https://arxiv.org/pdf/2605.02513v1
+
+Published Time: Tue, 05 May 2026 02:20:18 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+> 1
+
+# Adaptive Gait Generation for Multi-Terrain Exoskeletons via Constrained Kernelized Movement Primitives 
+
+Edoardo Trombin, Miroljub Mihailovic, Matheus Henrique Ferreira Moura, Luca Tonin, Emanuele Menegatti and Stefano Tortora 
+
+Abstract —Lower limb exoskeletons (LLEs) present the po-tential to make motor-impaired individuals walk again. Their application in real-world environments is still limited by the lack of effective adaptive gait planning. Indeed, current exoskeletons are meant to walk only on a flat and even terrain. Generating environment-aware, physiologically consistent gait trajectories in real-time is an open challenge. To overcome this, we propose a novel Kernelized Movement Primitives (KMP)-based framework for adaptive gait generation (AGG) across multiple indoor ter-rains. The proposed approach learns a probabilistic representa-tion of human gait in both the joint and task spaces from a limited number of human demonstrations, representing natural gait characteristics and ensuring kinematic feasibility. In addition, the learned trajectories are adapted using environmental information extracted from an onboard RGB-D camera by treating the AGG as a linearly constrained optimization problem with via-points. The proposed method has been thoroughly validated first in simulations for gait generation in different scenarios, such as flat-ground walking, slopes, stairs, and obstacles crossing. Finally, the effectiveness and robustness of the method have been demonstrated with experiments on a commercial LLE in real-world scenarios. The results obtained demonstrate the feasibility of an environment-aware gait planning system for a new generation of intelligent lower limb exoskeletons for assisting people with disabilities in their every-day life. 
+
+Index Terms —Lower limb exoskeletons, Movement Primitives, Gait generation, Assistive robotics. 
+
+I. I NTRODUCTION 
+
+# Lower limb exoskeletons (LLEs) are increasingly inves-tigated as assistive devices for individuals with motor impairments: by providing mechanical support and powered actuation, they allow users to regain the ability to stand and perform walking tasks [1], [2]. Despite several years of research, the use of these devices is limited to clinical environments. Nevertheless, the everyday use of exoskeletons holds great potential to enhance users’ independence and decrease the incidence of secondary health conditions, thereby improving the overall quality of life for individuals with lower-limb disabilities [3]. One of the key reasons for this limitation can be attributed to the fact that most of the existing LLEs still relies on pre-defined trajectories that are only partially customizable to user-specific parameters and walking speed [4], [5]. While these systems are suitable 
+
+All authors are with the Department of Information Engineering, University of Padua, 35131 Padua, Italy. LT, EM and ST are also with the Padova Neuroscience Center, University of Padua (corresponding author: Stefano Tortora, e-mail: stefano.tortora@unipd.it). 
+
+for controlled environments, they cannot cope with scenarios requiring a run-time adaptation of the walking pattern. This limits applicability in real-world scenarios where users could encounter a wide array of environmental elements: the pres-ence of slopes, stairs, and obstacles along the walking path poses a nontrivial challenge for current exoskeletons. To address this challenge, environment-adaptive gait plan-ning represents a recent research trend in LLEs that allows the exoskeleton to generate adaptive gait trajectories based on the specific environmental characteristics (e.g., type of terrain, presence of obstacles) [6]. Overall, these new exoskeleton systems are characterized by two complementary components: (i) a vision module based on onboard exteroceptive sensors (e.g., range sensors, RGB-D cameras) to analyze and identify upcoming terrain features, and (ii) an Adaptive Gait Genera-tion (AGG) module implementing algorithms for computing at runtime the exoskeleton’s joint trajectories based on the terrain. While perception capabilities of LLEs are steadily im-proving [7], the bottleneck remains gait generation: producing trajectories that are both adaptive to environmental variations while respecting the constraints required for safe exoskeleton use is a complex task whose solution requires both robustness and adaptability. Currently, the most common AGG methods for LLEs are based on analytical solutions employing geometry-based models solved with simple interpolation [8]–[11], or through more advanced stochastic optimization [12]–[15], and nonlin-ear optimization [16], [17] techniques. Also, Reinforcement Learning (RL) has been explored for generating adaptive gait to avoid the explicit definition of a model [18], [19]. More recently, data-driven solutions based on imitation learning have been proposed to learn the complexity of the locomotion task from human demonstrations. Among these imitative solutions, Dynamic Movement Primitives (DMPs) [7], [20], [21] and its variants became particularly popular for generating adaptive gait in LLEs as they provide an elegant formulation for encod-ing complex motion dynamics, preserving e.g. the physiolog-ical characteristics of the gait, while guaranteeing at the same time a high degree of adaptability [22], [23]. In particular, Kernelized Movement Primitives (KMPs) [24] represent one of the latest variants of the original DMP framework that allows the encoding of the trajectories as probability distributions, and the generation of new trajectories that preserve the sta-tistical properties of the learned trajectories. Thanks to these properties, KMPs have been extensively studied for the control 
+
+> arXiv:2605.02513v1 [cs.RO] 4 May 2026 2
+
+of robotic manipulators [25]–[27], robotic hands for dexterous grasping [28], [29], humanoid robots [30], and wearable robots [31]. Despite these latest advancements, the application of KMP to LLE’s locomotion is little explored, as detailed in Section II, and a full environment-aware AGG system for exoskeletons for multi-terrain walking is still missing. In this work, we present a novel KMP-based AGG method for multi-terrain adaptive gait planning in lower-limb exoskele-tons. In particular, the proposed method learns a probabilistic representation of gait trajectories directly from a few hu-man demonstrations, both in the task space (i.e., swing foot trajectory) and in the joint space (i.e., support leg angular trajectories). By applying linear constraints based on the environmental characteristics measured by an RGB-D camera mounted on the exoskeleton, the proposed method is capable of adapting the learned trajectories at run time to different indoor terrains (level-ground, slopes, and stairs) and to the presence of obstacles hindering the walking path. The efficacy and robustness of the proposed approach were validated both in simulated scenarios and with a real commercial exoskeleton. The main contributions of this work are summarized as follows:  
+
+> •
+
+definition of a novel KMP framework to learn and gen-erate gait trajectories simultaneously in task and joint spaces, preserving natural gait characteristics while en-suring adaptability to the environment;  
+
+> •
+
+development of an environment-aware adaptive gait plan-ning framework integrating RGB-D perception into the KMP formulation, tackling the AGG as a linearly con-strained optimization problem;  
+
+> •
+
+extensive validation of the proposed method, both in simulation and on a commercial lower-limb exoskeleton across multiple terrains (e.g., stairs, slopes, and obstacle crossing), demonstrating robust and adaptive performance in real-world conditions. II. R ELATED WORK 
+
+Several works are present in the literature that employed a DMP-based walking motion generator for LLEs. The ma-jority of the approaches adopt the DMP to achieve a better human-robot integration in flat-ground walking [32]–[34]. For example, in [32], [34], DMPs are used to learn the user’s gait kinematics during human-exoskeleton interactions and generate a more natural exoskeleton motion coordinated with the user’s movement. Nevertheless, DMP-based solutions have also been proposed for environment-adaptive gait generation in stairs [35], [36] and slope scenarios [22], [37], also incor-porating different learning techniques to identify the optimal parameters of the nonlinear component of motion, such as Locally Weighted Regression (LWR) [38], Gaussian Mixture Regression (GMR) [39] and Reinforcement Learning [35], [40]. Despite these strengths, the generalization to new and unseen situations in DMPs is limited as they are not capable inherently to learn the stochastic variability of human gait from multiple demonstrations. To address this limitation, several extensions have been proposed. Stylistic DMPs (SDMPs) [41] introduce a style parameter to generate different motions from multiple reference trajectories and have been used to encode gait at different walking speeds [42]. Probabilistic Movement Primitives (ProMP) [43] further improve adaptability by rep-resenting trajectories as probability distributions, and have been used in LLEs to learn a more accurate representation of human motion from multiple demonstrations [44]. KMPs [24] represent a more recent extension of the probabilistic movement representation that does not require an explicit basis function definition as in ProMP, and allows a higher flexibility in trajectory adaptation. In [45], KMPs have been used to generate personalized hip and knee joint trajectories for different walking speeds. KMPs also showed promising performance in adapting the gait to different terrains [46], [47], such as flat-ground, slopes, and stairs through the definition of specific via-points/end-points. For example, [47] combines KMP learning with an artificial potential field for the run-time identification of the via-points. However, while the introduc-tion of end-points has demonstrated promising performance in adapting to different step lengths and ground inclinations, under walking conditions that differ substantially from the initial demonstrations (e.g., stairs, obstacle crossing), the use of via-points for trajectory shaping may produce trajectories that fall outside the learned probabilistic distributions. This, in turn, risks compromising the statistical properties encoded in the model and generating gait trajectories that do not preserve the physiological characteristics of human locomotion. Addi-tionally, state-of-the-art DMP and KMP-based approaches are limited to the imitation and adaptation of the swing leg motion, either in the task space [37] or in the joint space [34]; while the movement of the support leg is described by conventional dynamic models (e.g., linear inverted pendulum) with limited adaptability to different walking tasks and with no guarantees on the naturalness of the generated trajectories. In summary, the current literature presents the following limitations: (i) most adaptive gait solutions are restricted to specific environments, lacking generalization to diverse real-world settings—complex scenarios such as stair descent and obstacle crossing are often neglected; (ii) integration with vision sensors is rarely addressed, as environmental geometry is typically assumed to be fully known, limiting robustness to real-world uncertainties; and (iii) existing imitation-based methods focus primarily on swing-foot adaptation, overlook-ing the support leg’s behavior. This work addresses these gaps by introducing an environment-aware AGG system that simultaneously learns swing and support leg motions from human demonstrations within a unified KMP framework. By formulating the AGG as a constrained optimization problem, the proposed method generates safe, statistically consistent trajectories across various indoor settings. Finally, its integra-tion and validation on a commercial lower-limb exoskeleton equipped with an RGB-D camera demonstrate the robustness and practical effectiveness of the approach. III. M ETHODS 
+
+A. System Overview 
+
+The full adaptive gait planning system proposed in this paper is summarized in Fig. 1 and is composed of two 3       
+
+> Fig. 1. Overview of the proposed solution for environment-adaptive gait generation. The Environment Understanding module receives and processes the 3D point cloud coming from the camera to recognize ground, terrain type and obstacles, it locates the exoskeleton in the environment, and it identifies the best foothold position for the next step; the Adaptive Gait Generation (AGG) module represents the core of the system and it employs two Kernelized Movement Primitives (KMPs) models for encoding the gait trajectories of the swing foot and the support leg offline. Via-points and linear constraints based on the outcome of the Environment Understanding are then introduced to adapt the learned trajectories at run-time during the exoskeleton usage.
+
+main modules. The Environment Understanding module is in charge of processing the visual input in order to identify the ground plane, classify the terrain type, and extract the main geometric characteristics of the environment, including the detection of possible obstacles. Additionally, it combines the camera information with the exoskeleton encoders to compute the 2D sagittal pose of the exoskeleton with respect to the environment ( Exoskeleton Pose Estimation ), and identifies the next step foothold according to the type of terrain and the presence of obstacles ( Foothold selection ). The Adaptive Gait Generation (AGG) module is instead in charge of generating adaptive gait trajectories to drive the exoskeleton foot to the desired foothold position, avoiding collisions with the environment. To do this, two parallel KMP models are used for generating the swing foot trajectories in the task space and support leg angular trajectories in the joint space. In particular, the gait adaptation is achieved by combining the definition of via-points (e.g., to modify the main gait parameters such as step length and height) with constraints optimization for generating physiologically plausible and collision-free gait trajectories. Finally, the foot trajectories are converted into angular joint trajectories for the swing leg through inverse kinematics and sent to the low-level controller (e.g., PID motor control) of the exoskeleton for movement execution. 
+
+B. Exoskeleton kinematic model 
+
+Fig. 2 illustrates the kinematic chain of the generic lower limb exoskeleton that has been considered for the implemen-tation of the proposed method. The anthropometric measure-ments of the exoskeleton are represented by the thigh length (L1), the shin length ( L2), the foot height ( L3), the heel-to-foot length ( L4), and the foot-to-toes length ( L5), adapted for each user. Each leg of the exoskeleton is composed of three main joints: hip, knee, and ankle. In our exoskeleton platform, hips and knees are assumed to be active joints, e.g., controlled by brushless DC motors, while the ankles are assumed to be elastic passive joints with a resting angle equal to θankle = 90 ◦
+
+(e.g., when the foot is off the ground). This simplification is supported by the fact that it covers the majority of kinematic characteristics of both commercial and research exoskeleton 4 
+
+> Fig. 2. General kinematic model of the exoskeleton for the implementation of the proposed adaptive gait generation method.
+
+platforms [48]. For each step, the base frame {O} of the kinematic chain is located at the base of the support foot, while the end-effector is represented by the f oot position of the swing leg. The kinematic chain is further enriched by additional links connecting an RGB-D camera to the frame of the exoskele-ton’s pelvis. The homogeneous transformation T CoM cam between the camera frame and the exoskeleton’s centre of mass (CoM) is assumed to be known, either by construction (e.g., from the CAD model) or through geometric estimations as in [15]. Thus, given a point in the environment, captured by the camera (T cam env ), the localization of the exoskeleton’s base frame with respect to this point T Oenv can be obtained by forward kinemat-ics following the kinematic chain and knowing the angles θhip ,
+
+θknee , and θankle of each leg, e.g. measured by linear encoders at the exoskeleton joints. These computations are performed by the Exoskeleton Pose Estimation module, and provided to the system for foothold selection and environment-aware gait generation. 
+
+C. Environment Understanding 
+
+The Environment Understanding module aims at analysing the walking environment captured by an RGB-D camera. This is fundamental for three main tasks: (i) processing the input point cloud and identifying the main planes in the environ-ment; (ii) identifying the terrain type (i.e., flat-ground, slopes, stairs) and estimating the main geometric characteristics of the environment; (iii) guiding the selection of the most appropriate position for the next foothold. 
+
+1) Point cloud processing and planes identification: Our previous method [15] assumed only indoor flat-ground terrain scenarios, easily identifiable with the RANSAC algorithm. In this section, we extend our approach to deal with differ-ent indoor walkable settings, such as stairs and slopes, and to be more robust to noise, outliers, and irregular surfaces characterizing real-world situations. In particular, the proposed method consists of a multi-plane segmentation strategy based on Maximum Likelihood Estimation Sample Consensus (MLE-SAC) [49]. Unlike RANSAC, which minimizes the number of outliers, MLESAC evaluates the likelihood of each candidate model under the observed data distribution, thereby achieving greater robustness against noise and spurious measurements. This statistical grounding makes MLESAC particularly suit-able for environments where planar structures are partially occluded or contaminated by clutter, conditions frequently encountered in locomotion scenarios. In practice, our method iteratively segments the input point cloud by combining nor-mal estimation with likelihood-based plane fitting. The largest set of inliers corresponding to a planar surface is extracted and removed from the cloud at each iteration, allowing for the identification of multiple coexisting planes. This process naturally identifies elements of the environment, such as the ground, slopes, and stair treads for locomotion planning. Furthermore, a filtering process ensures that only geometri-cally relevant planes are kept: surfaces are taken only when their normal vector does not contain a predominant vertical component, i.e., |nz | > 0.7, thereby making the assumption that only potentially traversable spaces are being considered. The ground plane is then selected as the closest plane to the subject’s feet, ensuring a physically consistent reference frame for motion analysis. 
+
+2) Terrain classification and characterization: After ex-tracting the principal planes, a terrain classification module assigns the scene to one of three categories based on plane orientation and spatial arrangement. A single horizontal plane indicates flat-ground ; multiple horizontal planes with vertical offset indicate stairs ; and the presence of a plane with an inclined normal indicates a slope . The algorithm assumes that only one terrain type is visible per step. Depending on the detected terrain, specific geometric features are computed: stair height, tread length, and distance to the tread edge for stairs, and plane inclination for slopes. Residual non-planar points are then segmented using Euclidean clustering. Compact clusters near traversable planes are labeled as obstacles, whereas distant or sparse clusters are discarded as noise. For each obstacle, height, length, and distance from the support foot are estimated to construct a bounding box approximating its shape. A visualization of the outcome of the environment identification and segmentation is provided in Fig. 3, which illustrates examples of RGB images of different terrains (on the left) alongside the corresponding segmented point clouds (on the right). The figure highlights the correct distinction between different planar surfaces corresponding to flat-ground, slopes and stair treads, as well as the correct clustering of multiple obstacles in the scene. 
+
+3) Foothold selection: The foothold selection module is a modified version of the algorithm that we previously proposed in [15]. The method identifies the optimal landing point for the swing foot from the processed 3D point cloud. In particular, a search area is defined in front of each foot—limited by the foot width and maximum step length represented in the blue and red areas of Fig. 3. Each point p in the search area is assigned a score that considered both the step cadence consistency and 5   
+
+> Fig. 3. Examples of different terrains acquired with an RGB-D camera (left column) and the corresponding 3D point clouds processed with Environment Understanding module (right column). The point clouds illustrate the segmen-tation of relevant areas for walking and the selected foothold position (yellow area).
+
+obstacle proximity: 
+
+f (p) = fG(p) fO (p), (1) where fG(p) is a Gaussian probability density function cen-tered around the average step length and a variance equal to the physiological gait variability [50], while fO (p, O ) is an occupancy function that penalizes proximity to obstacles or the intersections between different planes. We refer the reader to [15] for a more detailed description of the functions. Then, a moving window Sw, matching the foot dimensions (i.e., L4
+
++ L5), is shifted along the search area to compute a local average score. The window with the maximum score, 
+
+Fnext = max  
+
+> w
+
+Sw, (2) is selected as the next foothold and used to compute the final foot position (xf inal f oot , y f inal f oot ) for the AGG. The selection of the foothold position for the next step is represented by the yellow areas in Fig. 3. 
+
+D. Learning gait from human demonstrations 
+
+In order to have a probabilistic representation of gait, in this work KMP model is employed to learn gait tra-jectories from human demonstrations. Kernelized Movement Primitives (KMP) [24] is a learning-based approach that pro-vides a nonparametric, kernel-based formulation for imitating demonstrated trajectories (e.g., from a human gait database) while allowing principled adaptation to new conditions. Let us consider a set of demonstrated training data denoted by 
+
+{{ sn,h , ξn,h }Nn=1 }Hh=1 where H and N represent the number of demonstrations and the number of trajectory points per demonstration, respectively. ξn,h ∈ RO is the gait trajectory and sn,h ∈ [0 , 1] is a phase variable linked to the time 
+
+t as t = sn,h T so that the model can generalize for any step duration T . Differently from other KMP-based controller, in this work we adopt a hybrid approach that learns the human gait both in the task space and in the joint space. To do so, we employ two KMP models: one model learns the trajectory of the swing foot in the task space, thus 
+
+ξf oot n,h = ( xf oot (sn,h ), y f oot (sn,h )) represents the foot position in the sagittal plane. The second model is instead introduced to model the dynamic behavior of the centre of mass by encoding the movement of the support leg in the joint space; therefore, 
+
+ξsupp n,h = ( θhip (sn,h ), θ knee (sn,h )) is the joint configuration of the support leg described by its hip and knee joints’ angle. Thus, for both KMP models the output dimension is O = 2 .To avoid repetitions, all the following formulations are applied to both the swing foot model and the support leg model, when not stated otherwise. For each KMP model, a Gaussian Mixture Model (GMM) is employed to learn the probabilistic distribution of the demonstrations [51]. The GMM estimates the following joint probability distribution: 
+
+"s
+
+ξ
+
+#
+
+∼
+
+> C
+
+X
+
+> c=1
+
+πcN (μc, Σc) (3) where πc, μc, and Σc represent the prior probability, mean, and covariance of the c-th Gaussian component, respectively, and C indicates the number of Gaussian components. After calibrating the GMM on the demonstrated training dataset, a probabilistic reference trajectory {ˆξn}Nn=1 is retrieved using Gaussian Mixture Regression (GMR), where each trajectory point ˆξn is described by a conditional probability distribution with mean ˆμn and covariance ˆΣn, i.e., ˆξn|sn ∼ N ( ˆ μn, ˆΣn).This information is saved in the reference database D =
+
+{sn, ˆμn, ˆΣn}Nn=1 , containing the probability distribution of each point of the reference trajectory. To derive the KMP solution, the trajectory is represented as a parametric function expressed as a weighted combination of basis functions: 
+
+ξ(s) = Θ(s)⊤w (4) where Θ(s) ∈ RBO×O is a matrix of B-dimensional basis functions, and w ∼ N (μw, Σw) ∈ RBO is a vector of normally distributed weights with mean μw and variance Σw6
+
+defined as [24] 
+
+μw = Φ(Φ⊤Φ + λΣ)−1μ
+
+Σw = N (ΦΣ −1Φ⊤ + λcI)−1 (5) where Φ = [ Θ(s1)Θ(s2) . . . Θ(sN )] ˆΣ = blockdiag ( ˆΣ1, ˆΣ2, . . . , ˆΣN ),
+
+ˆμ = [ ˆ μ⊤ 
+
+> 1
+
+ˆμ⊤ 
+
+> 2
+
+. . . ˆμ⊤ 
+
+> N
+
+]⊤
+
+(6) and λ > 0, λc > 0 are regularization parameters. To avoid an explicit formulation of the basis functions, KMP uses kernel functions to model the trajectory distribution, linked to the basis function matrix as follows 
+
+k(si, s j ) = Θ(si)⊤Θ(sj ) = k(si, s j )IO (7) where IO is the O-dimensional identity matrix, and forming the kernel matrix K denoted as 
+
+K =
+
+
+
+k(s1, s 1) k(s1, s 2) · · · k(s1, s N )
+
+k(s2, s 1) k(s2, s 2) · · · k(s2, s N )
+
+... ... . . . ...
+
+k(sN , s 1) k(sN , s 2) · · · k(sN , s N )
+
+ (8) In this work, the Gaussian kernel function is chosen: 
+
+k(si, s j ) = exp  −l∥si − sj ∥2 (9) where l > 0 is a parameter that influences the decay of the kernel values and ensure appropriate function smoothness and model generalization. 
+
+E. Adaptive gait trajectory generation 
+
+Once the KMP models are calibrated offline, we can use these models to generate new gait trajectories during ex-oskeleton control. This process corresponds to the generation of the output trajectory ˜ξ(s∗) for a set of N query points 
+
+s∗ = {s∗
+
+> n
+
+}Nn=1 that preserves the probabilistic distribution of the reference trajectory. In our AGG method, we need to adapt the exoskeleton’s step to a wide range of movements necessary to walk through different types of terrains and unconstrained settings (e.g., in the presence of obstacles). This could lead to the generation of trajectories that can considerably differ from the nominal reference trajectory. To deal with this challenge, a local KMP formulation [24] is introduced. This variant of the KMP formulation allows to extract local movement patterns by computing multiple new trajectories in different reference frames, which are then combined to obtain a global trajectory, ensuring a better coherence with the reference trajectory even when the generated trajectory deviates significantly from the demonstrations used for KMP training (e.g., for the introduc-tion of new via-points). To do so, during trajectory generation we define P local frames, denoted as {A(p), b(p)}Pp=1 , where each frame {p} is characterized by a rotation matrix A(p) and a translation vector 
+
+b(p) relative to the base frame {O}. In our case, we locate the base frame {O} at the support foot, and we consider two local frames (i.e., P = 2 ), one at the start of the step trajectory and one at the end of the step trajectory, for both the swing foot KMP model and the support leg KMP model. After defining the local frames, the demonstrations used for training the KMP models are transformed into each local frame {p}, yielding a new set of trajectory points {{ s(p)
+
+> n,h
+
+, ξ(p)
+
+> n,h
+
+}Nn=1 }Hh=1 within each local frame, with the following transformation 
+
+"s(p)
+
+> n,h
+
+ξ(p)
+
+> n,h
+
+#
+
+=
+
+"A(p) 
+
+> s
+
+00 A(p)
+
+> ξ
+
+#−1 "sn,h 
+
+ξn,h 
+
+#
+
+−
+
+" b(p)
+
+> s
+
+b(p)
+
+> ξ
+
+#! 
+
+. (10) Similarly, query inputs s∗ in the base frame {O} should also be projected into local frames using the transformation of Eq. (10), yielding local query inputs {s∗(p)}Pp=1 . As before, we can use GMM and GMR to produce a local reference database D(p) = {s(p) 
+
+> n
+
+, ˆμ(p) 
+
+> n
+
+, ˆΣ(p) 
+
+> n
+
+}Nn=1 for each local frame 
+
+{p}. With this formulation, the aim is to predict a local trajectory ˜ξ(p)(s∗(p)) ∼ N (μ∗(p), Σ∗(p)) within each frame 
+
+{p}, with local mean μ∗(p) and covariance Σ∗(p). The final output trajectory ˜ξ(s∗) can be then retrieved in the base frame 
+
+{O} as 
+
+˜ξ(s∗) = 
+
+> P
+
+X
+
+> p=1
+
+˜Σ−1
+
+> p
+
+!−1 PX
+
+> p=1
+
+˜Σ−1 
+
+> p
+
+˜μp (11) where 
+
+˜μp = A(p) 
+
+> ξ
+
+μ∗(p) + b(p)
+
+> ξ
+
+˜Σp = A(p) 
+
+> ξ
+
+Σ∗(p)A(p)⊤
+
+> ξ
+
+(12) In our AGG, the following assumptions are made that simplify the identification of the local frames: first, knowing that the phase is time-related and does not depend on the local frame, the phase rotation and translation is simplified to A(p) 
+
+> s
+
+= 1 and b(p) 
+
+> s
+
+= 0 , thus sn,h = s(p) 
+
+> n,h
+
+and s∗ = s∗(p).Second, we assume that the local frame {p} has the same orientation as the base frame {O}, thus A(p) 
+
+> ξ
+
+= I. Thus, the transformation to the local frames is reduced to the identification of the vectors b(0)  
+
+> ξ,f oot
+
+= (xinit f oot , y init f oot ) and 
+
+b(1)  
+
+> ξ,f oot
+
+= ( xf inal f oot , y f inal f oot ) for the swing foot KMP model, and the vectors b(0)  
+
+> ξ,supp
+
+= (θinit hip , θ init knee ) and b(1)  
+
+> ξ,supp
+
+=(θf inal hip , θ f inal knee ) for the support leg KMP model, that depends on the actual exoskeleton configuration and specific terrain type. In particular, the initial frames b(0)  
+
+> ξ,f oot
+
+and b(0)  
+
+> ξ,supp
+
+are provided by the Exoskeleton Pose Estimation at run-time. The final frame b(1)  
+
+> ξ,f oot
+
+of the final swing foot position is instead provided by the Foothold selection . For what concerns instead the final frame for the support leg model b(1) 
+
+> ξ,supp
+
+,it is computed based on the desired final position of the exoskeleton’s CoM (xf inal CoM , y f inal CoM ) according to the type of terrain, as shown in Fig. 4. Once this position is defined, the corresponding support leg joint angles (θf inal hip , θ f inal knee )
+
+are computed via inverse kinematics and used as final frame 
+
+b(1)  
+
+> ξ,supp
+
+for the support leg model. In the following, a more detailed description of the final exoskeleton configuration for each terrain is provided. 
+
+1) Flat-ground: in the case of normal walking on a flat-ground surface, the final horizontal position of the hip is set to the midpoint between the feet: 
+
+xf inal com = xf inal f oot 
+
+2 (13) 7 
+
+> Fig. 4. Final exoskeleton configuration for local frame computation in different terrains.
+
+The vertical position of the hip yf inal com is then calculated geometrically, assuming that both knees are fully extended as in Fig. 4a. 
+
+2) Stairs ascent and descent: for stair negotiation, we divided the problem into two scenarios: stair ascent and stair descent. In stair ascent, during the first step onto the stair tread (Fig. 4b), the horizontal hip position is also at the midpoint between the feet as in Eq. (13), while the vertical position is computed geometrically under the assumption that only the support leg’s knee is fully extended at the end of the movement. During stair descent, in the first step off the stair tread (Fig. 4c), the final CoM position is set above the swing foot (i.e., xf inal com = xf inal f oot ) with the swing leg fully extended at the end of the movement. This configuration ensures, on the one hand, a high degree of stability by aligning the system’s centre of mass with its centre of pressure. On the other hand, it allows the load to be relieved from the rear leg, thereby facilitating the execution of the subsequent step. The second step in both ascent and descent stairs condition is constrained so that the swing foot position coincides with the support foot position in a straight standing configuration, thus 
+
+xf inal com = xf inal f oot = yf inal f oot = 0 
+
+yf inal com = lleg 
+
+(14) where lleg = L1 + L2 + L3 is the leg length. The two steps can then be repeated to ascend or descend the staircase one tread at a time. 
+
+3) Slope ascent and descent: Walking on inclined surfaces also requires distinct strategies for ascending (Fig. 4d) and descending (Fig. 4e). Similarly to the flat-ground walking condition, the final CoM horizontal position is set to the midpoint between the feet following Eq. (13), while the vertical yf inal com position is computed assuming a fully extended stance leg for slope ascending, and a fully extended swing leg for slope descending. With this strategy, the CoM is always shifted towards the high-ground side of the slope, ensuring stability and user comfort. With the above-mentioned approach, our method is able to generate different local trajectories using the pre-trained KMP models for different terrains. The final step is the adaptation of the gait trajectories to the desired step parameters (e.g., step length, step height) and to the geometric characteristics of the environment provided by the Environment Understanding 
+
+module described in Section III-C. To do so, we extend the formulation by defining the AGG problem as a linearly constrained optimization problem with modifiable via-points. 
+
+F. Step parameters modification with via-points 
+
+To tailor the generated gait trajectory to the desired step characteristics (e.g., step length, step height), we exploit the introduction of additional via-points that the resulting trajec-tory is constrained to pass through. Formally, the process consists in defining the new desired via-points as {¯sj , ¯ξj }Jj=1 
+
+associated with conditional probability distributions ¯ξj |¯sj ∼N ( ¯ μj , ¯Σj ), where ¯μj is the position of the via-point, ¯Σj
+
+determines how strong the generated trajectory is forced to pass through the point, and J is the number of new points. In particular, we set the covariance as ¯Σj = 10 −7 I2, where I2 is the two-dimensional identity matrix. Once the new via-points are defined, each local reference database D(p) is updated at run-time by adding the new points {¯sj , ¯ξ(p) 
+
+> j
+
+}Jj=1 projected in the frame {p}, checking that the distance between the new via-point is sufficiently far apart from the nearest point in 
+
+D(p), called sd, i.e., ∥¯sj − sd∥ < ζ with ζ > 0 being a threshold. Whenever this condition is not met, the data point 
+
+{sd, ˆμ(p) 
+
+> d
+
+, ˆΣ(p) 
+
+> d
+
+} is removed from the database D(p) before adding the new via-point: 
+
+D(p) ←{ D(p) \ { sd, ˆμ(p) 
+
+> d
+
+, ˆΣ(p) 
+
+> d
+
+}} ∪ { ¯sj , ¯μ(p) 
+
+> j
+
+, ˆΣ(p) 
+
+> j
+
+}, if ∥¯sj − sd∥ < ζ, 
+
+D(p) ←D(p) ∪ { ¯sj , ¯μ(p) 
+
+> j
+
+, ˆΣ(p) 
+
+> j
+
+}, otherwise. (15) In particular, for each step, we add the initial and final exoskeleton positions as starting and ending points of the local reference trajectories. Thus, the database points related to s1
+
+and sN are updated with the expected values ˆμ(p)1 and ˆμ(p)
+
+> N
+
+based on the outcome of the Exoskeleton Pose Estimation and 
+
+Foothold selection , for both the swing foot model and the support leg model. This step is fundamental for the correct computation of the local frames, as explained in Section III-E, and to impose a desired step length of the exoskeleton gait. On the other hand, to modify the desired step height, we introduce an additional via-point in the swing foot model. 8
+
+In particular, the database point corresponding to the peak of the reference foot trajectory sm ∈ D(p) with ˆμ(p) 
+
+> h,y
+
+=max n(ˆ μ(p) 
+
+> n,y
+
+), n ∈ {1, ..., N }, is replaced with the new via-point ¯sj = sm, ¯μ(p) 
+
+> j
+
+= {ˆμ(p)
+
+> h,x
+
+, stepHeight (p)}, where 
+
+stepHeight (p) is the desired step height with respect to the support foot position projected in the local frame {p}.Thanks to this formulation, the gait generation model can be adapted to accommodate different types of step and customize the gait parameters to the user’s preference or the kinematic limits of the exoskeleton platform. 
+
+G. Linearly Constrained KMP for obstacle avoidance 
+
+In addition to customizing the primary gait parameters, a high degree of adaptability in the shape of the generated trajectories is required to effectively handle potential obstacles or hazardous regions in the environment (e.g., the edge of a stair step), while preserving the statistical characteristics of the reference trajectories learned by the KMP models. To do so, we introduce in our system an extension of the KMP framework known as Linearly Constrained KMP (LC-KMP) [52]. With LC-KMP, we formulate the generation of an arbitrary gait trajectory as a constrained optimization problem that incorporates linear equality and inequality constraints in the querying of the gait trajectories. Formally, the problem can be expressed as follows: 
+
+w∗(p) = argmax 
+
+> w
+> N
+
+X
+
+> n=1
+
+P ξ(p)(sn) ˆμ(p) 
+
+> n
+
+, ˆΣ(p)
+
+> n
+
+ (16) 
+
+g⊤
+
+> n, 1
+
+ξ(p)(sn) ≥ cn, 1
+
+g⊤
+
+> n, 2
+
+ξ(p)(sn) ≥ cn, 2
+
+s.t. ... , ∀n ∈ { 1, 2, . . . , N }
+
+g⊤ 
+
+> n,F
+
+ξ(p)(sn) ≥ cn,F 
+
+(17) where w∗(p) is the optimal weight vector to produce the local trajectory according to Eq. (4), gn,f ∈ RO and cn,f ∈ R
+
+characterize the f -th linear constraint on the local trajectory point ξ(p)(sn), and F denotes the total number of constraints. By introducing Lagrange multipliers, the problem becomes a quadratic optimization problem with linear constraints, which can be solved by the classical quadratic programming to find the optimal Lagrange multipliers α∗ through maximizing 
+
+˜L(α) = α⊤B1α + B2α,
+
+s.t. α ≥ 0. (18) where 
+
+B1 = G⊤ ˆΣ(p)A ˆΣ(p)G,
+
+B2 = 2 ˆ μ(p)⊤A ˆΣ(p)G + C⊤
+
+A = − 12 (K + λ ˆΣ(p))−1 K ˆΣ(p)−1K + λK(K + λ ˆΣ(p))−1
+
+(19) where ˆμ(p) and ˆΣ(p)
+
+are the local frame projections of the reference mean and variance matrices in Eq. (6), and 
+
+Gn = [ gn, 1 gn, 2 . . . gn,F ], ∀n ∈ { 1, 2, . . . , N }
+
+G = blockdiag (G1, G2, . . . , GN )
+
+Cn = [ cn, 1 cn, 2 . . . c n,F ]⊤, ∀n ∈ { 1, 2, . . . , N }
+
+C = [ C⊤ 
+
+> 1
+
+C⊤ 
+
+> 2
+
+. . . C⊤ 
+
+> N
+
+]⊤.
+
+(20) Now, given the optimal α∗ and a set of input query points 
+
+s∗ = {s∗
+
+> n
+
+}Nn=1 , the predicted output trajectory for each local frame can be found as 
+
+˜ξ(p)(s∗
+
+> n
+
+) = k∗(K + λ ˆΣ(p)
+
+)−1( ˆ μ(p) + ˆΣ(p)
+
+Gα∗) (21) where K is the kernel matrix in Eq. (8) and 
+
+k∗ = [ k(s∗
+
+> n
+
+, s 1) k(s∗
+
+> n
+
+, s 2) . . . k(s∗
+
+> n
+
+, s N )] (22) which is obtained from the minimization of the Kull-back–Leibler (KL) divergence between the output trajectory distribution and the reference trajectory distribution [24]. All the computed local trajectories can be finally combined ac-cording to Eq. (11) to generate the linearly constrained gait trajectory in the global frame. In our AGG system, we considered two sets of constraints for both the swing foot and support leg KMP models: con-straints associated with Trajectory Boundaries and constraints associated with Obstacle Avoidance .
+
+1) Trajectory Boundaries: This first set of constraints is introduced to ensure that the generated trajectories are feasible and respect the kinematic limits of the exoskeleton platform. In particular, we introduce four constraints applied to all the 
+
+N points of the trajectory defined as follows 
+
+gTn, 1 = [1 , 0] cn, 1 = θhip low 
+
+gTn, 2 = [ −1, 0] cn, 2 = θhip up 
+
+gTn, 3 = [0 , 1] cn, 3 = θknee low 
+
+gTn, 4 = [0 , −1] cn, 4 = θknee up 
+
+∀n ∈ { 1, 2, . . . , N }
+
+(23) for the support leg KMP model, and 
+
+gTn, 1 = [1 , 0] cn, 1 = xlow 
+
+gTn, 2 = [ −1, 0] cn, 2 = xup 
+
+gTn, 3 = [0 , 1] cn, 3 = ylow (n)
+
+gTn, 4 = [0 , −1] cn, 4 = yup 
+
+∀n ∈ { 1, 2, . . . , N }
+
+(24) for the swing foot KMP model. The values 
+
+(θhip low , θ hip up , θ knee low , θ knee up ) and (xlow , x up , y low , y up ) represent lower and upper boundaries for the generated trajectories in the joint space and in the task space, respectively. For the support leg model, the hip angle is constrained between its initial and final values according to the type of terrain, computed as explained in Section III-E, thus 
+
+θhip low = θhip (sN ), θhip up = θhip (s1). This constraint ensures a monotonic trend of the hip joint, respecting its physiological behavior in natural human walking [53]. On the other hand, the knee angle is only upper-bounded by setting, θknee low = −∞ 9 
+
+> Fig. 5. Obstacle’s linear constraints identified from the ensemble of foot points for which either the toes (blue dots) or the heel collides with the obstacle surface.
+
+and θknee up = 0 , avoiding possibly dangerous over-extensions of the knee joint. For the swing foot KMP model, the x-axis boundaries are simply determined by the starting and ending foothold positions, thus xlow = xf oot (s1), xup = xf oot (sN ), ensuring a forward progression of the swing foot. The upper bound of the y-axis is set as yup = maxStepHeight , and depends on the mechanical characteristics of the exoskeleton platform. Different from the previous constraints, the lower bound of the y-axis is defined as a function of the trajectory phase index n,and it is adapted according to the type of walking terrain to avoid generating trajectories colliding with the ground plane. For flat-ground terrain, the boundary is simply set for each trajectory point as yf lat low = min (yf oot (s1), y f oot (sN )) . For the slope ascent and descent terrains, the inclination of the ground is considered with the following constraint: 
+
+yslope low (n) = yf oot (sN ) − yf oot (s1)
+
+xf oot (sN ) − xf oot (s1) ˆμn,x (25) where ˆμn,x represents the x-coordinate of the reference tra-jectory at index n.In the case of stairs, we can describe the lower boundary 
+
+ystair low as a piece-wise function that depends on the position of the edge of the stair tread xr as follows 
+
+ystair low (n) = 
+
+( yf oot (s1) : n < n r
+
+yf oot (sN ) : n ≥ nr
+
+nr = min  
+
+> n
+
+(|| ˆμn,x − xr || ), n ∈ { 1, ...N }
+
+(26) 
+
+2) Obstacle Avoidance: This second set of constraints is applied to the swing foot KMP model only, to ensure the generation of collision-free trajectories for each point of the foot link. In this case, for the identification of the linear constraints the following considerations are made: (i) the full CoM trajectory is known by applying the forward kinematics to the local support leg angular trajectories ˜ξ(p)
+
+> supp
+
+(s∗); (ii) the obstacle’s surface can be discretized in M equidistant points. With these considerations, the proposed algorithm for iden-tifying the obstacle’s linear constraints operates as shown in Fig. 5: for each point along the CoM trajectory, we identify the possible foot positions pfoot = ( xf oot , y f oot ) that would result in a contact between the obstacle’s surface and either the foot’s toes (blue dots), defined as Otoes , or the foot’s heel (red dots), defined as Oheel , as follows: 
+
+Otoes = pfoot ∈ R2 | ∃ i ∈ { 0, . . . , M − 1} : ptoes = po,i 
+
+Oheel = pfoot ∈ R2 | ∃ i ∈ { 0, . . . , M − 1} : pheel = po,i 
+
+(27) where po,i represents the i-th point on the obstacle surface. Based on the gait kinematics, we expect possible collisions of the toes in front of the obstacle, and possible collisions with the heel at the obstacle’s rear, when the foot is approaching the ground. From these ensembles of identified foot positions, an enlarged bounding box (dotted line) is constructed around the obstacle and described by the points {oj = ( xoj , y oj )}3
+
+> j=1
+
+,where o1 defines the start of the bounding box; o2 defines the point at which the toes do not pose any collision risk; o3
+
+defines the point at which the heel does not pose any collision risk. Given these points, we can now define three additional obstacle-related constraints to the swing foot KMP model: 
+
+gTn, 5 = [1 , 0] cn, 5 = xoj : no,j ≤ n < n o,j +1 
+
+gTn, 6 = [ −1, 0] cn, 6 = xoj+1 : n ≤ no,j 
+
+gTn, 7 = [0 , 1] cn, 7 = yoj+1 − yoj
+
+xoj+1 − xoj
+
+ˆμn,x : n ≤ no,j 
+
+∀n ∈ { 1, 2, . . . , N }, ∀j ∈ { 1, 2, 3}
+
+(28) with 
+
+noj = min  
+
+> r∈{ 1,...N }
+
+(|| ˆμr,x − xoj || ) (29) where ˆμn,x represents the x-coordinate of the reference foot trajectory at index n. Intuitively, the above-defined constraints correspond to forcing the generation of the foot trajectory points outside the region defined by the enlarged bounding box. A similar approach as described above is also used in the stair environment to avoid collisions with the edge of the stair tread by adding a virtual obstacle of height equal to the stair tread height and a length of 1 cm. Combining all the procedures described in Sections III-D– III-G, the proposed method for the adaptive generation of the swing foot and support leg trajectories is outlined in Algorithm 1. IV. E XPERIMENTS & R ESULTS 
+
+A. Environment Understanding experiments 
+
+This section presents the experimental evaluation of the proposed Environment Understanding module, designed to extract relevant geometric properties from RGB-D data. The experiments were conducted in representative environments, including staircases, ramps, and obstacles. In total, 191 inde-pendent measurements were collected to compute mean values and associated errors. Quantitative results are summarized in Table I. Overall, the reported results demonstrate the relia-bility of the proposed Environment Understanding module. The method achieves accurate geometric recovery in realistic conditions. 10 
+
+Algorithm 1 Multi-terrain adaptive gait generation  
+
+> 1:
+
+Define parameters l, λ and λc. 
+
+> 2:
+
+Collect demonstrations {{ sn,h , ξn,h }Nn=1 }Hh=1 in {O}. 
+
+> 3:
+
+Compute the reference database D = {sn, ˆμn, ˆΣn}Nn=1 
+
+using GMM and GMR.  
+
+> 4:
+
+for Every gait step do  
+
+> 5:
+
+Input: Receive terrain type, via-points and obstacle points.  
+
+> 6:
+
+Define P = 2 local frames and compute local reference databases D(p) = {s(p) 
+
+> n
+
+, ˆμ(p) 
+
+> n
+
+, ˆΣ(p) 
+
+> n
+
+}Nn=1  
+
+> 7:
+
+Project via-points and obstacle to local frames (10).  
+
+> 8:
+
+for Each local frame do  
+
+> 9:
+
+Update D(p) with via-points (15).  
+
+> 10:
+
+if Swing Foot case then  
+
+> 11:
+
+Add trajectory boundaries (24) and obstacle linear constraints (27).  
+
+> 12:
+
+Set matrices G and C (20).  
+
+> 13:
+
+else if Support Leg case then  
+
+> 14:
+
+Add trajectory boundaries constraints (23).  
+
+> 15:
+
+Set matrices G and C (20).  
+
+> 16:
+
+end if  
+
+> 17:
+
+Calculate the optimal Lagrange multipliers α∗ (18).  
+
+> 18:
+
+Predict the local trajectory ˜ξ(p)(s∗) (21).  
+
+> 19:
+
+end for  
+
+> 20:
+
+Output: Compute the final trajectory ˜ξ(s∗) in the global frame {O} (11).  
+
+> 21:
+
+end for                            
+
+> TABLE I RECONSTRUCTION ERROR OF THE Environment Understanding MODULE IN DIFFERENT ENVIRONMENTS .
+> Environment
+> Stairs Height [cm] Length [cm] Distance [cm]
+> 0.20 ±0.14 0.29 ±0.19 0.25 ±0.11
+> Slopes Inclination [ ◦]
+> 1.12 ±0.37
+> Obstacles Height [cm] Length [cm] Distance [cm]
+> 0.42 ±0.27 0.38 ±0.41 0.19 ±0.13
+
+B. Demonstration Dataset & Parameter Settings 
+
+As described in the previous section, the proposed method relies on a set of demonstration trajectories to train the KMP models. In this work, the demonstrations were taken from a publicly available dataset presented in [54], consisting of 33 trials covering various walking conditions from 10 different subjects. In particular, we took the second trial of the first subject (subject 1) as it features walking under pre-ferred conditions—-self-selected step length and frequency– at a walking speed of 0.70 m.s −1. These conditions align with the objective of generating gait trajectories for the LLE, which should be as natural as possible and are typically slower than the average human walking speed of 1.31 m.s −1 [55].                  
+
+> TABLE II LIST OF PARAMETERS FOR THE SWING FOOT AND SUPPORT LEG KMP
+> MODELS .
+> KMP model Parameters
+> Swing foot Clλλc
+> 10 320 1Support leg Clλλc
+> 5130 2
+> Fig. 6. Human demonstrations (blue) used to train the swing foot KMP model (a) and the support leg KMP model (b), together with the reference trajectories (dotted red) generated with the GMR.
+
+The subject was instead chosen due to its anthropometric measurements being the closest to the group’s mean (25 years old, 81 .8 kg weight, 1.73 m height, a leg length of 
+
+0.89 m, a thigh length of 0.42 m, and a shin length of 
+
+0.38 m). From the selected trial, H = 6 steps were extracted to form the demonstration dataset, shown in Fig. 6 (blue lines), with each demonstration comprising N = 10 sampled points. The corresponding reference trajectories generated by the GMM/GMR models are also shown (dotted red lines) with 
+
+C = 10 Gaussian components for the swing foot KMP and 
+
+C = 5 for the support leg KMP. The full list of parameters for training the KMP models and generating new trajectories is provided in Table II for both the swing foot and support leg. 
+
+C. Adaptive Gait Generation Simulations 
+
+For all the considered environments (flat ground, slopes, stairs, and obstacles crossing), gait planning simulations have been conducted in order to verify the validity of the approach before deploying it to a real device. For each simulated scenario, the proposed solution was executed 10 times, and 11                                                         
+
+> TABLE III PEARSON ’SLINEAR CORRELATION WITH PHYSIOLOGICAL DATA OF GAIT KINEMATICS
+> Simulation Support Hip Support Knee Swing Hip Swing Knee
+> Flat-ground - 0.7 m step length 0.99 0.46 0.94 0.92 Flat-ground - 0.92 m step length 0.99 0.43 0.98 0.93 Flat-ground - 1.18 m step length 0.99 0.30 1.00 0.76 Flat-ground - Subject 5 0.97 0.45 0.94 0.91 Flat-ground - Subject 6 0.98 0.30 0.93 0.93 Stair ascent - 15.2 cm stair height 0.99 0.90 0.84 0.74 Stair descent - 15.2 cm stair height 0.94 0.41 0.93 0.83 Slope ascent - 9.2° inclination 0.97 0.92 0.92 0.73 Slope descent - 9.2° inclination 0.92 0.56 0.77 0.47
+> Average 0.97 ±0.02 0.53 ±0.22 0.92 ±0.07 0.80 ±0.14
+> Fig. 7. Swing foot trajectory generation for stair ascending (first row) and descending (second row) at different step heights.
+> Fig. 8. Swing foot trajectories for different slope inclinations.
+
+the average trajectory is shown in the figures. To provide a quantitative evaluation of the proposed method, Pearson’s Linear Correlation Coefficient [56] was computed as a measure of trajectory shape similarity between the generated angular trajectories and physiological gait trajectories in similar con-ditions. The correlation results are displayed in Table III. 
+
+1) Flat Ground – Variable Step Length: For the adaptive gait generation on flat ground walking, we compared the generated KMP trajectories with walking data from the same  
+
+> Fig. 9. Swing foot trajectories for different obstacle sizes (support foot positioned to the side of the obstacle). Scenario 1 comprises an obstacle of 5 x 5 cm, Scenario 2 comprises an obstacle of 10 x 10 cm, up to Scenario 5, which comprises an obstacle of 25 x 25 cm.
+
+subject used for model training, but with different step lengths of 0.7 m, 0.92 m, and 1.18 m, also available in the public dataset [54]. 
+
+2) Flat Ground – Variable user’s parameters: These sim-ulations were performed to validate the method’s capability to generalize to the data of different subjects with different anthropometric characteristics, which were not seen during training. To evaluate this, walking data from two additional subjects in the public dataset [54] were selected and compared to the KMP-generated trajectories. In particular, the following subjects were considered:  
+
+> •
+
+Subject 5: 21 years old, weight 56 .7 kg , height 1.63 m,leg length 0.86 m, thigh length 0.40 m, shin length 
+
+0.36 m, and step length 0.96 m. 
+
+> •
+
+Subject 6: 24 years old, weight 72 .6 kg , height 1.83 m,leg length 0.94 m, thigh length 0.43 m, shin length 
+
+0.44 m, and step length 0.92 m
+
+3) Stairs: For the adaptive gait generation on stairs, dif-ferent step heights were considered as shown in Fig 7, for both stair ascent (top) and stair descent (bottom): (i) 5 cm ,(ii) 10 cm , (iii) 15 cm , (iv) 20 cm . Similarity comparison was performed with respect to physiological gait data from an 12 
+
+open-source gait dataset [57] in the same staircase condition (i.e., 15 .2 cm step height). 
+
+4) Slopes: For the adaptive gait generation on slopes, different inclinations were considered as shown in Fig. 8, for both slope ascent (left) and slope descent (right): (i) 5°, (ii) 10°, (iii) 15°, and (iv) 20°. Similarly to the stairs scenarios, the generated joint angular trajectories were compared with open-source data [57] in the same environmental condition (i.e., 9.2° slope inclination). 
+
+5) Obstacle Crossing: For the adaptive gait generation with obstacles, we considered simulations of rectangular obstacles with increasing size, from 5 x 5 cm up to 25 x 25 cm, as shown in Fig. 9. As shown in the figure, in each trial the step length was kept constant and equal to 0.6 m, and only the obstacle size was varied. 
+
+D. Experiments with real exoskeleton 
+
+Finally, a full evaluation was also performed on a com-mercial LLE device. In particular, the exoskeleton platform employed was the UANGO exoskeleton by the company U&O (Italy), which comprises four active joints (hip and knee of both legs) and two passive joints (ankle of both legs). Each joint is equipped with a linear encoder for measuring the joint position in real time. The adaptive gait planning framework 1
+
+was implemented in the Robot Operating System (ROS) [58] running on a mini-PC (Beelink U59, Intel Celeron 4-Core @ 2.9 GHz, 8 GB RAM) connected to the exoskeleton low-level controller (i.e., PID motor control) with a custom socket-based communication. The exoskeleton mechanical design was customized to accommodate a Realsense D435 depth camera (Intel Realsense, US) fixed at the exoskeleton pelvis. The length of the links and the size of the pelvis frame were manually adjusted by an expert operator to fit the body characteristics of the user, reported in Table IV. The subject was requested to perform multiple steps in the following scenarios: i. Flat ground walking:  
+
+> •
+
+Step Length: 30 cm , Step Height: 10 cm  
+
+> •
+
+Step Length: 50 cm , Step Height: 10 cm  
+
+> •
+
+Step Length: 50 cm , Step Height: 20 cm  
+
+> •
+
+Step Length: 50 cm , Step Height: 30 cm  
+
+> •
+
+Step Length: 70 cm , Step Height: 10 cm 
+
+ii. Slope ascending (6° inclination) iii. Slope descending (6° inclination) iv. Curb ascending and descending ( 13 cm height) v. Obstacle crossing:  
+
+> •
+
+Cube obstacle: length 5 cm, width 5 cm, height 5 cm  
+
+> •
+
+Cylinder obstacle: height 10 cm, diameter 10 cm  
+
+> •
+
+Rectangular obstacle: length 16 cm, width 16 cm, height 5 cm  
+
+> •
+
+Large obstacle: length 15 cm, width 40 cm, height 
+
+5 cm All trials have been repeated at least twice to further verify the robustness of the proposed solution. Snapshots of some                                        
+
+> 1Code available at: https://github.com/exoskeleton-iaslab/environment-adaptive-gait-planning.git
+> Fig. 10. Results of the real experiments in different scenarios (time progression from left to right). a) Flat ground. b) Curb ascending and descending. c) Slope ascending. d) Slope descending. e) Obstacle crossing. TABLE IV ANTHROPOMETRIC MEASUREMENTS OF THE SUBJECT IN THE REAL EXOSKELETON EXPERIMENTS
+> Thigh length L10.46 m
+> Shin length L20.4m
+> Foot height L30.09 m
+> Heel-to-foot length L40.08 m
+> Foot-to-toes length L50.2m
+
+performed trials are displayed in Fig. 10, while the generated trajectories are shown in Fig. 11 for the different terrains, and in Fig. 12 for each obstacle crossing scenarios. Every trial has been completed without failures or collisions, demonstrating the validity of the proposed approach. Additionally, we com-pared the generated angular trajectories for each joint with the effective angular trajectories executed by the exoskeleton and measured by the encoders. Overall, we found a mean Root Mean Square Error (RMSE) in the execution of the trajectories of 3.74 ◦ and an average computation time for generating the trajectories of 0.57 s (see Table V). V. D ISCUSSION AND CONCLUSIONS 
+
+In this paper, a vision-based multi-terrain adaptive gait generation system for exoskeletons is proposed. The system features an automatic terrain recognition and characterization, and a novel adaptive gait generator capable of producing at run-time safe and physiological plausible trajectories adapted to the specific environment. To achieve an appropriate terrain-adaptive exoskeleton con-trol, an accurate and timely recognition of the environment 13   
+
+> Fig. 11. Results of the adaptive gait generation experiments on the real exoskeleton across different terrains (flat-ground, curb ascending-descending, slope ascending and descending). For each terrain, the stick figure and swing foot trajectories are shown (top), together with the generated angular trajectories for hip and knee joints of both legs (bottom).
+> Fig. 12. Results of the adaptive gait generation experiments on the real exoskeleton when crossing different types of obstacles (cube, cylinder, rectangle, large obstacle). For each obstacle, the stick figure and swing foot trajectories are shown (top), together with the generated angular trajectories for hip and knee joints of both legs (bottom).
+
+is crucial. To tackle this challenge, we developed a vision-based approach based on depth images with high accuracy, as demonstrated by the experimental results (Table I). In particular, the MLESAC-based multi-plane segmentation strat-egy proved effective in managing noisy and cluttered point clouds, enabling reliable detection of stairs and slopes with a reconstruction error which is lower than similar methods at the state of the art [59]–[61]. Additionally, our Environment Understanding module is capable of dealing with unstructured elements that cannot be traced back to specific terrain types (i.e., flat-ground, stairs, slopes) by treating them as obstacles to be avoided. Compared to our previous method [15], the reconstruction accuracy of the obstacles’ shape and position is further improved, and outperforms other RANSAC-based methods in the literature [8], [17]. These results validate the ability of the perception module to provide consistent and contextual information for safe and adaptive gait planning in real-world home environments. Regarding the AGG module, the extensive validation ex-periments in simulations demonstrate the effectiveness and the generalization capabilities of the proposed approach to deal with a high number of different terrain configurations. Although the KMP models were trained exclusively on level-ground walking demonstrations, the method still produced 14                                                                                      
+
+> TABLE V ALGORITHM COMPUTATION TIME AND RMSE BETWEEN PLANNED AND MEASURED JOINT TRAJECTORIES ,FOR EACH ENVIRONMENT AND SPECIFIC CONDITION ,AVERAGED ACROSS MULTIPLE TRIALS
+> Environment Condition RMSE( ◦)Time(s)
+> Flat Ground Step Length: 0.3 m Step Height: 0.1 m
+> 3.69 ±0.058 0.39 ±0.005
+> Flat Ground Step Length: 0.5 m Step Height: 0.1 m
+> 3.63 ±0.063 0.39 ±0.005
+> Flat Ground Step Length: 0.5 m Step Height: 0.2 m
+> 3.63 ±0.034 0.39 ±0.005
+> Flat Ground Step Length: 0.5 m Step Height: 0.3 m
+> 3.59 ±0.053 0.39 ±0.005
+> Flat Ground Step Length: 0.7 m Step Height: 0.1 m
+> 3.53 ±0.037 0.39 ±0.005
+> Curb Ascending and Descending
+> 3.30 ±0.43 0.55 ±0.173
+> Slope Ascending 3.43 ±0.30 0.4±0.015
+> Slope Descending 3.18 ±2.02 0.39 ±0.003
+> Obstacle Cube 2.88 ±0.18 0.83 ±0.078
+> Obstacle Cylinder 3.30 ±0.21 0.9±0.035
+> Obstacle Rectangle 3.81 ±0.39 0.92 ±0.013
+> Obstacle Large Obstacle 4.78 ±0.54 0.87 ±0.021
+
+feasible gait trajectories across all indoor environments. Even if an explicit quantitative comparison with other methods in the literature is not possible due to the lack of standard benchmarks and open-source code and data, herein we pro-pose to measure the goodness of the generated trajectories through a similarity comparison with physiological gait data (Table III). The results revealed a strong consistency between physiological and generated trajectories in all the terrains, with an average correlation > 0.90 for the hip joints, and of 0.80 
+
+for the knee joint of the swing leg. This analysis is useful not only to provide a baseline for the research community to compare with, but also to identify direction of improvements for future work. In particular, the results show that the knee of the support leg represents the most complicated joint to reconstruct, with an average correlation of 0.53 and a high variability across the terrains. This can be explained by the fact that our model is focused on the kinematic aspects of the human locomotion. However, during the stance phase the human knee joint functions principally as a shock absorber for weight acceptance, working as a linear torsional spring with suitable stiffness [62]. The stiffness of the joint is regulated based on the individual’s body size, terrain, and gait conditions [63], a behavior that is not explicitly encoded in our model. The proposed AGG method posses also generalization capa-bilities to different users. Even if the KMP models are trained on the data of a specific subject, our results demonstrate that the method can generate walking patterns with a high correlation (i.e., > 0.90 ) to the natural walking motion of unseen subjects with different anthropometric measurements and walking characteristics (see Table III). The same KMP models were also directly used with our user for the control of the real exoskeleton without the need of model’s re-calibration. This highlights from the one hand the user-independent capa-bility of our AGG system, but also the independence to the specific robotic device, as no data from the real exoskeleton has been used during the system training. This aspect allows to apply our system to different exoskeleton platforms and to new users directly without any data collection or parameter tuning, removing a potential barrier for the effective use in a real application with end-users. The experimental tests with a real exoskeleton platform rep-resents a fundamental step for demonstrating the effectiveness and robustness of the gait generator to the non-ideality and variability of complex real-world scenarios or inaccuracies of the vision system, which is sometimes omitted in the literature [19], [36], [47], [64]. In all the experimental tests, both the task space constraints (e.g., obstacles, riser plane of stairs) and angular constraints (e.g., joints angular limits) were consistently satisfied, resulting in a safe and smooth walking across a large variety of indoor scenarios. Indeed, differently from existing studies that focus on a specific terrain [15], [22], [23], [36], [38], [47], [59] or a limited set of terrains [11], [46], [60], our work is the first to consider and successfully test a vision-based AGG system with a real exoskeleton in all the most common indoor settings. In particular, while several works exists in the literature for the stair ascending task [59], [59], [65]–[67] also with imitative methods [23], [35], [36], [47], to the best of our knowledge this is the first work that considers the stair descending scenario. Additionally, the same multi-terrain framework seamlessly incorporates the collision avoidance of unstructured obstacles in the environment, a challenge often neglected in the field. Finally, for the effective deployment of the system on a wearable robot, it is important to consider the computational load given the limited computing power of on-board pro-cessing units. Specifically, for processing the point cloud and generating the gait trajectories, our system takes on average about 400 ms in all the terrains (Table V). A higher computa-tion time is required for the obstacle crossing scenarios. This increase is principally due to the time taken by the clustering algorithm and by the identification of a higher number of collision points for the creation of the bounding box in the collision avoidance constraints. Nevertheless, also in the most complicated scenarios the generation time is consistently lower than 1 s, which is sufficient for the usual step cadence of commercial lower limb exoskeletons (i.e., < 1 Hz ) [68]. In conclusion, this work presents a novel method for the generation of adaptive gait in walking exoskeletons suitable for indoor applications. Future work will focus, from the one hand, on extending the perception capabilities of the exoskeleton including machine-learning based classification methods for terrain recognition [69] and visual-inertial odometry capabil-ities [70]. On the other hand, we will extend the adaptive gait generation to multi-step planning in order to anticipate the exoskeleton behavior several steps ahead and improve the safety of the system in cluttered environments. Nevertheless, both the simulation results and the experiments on a real commercial device supports the effectiveness of our method to pave the way for a new generation of robotic exoskeletons for the daily assistance of people with disabilities. ACKNOWLEDGMENT 
+
+We acknowledge funding from PE00000013 “PNRR MUR - M4C2 - ”Future Artificial Intelligence Research- FAIR” -15 
+
+SPOKE 5 - CUP B53C22003980006, in the context of the National Recovery and Resilience Plan, Mission 4, Com-ponent 2, Investment 1.3 financed by the European Union, NextGenerationEU. The work is also partially supported by Next Generation EU, in the context of the NRRP PE8 – Project Age-It: “Ageing Well in an Ageing Society” [DM 1557 11.10.2022]. REFERENCES [1] D. S. Pamungkas, W. Caesarendra, H. Soebakti, R. Analia, and S. Su-santo, “Overview: Types of lower limb exoskeletons,” Electronics , vol. 8, no. 11, pp. 1283–1295, 2019. [2] J. A. de la Tejera, R. Bustamante-Bello, R. A. Ramirez-Mendoza, and J. Izquierdo-Reyes, “Systematic Review of Exoskeletons towards a General Categorization Model Proposal,” Applied Sciences , vol. 11, no. 1, pp. 76–101, Jan. 2021. [3] I. J. van Nes, R. B. van Dijsseldonk, F. H. van Herpen, H. Rijken, A. C. Geurts, and N. L. Keijsers, “Improvement of quality of life after 2-month exoskeleton training in patients with chronic spinal cord injury,” 
+
+The Journal of Spinal Cord Medicine , vol. 47, no. 3, pp. 354–360, 2024. [4] K. A. Strausser, T. A. Swift, A. B. Zoss, H. Kazerooni, and B. C. Bennett, “Mobile Exoskeleton for Spinal Cord Injury: Development and Testing,” in Dynamic Systems and Control Conference , May 2012, pp. 419–425. [5] A. Esquenazi, M. Talaty, A. Packel, and M. Saulino, “The ReWalk Powered Exoskeleton to Restore Ambulatory Function to Individuals with Thoracic-Level Motor-Complete Spinal Cord Injury,” American Journal of Physical Medicine & Rehabilitation , vol. 91, no. 11, pp. 911–921, Nov. 2012. [6] Y. Yao, D. Shao, M. Tarabini, S. A. Moezi, K. Li, and P. Saccomandi, “Advancements in sensor technologies and control strategies for lower-limb rehabilitation exoskeletons: A comprehensive review,” Microma-chines , vol. 15, no. 4, p. 489, 2024. [7] C. Wang, Z. Pei, Y. Fan, S. Qiu, and Z. Tang, “Review of Vision-Based Environmental Perception for Lower-Limb Exoskeleton Robots,” 
+
+Biomimetics , vol. 9, no. 4, Apr. 2024. [8] D.-X. Liu, J. Xu, C. Chen, X. Long, D. Tao, and X. Wu, “Vision-Assisted Autonomous Lower-Limb Exoskeleton Robot,” IEEE Transactions on Systems, Man, and Cybernetics: Systems , vol. 51, no. 6, pp. 3759–3770, June 2021. [9] H. Ren, W. Shang, N. Li, and X. Wu, “A fast parameterized gait planning method for a lower-limb exoskeleton robot,” International Journal of Advanced Robotic Systems , vol. 17, no. 1, Jan. 2020. [10] H. Ren, D.-X. Liu, N. Li, Y. He, Z. Yan, and X. Wu, “On-line Dynamic Gait Generation Model for Wearable Robot with User’s Motion Inten-tion,” in IEEE International Conference on Information and Automation (ICIA) , Aug. 2018, pp. 347–352. [11] H. Mohamad and S. Ozgoli, “Online gait generator for lower limb exoskeleton robots: Suitable for level ground, slopes, stairs, and obstacle avoidance,” Robotics and Autonomous Systems , vol. 160, p. 104319, 2023. [12] H. Mohamad, S. Ozgoli, and F. Motawej, “Minimum-Time and Minimum-Jerk Gait Planning in Joint Space for Assistive Lower Limb Exoskeleton,” Journal of Bionic Engineering , vol. 20, no. 5, pp. 2164– 2178, Mar. 2023. [13] J. Kazemi and S. Ozgoli, “Real-time walking pattern generation for a lower limb exoskeleton, implemented on the Exoped robot,” Robotics and Autonomous Systems , vol. 116, pp. 1–23, June 2019. [14] H. Mohamad, S. Ozgoli, and J. Kazemi, “Optimization of Joint Space Trajectories for Assistive Lower Limb Exoskeleton Robots: Real-Time and Flexible Gait Patterns,” Journal of Intelligent & Robotic Systems ,vol. 110, no. 3, p. 122, Aug. 2024. [15] E. Trombin, S. Tortora, E. Menegatti, and L. Tonin, “Environment-adaptive gait planning for obstacle avoidance in lower-limb robotic exoskeletons,” in 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2024, pp. 13 640–13 647. [16] L.-L. Li, Y.-P. Zhang, G.-Z. Cao, and W.-Z. Li, “Human-in-the-Loop Trajectory Optimization Based on sEMG Biofeedback for Lower-Limb Exoskeleton,” MDPI Sensors , vol. 24, no. 17, Jan. 2024. [17] Y. Hua, H. Zhang, Y. Li, J. Zhao, and Y. Zhu, “Vision Assisted Control of Lower Extremity Exoskeleton for Obstacle Avoidance With Dynamic Constraint Based Piecewise Nonlinear MPC,” IEEE Robotics and Automation Letters , vol. 7, no. 4, pp. 12 267–12 274, Oct. 2022. [18] Y. Guo, M. He, X. Tong, M. Zhang, and L. Huang, “Research on the Motion Control Strategy of a Lower-Limb Exoskeleton Rehabilitation Robot Using the Twin Delayed Deep Deterministic Policy Gradient Algorithm,” MDPI Sensors , vol. 24, no. 18, Jan. 2024. [19] E. Trombin, F. Crisci, L. Tonin, E. Menegatti, and S. Tortora, “Environment-Adaptive Gait Planning through Reinforcement Learning for Lower-Limb Exoskeletons,” in 2025 IEEE International Conference on Simulation, Modeling, and Programming for Autonomous Robots (SIMPAR) , Apr. 2025, pp. 1–6. [20] S. Schaal, “Dynamic Movement Primitives -A Framework for Motor Control in Humans and Humanoid Robotics,” in Adaptive Motion of Animals and Machines , H. Kimura, K. Tsuchiya, A. Ishiguro, and H. Witte, Eds. Tokyo: Springer-Verlag, 2006, pp. 261–280. [21] A. J. Ijspeert, J. Nakanishi, H. Hoffmann, P. Pastor, and S. Schaal, “Dynamical Movement Primitives: Learning Attractor Models for Motor Behaviors,” Neural Computation , vol. 25, no. 2, pp. 328–373, Feb. 2013. [22] R. Huang, Q. Wu, J. Qiu, H. Cheng, Q. Chen, and Z. Peng, “Adap-tive Gait Planning with Dynamic Movement Primitives for Walking Assistance Lower Exoskeleton in Uphill Slopes,” Sensors and Materials ,vol. 32, no. 4, Apr. 2020. [23] Q. Chen, H. Cheng, R. Huang, J. Qiu, and X. Chen, “Learning and planning of stair ascent for lower-limb exoskeleton systems,” Industrial Robot: the international journal of robotics research and application ,vol. 46, no. 3, pp. 421–430, Jan. 2019. [24] Y. Huang, L. Rozo, J. Silv´ erio, and D. G. Caldwell, “Kernelized movement primitives,” The International Journal of Robotics Research ,vol. 38, no. 7, pp. 833–852, 2019. [25] A. Liu, S. Zhan, Z. Jin, and W.-A. Zhang, “A variable impedance skill learning algorithm based on kernelized movement primitives,” IEEE Transactions on Industrial Electronics , vol. 71, no. 1, pp. 870–879, 2023. [26] Y. Liu, Y. Cao, and C. Jiang, “Collaborative robot trajectory tracking control based on ds-kmp algorithm,” International Journal of Intelligent Robotics and Applications , pp. 1–13, 2025. [27] J. Zhao, T. Teng, E. De Momi, and A. Ajoudani, “Reactive whole-body locomotion-integrated manipulation based on combined learning and optimization,” Machine Intelligence Research , pp. 1–14, 2025. [28] S. Katyara, F. Ficuciello, D. G. Caldwell, B. Siciliano, and F. Chen, “Leveraging kernelized synergies on shared subspace for precision grasping and dexterous manipulation,” IEEE Transactions on Cognitive and Developmental Systems , vol. 15, no. 4, pp. 2064–2076, 2021. [29] J. Wang and K. Li, “Humanoid grasping with multi-finger dexterous hands based on dm-kmp,” in 2024 WRC Symposium on Advanced Robotics and Automation (WRC SARA) . IEEE, 2024, pp. 34–39. [30] A. Colom´ e, G. Neumann, J. Peters, and C. Torras, “Dimensionality reduction for probabilistic movement primitives,” in 2014 IEEE-RAS International Conference on Humanoid Robots . IEEE, 2014, pp. 794– 800. [31] Z. Liu, Q. Ai, H. Liu, W. Meng, and Q. Liu, “Human-like trajectory planning based on postural synergistic kernelized movement primitives for robot-assisted rehabilitation,” IEEE Transactions on Human-Machine Systems , vol. 54, no. 2, pp. 152–161, 2024. [32] Q. Chen, H. Cheng, C. Yue, R. Huang, and H. Guo, “Dynamic Balance Gait for Walking Assistance Exoskeleton,” Applied Bionics and Biomechanics , vol. 2018, no. 1, July 2018. [33] R. Huang, H. Cheng, H. Guo, X. Lin, and J. Zhang, “Hierarchical learn-ing control with physical human-exoskeleton interaction,” Information Sciences , vol. 432, pp. 584–595, Mar. 2018. [34] L. Luo, M. J. Foo, M. Ramanathan, J. K. Er, C. H. Chiam, L. Li, W. Y. Yau, and W. T. Ang, “Trajectory Generation and Control of a Lower Limb Exoskeleton for Gait Assistance,” Journal of Intelligent & Robotic Systems , vol. 106, no. 64, Nov. 2022. [35] P. Zhang, J. Zhang, and J. Jia, “Study of Lower Limb Exoskeleton Stair Movement Based on Multicoupled Continuous Dynamic Primitive Gait Learning Strategy,” IEEE Sensors Journal , vol. 24, no. 2, pp. 2009– 2019, Jan. 2024. [36] W. Ma, H. Cheng, R. Huang, and Q. Chen, “Gait Planning with Dy-namic Movement Primitives for Lower Limb Exoskeleton Walking Up Stairs,” in IEEE International Conference on Robotics and Biomimetics (ROBIO) , Dec. 2018, pp. 703–708. [37] C. Zou, R. Huang, J. Qiu, Q. Chen, and H. Cheng, “Slope Gradient Adaptive Gait Planning for Walking Assistance Lower Limb Exoskele-tons,” IEEE Transactions on Automation Science and Engineering ,vol. 18, no. 2, pp. 405–413, Apr. 2021. [38] C. Zou, R. Huang, H. Cheng, Q. Chen, and J. Qiu, “Adaptive Gait Planning for Walking Assistance Lower Limb Exoskeletons in Slope Scenarios,” in 2019 International Conference on Robotics and Automa-tion (ICRA) , May 2019, pp. 5083–5089. 16 
+
+[39] D. Xu, P. Huang, Z. Li, and Y. Feng, “DMP-Based Motion Gener-ation for a Walking Exoskeleton Robot Using Divergent Component of Motion,” in International Conference on Advanced Robotics and Mechatronics (ICARM) , July 2022, pp. 232–237. [40] P. Zhang and J. Zhang, “Motion generation for walking exoskeleton robot using multiple dynamic movement primitives sequences combined with reinforcement learning,” Robotica , vol. 40, no. 8, pp. 2732–2747, Aug. 2022. [41] T. Matsubara, S.-H. Hyon, and J. Morimoto, “Learning Stylistic Dynamic Movement Primitives from multiple demonstrations,” in 
+
+IEEE/RSJ International Conference on Intelligent Robots and Systems ,Oct. 2010, pp. 1277–1283. [42] W. Ma, R. Huang, Q. Chen, G. Song, and C. Li, “Dynamic Movement Primitives based Parametric Gait Model for Lower Limb Exoskeleton,” in 39th Chinese Control Conference (CCC) , July 2020, pp. 3857–3862. [43] A. Paraschos, C. Daniel, J. R. Peters, and G. Neumann, “Probabilis-tic movement primitives,” Advances in neural information processing systems , vol. 26, 2013. [44] J. Wang, Y. Gao, D. Wu, and W. Dong, “Probabilistic movement primitive based motion learning for a lower limb exoskeleton with black-box optimization,” Frontiers of Information Technology & Electronic Engineering , vol. 24, no. 1, pp. 104–116, Jan. 2023. [45] C. Zou, R. Huang, H. Cheng, and J. Qiu, “Learning Gait Models With Varying Walking Speeds,” IEEE Robotics and Automation Letters , vol. 6, no. 1, pp. 183–190, Jan. 2021. [46] C. Zou, Z. Peng, K. Shi, F. Mu, R. Huang, and H. Cheng, “Terrain-Adaptive Gait Planning for Lower Limb Walking Assistance Exoskele-ton Robots,” in 42nd Chinese Control Conference (CCC) , July 2023, pp. 4773–4779. [47] C. Yang, X. Zhang, C. Zou, W. Liang, Z. Huang, R. Huang, Y. Wang, and H. Cheng, “Adaptive human-like gait planning for stair climbing of lower limb exoskeleton robots,” in International Conference on Intelligent Robotics and Applications . Springer, 2024, pp. 202–221. [48] F. Bettella, S. Tortora, E. Menegatti, N. Petrone, and A. Del Felice, “A scoping review on lower limb exoskeleton actuation’s description and characteristics,” Robotica , pp. 1–18, 2025. [49] P. Torr and A. Zisserman, “Mlesac: A new robust estimator with application to estimating image geometry,” Computer Vision and Image Understanding , vol. 78, no. 1, pp. 138–156, 2000. [Online]. Available: https://www.sciencedirect.com/science/article/pii/S1077314299908329 [50] C. Dambreville, A. Labarre, Y. Thibaudier, M.-F. Hurteau, and A. Frigon, “The spinal control of locomotion and step-to-step variability in left-right symmetry from slow to moderate speeds,” Journal of neurophysiology , vol. 114, no. 2, pp. 1119–1128, 2015. [51] S. Michieletto, L. Tonin, M. Antonello, R. Bortoletto, F. Spolaor, E. Pagello, and E. Menegatti, “Gmm-based single-joint angle estimation using emg signals,” in Intelligent Autonomous Systems 13: Proceedings of the 13th International Conference IAS-13 . Springer, 2015, pp. 1173– 1184. [52] Y. Huang and D. G. Caldwell, “A Linearly Constrained Nonparametric Framework for Imitation Learning,” in 2020 IEEE International Con-ference on Robotics and Automation (ICRA) . IEEE, May 2020, pp. 4400–4406. [53] J. Boo, D. Seo, M. Kim, and S. Koo, “Comprehensive human locomotion and electromyography dataset: Gait120,” Scientific Data , vol. 12, no. 1, June 2025. [54] T. J. Van Der Zee, E. M. Mundinger, and A. D. Kuo, “A biomechanics dataset of healthy human walking at various speeds, step lengths and step widths,” Scientific Data , vol. 9, no. 1, p. 704, Nov. 2022. [55] E. M. Murtagh, J. L. Mair, E. Aguiar, C. Tudor-Locke, and M. H. Murphy, “Outdoor walking speeds of apparently healthy adults: A systematic review and meta-analysis,” Sports Medicine , vol. 51, pp. 125– 141, 2021. [56] M. M. Mukaka, “A guide to appropriate use of correlation coefficient in medical research,” Malawi medical journal , vol. 24, no. 3, pp. 69–71, 2012. [57] J. Camargo, A. Ramanathan, W. Flanagan, and A. Young, “A compre-hensive, open-source dataset of lower limb biomechanics in multiple conditions of stairs, ramps, and level-ground ambulation and transitions,” 
+
+Journal of Biomechanics , p. 110320, 2021. [58] M. Quigley, K. Conley, B. Gerkey, J. Faust, T. Foote, J. Leibs, R. Wheeler, A. Y. Ng, et al. , “Ros: an open-source robot operating system,” in ICRA workshop on open source software , vol. 3, no. 3.2. Kobe, 2009, p. 5. [59] X. Zhao, W.-H. Chen, B. Li, X. Wu, and J. Wang, “An adaptive stair-ascending gait generation approach based on depth camera for lower limb exoskeleton,” Review of Scientific Instruments , vol. 90, no. 12, 2019. [60] R. Guo, W. Li, Y. He, T. Zeng, B. Li, G. Song, and J. Qiu, “Terrain slope parameter recognition for exoskeleton robot in urban multi-terrain environments,” Complex & Intelligent Systems , vol. 10, no. 2, pp. 3107– 3118, 2024. [61] J. Zhang, “Vision-based stair environment perception for lower-limb ex-oskeletons using deep semantic segmentation,” in 2025 6th International Conference on Computer Vision, Image and Deep Learning (CVIDL) .IEEE, 2025, pp. 1261–1264. [62] B. Chen, B. Zi, Z. Wang, L. Qin, and W.-H. Liao, “Knee exoskeletons for gait rehabilitation and human performance augmentation: A state-of-the-art,” Mechanism and Machine Theory , vol. 134, pp. 499–511, 2019. [63] K. Shamaei, G. S. Sawicki, and A. M. Dollar, “Estimation of quasi-stiffness of the human hip in the stance phase of walking,” PloS one ,vol. 8, no. 12, p. e81841, 2013. [64] R. Huang, Q. Wu, J. Qiu, H. Cheng, Q. Chen, and Z. Peng, “Adaptive gait planning with dynamic movement primitives for walking assistance lower exoskeleton in uphill slopes.” Sensors & Materials , vol. 32, 2020. [65] H. Mohamad and S. Ozgoli, “Online gait generator for lower limb exoskeleton robots: Suitable for level ground, slopes, stairs, and obstacle avoidance,” Robotics and Autonomous Systems , vol. 160, p. 104319, Feb. 2023. [66] S. Kittisares, T. Ide, H. Nabae, and K. Suzumori, “Ergonomic dual four-bar linkage knee exoskeleton for stair ascent assistance,” Frontiers in Robotics and AI , vol. 10, p. 1285520, 2023. [67] M. Raineri and C. G. Lo Bianco, “An adaptive gait planner for a lower-limb exoskeleton ascending staircases of unknown geometry,” in 
+
+2024 IEEE 20th International Conference on Automation Science and Engineering (CASE) , Aug. 2024, pp. 2714–2719. [68] D. R. Louie, J. J. Eng, T. Lam, and S. C. I. R. E. S. R. Team, “Gait speed using powered robotic exoskeletons after spinal cord injury: a systematic review and correlational study,” Journal of neuroengineering and rehabilitation , vol. 12, no. 1, p. 82, 2015. [69] C. Chen, K. Zhang, Y. Leng, X. Chen, and C. Fu, “Unsupervised sim-to-real adaptation for environmental recognition in assistive walking,” 
+
+IEEE Transactions on Neural Systems and Rehabilitation Engineering ,vol. 30, pp. 1350–1360, 2022. [70] J. Wang, M. Mattamala, C. Kassab, G. Burger, F. Elnecave, L. Zhang, M. Petriaux, and M. Fallon, “Exosense: A Vision-Based Scene Under-standing System For Exoskeletons,” Nov. 2024.

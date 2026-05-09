@@ -1,0 +1,2196 @@
+Title: Safety by Invariance, Liveness through Refinement: Heterogeneous Contract Framework for Co-Design of Layered Control
+
+URL Source: https://arxiv.org/pdf/2605.04222v1
+
+Published Time: Thu, 07 May 2026 00:12:40 GMT
+
+Number of Pages: 22
+
+Markdown Content:
+# Safety by Invariance, Liveness through Refinement: Heterogeneous Contract Framework for Co-Design of Layered Control 
+
+# Yoshinari Takayama a,b,c Alessio Iovine a Bart Besselink b Guillaume Sandou a
+
+# Adnane Saoud c
+
+> a
+
+Laboratory of Signals and Systems (L2S), CNRS, CentraleSupelec, Paris-Saclay University, France 
+
+> b
+
+Bernoulli Institute for Mathematics, Computer Science, and Artificial Intelligence, University of Groningen, The Netherlands 
+
+> c
+
+College of Computing, University Mohammed VI Polytechnic, Benguerir, Morocco 
+
+Abstract 
+
+Real-world control systems must achieve complex, long-horizon objectives (liveness) while strictly respecting safety constraints in continuous time. Addressing both objectives simultaneously poses significant challenges for either a discrete-time planner, such as Model Predictive Control (MPC), or a continuous-time tracking controller acting alone, motivating hierarchical layered control architectures (LCAs). Existing LCA research, however, lacks generality owing to three open difficulties: (i) the absence of a uniform specification language capable of expressing requirements across both discrete planning and continuous execution; (ii) the lack of formal guarantees that these specifications are preserved when interconnecting subsystems operating at heterogeneous time scales; and (iii) reliance on naive input-filtering laws that obstruct compositional separation across layers. This paper addresses all three gaps by importing the safety–liveness decomposition from computer science into a heterogeneous assume-guarantee framework: safety is enforced by invariance at the continuous-time layer, while liveness is achieved through refinement at the discrete-time layer. Inter-layer coordination is formalized via vertical refinement and timing compatibility conditions. We instantiate this contract with a novel LCA that connects an MPC, an input-to-state stabilizing (ISS) low-level controller, and a reference-governor mechanism that bridges them, stating explicit conditions on each component. The resulting implementation is validated on a Hybrid Energy Storage System (HESS) comprising a battery and a supercapacitor. 
+
+Key words: decision-making; layered control architectures; assume-guarantee contracts; contract-based design; energy systems 
+
+1 Introduction 
+
+Real-world control systems face a dual challenge: achieving complex, long-horizon goals (such as those expressed in temporal logics [1–4]) while strictly ad-hering to safety constraints in continuous time. In in-dustrial practice, this hierarchy is naturally addressed by coupling a high-level system, such as Model Pre-dictive Control (MPC) [5, 6], with low-level tracking controllers, e.g., Proportional Integral Derivative (PID) ones. While this combination is intuitive, formally veri-fying the correctness of such composite systems remains a significant theoretical hurdle, due to the mismatch in time domains (discrete-time planning vs. continuous-
+
+⋆ This work has received funding from the Agence Nationale de la Recherche (ANR) via grant ES-THER ANR-22-CE05-0016. Corresponding Author: Y. Takayama. Emails: {yoshinari.takayama, alessio.iovine, guil-laume.sandou }@centralesupelec.fr, {b.besselink }@rug.nl, 
+
+{adnane.saoud }@um6p.ma 
+
+time physics). Unlike hybrid systems, where continuous and discrete dynamics coexist within a single dynam-ical model, a layered architecture [7, 8] separates the system into distinct functional layers — a discrete-time planner that computes reference commands and a continuous-time controller that tracks them — each designed and analyzed independently, interacting only through well-defined interfaces. A fundamental gap ex-ists between the discrete-time logic of the planner and the continuous-time physics of the plant, raising the question: how can we formally guarantee that the low-level layer maintains safety while faithfully executing the high-level plan, without introducing deadlocks or invalidating the planner’s prediction model? Standard approaches often rely on heuristic time-scale separation arguments [9] or employ Control Barrier Functions (CBFs) [10, 11] to enforce safety. However, the direct modification of control inputs inherent to Quadratic Programming (QP)-based CBF filters can ignore inter-sample behavior [12], and can disrupt the 
+
+Preprint submitted to Automatica 7 May 2026 
+
+> arXiv:2605.04222v1 [eess.SY] 5 May 2026
+
+structural properties of low-level loops, invalidating the tracking models assumed by the planner [13–15]. Conversely, while rigorous verification frameworks like vertical abstraction exist [16, 17], establishing simula-tion relations [18] often requires exhaustive reachability analysis, which can be computationally prohibitive for complex dynamics. On the other hand, assume-guarantee (AG) contract theory provides a powerful semantic framework: under an assumption on inputs or environment behavior, each subsystem must provide a guarantee . It was originally developed in the computer science community [19–22] and further algebraic extensions were introduced in [23–25]. These works, together with applications to cyber-physical systems such as aircraft electric power systems [26], established the core operations of con-tract composition, refinement, and conjunction at the same level of abstraction, which is commonly referred to as horizontal contracts. More recently, the control community has developed AG contract frameworks tai-lored to dynamical systems with continuous state vari-ables. Parametric contracts connecting AG reasoning with small-gain theory were introduced in [27], weak and strong contract semantics-based frameworks for continuous- and discrete-time systems were proposed in [28,29], with extensions to signal temporal logic tasks in [30] and to the computation of feasible contracts via resilience metrics in [31]. Behavioral formulations grounded in systems theory were developed for lin-ear dynamical systems in [32–34], and a verification framework based on invariant sets was proposed in [35]. Compositional synthesis via convex parameterization of contracts was studied in [36]. Applications to contracts for voltage regulation in DC microgrids are presented in [37]. Beyond horizontal contracts, there has been growing interest in extending contract theory to systems exhibit-ing mixed discrete-continuous behaviors and to layered architectures [7]. However, existing contract frameworks struggle to capture the specific feedback structures that arise in layered control, where components oper-ate across multiple timescales and heterogeneous signal spaces. While some constructive mechanisms have been proposed to address these challenges [8, 16, 26, 38, 39], they have focused primarily on the verification of exist-ing designs rather than on synthesis. Moreover, the syn-thesis of controllers that simultaneously guarantee both safety and liveness within a contract framework remains a largely open problem. To the best of our knowledge, this work presents the first contract-based synthesis approach that jointly addresses these dual objectives. Co-design frameworks have addressed the joint opti-mization of interdependent system components, from hardware–software stacks for autonomous systems us-ing monotone and category-theoretic methods [40,41] to planner–controller synthesis under temporal logic speci-fications [42]. However, these approaches typically opti-mize over a shared design space without formalizing ex-plicit assume-guarantee obligations between layers, and do not address the synthesis of controllers that jointly enforce safety and liveness within a layered architecture with heterogeneous timescales and signal spaces. The main contributions of this paper are threefold: 
+
+• Heterogeneous Contract Framework with Sep-aration of Objectives: We provide a rigorous AG framework for composing a discrete-time (DT) planning layer with a continuous-time (CT) safety layer, achieving a clean separation: importing the safety–liveness decomposition from computer science into a heterogeneous AG framework: safety is enforced by invariance at the continuous-time layer, while live-ness is achieved through refinement at the discrete-time layer. Inter-layer coordination is formalized via vertical refinement and timing compatibility condi-tions, echoing the structure of classical time-scale separation. By explicitly modeling the Zero-Order Hold (ZOH) mechanism, the ZOH makes the infor-mation flow inherently sequential without having in-stantaneous circular dependency between layers. We exploit this sequential structure to verify correctness by induction over sampling intervals, using assume-guarantee contracts to formalize the interface condi-tions. Unlike standard asymptotic singular perturba-tion methods [43], we establish an explicit finite-time 
+
+scale separation condition that links the low-level settling time to the high-level sampling period. This formalized interface ensures that abstracted low-level guarantees satisfy high-level assumptions, enabling the planner to verify liveness without conservative constraint tightening. To our knowledge, this work is the first constructive bridge linking discrete-time MPC with CT assume-guarantee correctness. 
+
+• Explicit Reference Governors as Layered Con-tract Realizers: We formalize the explicit reference governor (ERG) [44, 45] as a layered contract real-izer that serves a dual role: enforcing safety via ro-bust forward invariance and providing tracking guar-antees that enable vertical contract refinement. In con-trast to input-level safety filters such as CBF-QPs, which override the control input and may perturb the nominal behavior of the inner loop, the ERG modi-fies only the reference signal, thereby preserving the low-level controller and its stability and tracking-error certificates. This property is well aligned with the compositional analysis pursued in this work, in which the high-level layer is responsible for the reference and the low-level layer for the control input, and the guarantees of each layer are established independently and subsequently composed. The approach is partic-ularly appealing in applications where a stabilizing controller is already deployed at the low level: the legacy inner loop is retained without redesign, while the MPC provides high-level planning capabilities, and the contract-based compositional framework pro-vides formal guarantees. 
+
+• Application to Hybrid Energy Storage Systems (HESS): We demonstrate the framework on a HESS with a battery and a supercapacitor, exhibiting natu-ral time-scale separation between slow energy dynam-ics and fast voltage/current dynamics. We construct a contract hierarchy in which the MPC layer guarantees energy convergence (liveness) and the ERG layer guar-antees satisfaction of the voltage constraints (safety). The tracking guarantee, when abstracted, closes the 2vertical refinement loop. Numerical validations con-firm that this architecture achieves safety and liveness under large reference steps and bounded disturbances. 
+
+Organization. Section 2 formalizes the problem of lay-ered controller synthesis with safety and liveness specifi-cations. Section 3 develops a contract framework based on vertical refinement to ensure correctness across het-erogeneous time domains and bridge the abstraction gap between the planner’s simplified model ˆf and the physi-cal dynamics f . Section 4 implements the proposed con-tract framework using the ERG-tracker and MPC com-bination. The framework is applied to a HESS in Sec-tion 5. Section 6 presents numerical simulations validat-ing the results. Section 7 concludes the paper. 
+
+Notation. We denote by T the time index set: T =
+
+R≥0 in continuous time and T = N in discrete time. In the latter case, the step index k ∈ N corresponds to physical time tk = kT s, where Ts > 0 is the sampling period. For a set S, the signal space for a signal ξ on T
+
+is ST := { ξ : T → S } denotes the set of all S-valued trajectories indexed by T. A component Σ is identified with its trajectory set (behavior) B ⊆ S T. For x ∈ Rn,
+
+∥x∥ denotes the Euclidean norm; for a signal ξ on T,
+
+∥ξ∥∞ := ess sup t∈T ∥ξ(t)∥. A function α : R≥0 → R≥0 is class K if continuous, strictly increasing, and α(0) = 0; class K∞ if additionally α(r) → ∞ as r → ∞ . A function 
+
+β : R2 
+
+> ≥0
+
+→ R≥0 is class KL if β(·, t ) ∈ K for fixed t and 
+
+β(r, ·) decreases to zero for fixed r.
+
+2 Problem Formulation 
+
+2.1 System Models 
+
+We consider a two-layer control architecture comprising a discrete-time (DT) planning layer and a continuous-time (CT) safety layer (cf. Fig. 1). The planning layer operates at a sampling period Ts, generating references based on an abstracted model. The input to the planning layer is the sampled state yk ∈ Rq , and the output is a reference rk ∈ Rp. The safety layer is implemented on the continuous-time model. 
+
+Definition 1 (Low-Level CT System) The low-level continuous-time system ΣCT  
+
+> L
+
+is defined by 
+
+˙x(t) = f (x(t), u (t), w (t)) , (1) 
+
+where x(t) ∈ X ⊆ Rn is the state, u(t) ∈ U ⊆ Rm is the control input, and w(t) ∈ W ⊆ w ∈ Rd : ∥w∥ ≤ Wmax 
+
+represents external disturbances. The tracked output is 
+
+hr (x) = Pr x ∈ Rp, where Pr ∈ Rp×n is a selection matrix. The low-level tracking controller generates: 
+
+u(t) = κ(x(t), v (t)) , (2) 
+
+where v(t) ∈ Rp is the reference signal applied to the tracker that follows a dynamics that will be described in ΣH (DT Planner + ZOH)                                      
+
+> |=sCH(strong, via ZOH)
+> ΣL(CT Safety Layer)
+> |=CL(Gsafe : unilateral, Gtrack : under Aref )
+> Planner
+> (Σ DT
+> H)
+> rk=hr(ˆ x∗
+> k+1 |k)
+> ZOH
+> r(t) = rk
+> t∈[tk, t k+1 )
+> Reference Governor
+> (Σ RG )
+> Plant + Tracker
+> (Σ CT
+> L)˙x=f(x, κ (x, v ), w )
+> Sampler
+> yk=hy(x(tk))
+> rk∈R
+> r(t)∈Rp
+> v(t)∈Rp
+> x(t)∈Rn
+> e(t) = hr(x)−v
+> (for margin ∆)
+> w(t)∈ W
+> yk∈Rq
+
+Fig. 1. Layered control architecture. Signals: rk (reference), 
+
+yk (sampled state), v(t) (filtered reference), u(t) (control), 
+
+x(t) (state), w(t) (disturbance). Signal flow: r → v → x.
+
+Section 4. This filtered reference v is a filtered version of the high-level system’s output r(t). The vector field f is locally Lipschitz in x, κ is locally Lipschitz, r(t) is piece-wise constant, and w(t) ∈ W is piecewise continuous. If every solution remains in a compact subset of X , then a unique solution exists for all t ≥ t0 [46]. The input-output trajectory set of the low-level system ΣL is           
+
+> BL:= {(w, r, x ) : R≥0→ W × Rp× X | (1) ,(2) hold a.e. }.(3)
+
+Note that the low-level layer Σ L receives the raw refer-ence r ∈ Rp rather than the filtered reference v ∈ Rp,since Σ L encompasses both the plant–tracker block and the reference governor (cf. Fig. 1). 
+
+Remark 1 If v and w are continuous, equations (1) –(2) 
+
+hold everywhere and the “a.e.” qualification in BL can be dropped. This is the case in our implementation, where 
+
+v is generated by ERG (Section 4.2.2), yielding an abso-lutely continuous filtered reference. The “a.e.” qualifica-tion is retained in the general definition to accommodate the case v = r, where r is piecewise constant, and the ODE is satisfied only in the Carath´ eodory sense [47, 48]. 
+
+To define the input–output trajectory set of the high-level system, we first introduce the abstract discrete-time model of the plant on which the planner is based: ˆyk+1 = ˆf (ˆ yk, ˆzk, r k), (4) where the map ˆf is a (discrete-time) “abstraction” of the original dynamics f . Whereas the dynamics f governs the full state x ∈ Rn, the reduced dynamics ˆf governs the abstract state ˆ y ∈ Rq with q ≤ n; the signal ˆ z ∈ Rn−q
+
+collects the remaining components of the state that are not retained in the abstract model. Consider a finite receding horizon of length N steps starting from time k. Let ˆ yk+j|k denote the j-step-ahead predicted output, conditioned on information available at time k. The open-loop predicted trajectory is then generated by iterating the model in (4): for all j ∈
+
+3[0 , . . . , N −1] ,
+
+ˆyk+j+1 |k = ˆf (ˆ yk+j|k, ˆzk+j|k, r k+j ), (5) with the initial condition ˆ yk|k = yk := hy (x(tk)) ∈ Rq
+
+from the sampled measurement at each step. The closed-loop high-level DT system Σ DT  
+
+> H
+
+solves a finite-horizon optimal control problem of length N steps in a receding-horizon fashion, reapplied every sampling period Ts. When interconnected in a closed loop with the low-level CT system, the mismatch between the predicted and actual dynamics causes the high-level DT system’s state to evolve as follows. 
+
+Definition 2 (High-Level DT System) Let ˜wk ∈
+
+Rq denote the one-step prediction error between the re-alized closed-loop dynamics and the planner’s model ˆf .Under the consistency condition ˆyk|k = yk, the high-level DT system ΣDT  
+
+> H
+
+is described by 
+
+yk+1 = ˆf (yk, ˆzk|k, r k) + ˜ wk, (6) 
+
+rk = π(yk, ˆzk|k) ∈ Rp, (7) 
+
+where π represents the policy that results from the plan-ner’s design. The input–output trajectory set of ΣDT  
+
+> H
+
+is therefore 
+
+BH := 
+
+n
+
+( ˜ w, y, r ) : N →  Rq × Rq × Rp |
+
+(6) and (7) hold with ˆyk|k = yk for all k ∈ N
+
+o
+
+. (8) Since ˆf assumes perfect tracking, every real-world devi-ation, such as tracking imperfection, disturbances, and limited model fidelity on untracked channels, is absorbed into ˜ wk. In this sense, ˜ w enters Σ H as an abstracted dis-turbance inherited from the low-level CT system. 
+
+Definition 3 (Sample-and-Hold) The interface be-tween DT system and CT system comprises: 
+
+• Sampler : yk = hy (x(tk)) where tk = kT s and hy :
+
+Rn → Rq extracts the measurable components; 
+
+• Zero-order hold : r(t) = rk for t ∈ [tk, t k+1 ).
+
+Definition 4 (Layered Control System) A layered control system Σ = Σ H ▷ ΣL is the hierarchical intercon-nection of a high-level system ΣH (Definition 2) and a low-level system ΣL (Definition 1) through the sample-and-hold interface (Definition 3): The input-output trajectory set of the composite closed-loop system is 
+
+B := (w, x ) : R≥0 → W × X ∃ (r, y k, ˜wk) s.t. 
+
+(w, r, x ) ∈ B L (low level) ,
+
+( ˜ wk, y k, r k) ∈ B H (high level) ,yk = hy (x(tk)) (sampler) ,r(t) = rk ∀ t ∈ [tk, t k+1 ) (hold) , . (9) The information flow is sequential: r(t) over [ tk, t k+1 )depends only on yk, so both layers does not require the other’s output simultaneously, and the algebraic loop is avoided (see Theorem 1). 
+
+2.2 Temporal Properties in Continuous Time 
+
+The classification of temporal properties into safety and liveness originates with Lamport [49]. 
+
+Safety: “Something bad never happens”: a property vi-olable by a finite prefix of a trajectory; once violated, no extension can repair it. 
+
+Liveness: “Something good eventually happens”: aproperty no finite prefix can violate; every prefix admits a satisfying extension. This generality is crucial: liveness encompasses not only discrete events (“reach the goal”) but also continuous-time phenomena (“converge to equilibrium”), making the framework natural for cyber-physical systems. This paper treats continuous-time safety as invariance 1 and continuous-time liveness as convergence. 
+
+Definition 5 (Safety Specification) Given a safe set 
+
+Xsafe ⊆ Rn and a disturbance set W ⊆ Rn, the layered system Σ satisfies φsafe if for all trajectories (w, x ) ∈ B :
+
+x(0) ∈ X safe =⇒ x(t) ∈ X safe ∀t ≥ 0. (10) For simplicity, this paper assumes that the safe set Xsafe 
+
+is the polyhedron 
+
+Xsafe := x ∈ Rn Cx ≤ d , (11) where C ∈ Rm×n and d ∈ Rm.For continuous-time systems under persistent distur-bances, exact convergence is generally infeasible. We formalize the liveness property φlive in continuous-time as approximate convergence. 
+
+Definition 6 ( ε-Liveness Specification) Given agoal ygoal ∈ Rq and tolerance ε > 0, the layered sys-tem Σ satisfies the liveness specification φlive for all trajectories (w, x ) ∈ B , if: 
+
+∃T < ∞, ∥hy (x(t)) − ygoal ∥ ≤ ε ∀ t ≥ T. (12) We now formulate the layered controller synthesis prob-lem using the system models and specifications above.       
+
+> 1In the formal methods literature, invariance (2ψfor state predicate ψ) is sometimes distinguished from general safety
+> (see Chapter 3.3 of [50]).
+
+4Problem 1: Layered Controller Synthesis 
+
+Given the low-level system dynamics (1), con-straint sets X , U, W, safety specification 
+
+φsafe (10), and liveness specification φlive (12), co-design (i) the high-level system ΣH : a prediction model (5) and finite-horizon optimal con-trol law (7), (ii) the low-level tracking controller (2) for Σ L,(iii) a sampling period Ts > 0such that every trajectory ( w, x ) ∈ B (9) of the layered system Σ = Σ H ▷ ΣL (Definition 4) sat-isfies φsafe ∧ φlive .
+
+3 Heterogeneous Contract Framework 
+
+3.1 Assume-Guarantee Contract 
+
+To solve Problem 1, we adopt the assume-guarantee (AG) contract framework, which provides a composi-tional means of specifying and verifying the obligations of each layer independently. Rather than analyzing the closed-loop system monolithically, an AG contract as-signs to every component a pair of behavioral specifica-tions: an assumption on what the component may legit-imately expect from its environment (from outside the network or other components, e.g., references or mea-surements), and a guarantee on what it must deliver in return. 
+
+Definition 7 (Assume-Guarantee Contract) Let 
+
+Σ be a component with trajectory set (w, x ) ∈ B ⊆ S T,where w is Σ’s exogenous input, x is the state, and 
+
+S = W × X . An AG contract is a pair C = ( A, G ) of sets of trajectories, where A ⊆ W T encodes assumptions on the exogenous input and G ⊆ (W × X )T encodes guarantees on the joint input–state behaviour. The com-ponent satisfies its contract, written Σ |= C, if for every trajectory (w, x ) ∈ B :
+
+w ∈ A =⇒ (w, x ) ∈ G. (13) 
+
+Remark 2 We use predicate and set notations inter-changeably throughout. A predicate P defines the set {s :
+
+P (s)}; a set S defines the predicate s ∈ S. Contract sat-isfaction appears as implication ( A ⇒ G) or set inclu-sion ( w ∈ A =⇒ (w, x ) ∈ G) depending on context. We favor whichever yields clearer exposition. 
+
+Let us consider co-design of local contracts CL and CH
+
+for each system Σ L and Σ H such that, if Σ L |= CL
+
+and Σ H |= CH holds, the layered system (Definition 4) solves Problem 1. The challenge is to provide inter-layer interface conditions that can ensure the correctness of the contract across heterogeneous time domains (be-tween discrete-time planning and continuous-time track-ing) while bridging the abstraction gap between the plan-ner’s simplified model ˆf and the physical dynamics f .This section develops the contract framework using the concept of vertical refinement. 
+
+3.2 Safety-Liveness Decomposition Principle in Verti-cal Contract Design 
+
+Alpern and Schneider [51] showed that every temporal property decomposes into the intersection of a safety and a liveness property. We organize the contract around this decomposition, assigning qualitatively different roles to the two layers, which is mentioned in the title safety by invariance, liveness through refinement :Safety-Liveness Decomposition Principle 
+
+Safety is unilateral. The low-level enforces 
+
+φsafe in continuous time via robust forward in-variance, regardless of what Σ H commands. 
+
+Liveness is bilateral. The high-level plans on an abstract model; the low-level tracks its refer-ences; vertical refinement ensures the high-level system’s convergence in discrete-time transfers to the physical system in continuous-time. Safety is unilateral—Σ L enforces it alone. Liveness is bilateral: it requires both layers to cooperate, and we need a common language to state what each must con-tribute. Input-to-state stability provides this language, applicable to both continuous-time and discrete-time systems [46, 52]. 
+
+Definition 8 (Input-to-State Stability) A dynami-cal system with trajectory set of (w, ξ ), state signal ξ :
+
+T → Rn, and disturbance signal w : T → Rq (where 
+
+T = R≥0 or T = N) is input-to-state stable (ISS) if there exist β ∈ KL and γ ∈ K such that every trajectory in B
+
+satisfies: 
+
+∥ξ(t)∥ ≤ β(∥ξ(0) ∥, t ) + γ ∥w∥∞
+
+ ∀ t ∈ T. (14) 
+
+The function γ is the ISS gain and γ(∥w∥∞) the ultimate bound : for any δ > 0 there exists finite T ∈ T such that 
+
+∥ξ(t)∥ ≤ γ(∥w∥∞) + δ for all t ≥ T .3.3 Contract Specification 
+
+We now specify contracts for each layer. For the high–level, we introduce two concrete performance pa-rameters: a maximum reference gap ¯ r ≥ 0 that bounds 
+
+∥rk − rk−1∥, and a tolerance on the abstraction error 
+
+εE ≥ 0. 
+
+Definition 9 The high-level contract 
+
+CH = ( ^
+
+> k
+
+Ak
+
+> mis
+
+, ^
+
+> k
+
+(Gk 
+
+> ref
+
+∧ Gk
+
+> ISS
+
+)) (15) 
+
+is defined on trajectory set BH , where each per-step as-sumptions and guarantees are defined at time step tk =5kT s as: 
+
+Ak 
+
+> mis
+
+:= 
+
+n
+
+(ˆ yk , ˆzk , y k ) ∈ Rq × Rn−q × Rq
+
+∥ ˜wk ∥ = ∥yk − ˆf (ˆ yk−1|k−1, ˆzk−1|k−1, r k−1)∥ ≤ εE
+
+o
+
+(16) 
+
+Gk 
+
+> ref
+
+:= 
+
+n
+
+rk ∈ Rp ∥rk − rk−1∥ ≤ ¯r
+
+o
+
+(17) 
+
+Gk 
+
+> ISS
+
+:= 
+
+n
+
+yk ∈ Rq ∥yk − ygoal ∥ ≤ β(∥y0 − ygoal ∥, k ) + εT (εE )
+
+o
+
+(18) 
+
+for some β ∈ KL and εT ∈ K (Definition 8 for high level DT system with (T, B, ξ, d ) = (N, BH , ˆyk|k −
+
+ygoal , ˜wk)). ygoal ∈ Rq is the liveness goal in Definition 6. The high-level system has no external disturbance as-sumption ( AH 
+
+> ext
+
+= ⊤). The reference feasibility guarantee 
+
+Gk 
+
+> ref
+
+does not require Ak
+
+> mis
+
+.
+
+For the low-level, we introduce two concrete performance parameters: a settling time τLL > 0, after which the tracker has converged to a neighborhood of the refer-ence, and a tracking tolerance εL > 0, the radius of that neighborhood. Both depend on the controller design and the disturbance bound W.
+
+Definition 10 The low-level contract 
+
+CL = ( ^
+
+> k
+
+(Ak 
+
+> env
+
+∧ Ak 
+
+> ref
+
+), ^
+
+> k
+
+(Gk 
+
+> safe
+
+∧ Gk
+
+> track
+
+)) (19) 
+
+is defined on trajectory set BL, where each per-step as-sumptions and guarantees are defined on k-th sampling interval by Ik := [ kT s, (k+1) Ts] as: 
+
+Ak 
+
+> env
+
+:= 
+
+n
+
+w : Ik → Rn w(t) ∈ W , ∀ t ∈ Ik
+
+o
+
+, (20) 
+
+Ak 
+
+> ref
+
+:= Gk 
+
+> ref
+
+=
+
+n
+
+rk ∈ Rp ∥rk − rk−1∥ ≤ ¯r
+
+o
+
+(21) 
+
+Gk 
+
+> safe
+
+:= 
+
+n
+
+x : Ik → Rn x(t) ∈ X safe , ∀ t ∈ Ik
+
+o
+
+, (22) 
+
+Gk 
+
+> track
+
+:= 
+
+n
+
+(x, r k ) : x : Ik → Rn, r k ∈ Rp
+
+hr
+
+ x(( k+1) Ts) − rk ≤ εL
+
+o
+
+, (23) 
+
+under timing compatibility condition Ctss defined below. 
+
+Definition 11 (Timing Compatibility) The timing compatibility condition is 
+
+Ctss : Ts ≥ τLL (24) It ensures the high-level samples only after the low-level has settled, and is a constraint on the shared sampling architecture, that is, ∥hr (x(t)) − rk∥ ≤ εL ∀ t ∈ [kT s +
+
+τLL , (k+1) Ts], which results in Gk 
+
+> track
+
+in (23). 
+
+3.4 Heterogeneous Well-Posed Interconnection 
+
+For the local contracts CH and CL to compose into the global specification, the interconnection between the two layers must be well-posed across the two heterogeneous time domains. This inter-layer conditions require a con-dition beyond the well-posedness of the system-level so-lution (which follows from local Lipschitzness of the closed-loop dynamics): a vertical refinement condition under Ctss (cf. Figure 2). High-Level (CH )                               
+
+> DT Planner
+> Guarantee
+> Gk
+> ref :∥rk−rk−1∥ ≤ ¯rGk
+> ISS :∥ˆyk−ygoal ∥≤β(·, k ) + γ(εE)
+> Assumption
+> Ak
+> mis :
+> ∥yk−ˆyk∥ ≤ εE
+> Low-Level (CL)
+> CT Safety Layer
+> Assumptions
+> Ak
+> ref :∥rk−xk∥ ≤ ¯r
+> Guarantee
+> Gk
+> track :
+> ∥hr(x)−r∥ ≤ εL
+> Disturbance
+> w(t)∈ W
+> Upward handshake
+> Gk
+> track =⇒Ak
+> mis
+> Downward handshake
+> Gk
+> ref ⊆Ak
+> ref
+
+Fig. 2. Vertical refinement for liveness specifications φlive :the ERG realizes the contract hierarchy by ensuring that the low-level guarantees Gsafe ∧ Gtrack under Aenv satisfy the high-level mismatch assumption Amis , enabling the high--level system to guarantee Glive .
+
+Definition 12 (Vertical Refinement) The layered architecture satisfies the vertical refinement condition 
+
+Cr for φsafe and φlive with tolerance εH if the cross-domain handshakes are jointly feasible under Ctss :
+
+^
+
+> k
+
+(Gk 
+
+> ref
+
+=⇒ Ak 
+
+> ref
+
+) (25) 
+
+^
+
+> k
+
+(Gk−1track =⇒ Ak
+
+> mis
+
+(εE )) (26) 
+
+for some εE , δ satisfying 
+
+εE + εT (εE ) + δ < ε H , (27) 
+
+where εT is the ISS gain from GISS .
+
+We define heterogeneous well-posedness for the layered interconnection. 
+
+Definition 13 The interconnection of contracts CH and 
+
+CL for φsafe and φlive is recursively well-posed by the layered system ΣH ▷ ΣL if it satisfies: (i) (initial conditions and environmental as-sumption) x(0) , r (0) , and w(t) such that A0ref and 
+
+Aenv holds. (ii) (local contracts) ΣH |= CH , ΣL |= CL holds. (iii) (recursive feasibility) The high-level layer re-mains feasible at every step. (iv) (vertical refinement condition) The time com-patibility condition Ctss and the vertical refinement condition Cr holds. 
+
+Theorem 1 Suppose the interconnection of contracts 
+
+CH and CL is recursively well-posed by layered system 
+
+6ΣH ▷ ΣL with tolerance εH (Definitiion 13). Then Prob-lem 1 is solved: the layered system satisfies φsafe and φlive .Proof. (a) Safety φsafe . Given initial condition x(0) ∈ X safe 
+
+and Aenv : w(t) ∈ W for all t, the local contract satis-faction Σ L |= CL means that Gsafe holds for any r(t) for all t, φsafe = Gsafe holds. 
+
+(b) Liveness φlive . To prove global liveness, we need to guarantee Gks 
+
+> ISS
+
+at each time step ks. First, Gk 
+
+> ref
+
+in (17) unconditionally holds for all k without Ak 
+
+> mis
+
+only from recursive feasibility condition (iii) (as Ak 
+
+> mis
+
+is needed for 
+
+Gks
+
+> ISS
+
+, k s ≤ k). Note that the recursive feasibility is not related to the contract CH . With the downward verti-cal refinement condition, the reference assumption Ak
+
+> ref
+
+holds for all time steps. Using the upward condition of Cr
+
+for all time steps, Amis = V 
+
+> k
+
+Ak 
+
+> mis
+
+holds. The local con-tract Σ H |= CH holds at each time step ks as, Σ H |= Cks 
+
+> H
+
+:
+
+Cks 
+
+> H
+
+= ( Aks 
+
+> mis
+
+∧ Aks+1 mis ∧ ..., G ks 
+
+> ref
+
+∧ Gks
+
+> ISS
+
+) (28) Therefore, we guarantee Gks 
+
+> ISS
+
+at each time step ks.Setting ( T, B, ξ, d ) = ( N, BH , ˆy − ygoal , ˜wk) in Defini-tion 8 under GISS , for any δ > 0 there exists finite K(δ)such that for all k ≥ K:
+
+∥ˆyk − ygoal ∥ ≤ εT (εE ) + δ. (29) The end-to-end error at sampling instants tk for k ≥ K
+
+decomposes as: 
+
+∥hy (x(tk)) − ygoal ∥ ≤ ∥ hy (x(tk)) − ˆyk∥ + ∥ˆyk − ygoal ∥≤ εE + εT (εE ) + δ (30) With equation (27), there exists K such that ∥hy (x(tK )) −
+
+ygoal ∥ ≤ εH , i.e., ∃T = KT s, φ live holds. ■
+
+Remark 3 Safety (a) is unilateral: it follows from CL
+
+alone, requiring only the downward handshake. In partic-ular, even under the fallback policy rk = rk−1, the low-level layer ΣL maintains safety indefinitely. Liveness (b) is bilateral, requiring all three conditions. 
+
+4 Layered Control Architecture 
+
+This section implements the layered contract introduced in Section 3 using a reference governor combined with an MPC planner. We first concretise each layer’s im-plementation and state the required assumptions, then verify that the local conditions of Definition 13 (and Theorem 1) are satisfied, ensuring that the closed-loop system meets the global contract with admissible in-puts u(t) ∈ U . Section 4.1 addresses the high-level con-tract (15) and its recursive feasibility. We use the fact that if contract (28) holds for all time steps ks, then ΣH |= CH holds. Based on this, the MPC implementa-tion in Section 4 verifies (28). 
+
+4.1 Planning Layer: Discrete-Time System ΣH
+
+Define the stage cost ℓ : Rq × R → R≥0 and terminal cost Vf : Rq → R≥0, both continuous and positive defi-nite. The MPC optimal control problem is as follows. At time tk with measurement yk = hy (x(tk)): min   
+
+> rk:k+N−1
+> N−1
+
+X
+
+> j=0
+
+ℓ(ˆ yk+j|k, r k+j ) + Vf (ˆ yk+N |k) (31a) s.t. (5) with ˆ yk|k = yk (31b) ˆyk+j|k ∈ ˆY, j = 0 , . . . , N −1, (31c) ˆyk+N |k ∈ Y f , (31d) 
+
+∥rk+j − rk+j−1∥ ≤ ¯r (31e) where ˆY ⊆ Rq is the (tightened) state constraint set, ¯ r is the (compact) reference constraint set, and Yf ⊆ ˆY is the terminal constraint set. 2
+
+Let r∗ =  r∗ 
+
+> 0
+
+, . . . , r ∗ 
+
+> N−1
+
+ denote any minimising sequence and let V ∗ 
+
+> N
+
+: YN → R≥0 be the optimal value function, where the N -step feasible set of (31) is 
+
+YN :=  y ∈ Rq : (31) is feasible with ˆ yk|k = y . (32) By Proposition 2.10(c) in [6], YN is closed. Moreover, if the terminal set Yf is control invariant under the pre-dicted dynamics (5), then by Proposition 2.10(b) in [6] the feasible sets are nested, 
+
+YN ⊇ Y N −1 ⊇ · · · ⊇ Y f ,
+
+and YN is positive invariant under the nominal closed-loop dynamics induced by the MPC feedback ˆ y 7 → r∗ 
+
+> 0
+
+(ˆ y). Intuitively, Yi collects the states from which an i-step admissible trajectory ending in Yf exists; control invari-ance of Yf allows any such trajectory to be extended by one step, yielding Yi−1 ⊆ Y i. Positive invariance of 
+
+YN then follows because applying the first MPC input leaves an ( N − 1)-step feasible tail, placing the successor state in YN −1 ⊆ Y N . Assumption 1 below extends this nominal property to the disturbed setting. 
+
+Assumption 1 (Robust Recursive Feasibility) 
+
+Let Amis := { ˜w ∈ Rd : ∥ ˜w∥ ≤ εE }. The terminal set Yf
+
+is robust control invariant for the predicted dynamics (5) 
+
+under Amis , and the feasible set YN is robustly positive invariant in the following sense: for every ˆy ∈ Y N , every 
+
+ˆz ∈ Z , every minimiser r∗ = ( r∗ 
+
+> 0
+
+, . . . , r ∗ 
+
+> N−1
+
+) of (31) at 
+
+ˆyk|k = ˆ y, and every ˜w ∈ Amis ,
+
+ˆf (ˆ y, ˆz, r ∗ 
+
+> 0
+
+) + ˜ w ∈ Y N . (33)  
+
+> 2
+
+The terminal constraint in (31d) uses the terminal set Yf ,which is distinct from the N -step feasible set YN defined in (32) below. In particular, Yf ⊆ Y N .
+
+7Concretely, Assumption 1 guarantees that whenever (31) is feasible at time k, it remains feasible at time k + 1 de-spite any bounded model–reality mismatch ˜ w ∈ Amis . 3
+
+Assumption 2 (Planner Stability) The MPC (31) 
+
+satisfies the following, uniformly in the exogenous data 
+
+(ˆ zk, r k) ∈ Z × R :(i) There exist α1, α 2 ∈ K ∞ such that, for all ˆy ∈ Y N ,
+
+α1
+
+ ∥ˆy − ygoal ∥ ≤ V ∗ 
+
+> N
+
+(ˆ y) ≤ α2
+
+ ∥ˆy − ygoal ∥
+
+(34) 
+
+(ii) There exists α3 ∈ K ∞ such that, for all ˆyk ∈ Y N
+
+and all admissible (ˆ zk, r k),
+
+V ∗
+
+> N
+
+  ˆf (ˆ yk, ˆzk, r k) − V ∗ 
+
+> N
+
+(ˆ yk) ≤ − α3
+
+ ∥ˆyk − ygoal ∥
+
+(35) 
+
+(iii) V ∗ 
+
+> N
+
+is Lipschitz on YN with constant LV > 0:
+
+V ∗ 
+
+> N
+
+(ˆ y) − V ∗ 
+
+> N
+
+(ˆ y′) ≤ LV ∥ˆy − ˆy′∥ (36) 
+
+Remark 4 Assumption 2 is satisfied under standard MPC terminal conditions (see Chapter 2 of [6]). 
+
+Remark 5 When ˆY = Yf = Rq , the feasible set is 
+
+YN = Rq for any horizon N , and Assumption 1 is sat-isfied trivially. The low-level controller then bears sole responsibility for keeping the physical state in the region where Assumption 2 holds. 
+
+The one-step error bound in (35) can be extended to the case with disturbance ˜ wk from the mismatch between f
+
+and ˆf using (36). 
+
+Lemma 1 Under Assumptions 1 and 2, set ˆyk+1 := ˆf (ˆ yk|k, ˆzk|k, r k)+ ˜ wk with Amis : ∥ ˜wk∥ ≤ εE holds. Then for all ˆyk ∈ Y N :
+
+V ∗ 
+
+> N
+
+(ˆ yk+1 ) − V ∗ 
+
+> N
+
+(ˆ yk) ≤ − α3
+
+ ∥ˆyk − ygoal ∥ + LV εE .
+
+(37) Using Lemma 1, the following proposition provides the conditions under which Gk 
+
+> ISS
+
+holds. 
+
+Proposition 1 (ISS of the Planning Loop) Under Assumptions 1 and 2, set ˆyk+1 := ˆf (ˆ yk|k, ˆzk|k, r k) + ˜ wk 
+
+> 3
+
+Robust recursive feasibility can be enforced constructively by constraint tightening (e.g., [53, 54]). It strengthens the input-to-state stability guarantee for the closed-loop MPC but is not strictly necessary for safety: safety is maintained unilaterally by the low-level layer (Remark 3). If feasibility is lost at step k, the fallback policy rk = rk−1 keeps the system safe indefinitely; liveness, however, is suspended until the MPC recovers a feasible solution. 
+
+with Amis : ∥ ˜wk∥ ≤ εE . Then, the state ˆyk|k satisfies Gk
+
+> ISS
+
+in (18) for some β ∈ KL , where εT = α−11 (α2(γ(εE ))) 
+
+with γ = α−13 (LV s).Proof. With the bounds (34), (35), and (37) from Lemma 1, V ∗ 
+
+> N
+
+is an ISS-Lyapunov function with dis-turbance input LV εE . The standard ISS-Lyapunov theorem [52] gives 
+
+V ∗ 
+
+> N
+
+(ˆ yk) ≤ ˜β(V ∗ 
+
+> N
+
+(ˆ y0), k ) + α2(γ(εE )) (38) for some ˜β ∈ KL and the K-class ISS gain 
+
+γ(s) := α−13 (LV s). (39) Applying the sandwich bounds (34) to both sides yields 
+
+∥ˆyk − ygoal ∥ ≤ α−11
+
+  ˜β(α2(∥ˆy0 − ygoal ∥), k ) + α2(γ(εE )) 
+
+≤ β(∥ˆy0 − ygoal ∥, k ) + εT , (40) where β ∈ KL absorbs α−11 ◦ ˜β ◦ α2 and εT :
+
+εT = α−11
+
+ α2
+
+ α−13 (LV εE ) . (41) 
+
+■
+
+Under Ak
+
+> mis
+
+, ∀k ≥ ks, Proposition 1 delivers Gks
+
+> ISS
+
+. The reference guarantee Gks 
+
+> ref
+
+holds by (31e). 
+
+Corollary 1 (High-Level Contract) Under As-sumptions 1–2 on ΣH , ΣH |= CH holds. 
+
+Remark 6 The two tolerances play distinct roles: εE
+
+(model mismatch) is an input to the analysis, bound-ing the one-step prediction error of ˆf ; εT (allowed state bound) is an output , characterising the asymptotic ra-dius around ygoal to which ˆyk converges under the ISS bound (40) .4.2 Safety Layer: Continuous-Time System ΣL
+
+The low-level safety layer Σ L comprises a tracking con-troller and an explicit reference governor (ERG). The tracker generates the control input u(t) = κ(x(t), v (t)) (cf. (2)) to regulate the plant state toward a filtered ref-erence v(t) produced by the ERG. Together, they must satisfy CL.
+
+4.2.1 Inner Loop 
+
+The tracker regulates the tracked element hr (x(t)) ∈
+
+Rp of the plant state x = ( y, z ) to follow the filtered reference v(t) ∈ Rp from the ERG (Definition 1), and the tracking error is 
+
+e(t) := hr (x(t)) − v(t). (42) 8Differentiating (42) along trajectories of (1) and substi-tuting the tracking controller (2) yields ˙e(t) = Pr ˙x(t) − ˙v(t)= Pr f  x(t), κ (x(t), v (t)) , w (t) − ˙v(t). (43) Provided the tracking controller κ is designed so that the closed loop admits an error-coordinate representa-tion, the right-hand side can be rewritten as a func-tion of e, the disturbance w, and the reference signal v
+
+together with its time derivatives (recall that v is the smooth ERG-filtered reference, while r itself is piecewise constant). Assuming further that w enters additively in error coordinates and grouping terms accordingly gives the closed-loop error dynamics ˙e = fe(e) + Bw w + ge( ˙ v, ¨v, . . . ), (44) where fe captures the autonomous error evolution un-der the tracking controller and ge captures the coupling from the ERG-induced reference motion. The frozen dy-namics are (44) evaluated with ˙ v = 0, that is, when the reference is held constant for each timestep: ˙e = fe(e) + Bw w. (45) These govern the tracking behavior when the ERG holds the reference stationary (described in Section 4.2.2). The bound w ≤ Wmax on w then yields ∥Bww∥ ≤ Hmax with 
+
+Hmax := ∥Bw∥ Wmax .
+
+Assumption 3 (Frozen ISS) The frozen dynam-ics (45) admit an ISS-Lyapunov function V : Rp → R≥0
+
+of the tracking error e satisfying: (i) There exist α, α ∈ K ∞ such that 
+
+α(∥e∥) ≤ V (e) ≤ α(∥e∥) ∀ e ∈ Rq . (46) 
+
+(ii) There exist α ∈ K ∞ and σ ∈ K ∞ such that 
+
+˙V (e) ≤ − α(∥e∥) + σ(∥w∥). (47) Given Assumption 3 and a disturbance bound Hmax ≥ 0, define the ISS ultimate sublevel threshold 
+
+¯Vh(Hmax ) := α α−1(σ(Hmax )) . (48) The sandwich bounds (46) and the dissipation inequal-ity (47) jointly guarantee that V decreases strictly out-side this threshold. Concretely, for any ∥w∥ ≤ Wmax :
+
+V (e) > ¯Vh(Hmax )=⇒ ∥e∥ > α −1  ¯Vh(Hmax ) = α−1(σ(Hmax )) =⇒ α(∥e∥) > σ (Hmax ) ≥ σ(∥w∥)=⇒ ˙V (e) < 0. (49) Thus the sublevel set Ω h := {e : V (e) ≤ ¯Vh(Hmax )}
+
+is forward invariant and every trajectory enters it in finite time. This places the error system in ISS form in the sense of Definition 8 with ( T, B, ξ, w ) = (R≥0, BL, e, w ): for any δ > 0 there exists finite T such that for all t ≥ T , the ultimate bound is ¯eh(Hmax ) : = α−1  ¯Vh(Hmax )
+
+= α−1 α(α−1(σ(Hmax ))) . (50) 
+
+4.2.2 Explicit Reference Governor 
+
+As discussed in Assumption 1, the constraint tighten-ing employed in the high-level is not required by the contract’s low-level assumption; it serves only to ensure the recursive feasibility of the high-level optimization. Safety enforcement on the physical plant is instead out-sourced to a dedicated mechanism that operates between the planner and the tracker. To this end, we now intro-duce the Explicit Reference Governor [44, 45] to enforce safety constraints. Writing the i-th row of C⊤x ≤ d in Xsafe (11) as c⊤ 
+
+> i
+
+x ≤ di
+
+and substituting x = e + v in the tracked coordinates (with v ∈ Rp zero-padded into Rn on the untracked coordinates) gives c⊤ 
+
+> i
+
+e ≤ di − c⊤ 
+
+> i
+
+v, so that with ce,i := ci
+
+and di(v) := di − c⊤ 
+
+> i
+
+v we recover 
+
+c⊤
+
+> e,i
+
+e ≤ di(v). (51) where ce,i extracts relevant error component and di(v) is the reference-dependent margin. Input constraints u ∈U can be recast in this form by enforcing {e : V (e) ≤
+
+Γ( e)} ⊆ D := {e : κ(x, v ) ∈ U} , i.e., the dynamic safety margin is tightened so that admissibility of the error implies admissibility of the resulting control input. We illustrate this construction on the HESS case study in Section 5. 
+
+Definition 14 (Safety Threshold Function) For each constraint i in the form (51) , define the Lyapunov threshold: 
+
+Γi(v) := sup {V (e) : c⊤
+
+> e,i
+
+e ≤ di(v)} (52) 
+
+The overall safety margin is Γ( v) := min i Γi(v).
+
+Geometrically, Γ i(v) is the largest Lyapunov sublevel set entirely contained within the i-th constraint half-space. Using this Lyapunov sublevel set, the commanded ref-erence r(t) from the ZOH block is filtered (modified) to reference v(t) ∈ Rp according to the ERG dynam-ics [44, 45]: ˙v = κerg · ∆( e, v ) · ρ(r, v ), (53) with ∆( e, v ) := max(0 , Γ( v) − V (e)
+
+9and κerg > 0 is the gain, V (e) is the ISS-Lyapunov func-tion from Assumption 3, and the navigation field ρ(r, v )in (53) combines attraction toward the target r and re-pulsion from constraint boundaries. The attraction field is 
+
+ρatt (r, v ) = 
+
+ r−v 
+
+> ∥r−v∥
+
+∥r − v∥ ≥ η 
+
+> r−vη
+
+∥r − v∥ < η (54) where η is the smoothing radius (that will be used in Assumption 5 below). For each constraint boundary i,the repulsive field is 
+
+ρrep ,i (v) = −ηi∇v Γi(v)/∥∇ v Γi(v)∥, (55) where ηi controls repulsion strength. Then, the com-bined field is 
+
+ρ(r, v ) = ρatt (r, v ) + X
+
+> i
+
+ρrep ,i (v). (56) The design condition on variable δrep := P 
+
+> i
+
+ηi < 1 en-sures forward progress (that will be used in Assump-tion 7 below). The key mechanism is as follows: when ∆( e, v ) = 0, meaning the current tracking error consumes too much of the available safety margin, the reference velocity vanishes and becomes stationary ( ˙ v = 0). The dynam-ics then reduce to the frozen system (reference held constant) because the commanded reference r(t) = rk
+
+is constant between sampling instants under the ZOH (Definition 3), and the Lyapunov function V (e) de-creases by Assumption 3 until ∆( e, v ) > 0, at which point the reference resumes motion. This ensures robust constraint satisfaction regardless of the commanded reference r.We define the feasible reference set 
+
+V := v ∈ Rp : Γ( v) > 0 , (57) i.e., the set of constant references for which the con-straints admit a nonzero tracking-error margin. 
+
+Assumption 4 (Admissible Disturbance) The dis-turbance bound Hmax is admissible :
+
+¯Vh(Hmax ) < inf  
+
+> v∈V
+
+Γ( v). (58) This ensures that the noise-induced invariant set Ω h := 
+
+{e : V (e) ≤ ¯Vh(Hmax )} is strictly contained within the constraint-satisfying region for all feasible references: Ωh × V ⊂ ˜K := {(e, v ) : V (e) ≤ Γ( v)}. (59) Fig. 3 illustrates the invariance set ˜K in the augmented state space. The following theorem shows that the ERG robustly enforces the constraint satisfaction against 
+
+∥w∥ ≤ Wmax under appropriate assumptions. 
+
+Theorem 2 (Robust Invariance of ERG) Under Assumptions 3–4, the set ˜K in (59) is robustly forward invariant for the composite dynamics of (44) and (53) 
+
+for all ∥w∥ ≤ Wmax and any commanded reference signal r(·).Proof. Define Φ( e, v ) := V (e) − Γ( v). Consider the boundary ∂ ˜K where Φ = 0, i.e. V (e) = Γ( v). At such points, ∆( e, v ) = max  0, Γ( v) − V (e) = 0 ,
+
+so by the ERG law (53), ˙ v = 0. The reference is frozen, and the error dynamics reduce to the frozen system (45). Since V (e) = Γ( v) > ¯Vh (by Assumption 4), we are outside the ISS ultimate bound set Ω h. By Assumption 3: ˙V ≤ − α ∥e∥ + σ(Hmax ) < 0. (60) The strict inequality holds because V (e) > ¯Vh implies 
+
+α ∥e∥ > σ (Hmax ). Since ˙ v = 0, the safety threshold Γ( v) is constant, so: ˙Φ = ˙V − ddt Γ( v) = ˙V < 0 (61) Thus Φ is continuously differentiable and satisfies ˙Φ < 0on the zero level set {Φ = 0 }. By the invariance property of zeroing barrier functions [55, Proposition 1], the sub-level set {Φ ≤ 0} = ˜K is robustly forward invariant. ■
+
+Corollary 2 (Low-Level Contract) Under Assump-tions 3–4 and Ctss with (e(kT s), v (kT s)) ∈ ˜K for all 
+
+k ∈ N and the environment assumption Aenv , the low-level contract is satisfied: (a) (Safety) Gsafe holds for any reference signal r(t):
+
+∀ t ∈ Ik, x (t) ∈ X safe and u(t) = κ(x(t), v (t)) ∈ U .This requires Aenv but not Aref .(b) (Tracking) Under Aref and Ctss , Gk 
+
+> track
+
+holds for all 
+
+k ∈ N with 
+
+εL := hr (¯ eh(Hmax )) = hr (α−1( ¯Vh(Hmax ))) (62) 
+
+where εL is in Gk 
+
+> track
+
+in (23) and ¯Vh(Hmax ) is in (48) .Proof. (a) Safety. By Theorem 2, the set ˜K = {(e, v ) : 
+
+V (e) ≤ Γ( v)} is robustly forward invariant for all ∥w∥ ≤ 
+
+Wmax and any commanded reference r(t). By construc-tion, V (e) ≤ Γ( v) ≤ Γi(v) for every constraint index i.Hence c⊤
+
+> e,i
+
+e ≤ di(v) for all i, which gives x(t) ∈ X safe and 
+
+u(t) = κ(x(t), v (t)) ∈ U .10 e
+
+˙eVmin − v Vmax − v
+
+v − Vmin Vmax − v
+
+Ωh        
+
+> ■Kv: Safety invariant ( V≤Γ)
+> ■Ωh: RCI set ( V≤¯Vh)
+> ■Constraint violation region
+
+Fig. 3. Invariance in the augmented state space. The set ˜K = {(e, v ) : V (e) ≤ Γ( v)} is a safe set in the augmented (e, v )-space, with barrier function Φ( e, v ) := V (e)−Γ( v). For a fixed reference v, the slice Kv = {e : V (e) ≤ Γ( v)} (blue boundary) represents the allowable error states; this slice shrinks as v approaches constraint boundaries where Γ( v)decreases. The ISS ultimate bound Ω h = {e : V (e) ≤ V h}
+
+(brown) satisfies Ω h ⊂ Kv for all admissible v. On ∂ ˜K where Φ = 0, the ERG enforces ˙ v = 0, and the frozen ISS dynamics yield ˙Φ = ˙V < 0, ensuring invariance. 
+
+(b) Tracking. Once the ERG has converged so that 
+
+v(t) = r for t ≥ t0, the error dynamics reduce to the frozen system (45) with constant reference. By As-sumption 3, the Lyapunov function satisfies ˙V (e) ≤−α(∥e∥) + σ(Hmax ), so by (49) the trajectory enters the invariant sublevel set Ω h = {e : V (e) ≤ ¯Vh(Hmax )}
+
+within time τLL . The state-space bound (50) then gives 
+
+∥hr (x(t0 + τLL )) − r∥ ≤ εL = ¯ eh(Hmax ). ■
+
+4.3 Timing Condition Ctss 
+
+As in Corollary 2, the tracking guarantees Gk 
+
+> track
+
+require timing compatibility Ctss : Ts ≥ τLL . For the remain-der of this section, we specialize Assumption 3 and Def-inition 8 to the linear case, which allows us to solve for explicit timing estimates. Note that the tracking bound with α−1 in (62) can be concretized in the case of a linear system with a quadratic Lyapunov function. 
+
+Corollary 3 Suppose V is quadratic, V (e) = e⊤P e 
+
+with P ≻ 0, so that α(s) = λmin (P ) s2 and α(s) = 
+
+λmax (P ) s2. Then the invariant sublevel set Ωh := {e :
+
+e⊤P e ≤ ¯Vh(Hmax )}, the per-coordinate tracking error satisfies 
+
+|ei| ≤ εL,i := 
+
+q ¯Vh(Hmax ) · [P −1]ii . (63) 
+
+Proof. For any e with V (e) = e⊤P e ≤ ¯Vh(Hmax ) = 
+
+λmax (P ) α−1(σ(Hmax )) 2, the projection onto the i-th coordinate satisfies e2 
+
+> i
+
+= ( e⊤ 
+
+> i
+
+e)2 ≤ [P −1]ii (e⊤P e ) ≤
+
+¯Vh(Hmax ) · [P −1]ii by the Cauchy–Schwarz inequality applied to the ellipsoidal sublevel set {e : e⊤P e ≤
+
+¯Vh(Hmax )}. ■
+
+The Lyapunov threshold of the ERG Γ i(v) in (52) also has the closed form [45]: Γi(v) = di(v)2
+
+c⊤
+
+> e,i
+
+P −1ce,i 
+
+. (64) However, the following discussion relies on ISS argu-ments that differ from the bounds in (63), derived via Lyapunov analysis, because they can provide a tighter time bound. The frozen error dynamics in (44) can be written as ˙ e = Ae + Bw with A being Hurwitz, so that 
+
+∥eAt ∥ ≤ m e −λet for constants m ≥ 1, λe > 0. The ISS bound (14) specialises to 
+
+∥e(t)∥ ≤ m e −λet∥e(0) ∥ + m ∥B∥
+
+λe
+
+∥w∥∞, (65) with the KL and K functions given explicitly by 
+
+β(s, t ) = m e −λet s, (66) 
+
+γ(s) = γISS s, γISS := m ∥B∥
+
+λe
+
+. (67) The gain γISS follows from the convolution bound R ∞ 
+
+> 0
+
+∥eAσ B∥ dσ ≤ m∥B∥ R ∞ 
+
+> 0
+
+e−λeσ dσ = m∥B∥ 
+
+> λe
+
+.The time τLL comprises two phases: transit (the ERG drives v(t) → rk) and convergence (the frozen dynamics settle the tracking error to εL). Bounding τLL requires the following additional assumptions on the ERG’s op-erating conditions. 
+
+Assumption 5 (Negligible Smoothing) The smooth-ing radius η in (54) satisfies η ≪ ¯r. For analytical purposes, we treat the reference as having arrived once 
+
+∥v − r∥ < η , so that ˙v ≈ 0 and the frozen dynamics (45) 
+
+govern the error. 
+
+Assumption 6 (Reference Admissibility) Each target reference lies in the interior of the feasible set: there exists δr > 0 such that 
+
+rk ∈ V δr := v ∈ V : dist( v, ∂ V) ≥ δr ∀ k ≥ 0. (68) 
+
+This is a liveness-only requirement: it ensures the ERG navigation field remains bounded away from zero near rk,so that v(t) → rk in finite time. Safety is unaffected— at the boundary of V the ERG simply ensures ˙v → 0,maintaining invariance of ˜K.
+
+Assumption 7 (Guaranteed Progress) There ex-ists a uniform margin r > 0 and τ1 > 0 such that the dynamic safety margin remains strictly positive during transit: 
+
+Γ( v(t)) − V (e(t)) > r ∀ t ∈ [tk, t k + τ1], (69) 11 Phase 1                
+
+> Transit
+> Phase 2
+> Settling
+> Phase 3
+> Steady State
+> Time t
+> Output
+> ˜e(t)
+> (total)
+> δgov
+> e(t)
+> εL
+> tk
+> tk+τLL
+> (settled)
+> Phase 1: Transit
+> ˙v≈κ,∥˜e∥ ≈ ¯r
+> Phase 2 & 3
+> ˙v→0, ∥e∥ ≤ ¯eh(Hmax )
+> Planner rk
+> Governor v(t)Output hr(x(t))
+
+Fig. 4. Hierarchical decomposition of tracking errors. 
+
+The diagram illustrates the physical components of the To-tal Planner Deviation (Blue brace). This deviation aggre-gates the Governor Lag ∥v(t) − rk ∥ (Green brace) and the 
+
+Inner-Loop Control Error e(t) (Red brace). Note that while the continuous state Vgr (t) (Red line) may transiently violate the asymptotic tracking tube ±ε (Green shaded re-gion), it settles before the next sample. 
+
+implying the ERG velocity satisfies 
+
+κ · r ≤ ∥ ˙v∥ ≤ κmax := κ · Γ( v), (70) 
+
+where κ = κerg (1 − δrep ), κ = κerg (1 + δrep ), and δrep < 1
+
+bounds the antagonistic effect of the repulsive field. 
+
+Under the linear system setting, the settling time de-composes as τLL = τ1 + τ2: the transit time τ1 during which the ERG drives v(t) → rk (bounded via the ERG velocity, Assumption 7), and the convergence time τ2
+
+during which the tracking error decays into the ISS ul-timate ball (bounded via the exponential decay rate of the frozen dynamics). 
+
+Proposition 2 (Settling Time) Under Assump-tions 3–7 (specialized to linear dynamics), for any ref-erence step satisfying ∥rk+1 − rk∥ ≤ ¯r and any settling tolerance δ > 0, the error is bounded 
+
+∥e(t)∥ ≤ ε + δ = γISS Hmax + δ (71) 
+
+for all t ≥ tk + τLL , where 
+
+τLL := ¯r + εκ r 
+
+| {z }  
+
+> τ1(transit)
+
++ 1
+
+λe
+
+ln 
+
+ m · zpeak 
+
+δ
+
+| {z } 
+
+> τ2(decay)
+
+, (72) 
+
+with peak error at the end of transit 
+
+zpeak := m e −λeτ1 (¯ r + ε) + γISS (Hmax + k2 ¯κ ¯Γ) .
+
+(73) 
+
+Proof. We bound the ISS envelope across the two sequen-tial phases of ERG operation (cf. Fig. 4). Assumptions 5–6) ensures the existence of a feasible path to each tar-get rk, which is naturally satisfied when the high-level MPC incorporates constraint margins. 
+
+Phase 1: Transit ( t ∈ [tk, t k + τ1]). By Assumption 7, the ERG velocity satisfies ∥ ˙v∥ ≥ κ r while v(t)̸ = rk, so a step of size ¯ r is traversed in at most 
+
+τ1 ≤ τ M 
+
+> 1
+
+:= ¯r + εκ r . (74) Let M be a uniform bound on ∥ge( ˙ v, ¨v, . . . )∥ along the ERG flow; existence of such an M follows from stan-dard smoothness arguments for navigation-based refer-ence governors [44, 45]. The total disturbance during transit satisfies 
+
+Dtransit := Hmax + M. (75) The ISS envelope gives 
+
+∥e(t)∥ ≤ m e −λe(t−tk ) ∥e(tk)∥ + γISS Dtransit . (76) Evaluating at t = tk +τ1 with ∥e(tk)∥ ≤ ¯r+ε yields (73). 
+
+Phase 2: Decay ( t ∈ [tk + τ1, t k + τLL ]). After transit, the reference is stationary ( ˙ v ≈ 0), so the disturbance reduces to Hmax and the envelope becomes 
+
+∥e(t)∥ ≤ m e −λe(t−tk −τ1) zpeak + ε. (77) Setting the transient term equal to δ and solving: 
+
+m e −λeτ2 zpeak = δ =⇒ τ2 := 1
+
+λe
+
+ln 
+
+ m · zpeak 
+
+δ
+
+
+
+.
+
+For t ≥ tk + τ1 + τ2 = tk + τLL , the bound (71) follows. 
+
+■
+
+Using the settling time analysis in Proposition 2, the timing compatibility condition in Definition 11 can be concretized in terms of the settling time τ2 in linear case setting. 
+
+Corollary 4 Under Aenv and Assumptions 1–7, if the vertical refinement conditions in Definition 12 are satis-fied and timing compatibility condition are met: 
+
+0 ≤ Ts − τ2 ≤ τ M 
+
+> 1
+
+:= ¯r + εκ r . (78) 
+
+Then, the layered system ΣH ▷ΣL achieves φsafe and φlive .Proof. The local contract is satisfied (Σ L |= CL and ΣH |= CH ) with Corollaries 1 and 2. The downward vertical condition in Definition 12 holds due to the ZOH architecture given the initial condition r0 satisfies A0ref .12 All hypotheses of the layered correctness theorem (The-orem 1) are satisfied. ■
+
+The contract interface Amis is model-independent, but the mismatch bound εE depends on the choice of ab-stract model ˆf . We verify it with explicit numerical val-ues for the HESS application in Section 5, demonstrat-ing how the theoretical constructs of Section 3 and 4 specialize to a concrete cyber-physical system. 
+
+5 Case Study: Hybrid Energy Storage System 
+
+We instantiate the heterogeneous contract framework on a Hybrid Energy Storage System (HESS) 4 comprising a battery and a supercapacitor connected to a DC bus. 
+
+System dynamics. The HESS is an instance of the continuous-time plant with state x := [Vgr , I S , I B ,ES , E B ]⊤ ∈ X ⊆ R5, control input u := [ uS , u B ]⊤ ∈U ⊆ R2, disturbance w(t) ∈ W ⊆ R, and known load 
+
+d(t) ∈ R, treated as an explicit function of t rather than an input or disturbance since its profile is known a priori. The resulting dynamics, with substituted time-dependent term d, are assumed to satisfy the continuity condition in Definition 1. The dynamics ˙ x = f (x, u, w )in (1) take the form: ˙Vgr = 1
+
+Cbus 
+
+ IS + IB + d, (79a) ˙IS = uS + w(t), (79b) ˙IB = uB , (79c) ˙ES = λS Vgr IS , (79d) ˙EB = λB Vgr IB , (79e) where Vgr is the DC bus voltage, Cbus the bus capac-itance, IS and IB the supercapacitor and battery cur-rents, ES and EB their states of charge, and λS , λ B > 0the voltage-to-energy conversion coefficients. The load 
+
+d(t) is known, continuously differentiable, and bounded (|d(t)| ≤ ρd); the MPC incorporates forecasts ˆd[k], while  
+
+> 4
+
+The integration of HESS is becoming increasingly critical in the context of renewable energy. With the rising adoption of renewable power sources, such as solar and wind, power generation becomes highly variable, which demands efficient energy storage solutions. HESS, which combines batteries and supercapacitors, is particularly effective at addressing these challenges. Batteries provide a reliable means for stor-ing energy over extended periods and are primarily used for slow, unidirectional power adjustments, ensuring energy availability and longevity. In contrast, supercapacitors are adept at handling rapid charge and discharge cycles, de-signed to respond to fast transients and stabilize the grid by compensating for rapid fluctuations. This distinction in their roles enhances system performance and reliability, as batter-ies aim to meet long-term energy targets, while supercapac-itors maintain short-term grid stability. However, existing controllers struggle to address the distinction between these two components, particularly in safety-critical applications. 
+
+forecast errors contribute to the one-step prediction er-ror ˜ wk in (6). The disturbance satisfies 
+
+w(t) ∈ W := [ −Wmax , W max ] ∀ t ≥ 0, (80) corresponding to the environmental assumption 
+
+Aenv (20). Figure 5 illustrates the hierarchical structure. Current Layer (Fast)      
+
+> Voltage Layer (Intermediate)
+> Energy Layer (Slow)
+> IS(t)Supercap Current
+> d(t)Disturbance
+> IB(t)Battery Current
+> Vgr (t)Grid Voltage
+> ES(t)Supercap Energy
+> EB(t)Battery Energy
+> ×V×V
+
+Fig. 5. Hierarchical structure of the HESS dynamics. 
+
+Output maps. The tracked output hr (x) = Pr x ∈ R2
+
+in Definition 1 selects the fast states that the low-level controller u = κ(x, v ) as in (2) regulates the fast states (the currents, whose dynamics are not modeled in the high-level), i.e., 
+
+hr (x) = Pr x = [ Vgr , I B ]⊤, Pr ∈ R2×5. (81) The planner measurement yk = hy (x(tk)) ∈ R2 in Defi-nition 2 extracts the slow observable states: 
+
+yk = hy (x(tk)) = [ EB (tk) ES (tk)] ⊤. (82) 
+
+Specifications. As in Problem 1, the global require-ment decomposes as φglobal = φsafe ∧ φlive , where the safety specifications are imposed as physical limits on currents and the bus voltage (hard constraints): 
+
+φsafe : ∀t ≥ 0 : ( Vgr , I S , I B )( t) ∈ X safe , (83) 
+
+Xsafe := RV × R S × R B , (84) with RV := [−Vmax , V max ], RS := [− ¯IS , ¯IS ], and 
+
+RB := [ − ¯IB , ¯IB ]. Moreover, 
+
+φlive : ∃ T : |EB (t) − Egoal  
+
+> B
+
+| ≤ εH ∀ t ≥ T, (85) where the battery’s SOC must achieve its goal in a finite time. We also include input constraints. 
+
+U := (uS , u B ) : |uS | ≤ US, max , |uB | ≤ ¯UB . (86) In addition to the hard constraints on current and volt-age levels above, we introduce a soft constraint on the states of charge (SOC) below. 5 
+
+> 5
+
+This soft constraint is imposed only on the abstracted model; whether it should be regarded as part of the specifi-cation is therefore context-dependent. 
+
+13 Soft constraints (SOC bounds) φsoft safe :
+
+φsoft safe : (ES , E B )( t) ∈ [ES , ¯ES ] × [EB , ¯EB ]. (87) 
+
+Remark 7 The supercapacitor has no explicit target; it operates as a buffer within the safety layer, absorbing high-frequency disturbances that the slower battery can-not track. In formal-methods terms, this reflects a safety– liveness decomposition at the component level: superca-pacitor for safety (disturbance rejection), battery for live-ness (energy target). 
+
+Abstract model. For regulated voltage operation, the high-level system model assumes that V ref gr [k] = Vnom 
+
+is constant; only Iref  
+
+> B
+
+[k] varies. This and equation (79a) gives us an equation IS [k] = −IB [k] − ˆd[k]. Using this equation to (79e)–(79d), the following is the dy-namics of the planner that operates on slow states ˆyk := [ EB [k], E S [k]] ⊤, abstracting fast voltage/current dynamics ˆyk+1 = ˆf (ˆ yk|k, ˆzk|k, r k):= 
+
+"
+
+EB [k] + TsλB Vnom IB [k]
+
+ES [k] + TsλS Vnom (−IB [k] − ˆd[k]) 
+
+#
+
+. (88) Given the settings above, we define the local contracts for the high-level system as in Corollary 1 and for the low-level tracker as in Corollary 2. Theorem 1 shows that the layered system satisfies φsafe and φlive . Satisfaction of the input constraints (86) depends on the implementation details, which we prove in Proposition 3. SOC bounds are operational: a violation reflects an energy-management failure, not immediate damage. Accordingly, these con-straints are treated as soft — the low-level controller 
+
+u = κ(x, r ) as in (2) does not enforce them, while the high-level system incorporates them into the reference generation to steer the system back within bounds over time. 
+
+5.1 High-Level Subsystem ΣH .
+
+The MPC problem (31) is instantiated as min   
+
+> u0: N−1
+> N−1
+
+X
+
+> j=0
+
+∥EB [k + j + 1] − Egoal  
+
+> B
+
+∥2 
+
+> Q
+
+(89a) s.t. ˆyk+j+1 = ˆf (ˆ yk+j , u k+j ) (89b) 
+
+IB [k + j] ∈ R B , (89c) 
+
+|IB [k + j] − IB [k + j − 1] | ≤ ¯UB
+
+λB
+
+ 1 − e−λB Ts  , (89d) 
+
+− IS ≤ − IB [k + j] − ˆd[k + j] ≤ IS , (89e) 
+
+EB [k + j] ∈ [EB + δB , E B − δB ], (89f) 
+
+ES [k + j] ∈ [ES + δS , E S − δS ], (89g) The margins δB , δ S ≥ 0 in the SOC constraints absorb the worst-case prediction error ek+j := yk+j − ˆyk+j|k so that the feasibility of the tightened (nominal) problem implies satisfaction of the original limits for every ad-missible disturbance realization. Two standard choices exist: (i) Open-loop (naive) tightening [6]: set δB (j) = j ε E
+
+and δS (j) = j ε E , where εE bounds the per-step mismatch. The margins grow linearly with the pre-diction step j, which may render the problem in-feasible for long horizons. (ii) Tube MPC [6]: introduce an ancillary feedback K ∈
+
+R1×2 that confines the error to the minimal robust positive invariant set E∞, giving constant margins 
+
+δB , δ S equal to the component-wise extents of E∞.The tightening is independent of j, preserving fea-sibility over arbitrarily long horizons at the cost of an additional feedback gain to tune. 
+
+Corollary 5 (High-level verification) The MPC satisfies Assumption 1 as robust SOC constraints are tightened in (89) , ensuring YN absorbs the worst-case mismatch. Assumption 2 holds as the quadratic cost yields descent (35) with α(s) = λmin (Q)s2, and Lips-chitz regularity (36) holds for quadratic V ∗ 
+
+> N
+
+. Thus, from Corollary 1, ΣH |= CH = V 
+
+> k
+
+CkH holds if equation (27) 
+
+condition holds with the following εT :
+
+εT =
+
+s
+
+λmax (P )
+
+λmin (P ) · LV
+
+λmin (Q) · εE . (90) 
+
+Proof. For ℓ(ˆ y, u ) = ∥ˆy − ygoal ∥2
+
+> Q
+
+, the sandwich bounds on the optimal value function V ∗ 
+
+> N
+
+are 
+
+α1(s) = λmin (P ) s2, α 2(s) = λmax (P ) s2, α 3(s) = λmin (Q) s2.
+
+Composing the functions in (41) results in (90). ■
+
+Remark 8 The prediction model uses the sampled dis-turbance ˆdk = d(tk) held constant over the interval. The inter-sample variation ˜d(t) = d(t) − d(tk) is bounded by the Lipschitz constant of the environment and is sub-sumed into the worst-case disturbance bound Wmax .5.2 Low-Level Subsystem Design ( ΣL)
+
+Tracking controller Σtrack . The inner-loop stabilizes voltage and current dynamics to track the reference r =[Vnom , I ref  
+
+> B
+
+]⊤.
+
+Battery current regulation. The proportional controller 
+
+uB (t) = −λB (IB (t) − Iref  
+
+> B
+
+), λB > 0 (91) yields exponential convergence: 
+
+IB (t) = Iref  
+
+> B
+
++ ( IB (t0) − Iref  
+
+> B
+
+)e−λB (t−t0) (92) 14 and gurantees the tracking of Iref  
+
+> B
+
+.
+
+Voltage regulation. The voltage-current subsystem re-duces to: ˙Vgr = 1
+
+Cbus 
+
+(IS + ¯d(t)) , ˙IS = uS + w(t), (93) where ¯d(t) := d(t) + IB (t) is known (load plus set-tling battery current) and w(t) is a bounded unknown disturbance. The supercapacitor regulates voltage via disturbance-canceling PD control 
+
+uS = −Cbus k1 (Vgr − v) − k2 (IS + ¯d) − ˙¯d, (94) where v(t) is the filtered reference from the ERG, and 
+
+k1, k 2 > 0 are design parameters. The three terms in (94) admit a physical interpretation: −Cbus k1 (Vgr −v) is pro-portional feedback on the voltage error, −k2 (IS + ¯d) is derivative (damping) feedback since ( IS + ¯d)/C bus = ˙Vgr ,and − ˙¯d cancels the disturbance rate (requiring an esti-mate of ˙¯d). The uncompensated reference accelerations in ψdyn are handled by the ERG. Define the tracking error 
+
+e(t) := 
+
+"
+
+Vgr (t) − v(t)˙Vgr (t) − ˙v(t)
+
+#
+
+=
+
+" Vgr (t) − v(t)  
+
+> IS(t)+ ¯d(t)
+> Cbus
+
+− ˙v(t)
+
+#
+
+. (95) The closed-loop error dynamics is ˙e = A e + B w (t) − Bv ψdyn (t),
+
+where 
+
+A =
+
+"
+
+0 1
+
+−k1 −k2
+
+#
+
+, B =
+
+"
+
+0
+
+> 1
+> Cbus
+
+#
+
+, Bv =
+
+"
+
+01
+
+#
+
+,
+
+and the feedforward residual is 
+
+ψdyn (t) := k2 ˙v(t) + ¨ v(t).
+
+With the plant-level disturbance bound ∥w∥ ≤ Wmax ,the disturbance channel B contributes 
+
+∥B w ∥ ≤ ∥ B∥ | w| ≤ Wmax  
+
+> Cbus
+
+=: Hmax .
+
+Gain selection. Choose k1, k 2 > 0 such that A is Hur-witz with decay rate: λe := min |Re(eig( A)) | > 0. We assume λe < λ B for the proof of Proposition 2 below. This means that the supercapacitor dynamics (handling fast transients) decay faster than the battery dynamics (providing sustained power), consistent with the super-capacitor’s role as a high-frequency buffer. 
+
+ERG design. Each constraint in (83) is expressed in terms of error state e and reference v:
+
+c⊤
+
+> a,i
+
+e + c⊤ 
+
+> b,i
+
+˙e ≤ di(v), (96) where vectors ca,i , c b,i and bound di(v) are derived for each constraint. Γ( v) incorporates input constraints, de-creasing near boundaries to ensure feasible control effort (Appendix B). 
+
+Proposition 3 (Low-level verification.) With the low-level design ΣL in Section 5.2 and low-level contract 
+
+CL in (19) with following ¯r and εL, under timing compat-ibility condition Ctss in Proposition 2, ΣL |= CL holds. Moreover, the input constraints hold |uB (t)| ≤ ¯UB and 
+
+|uS (t)| ≤ ¯US for all t ∈ [tk, t k+1 ):
+
+¯r := [0 , ¯rB ] (97) ¯rB := ¯UB
+
+λB
+
+(1 − e−λB Ts ) (98) 
+
+εL := [ εL,V := ε1, ε L,I B := ¯UB
+
+λB
+
+e−λB Ts ] (99) 
+
+where εL,V := ε1 in (62) , i.e., p ¯Vh(Hmax ) · [P −1]11 . The matrix P is from quadratic Lyapunov function V (e) = 
+
+e⊤P e that satisfies the Lyapunov equation: A⊤P +P A =
+
+−R, R is a symmetric positive definite matrix). Proof. We separately consider the voltage-current linear subsystem (93) and the battery subsystem (92). 
+
+The voltage-current subsystem (93) . Assumption 3 holds as we choose k1, k 2 > 0 such that A is Hurwitz. Let 
+
+Hmax satisfy Assumption 4. Assumptions 5–7 (negligible smoothing, reference admissibility, guaranteed progress) hold by design: η ≪ ¯r, MPC incorporates constraint margins, and δrep < 1. Then, from Corollary 3, the ulti-mate bound in (63) is instantiated to the tracking bound for the voltage (1st element) of the voltage-current sub-system as (99). 
+
+Input constraint |uS (t)| ≤ ¯US . Refer to Appendix B. 
+
+The battery subsystem (92) . Input constraint 
+
+|uB (t)| ≤ ¯UB . During ∀t ∈ [tk, t k+1 ), 
+
+|uB (t)| = λB |IB (t) − Iref  
+
+> B
+
+[k]| ≤ λB · ¯UB
+
+λB
+
+= ¯UB . (100) Since the Ak 
+
+> ref
+
+holds for all k, the input constraint is satisfied for all t ≥ 0. ■
+
+Remark 9 The timing compatibility condition Ctss can be satisfied either by aggressive tuning of the low-level gains ( k1, k 2) to reduce the settling time τLL , or by se-lecting a sufficiently long high-level sampling period Ts.
+
+15 Now, we verify the upward refinement condition in Def-inition 12 by deriving a bound on the discrete energy mismatch. 
+
+Proposition 4 (Vertical refinement condition) 
+
+Let ΣH ▷ ΣL designed as in Corollaries 3 and 5. Then, the refinement condition in Definition 12 holds at each 
+
+k. In particular, the upward condition is derived as a discrete energy mismatch: 
+
+εE (εL) := ∆tr 
+
+|{z} 
+
+> Transit Cost
+
++ dss · τ2
+
+| {z } 
+
+> Settling Cost
+
+, (101) 
+
+where ∆tr ∈ R2 represents the fixed energy cost of the worst-case maneuver (transit and acceleration), and 
+
+dss ∈ R2 represents the steady-state drift rate due to persistent environmental disturbances. 6
+
+Proof. We prove the downward and handshake for both battery and supercapacitor-related terms. 
+
+(Downward handshake) The feasibility Ak 
+
+> ref
+
+(21) for the voltage, i.e., |Vgr − V ref gr | ≤ ε1, hold because of Ak−1ref 
+
+of the previous time step k − 1. The feasibility Ak 
+
+> ref
+
+(21) for the battery holds for all 
+
+k ∈ N. The proof proceeds by induction on k.Assume the Ak 
+
+> ref
+
+holds at tk:
+
+|IB (tk) − Iref  
+
+> B
+
+[k]| ≤ ¯UB
+
+λB
+
+. (102) On the interval [ tk, t k+1 ), the reference is constant at 
+
+Iref  
+
+> B
+
+[k] and the closed-loop error decays exponentially. At tk+1 = tk + Ts:
+
+|IB (tk+1 ) − Iref  
+
+> B
+
+[k]| = |IB (tk) − Iref  
+
+> B
+
+[k]| e−λB Ts
+
+≤ ¯UB
+
+λB
+
+e−λB Ts .
+
+At tk+1 the reference jumps to Iref  
+
+> B
+
+[k+1]. By the triangle inequality, Ak+1 ref holds: 
+
+|IB (tk+1 ) − Iref  
+
+> B
+
+[k + 1] |≤ | IB (tk+1 ) − Iref  
+
+> B
+
+[k]| + |Iref  
+
+> B
+
+[k] − Iref  
+
+> B
+
+[k + 1] |≤ ¯UB
+
+λB
+
+e−λB Ts + ¯UB
+
+λB
+
+ 1 − e−λB Ts  = ¯UB
+
+λB
+
+(103) 
+
+(Upward handshake) See Appendix C for the de-tailed element-wise bounds. ■ 
+
+> 6The explicit derivation of these coefficients is provided in Appendix C.
+
+Corollary 6 Under the same condition as in Proposi-tion 4, if the compatibility conditions hold, i.e., εH sat-isfies εH ≥ εE + εT + δ in (11) with εL in Corollary 3 and εE in (101) . Then, from Theorem 1, the HESS spec-ifications are satisfied by ΣH ▷ ΣL.
+
+6 Numerical Validation 
+
+We validate the proposed hierarchical architecture through numerical simulations of the HESS case study. The system parameters represent a grid-connected storage unit subject to physical constraints: voltage limits RV = [380 , 420] V, supercapacitor current limits 
+
+RIS = [ −12 , 12] A, and input saturation Umax = 30 A/s. The two scenarios isolate distinct aspects of the con-tract framework. Scenario A holds the ERG reference stationary ( ˙ v = 0) and validates the low-level guaran-tees in isolation: robust control invariance of Ω h and the ISS decay bound that certifies a finite settling time τ2.Scenario B activates the full hierarchy—MPC planner, ERG, and low-level controller—and verifies global live-ness (Glive ) of the closed-loop system under reference transitions. 
+
+6.1 Scenario A: Invariance and Decay 
+
+This scenario validates two distinct guarantees provided by the low-level controller under persistent bounded dis-turbances: (i) the robust control invariance (RCI) of Ω h,which the ERG requires for real-time constraint enforce-ment; and (ii) the ISS decay bound, which certifies a fi-nite settling time τ2. These two mechanisms serve differ-ent layers of the hierarchical contract and are validated separately below. 
+
+6.1.1 System and Disturbance Setup 
+
+We employ controller gains k1 = 25 s −2 and k2 = 11 s −1,yielding closed-loop eigenvalues λ1 = −3.21 and λ2 =
+
+−7.79 (both real). The resulting natural frequency is 
+
+ωn = 5 rad/s with damping ratio ζ = 1 .10; the over-damped response eliminates oscillatory transients while maintaining fast convergence. The dominant decay rate is λe = 3 .21 s −1. The lumped disturbance captures un-modeled dynamics, measurement noise, and exogenous load fluctuations via a mixed deterministic–stochastic profile: 
+
+w(t) = Wmax 
+
+0.7 sin(15 t) + 0 .3 ξ(t), (104) where |ξ(t)| ≤ 1, W max = 3.0 A/s. The sinusoidal component at 15 rad/s represents periodic load pulsa-tion, and ξ(t) models converter switching noise. The quadratic Lyapunov function V (e) = z⊤P z is obtained from A⊤P +P A = −Q with Q = diag(50 , 1). The asym-metric weighting penalizes voltage error over rate error, 16 reflecting the operational priority of tight regulation. The resulting matrix is 
+
+P =
+
+"
+
+14 .41 1 .00 1.00 0.14 
+
+#
+
+, (105) with condition number κ(P ) = λmax (P )/λ min (P ) =217. 
+
+6.1.2 RCI Set and ERG Safety Mechanism 
+
+The ERG modulates the reference velocity ˙v so that 
+
+V (e(t)) ≤ Γ( v(t)) is maintained at every instant. When the ERG halts ( ˙ v = 0), the disturbance can still inject energy into the error state; the RCI property of Ω h guar-antees that ˙V < 0 whenever V > ¯Vh, preventing V from exceeding Γ( v). 
+
+Optimized invariant level. Following Lemma 3of [45], ¯Vh is obtained by maximising V (e) over the surface ˙V (e, w ) = 0 under worst-case |w| ≤ Wmax .Parametrising z = a [cos θ, sin θ]⊤, the constraint ˙V = 0 fixes 
+
+a(θ) = 2 |b⊤P B | Hmax 
+
+d⊤Q b , b = [cos θ, sin θ]⊤, (106) and the invariant level is ¯Vh = max  
+
+> θ∈[0 ,2π)
+
+a(θ)2  b⊤P b  = 0 .51 V 2. (107) The maximum is attained at θ∗ = 79 .7◦, corresponding to a worst-case state z∗ = [0 .13 , 0.72] ⊤ that lies pre-dominantly in the ˙ e-channel—consistent with the dis-turbance entering through B = [0 , 1] ⊤.
+
+Simulation verification. Figure 6 shows the phase portrait under the mixed disturbance (104) with initial condition z(0) = [3 , 0] ⊤. The trajectory enters Ω h at 
+
+t = 0 .97 s and remains inside thereafter, with zero vio-lations of the invariant level over 4 s of persistent exci-tation. 
+
+6.1.3 ISS Envelope and Decay Time 
+
+For the settling time analysis, we require an ISS enve-lope that bounds ∥e(t)∥ during transients—before the trajectory has entered Ω h. Since A is Hurwitz, ∥eAt ∥ ≤ 
+
+m e −λet for some m ≥ 1, giving 
+
+∥e(t)∥ ≤ m e −λet ∥e(0) ∥ + ε (1 − e−λet), (108) with ISS noise floor ε = γISS Hmax and γISS = m∥B∥/λ e.The overshoot factor m is computed in hindsight as the tightest value for which (108) holds over the simu-lated trajectory; this yields m = 2 .94, and consequently 
+
+γISS = 2.94 ×1.03.21 = 0 .92 , ε = 0 .92 × 3.0 = 2 .75 V. 4 2 0 2 4 6 8        
+
+> Voltage error e[V]
+> 5
+> 4
+> 3
+> 2
+> 1
+> 0
+> 1
+> 2
+> 3
+> Rate error  ˙e [V/s]
+> 2εe= 0 .53 V
+> Robust invariant set Ωh
+> Ωh
+> Transient
+> Inside Ωhz∗
+> z(0)
+
+Fig. 6. Phase portrait under mixed disturbance. The trajec-tory converges from z(0) = [3 , 0] ⊤ into Ω h (shaded ellipsoid, 
+
+εe = 0 .27 V) and remains bounded. The worst-case point z∗
+
+on the ˙V = 0 surface is marked. 
+
+With tolerance δ = 0 .1 and peak excursion ∥e∥peak =
+
+m ∥e(0) ∥ = 8 .81 V, the decay time is 
+
+τ2 = 1
+
+λe
+
+ln m ∥e∥peak 
+
+δ ε = 13.21 ln 2.94 × 8.81 0.1 × 2.75 = 1 .42 s .
+
+Figure 7 confirms that the ISS envelope (108) bounds 
+
+∥e(t)∥ at every instant, and that ∥e(t)∥ ≤ (1 + δ)ε =3.02 V for all t ≥ τ2. The lower panel shows the hindsight computation of m(t), peaking at m = 2 .94 during the initial transient. 0 1 2 3 4 5 
+
+> Time [s]
+> 0
+> 2
+> 4
+> 6
+> 8
+> |z(t)|  [V]
+> 2
+> |z(t)|
+> ISS envelope
+> (1+ )
+
+Fig. 7. Top: error norm ∥e(t)∥ (green), ISS envelope (blue dashed), and the (1+ δ)ε threshold (orange). After τ2 = 1 .42 s (shaded region), the bound holds with zero violations. Bot-tom: minimum overshoot factor m(t) required at each in-stant; the peak value m = 2 .94 determines γISS .
+
+As a summary, the optimized invariant level ¯Vh =0.51 V 2 yields component-wise bounds εe = 0 .27 V and 
+
+ε ˙e = 2 .75 V/s, which serve as the ERG’s constraint tight-ening margins. The adversarial simulation confirms con-servatism by a factor of roughly two ( V adv max / ¯Vh = 0 .41). 17 For the settling time contract, the ISS envelope with 
+
+m = 2 .94 gives a noise floor ε = 2 .75 V and a decay time 
+
+τ2 = 1 .42 s, setting the minimum MPC sampling period 
+
+Ts ≥ τ2.
+
+6.2 Scenario B: Hierarchical Operation 
+
+This scenario activates the full hierarchy—MPC plan-ner, ERG, and low-level controller—to verify safety (Gsafe ) and liveness ( Glive ) under a time-varying load. The grid voltage target is held at r = 400 V throughout; the ERG monitors the safety invariant V (e) < Γ( v) con-tinuously, while the MPC manages the battery current to reject the load and accumulate charge. The controller gains are k1 = 35, k2 = 12 with Q =diag(100 , 10), yielding eigenvalues λ1,2 = −5.0, −7.0and decay rate λe = 5 .0 s −1. The optimized invariant level gives ¯Vh = 0 .50 V 2 with εe = 0 .13 V. The actuator limit is US, max = 50 A/s, chosen so that the bottleneck ERG threshold Γ u = U 2
+
+> S, max
+
+/(K⊤P −1K) = 9 .3 ≫ ¯Vh
+
+provides adequate headroom. The feedforward term −C−1bus 
+
+˙¯d requires ˙¯d to be bounded, so the external load ramps from 0 to −5 A over [0 .5, 0.8] s (with a superimposed 2 Hz oscillation) rather than step-ping. This decomposition is central to the hierarchical contract: the MPC plans battery current IB to shape ¯d,the feedforward in uS cancels ¯d from the error dynam-ics, and the ERG and RCI set handle only the unknown residual w. The MPC samples at Ts = 0 .1 s with a re-ceding horizon of N = 20. The liveness objective is to accumulate 5 A ·s of battery charge over a 4 s horizon. 
+
+Safety: Figure 8(a) shows the bus voltage zoomed to the actual fluctuation range. With feedforward active, 
+
+V ∈ [400 .00 , 400 .01] V—the known disturbance is al-most perfectly cancelled and the tracking error is dom-inated by the residual w. Panel (c) confirms the ERG safety invariant: V (e(t)) < Γ( v(t)) at every instant, with 
+
+V (e)max = 0 .017 ≪ ¯Vh = 0 .50 ≪ Γ∗ = 9 .3. The three-orders-of-magnitude gap between V (e) and Γ reflects the effectiveness of the feedforward: the error dynamics truly see only w(t), precisely as the theory assumes. Since the grid target r = 400 V is constant, the ERG ref-erence satisfies v(t) ≈ r throughout and the ERG does not need to actively modulate v. The ERG’s contribu-tion here is providing a continuous-time safety certifi-cate: even though the MPC updates only every Ts, the ERG verifies V (e) < Γ( v) at every integration step. 
+
+Liveness: Panel (b) shows the current allocation: the MPC commands IB (black dashed) to compensate the known load and accumulate charge; the supercapacitor 
+
+IS (gray) absorbs the residual fast dynamics. Panel (d) shows the battery charge EB (t) converging to the 5 A ·starget by t ≈ 4 s without overshoot, verifying the liveness guarantee Glive .399.8                     
+
+> 400.0
+> 400.2
+> 400.4
+> 400.6
+> Voltage [V]
+> Load ramp
+> (a) Voltage regulation (zoomed)
+> V(t)v(t)(ERG) r= 400 V
+> 5.0
+> 2.5
+> 0.0
+> 2.5
+> 5.0
+> 7.5
+> Current [A]
+> (b) Current allocation
+> ISIBMPC z3
+> 10 6
+> 10 4
+> 10 2
+> 10 0
+> Energy
+> tΩh= 0 .45 \,s
+> (c) ERG safety: V(z)<Γ( v)
+> Γ( v)
+> V(z)
+> ¯Vh
+> 01234
+> Time [s]
+> 0
+> 2
+> 4
+> Charge [A ·s]
+> (d) Liveness: charge accumulation
+> EB(t)
+> Target ( 5A·s)
+
+Fig. 8. Scenario B: full hierarchical operation under time– varying load with feedforward cancellation. (a) Voltage reg-ulation (zoomed): V ∈ [400 .00 , 400 .01] V. (b) Current allo-cation: MPC battery command vs. supercapacitor fast re-sponse. (c) ERG safety margin: V (e) ≪ ¯Vh ≪ Γ( v). (d) Bat-tery charge converges to the 5 A ·s target without overshoot. 
+
+6.3 Discussion 
+
+The two scenarios validate complementary aspects of the hierarchical contract. Scenario A confirms the low-level guarantees in isolation: the RCI property of Ω h (required 18 by the ERG) and the ISS decay bound τ2 (required for settling time certification). Scenario B demonstrates that the full hierarchy—MPC, ERG, feedforward, and low-level controller—maintains safety and achieves live-ness under realistic load conditions. A gap remains between the theoretical contract and the simulation evidence. The formal liveness bound on the charge accumulation time toward EgB requires the MPC abstraction to be valid at each sample instant: the track-ing error must satisfy ∥e(tk)∥ ≤ (1+ δ)ε so that the plan-ner’s state estimate is consistent with the physical state. This condition requires Ts ≥ τ2. However, the ISS de-cay bound τ2 = (1 /λ e) ln( m2∥e0∥λe/(δH max )) is struc-turally conservative: even with m = 1, the bound gives 
+
+τ2 > T s unless ∥e0∥ < 0.06 V, meaning the error must already be at the noise floor before settling can complete within one sample. In practice, the feedforward cancellation in (94) keeps 
+
+V (e) ≪ ¯Vh throughout (Figure 8c), so the MPC abstrac-tion is de facto valid at every sample despite τ2 > T s.The conservatism lies in τ2 itself: the ISS overshoot fac-tor m inflates the bound well beyond the actual set-tling behavior, and the envelope treats the error isotrop-ically despite the highly anisotropic Lyapunov geom-etry ( κ(P ) = 75). A tighter liveness certificate could be obtained by (i) validating a simulation-calibrated m
+
+as in Scenario A, reducing τ2 by a constant factor, or (ii) exploiting the feedforward structure directly, which guarantees ∥e∥ ≪ ε and makes the settling time condi-tion redundant whenever ˙¯d is bounded. Closing this gap formally—deriving a feedforward-aware settling bound that replaces the conservative ISS envelope—is an av-enue for future work. 
+
+7 Conclusion 
+
+This paper presented a heterogeneous assume–guarantee contract framework for layered control, formalizing the interface between a discrete-time planning layer and a continuous-time safety layer by introducing vertical re-finement and timing compatibility conditions. We then provide the implementation of this method using an ERG-Tracker combination in the safety layer. Applied to a HESS case study, the framework yields a clean sep-aration of concerns: the MPC plans slow energy states, the feedforward controller cancels known disturbances from the error dynamics, and the ERG certifies con-straint satisfaction in continuous time. Numerical vali-dation confirmed that safety is maintained and liveness is achieved. A gap remains between the ISS-based set-tling time bound and the actual convergence rate under feedforward cancellation; deriving a tighter certificate is a direction for future work, alongside extension to dis-tributed multi-agent architectures and learning-based planning layers within the proposed framework. 
+
+References 
+
+[1] Georgios E Fainekos and George J Pappas. Robustness of temporal logic specifications for continuous-time signals. 
+
+Theoretical Computer Science , 410(42):4262–4291, 2009. [2] Lars Lindemann and Dimos V. Dimarogonas. Formal Methods for Multi-Agent Feedback Control Systems . The MIT Press, 2025. [3] Yiqi Zhao, Xinyi Yu, Bardh Hoxha, Georgios Fainekos, Jyotirmoy Deshmukh, and Lars Lindemann. STL-GO: Spatio-temporal logic with graph operators for distributed systems with multiple network topologies. ACM Transactions on Embedded Computing Systems , 24(5s), 2025. [4] Yoshinari Takayama, Kazumune Hashimoto, and Toshiyuki Ohtsuka. STLCCP: Efficient convex optimization-based framework for signal temporal logic specifications. IEEE Transactions on Automatic Control , 70(9):6064–6079, 2025. [5] Francesco Borrelli, Alberto Bemporad, and Manfred Morari. Predictive Control for Linear and Hybrid Systems .Cambridge University Press, 2017. [6] James Blake Rawlings, David Q Mayne, and Moritz Diehl. 
+
+Model Predictive Control : Theory, Computation, and Design .Nob Hill Publishing, 2017. [7] Nikolai Matni, Aaron D. Ames, and John C. Doyle. Aquantitative framework for layered multirate control: Toward a theory of control architecture. IEEE Control Systems Magazine , 44(3):52–94, 2024. [8] Inigo Incer, Noel Csomay-Shanklin, Aaron D. Ames, and Richard M. Murray. Layered control systems operating on multiple clocks. IEEE Control Systems Letters , 8:1211–1216, 2024. [9] Adrian Hauswirth, Saverio Bolognani, Gabriela Hug, and Florian D¨ orfler. Timescale separation in autonomous optimization. IEEE Transactions on Automatic Control ,66(2):611–624, 2021. [10] Aaron D. Ames, Samuel Coogan, Magnus Egerstedt, Gennaro Notomista, Koushil Sreenath, and Paulo Tabuada. Control barrier functions: Theory and applications. In Proceedings of the 18th European Control Conference , pages 3420–3431, Naples, Italy, 6 2019. [11] Dingran Yuan, Xinyi Yu, Shaoyuan Li, and Xiang Yin. Safe-by-construction autonomous vehicle overtaking using control barrier functions and model predictive control. International Journal of Systems Science , 55(7):1283–1303, 2024. [12] Shuo Liu, Wei Xiao, and Calin A. Belta. Auxiliary- variable adaptive control barrier functions for safety critical systems. In Proceedings of the 62nd IEEE Conference on Decision and Control , pages 8602–8607, 2023. [13] Ugo Rosolia and Aaron D Ames. Multi-rate control design leveraging control barrier functions and model predictive control policies. IEEE Control Systems Letters , 5(3):773– 778, 2020. [14] Kunal Garg, Ryan K Cosner, Ugo Rosolia, Aaron D Ames, and Dimitra Panagou. Multi-rate control design under input constraints via fixed-time barrier functions. IEEE Control Systems Letters , 5(4):1301–1306, 2021. [15] Ugo Rosolia, Andrew Singletary, and Aaron D. Ames. Unified multirate control: From low-level actuation to high-level planning. IEEE Transactions on Automatic Control ,67(12):6627–6640, 2022. [16] Manuel Mazo Jr., Will Compton, Max H. Cohen, and Aaron D. Ames. A contract theory for layered control architectures. arXiv preprint arXiv:2409.14902 , 2024. [17] Pierluigi Nuzzo and Alberto L. Sangiovanni-Vincentelli. 
+
+Hierarchical System Design with Vertical Contracts , pages 360–382. Springer International Publishing, Cham, 2018. [18] Paulo Tabuada. Verification and Control of Hybrid Systems .Springer US, 2009. [19] Albert Benveniste, Benoˆ ıt Caillaud, Dejan Nickovic, Roberto Passerone, Jean-Baptiste Raclet, Philipp Reinkemeier, Alberto Sangiovanni-Vincentelli, Werner Damm, Thomas A. Henzinger, and Kim G. Larsen. Contracts for system design. 
+
+Foundations and Trends in Electronic Design Automation ,12(2-3):124–400, 2018. 
+
+19 [20] Pierluigi Nuzzo, Alberto Sangiovanni-Vincentelli, Davide Bresolin, Luca Geretti, and Tiziano Villa. A platform-based design methodology with contracts and related tools for the design of cyber-physical systems. Proceedings of the IEEE ,103(11):2104–2132, 2015. [21] Ichiro Hasuo. Metamathematics for systems design. New Generation Computing , 35(3):271–305, 7 2017. [22] Andreas M¨ uller, Stefan Mitsch, Werner Retschitzegger, Wieland Schwinger, and Andr´ e Platzer. A component-based approach to hybrid systems safety verification. In Integrated Formal Methods , volume 9681 of Lecture Notes in Computer Science , pages 441–456. Springer, 2016. [23] Miel Sharf, Bart Besselink, and Karl Henrik Johansson. Contract composition for dynamical control systems: Definition and verification using linear programming. 
+
+Automatica , 164:111637, 2024. [24] Sadek Belamfedel Alaoui and Adnane Saoud. Contract-based design for hybrid dynamical systems and invariance properties. In Proceedings of the 8th IFAC Conference on Analysis and Design of Hybrid Systems , volume 58, pages 189–194, 2024. [25] Inigo Incer, Albert Benveniste, Alberto Sangiovanni-Vincentelli, and Sanjit A. Seshia. Hypercontracts. In NASA Formal Methods , volume 13260 of Lecture Notes in Computer Science , pages 674–692. Springer, 2022. [26] Pierluigi Nuzzo, Huan Xu, Necmiye Ozay, John B. Finn, Alberto L. Sangiovanni-Vincentelli, Richard M. Murray, Alexandre Donz´ e, and Sanjit A. Seshia. A contract-based methodology for aircraft electric power system design. IEEE Access , 2:1–25, 2014. [27] Eric S. Kim, Murat Arcak, and Sanjit A. Seshia. A small gain theorem for parametric assume-guarantee contracts. In 
+
+Proceedings of the 20th International Conference on Hybrid Systems: Computation and Control , pages 207–216. ACM, 2017. [28] Adnane Saoud, Antoine Girard, and Laurent Fribourg. Assume-guarantee contracts for continuous-time systems. 
+
+Automatica , 134:109910, 2021. [29] Adnane Saoud, Antoine Girard, and Laurent Fribourg. Contract-Based design of symbolic controllers for safety in distributed multiperiodic Sampled-Data systems. IEEE Transactions on Automatic Control , 66(3):1055–1070, March 2021. [30] Siyuan Liu, Adnane Saoud, and Dimos V. Dimarogonas. Controller synthesis of collaborative signal temporal logic tasks for multi-agent systems via assume-guarantee contracts. 
+
+IEEE Transactions on Automatic Control , pages 1–16, 2025. [31] Negar Monir, Youssef Ait Si, Ratnangshu Das, Pushpak Jagtap, Adnane Saoud, and Sadegh Soudjani. Computation of feasible assume-guarantee contracts: A resilience-based approach. In Proceedings of the 64th IEEE Conference on Decision and Control , pages 8122–8129, 2025. [32] Brayan Shali, Arjan van der Schaft, and Bart Besselink. Composition of behavioural assume–guarantee contracts. 
+
+IEEE Transactions on Automatic Control , 68(8):4892–4907, 2023. [33] Brayan M. Shali, Arjan J. van der Schaft, and Bart Besselink. Design and control for implementation of simulation-based assume-guarantee contracts. IEEE Transactions on Automatic Control , pages 1–15, 2025. [34] Armin Pirastehzad, Arjan van der Schaft, and Bart Besselink. Hierarchical control of non-deterministic linear systems using ( γ, δ, ρ )-abstraction. IEEE Transactions on Automatic Control , pages 1–8, 2025. [35] Antoine Girard, Alessio Iovine, and Sofiane Benberkane. Invariant sets for assume-guarantee contracts. In Proceedings of the 61st IEEE Conference on Decision and Control , pages 2190–2195, 2022. [36] Kasra Ghasemi, Sadra Sadraddini, and Calin Belta. Compositional synthesis for linear systems via convex optimization of assume-guarantee contracts. Automatica ,169:111816, 2024. [37] Daniele Zonetti, Adnane Saoud, Antoine Girard, and Laurent Fribourg. A symbolic approach to voltage stability and power sharing in time-varying DC microgrids. In Proceedings of the 18th European Control Conference , pages 903–909. IEEE, 2019. [38] Nikhil Vijay Naik, Alessandro Pinto, and Pierluigi Nuzzo. Contract embeddings for layered control architectures. ACM Transactions on Embedded Computing Systems , 24(5s), September 2025. [39] Antoine Girard and George J. Pappas. Approximation metrics for discrete and continuous systems. IEEE Transactions on Automatic Control , 52(5):782–798, 2007. [40] Gioele Zardini, Dejan Milojevic, Andrea Censi, and Emilio Frazzoli. Co-design of embodied intelligence: A structured approach. In Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems , pages 7536– 7543, Prague, Czech Republic, 2021. [41] Gioele Zardini, Nicolas Lanzetti, Andrea Censi, Emilio Frazzoli, and Marco Pavone. Co-design to enable user-friendly tools to assess the impact of future mobility solutions. 
+
+IEEE Transactions on Network Science and Engineering ,10(2):827–844, 2023. [42] Yash Vardhan Pant, He Yin, Murat Arcak, and Sanjit A. Seshia. Co-design of control and planning for multi-rotor uavs with signal temporal logic specifications. In Proceedings of the American Control Conference , 2021. [43] P. V. Kokotovi´ c, H. K. Khalil, and J. O’Reilly. Singular Perturbation Methods in Control: Analysis and Design .Academic Press, 1986. [44] Emanuele Garone and Marco M. Nicotra. Explicit reference governor for constrained nonlinear systems. IEEE Transactions on Automatic Control , 61(5):1379–1384, 2016. [45] Marco M. Nicotra, Roberto Naldi, and Emanuele Garone. A robust explicit reference governor for constrained control of unmanned aerial vehicles. In Proceedings of the American Control Conference , pages 6284–6289, 2016. [46] Hassan K. Khalil. Nonlinear Systems . Prentice Hall, 3rd edition, 2002. [47] Jean-Pierre Aubin and Arrigo Cellina. Differential Inclusions: Set-Valued Maps and Viability Theory , volume 264. Springer Science & Business Media, 2012. [48] Rafal Goebel, Ricardo G Sanfelice, and Andrew RTeel. Hybrid Dynamical Systems: Modeling, Stability, and Robustness . Princeton University Press, 2012. [49] Leslie Lamport. A retrospective of proving the correctness of multiprocess programs. IEEE Transactions on Software Engineering , 51(3):713–716, 2025. [50] Christel Baier and Joost-Pieter Katoen. Principles of Model Checking . MIT Press, 2008. [51] Bowen Alpern and Fred B. Schneider. Defining liveness. 
+
+Information Processing Letters , 21:181–185, 1985. [52] Zhong-Ping Jiang and Yuan Wang. Input-to-state stability for discrete-time nonlinear systems. Automatica , 37(6):857– 869, 2001. [53] Luigi Chisci, J. A. Rossiter, and Giovanni Zappa. Systems with persistent disturbances: predictive control with restricted constraints. Automatica , 37(7):1019–1028, 2001. [54] D. Q. Mayne, M. M. Seron, and S. V. Rakovi´ c. Robust model predictive control of constrained linear systems with bounded disturbances. Automatica , 41(2):219–224, 2005. [55] Aaron D. Ames, Xiangru Xu, Jessy W. Grizzle, and Paulo Tabuada. Control Barrier Function Based Quadratic Programs for Safety Critical Systems. IEEE Transactions on Automatic Control , 62(8):3861–3876, 2017. 
+
+20 A Proof of Lemma 1 
+
+By Assumption 1, the perturbed successor satisfies ˆyk+1 ∈ Y N , so the MPC problem remains feasible, and all bounds in Assumption 2 apply at tk+1 . Decompose: 
+
+V ∗ 
+
+> N
+
+(ˆ yk+1 ) − V ∗ 
+
+> N
+
+(ˆ yk) = V ∗
+
+> N
+
+  ˆf (ˆ yk|k, ˆzk|k, r k) − V ∗ 
+
+> N
+
+(ˆ yk)+ V ∗ 
+
+> N
+
+(ˆ yk+1 ) − V ∗
+
+> N
+
+  ˆf (ˆ yk|k, ˆzk|k, r k) (A.1) Adding the two bounds (35) and (36) yields (37). 
+
+B HESS Constraint Reformulation (Voltage state constraints) The bus voltage must sat-isfy Vmin ≤ Vgr ≤ Vmax . Substituting Vgr = e + v:
+
+Vmin ≤ e + v ≤ Vmax .
+
+This yields two half-space constraints: 
+
+−e ≤ v − Vmin , (B.1) 
+
+e ≤ Vmax − v. (B.2) 
+
+(Supercap state constraint |IS | ≤ IS ) The superca-pacitor current must satisfy |IS | ≤ IS . From the bus voltage dynamics (93): 
+
+IS = Cbus ˙Vgr − ¯d = Cbus ( ˙ e + ˙ v) − ¯d, (B.3) where ¯d = IB + d. The constraint becomes: 
+
+|Cbus ( ˙ e + ˙ v) − ¯d| ≤ IS . (B.4) A sufficient condition using the triangle inequality is: 
+
+|Cbus ˙e| + |Cbus ˙v| + | ¯d| ≤ IS . (B.5) Rearranging for the error-dependent term: 
+
+|Cbus ˙e| ≤ IS − | ¯d| − | Cbus ˙v|. (B.6) Substituting worst-case bounds | ˙v| ≤ ¯κΓ( v) and | ¯d| ≤ 
+
+¯dmax :
+
+|Cbus ˙e| ≤ IS − ¯dmax − Cbus ¯κΓ( v). (B.7) This yields two half-space constraints: 
+
+Cbus ˙e ≤ ¯IS − Cbus ¯κΓ( v), (B.8) 
+
+−Cbus ˙e ≤ ¯IS − Cbus ¯κΓ( v), (B.9) where ¯IS := IS − ¯dmax is the effective current margin after reserving capacity for the disturbance. 
+
+(Input constraint) The supercapacitor control input 
+
+uS must satisfy |uS | ≤ US, max . From the control law (94): 
+
+uS = −k1e − k2Cbus ( ˙ e + ˙ v) − 1
+
+Cbus 
+
+˙¯d(t). (B.10) Applying the triangle inequality with worst-case bounds 
+
+| ˙v| ≤ ¯κΓ( v) and | ˙¯d| ≤ | ˙¯d|max , a sufficient condition is: 
+
+|k1e + ˜k2 ˙e| ≤ ¯US − ˜k2 ¯κΓ( v), (B.11) where ˜k2 := k2Cbus and ¯US := US, max − 1 
+
+> Cbus
+
+| ˙¯d|max . This yields two half-space constraints: 
+
+k1e + ˜k2 ˙e ≤ ¯US − ˜k2 ¯κΓ( v), (B.12) 
+
+−k1e − ˜k2 ˙e ≤ ¯US − ˜k2 ¯κΓ( v). (B.13) Note that the battery’s input constraint (86) is handled by the MPC slew rate (89d). The derived constraints are all in the form (51). 
+
+C Mismatch Bound Derivation 
+
+We derive the prediction mismatch bound in Proposi-tion 4. 
+
+Battery energy prediction error. The abstract model predicts: ˆEB [k + 1] = EB [k] + TsλB Vnom Iref  
+
+> B
+
+[k] (C.1) The physical evolution is: 
+
+EB (tk+1 ) = EB (tk) + 
+
+Z tk+1 
+
+> tk
+
+λB Vgr (t)IB (t) dt (C.2) The mismatch is: ˜wk,E B = EB (tk+1 ) − ˆEB [k + 1] (C.3) = λB
+
+Z tk+1 
+
+> tk
+
+ Vgr (t)IB (t) − Vnom Iref  
+
+> B
+
+[k] dt 
+
+(C.4) 
+
+Decomposition. Define deviations: ˜V (t) := Vgr (t) − Vnom (C.5) ˜IB (t) := IB (t) − Iref  
+
+> B
+
+[k] (C.6) 21 Expanding: 
+
+Vgr IB − Vnom Iref  
+
+> B
+
+= ˜V I ref  
+
+> B
+
++ Vnom ˜IB + ˜V ˜IB (C.7) 
+
+Phase-wise bounds. 
+
+Transit phase (t ∈ [tk, t k + τ1]): 
+
+| ˜V (t)| ≤ zpeak + η (error + ERG lag) (C.8) 
+
+| ˜IB (t)| ≤ ¯UB
+
+λB
+
+e−λB (t−tk ) (exponential settling) (C.9) Integrating: ∆tr ,B := λB ¯IB (zpeak +  Vnom + zpeak + η ¯UB
+
+λB
+
+ 1 − e−λB τ1 
+
+(C.10) 
+
+Settling phase (t ∈ [tk + τ1, t k+1 ]): 
+
+| ˜V (t)| ≤ ε1 + δ + η (settled error) (C.11) 
+
+| ˜IB (t)| ≈ 0 (battery settled) (C.12) The bound on | ˜IB (t)| is obtained as using λB >> λ e.The battery is dedicated to the energy target and thus as soon as it observes a new target at each time step, it tracks that target (cf. Remark 7). The drift rate: 
+
+dss ,B := λB ¯IB ((1 + δ)εe + η) (C.13) 
+
+Total bound. 
+
+| ˜wk,E B | ≤ ∆tr ,B + dss ,B · τ2 (C.14) 
+
+Supercapacitor energy prediction error. The plan-ning model assumes an algebraic bus ( ˙Vgr = 0, Vgr =
+
+Vnom ), so that Iref  
+
+> S
+
+[k] = − ¯d[k] = −IB [k] − ˆd[k]. The ab-stract model predicts: ˆES [k + 1] = ES [k] + Ts λS Vnom Iref  
+
+> S
+
+[k]. (C.15) The physical evolution is: 
+
+ES (tk+1 ) = ES (tk) + 
+
+Z tk+1 
+
+> tk
+
+λS Vgr (t) IS (t) dt. (C.16) The mismatch is: ˜wk,E S = ES (tk+1 ) − ˆES [k + 1] (C.17) = λS
+
+Z tk+1 
+
+> tk
+
+ Vgr (t) IS (t) − Vnom Iref  
+
+> S
+
+[k] dt. 
+
+(C.18) 
+
+Decomposition. Define deviations: ˜V (t) := Vgr (t) − Vnom = e1(t) + ( v(t) − Vnom ),
+
+(C.19) ˜IS (t) := IS (t) − Iref  
+
+> S
+
+[k]. (C.20) From the bus dynamics IS = Cbus ˙Vgr − ¯d and the planning-model definition Iref  
+
+> S
+
+[k] = − ¯d[k], the current deviation (neglecting disturbance drift) is: ˜IS (t) = Cbus ˙Vgr (t) = Cbus 
+
+  ˙v(t) + e2(t). (C.21) The integrand expands as: 
+
+Vgr IS − Vnom Iref  
+
+> S
+
+= ˜V I ref  
+
+> S
+
++ Vnom ˜IS + ˜V ˜IS . (C.22) 
+
+Phase-wise bounds. 
+
+Transit phase (t ∈ [tk, t k +τ1]): The reference v(t) moves from rk−1 toward rk = Vnom , so ˙ v̸ = 0 and the capacitor carries current even in the ideal case. The ISS bound on the error state e = [ e1, e 2]⊤ in the ℓ∞ norm gives: 
+
+| ˜V (t)| ≤ zpeak + η (C.23) 
+
+| ˜IS (t)| ≤ Cbus 
+
+ κmax + zpeak 
+
+ (C.24) where κmax = ¯ κΓ( v) is the peak ERG reference rate in (70). Since each bound is pointwise, integration gives: ∆tr ,S := λS ¯IS (zpeak + η) τ1
+
++ Vnom + zpeak + η Cbus 
+
+ κmax + zpeak 
+
+ τ1. (C.25) 
+
+Settling phase (t ∈ [tk + τ1, t k+1 ]): The reference has reached v = Vnom , so ˙ v = 0. The current deviation re-duces to: ˜IS (t) = Cbus e2(t), (C.26) and the bounds become: 
+
+| ˜V (t)| ≤ ε1 + δ + η (settled voltage error) , (C.27) 
+
+| ˜IS (t)| ≤ Cbus ε2 (settled velocity error) , (C.28) where ε1, ε 2 are the ultimate bounds on |e1|, |e2| from the ISS gain. The drift rate: 
+
+dss ,S := λS ¯IS
+
+ (1 + δ)ε1 + η +  Vnom + ε1 + η Cbus ε2.
+
+(C.29) 
+
+Total bound. 
+
+| ˜wk,E S | ≤ ∆tr ,S + dss ,S · τ2. (C.30) 22
