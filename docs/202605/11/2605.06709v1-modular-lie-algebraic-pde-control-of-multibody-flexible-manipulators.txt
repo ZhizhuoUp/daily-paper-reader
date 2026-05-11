@@ -1,0 +1,2336 @@
+Title: Modular Lie Algebraic PDE Control of Multibody Flexible Manipulators
+
+URL Source: https://arxiv.org/pdf/2605.06709v1
+
+Published Time: Mon, 11 May 2026 00:03:34 GMT
+
+Number of Pages: 22
+
+Markdown Content:
+> 1
+
+# Modular Lie Algebraic PDE Control of Multibody Flexible Manipulators 
+
+S. Yaqubi, J. Mattila 
+
+Abstract —This paper addresses the open problem of PDE-based control for flexible multibody robotic systems, present-ing a subsystem-based control framework for serial flexible manipulators with an arbitrary number of links operating in three-dimensional space. The framework builds on a screw-theoretic Lie-algebraic synthesis model in which all dynamic quantities — rigid-body motion, elastic deformation, and inter-link constraint forces — are expressed uniformly as body-fixed twists and dual wrenches within the se (3) structure. A control-lable form of the per-link dynamics is derived by substituting the strain-based deformation PDE into the dynamic equation, eliminating the distributed elastic acceleration term and yielding a model governed solely by the body-fixed twist acceleration and the deformation field. Desired subsystem twist trajectories are generated from the task-space endpoint trajectory via a deflection-compensating inverse kinematics procedure, in which the tip deformation field evaluated at the link endpoint provides a real-time correction to the rigid-body reference. A nominal subsystem-level controller is designed for each link and proven to produce exponential decay of the twist error via a per-subsystem Lyapunov function νi, whose time derivative contains boundary interaction power terms arising from the inter-link wrenches. An adaptive modification is subsequently derived that replaces the exact physical parameters with online estimates governed by a projection-based adaptation law, augmenting each νi with a parameter estimation error term and establishing exponential convergence of both the twist error and the parameter error at the subsystem level. Upon summing over all links, the composite Lyapunov functions V = P 
+
+> i
+
+νi and Va = P 
+
+> i
+
+νai yield total time derivatives in which the interaction power terms telescope to zero by Newton’s third law and the frame invariance of the natural power pairing on se (3) × se ∗(3) establishing exponential convergence of the twist tracking errors for all links under both nominal and adaptive controllers, with bounded elastic deformation throughout the beam domain ensured by the Euler– Bernoulli energy argument. The screw-theoretic geometric struc-ture is therefore not merely a modeling convenience: it is the mechanism that renders the interaction term cancellation exact and makes the stability certificate modular and scalable to chains of arbitrary length. Implementability and physical consistency of the proposed control scheme is numerically investigated in an illustrative example. 
+
+Index Terms —Screw Theory, Model-based Control, Flexible Manipulator, PDE Control, Multibody Systems. 
+
+I. I NTRODUCTION 
+
+Flexible multibody robotic systems present a fundamental control challenge arising from the simultaneous presence of 
+
+This work was supported by the Research Council of Finland under the project “Nonlinear PDE-model-based control of flexible manipulators” (Grant No. 355664). (Corresponding author: S. Yaqubi) S. Yaqubi and J. Mattila are with the Department of Automation Technol-ogy and Mechanical Engineering, Tampere University, Korkeakoulunkatu 6, 33720 Tampere, Finland (e-mails: sadeq.yaqubi@tuni.fi,jouni.mattila@tuni.fi). This is an archival version of this work and the final version will feature changes. 
+
+two coupled dynamical phenomena: large rigid-body motion of each link frame, which evolves on the Lie group SE(3) ,and spatially distributed elastic deformation along each link, whose dynamics are intrinsically infinite-dimensional and governed by a partial differential equation (PDE) [1], [2]. Precise trajectory tracking under these conditions is inher-ently challenging: the deformation field interacts nonlinearly with the rigid-body motion, producing underactuation, non-minimum phase characteristics, and spillover instability when finite-dimensional approximations are substituted for the true deformation model in the control design [3], [4]. Two broad strategies dominate the existing literature. The first replaces the distributed deformation by a truncated finite-dimensional ordinary differential equation (ODE), either through assumed modes or finite elements [5]; the resulting controller is tractable but introduces truncation error whose influence on the true closed-loop behavior cannot be formally quantified. The second linearizes the rigid-body kinematics, which sidesteps geometric nonlinearity at the cost of restricting validity to small-displacement operating conditions [6]. The present work takes a different approach: the PDE structure of the defor-mation is carried through the entire control design without spatial discretization, the nonlinear rigid-body dynamics are represented geometrically on se (3) using screw theory, and the stability of the resulting infinite-dimensional closed-loop system is established formally. The theory of PDE-based control for flexible structures is well-established in the single-body setting. Boundary control methods [7], [8] place actuation at the physical endpoints of the PDE domain — typically the base and tip of a flexible link — and construct stability arguments through Lyapunov functionals defined directly on the infinite-dimensional state, bypassing spatial discretization entirely. The resulting guar-antees are mathematically rigorous and free from spillover, but the derivations are strongly tied to the specific system under consideration: the Lyapunov functional, the admissible boundary inputs, and the stability reasoning must each be reconstructed for every new configuration [9]. Extending this program to chains of flexible links compounds the difficulty considerably. The holonomic joints coupling adjacent links introduce constraint forces that enter the boundary conditions of each link’s deformation PDE, and assembling a closed-loop stability certificate for an n-link chain from individual per-link results is a problem with few precedents in the literature. The most substantial contribution toward this objective is due to Zhu [10], who developed a virtual decomposition control framework that achieves subsystem-level stability synthesis for multibody systems. However, in that work and in related 
+
+> arXiv:2605.06709v1 [cs.RO] 6 May 2026 2
+
+studies the system dynamics are expressed in terms of abso-lute configurations rather than body-fixed representations on 
+
+SE(3) , which forecloses the use of Lie-algebraic structure in the dynamic model and complicates the representation of inter-link kinematics. Beyond this, the overwhelming majority of PDE-based flexible manipulator controllers reported in the literature are designed for one or two links specifically [3], [11], and a scalable synthesis procedure applicable to systems with an arbitrary number of flexible links remains an open problem. For rigid multibody systems, the projection from SE(3) to its Lie algebra se (3) via screw-theoretic twist and wrench co-ordinates is well-established as a tool for modular composition of link dynamics [10], [12], [13] and control [14]. Within this framework, inter-link coupling reduces to linear Adjoint transformations, and the forward dynamic map for an n-link chain assembles algebraically rather than through nested non-linear compositions. Extending the same geometric structure to flexible bodies introduces substantial additional complexity: the elastic field must be lifted to a continuous screw field distributed along the body [15], [16], and its coupling to the rigid-body configuration causes the forward dynamic map to take the deeply nested form f1(f2(· · · (fn(·)) · · · )) , where each factor fi incorporates gravitational contributions, trigonometric position dependence, generalized forces, and integrals over shape functions [17], [18]. This nesting obstructs algebraic assembly, prevents straightforward automation for arbitrary n,and destroys the linear operator structure on which systematic control design depends. Representing link velocities as body-fixed twists and internal forces as wrenches in se (3) and 
+
+se ∗(3) recovers this structure: velocity-dependent generalized forces arise naturally from the adjoint action on the body-fixed twist [12], [13], [19], the deformation field is expressed as a body-fixed continuous screw field [9], [16], and inter-link kinematic and dynamic coupling reduces to structured Ad-joint transformations [10], [12] — a property that propagates directly into the model-based control layer. Controlling multibody flexible robots is less investigated than their modeling, and the available research is often de-signed for limited number of links rather than a modular general framework. ODE-based methods derived from the Floating Frame of Reference (FFR) formulation [20], [21] or modal truncation [22] yield finite-dimensional plant models amenable to classical and adaptive control, but at the cost of truncation-induced spillover. Geometrically exact formula-tions [23], [24] and Lie group variational integrators based on Cosserat rod theory [1], [25], [26] capture large deformations with high fidelity, but working directly on the configuration manifold complicates the derivation of control laws and Lya-punov arguments as they would commonly require finite ele-ment solutions rather than modal-based analysis [10]. Screw-theoretic model extensions — including dual screw models with linearized elastic motion [16], finite-element screw-based formulations [27], Lie group formulations for geometrically exact beams [25], Lie algebra integration schemes [26], and screw theoretic synthesis models [28]— demonstrate the po-tential of screw-theoretic representations for dynamics, though their exploitation for systematic PDE-based control synthesis remains an open research direction. Despite these advances, a modular and scalable PDE-based control framework for flexible multibody manipulators within a Lie-algebraic structure has not been developed. In such a framework, the controller for each subsystem would be designed against the exact PDE dynamics of that link, inter-link interaction forces would appear explicitly as structured algebraic variables rather than lumped disturbances, and global closed-loop stability would follow from per-subsystem Lya-punov arguments without requiring a monolithic stability proof for the full chain [10]. The screw-theoretic representation is essential to achieving this: the linear-algebraic se (3) structure enables the modular decomposition, the interaction wrenches encoded in se ∗(3) are the quantities whose Newton’s-third-law cancellation closes the composite Lyapunov argument, and the resulting synthesis is automatable for arbitrary n, with significantly less analyticial ovehead than coordinate-based formulations. To bridge the gap between PDE-based control and Lie-algebraic multibody frameworks, the present work develops a subsystem-based adaptive control architecture for flexible multibody robotic systems, building on a previously developed screw-theoretic synthesis model [9]. The following contribu-tions are made. First, the n-link flexible manipulator is decom-posed into per-link subsystems within the se (3) framework: each subsystem retains the exact PDE deformation dynamics of its link, with inter-link interaction wrenches appearing explicitly at the subsystem boundaries as coupling terms inherited directly from the synthesis model. Second, individual adaptive controllers are designed for each subsystem and proven stable via dedicated per-subsystem Lyapunov functions 
+
+Vi; the time derivatives ˙Vi contain boundary interaction terms arising from the inter-link wrenches. Third, upon summing over all subsystems, the composite Lyapunov function V =P 
+
+> i
+
+Vi yields a total ˙V in which the interaction terms cancel by virtue of Newton’s third law as encoded in the screw-compatibility equations of the synthesis model — establishing asymptotic stability of the full n-link closed-loop system with-out any additional cross-term analysis. The screw-theoretic structure is therefore not merely a modeling convenience: it is the algebraic mechanism that makes the cancellation exact, the stability proof modular, and the control synthesis automatable for arbitrary n. The framework is validated experimentally on a two-link flexible manipulator in three-dimensional motion, confirming implementability and physical consistency. The rest of this paper is organized as follows. Section II presents the problem statement, notation, and geometric def-initions. The screw-theoretic flexible link model is reviewed in Section III. The per-link subsystem controller design and stability analysis as well as the system-level synthesis is devel-oped in Section IV, constituing the core and main contribution of the work. Adaptive modification of controller is presented in Section V. Implementability and physical consistency of the proposed control scheme is numerically investigated in an illustrative example in Section VI. 3
+
+II. P ROBLEM STATEMENT 
+
+This work considers the general dynamics of a multi-link serial flexible manipulator operating in three-dimensional space, where each link may be actuated by forces and torques applied at its endpoints, and is connected to the adjacent links via rotational joints. Such a formulation is particularly relevant for robotic systems, as it allows each link to be modeled individually while accounting for actuation inputs and interaction forces. The motion of a single flexible link is illustrated in Fig. 1a, and the configuration of a multi-link robot with n flexible links, including the decomposed joint connections between links, is shown in Fig. 1b. The present work builds on a previously developed screw-theoretic modeling and synthesis framework for flexible ma-nipulator [9], [28]. The single-link model was derived via variational analysis of the link’s Hamiltonian, accounting for the interaction between rigid-body motion and deformation by representing the flexible body as a continuum of infinitesimal elements. The motion of each element was expressed using a set of dual screws: one describing the motion of the body-fixed frame relative to the inertial frame, a second connecting the body-fixed frame to the undeformed geometry of the elements, and a third capturing the deformation of each element due to flexibility. All screws are represented in a rotating body-fixed frame, which may be attached to any point at the centerline of the flexible body. The deformation of the body is modeled based on Euler–Bernoulli beam theory [6] under the assumptions of small deformation, isotropic material, and negligible shear deformation with additional consideration of longitudinal displacement. For multibody synthesis, the interactions and constraints between individual link models were considered, resulting in presenting multibody dynamics as a system of differential-algebraic equations (DAE). For de-signing subsystem-based controllers in this work, the dynamic model of a single flexible link is used. The complete system model is numerically solvable using the synthesis framework, which is not directly needed for theoretical developments of this paper. To express single-link model, each flexible link is modeled as a collection of infinitesimal point elements dΩi, each located within an infinitesimal cross-section element Ωi of the beam. The cross-section is indexed by the spatial coordinate 
+
+ξi ∈ [ai, c i] measured along the beam axis in the body-fixed frame iF, where ai and ci denote the distances of the beam endpoints from the body-fixed frame origin in the undeformed configuration, and li = ci − ai is the beam length. The cross-sectional area is Ai, the mass density ρi, and the elastic modulus Ei.The generalized coordinate vector iqi, generalized velocity  
+
+> i
+
+˙qi, and the body-fixed twist iVi, are introduced as 
+
+> i
+
+qi =
+
+iθiiri
+
+
+
+(1)  
+
+> i
+
+˙qi =
+
+i ˙θii ˙ri
+
+
+
+(2) 
+
+> i
+
+Vi =
+
+iωiivi
+
+
+
+=
+
+ iωii ˙ri + i ˜ωi iri
+
+
+
+∈ se (3) (3) The generalized coordinate vector iqi = [ iθ⊤ 
+
+> i
+
+, ir⊤ 
+
+> i
+
+]⊤ is a local parameterization of the Lie group SE (3) , where iri ∈ R3
+
+is the body-fixed origin position and iθi ∈ R3 is a body-fixed angle parameterization of SO (3) . The rotation component iθi
+
+parametrizes an element of SO (3) via the exponential map 
+
+Roi = exp( i ˜θi) ∈ SO (3) , where 0ri = Roi iri is the position of the body-fixed frame expressed in the inertial frame. The angular velocity ωi relates to the coordinate derivative ˙θi
+
+via ωi = J(θi) ˙θi, where J(θi) is the body-frame Jacobian of the exponential map [29]. The skew-symmetric matrix corresponding to ω ∈ R3 [29] is expressed by ˜ω ∈ so (3) .The direction cosine matrix Roi transforms vectors from body-fixed frame Fi to inertial frame o, such that 0a = Roi ia
+
+for any vector a, and chains as Roi = Ro(i−1) R(i−1) i.The twist transforms via the Adjoint representation 0Vi =
+
+Ad oi iVi ∈ se (3) [29]. For any two frames a and b, the Adjoint Ad ab ∈ R6×6 is defined as 
+
+Ad ba =
+
+ Rba 0
+
+fbra Rba Rba 
+
+
+
+(4) where Rba transforms vectors from frame a to frame b,and bra is the position of frame a expressed in frame b. The instance Ad oi used above is obtained by setting a = i and 
+
+b = o.In Fig. 1b, Wextai = [τ ⊤
+
+> extai
+
+, F⊤
+
+> extai
+
+]⊤ and Wextci =[τ ⊤
+
+> extci
+
+, F⊤
+
+> extci
+
+]⊤ are the wrenches applied at the base and tip of the link respectively. Each wrench is an element of se ∗(3) ,the dual space of se (3) , and pairs with the body-fixed twist 
+
+Vi ∈ se (3) via the power product W⊤V = τ ⊤ω + F⊤v,representing instantaneous power delivered to the body. The interaction wrenches WJi = [ τ ⊤ 
+
+> i
+
+, F⊤ 
+
+> i
+
+]⊤ ∈ se ∗(3) represent forces and moments between adjacent links through the joint constraints. Following Euler–Bernoulli beam theory, cross-sections are assumed to remain planar and perpendicular to the principal axes after deformation. Under this assumption, the reference coordinates iqbi , elastic displacement iqξi , and their coordi-nate derivatives are 
+
+> i
+
+qbi =
+
+ 03
+
+> i
+
+rbi
+
+
+
+, i ˙qbi = 0, irbi =
+
+
+
+ξiirybi
+
+> i
+
+rzbi
+
+ (5) 
+
+> i
+
+qξi =
+
+ 03
+
+> i
+
+rξi
+
+
+
+, i ˙qξi =
+
+ 03 
+
+> i
+
+˙rξi
+
+
+
+(6) The zero rotational components reflect the Euler–Bernoulli assumption that cross-sections undergo no independent rota-tion beyond that of the body-fixed frame and translational 4
+
+(a) 
+
+(b) 
+
+Fig. 1: (a) Dynamic motion of flexible body with respect to inertial frame and body-fixed frame. (b) Schematic of decomposed consecutive links in a multi-link flexible robot with holonomic constraints based on rotational joint connection. deformation of beam element. i ˙qbi = 0 confirms that the reference geometry is time-invariant in the body-fixed frame, carrying no dynamic degrees of freedom. The corresponding twists iVbi and iVξi ∈ se (3) incorporate the rotational contri-bution ˜ωir as in (3), and are explicitly derived in Appendix A following the transport theorem. The position of element dΩi relative to the body-fixed and inertial frames follows as 
+
+rib i = rξi + rbi (7) 
+
+rob i = ri + rib i (8) Connection between links is implemented via holonomic joint constraints as depicted in Fig. 1b. The time derivative in the inertial frame is denoted d(·) 
+
+> dt
+
+, the body-fixed time derivative as ˙(·), and the spatial derivative with respect to ξi as (·)′. The following notational simplifications denote terms expressed in the body-fixed frame throughout: 5
+
+ri = iri, rξi = irξi , rbi = irbi , ˙ri = i ˙ri, ˙rξi = i ˙rξi , vi = ivi,
+
+vξi = ivξi , ωi = iωi. Superscript i is similarly removed from coordinates q, derivatives ˙q, and twists V when expressed in body-fixed frame Fi.III. S CREW -THEORETIC PDE DYNAMIC MODEL OF THE FLEXIBLE LINK 
+
+Based on variational analysis of the Hamiltonian of flexible link i on SE (3) , the equations of motion were derived in a preceding study [9] using the screw-theoretic framework introduced in Section II. The derivation proceeds geometrically on the Lie group SE (3) , yielding an inertia operator M∗
+
+> i
+
+that is symmetric and positive definite by construction, and Coriolis and centrifugal terms that arise from the adjoint action 
+
+ad Vi on the body-fixed twist. The model expresses the three-dimensional motion of the link in inertial space in terms of the body-fixed twist Vi ∈ se (3) and externally applied wrenches 
+
+W∗ 
+
+> i
+
+∈ se ∗(3) , presenting translational and rotational dynamics in a unified and dynamically consistent form. Furthermore, the deformation field rξi (ξi, t ) is governed by a PDE in both space and time, preserving the infinite-dimensional nature of the flexibility dynamics rather than truncating it to a finite-dimensional ODE system a priori — a key distinction from assumed-modes and finite element approaches where spatial discretization precedes dynamic modeling. This structure en-ables extension to multibody robotic systems via chaining of the link dynamics and constraint-based incorporation of interaction wrenches, which is the subject of Section IV. The link dynamics model features a set of coupled PDEs comprising the governing dynamics (9), the deformation PDE (17), and boundary conditions (21–24). The dynamic equation is 
+
+Mi ˙Vi + Di( ˙Vξi ) + Hi + WJi = Wi (9) where ˙Vi is the body-fixed derivative of the twist, defined in Appendix A (127), and ˙Vξi is its elastic counterpart. The corresponding terms in the model including inertia Mi, dis-tributed inertia Di( ˙Vξi ), generalized forces Hi, and effective external wrench Wi (input of control system) are obtained as 
+
+Mi =
+
+" Ibi ρiAi
+
+R ci 
+
+> ai
+
+˜rbi dξ 
+
+−ρiAi
+
+R ci 
+
+> ai
+
+˜rbi dξ miI3
+
+#
+
+(10) 
+
+Di( ˙Vξi ) = ρiAi
+
+"R ci 
+
+> ai
+
+˜rib i ˙vξi dξ 
+
+R ci 
+
+> ai
+
+˙vξi dξ 
+
+#
+
+(11) 
+
+Hi =
+
+
+
+ρiAi
+
+Z ci
+
+> ai
+
+˜rib i ˜ωivib i dξ 
+
++ ρiAi
+
+Z ci
+
+> ai
+
+˜rib i R⊤
+
+> oi
+
+g dξ ρiAi
+
+R ci 
+
+> ai
+
+˜ωivib i dξ + miR⊤
+
+> oi
+
+g
+
+ (12) 
+
+Wi =
+
+"τ extB i − τ extT i − ˜rξ(ai)FextB i + ˜ rξ(ci)FextT i
+
+FextB i − FextT i
+
+#
+
+(13) where vib i = vξi + vbi is the translational velocity of element Ωi with respect to the frame Fi expressed in the body-fixed frame. Mass of the beam i is indicated by mi = ρiAili. The term g
+
+is the gravitational acceleration vector. The moment of inertia 
+
+Ibi of the distributed mass about the body-fixed frame origin, appearing in (10), is 
+
+Ibi = −ρiAi
+
+Z ci
+
+> ai
+
+˜r2 
+
+> bi
+
+dξ (14) The cross-section stiffness matrices Iv1i and Iv2i are 
+
+Iv1i =
+
+
+
+EiAi 0 00 0 00 0 0
+
+ (15) 
+
+Iv2i =
+
+
+
+0 0 00 EiIzi 00 0 EiIyi
+
+ (16) where Iyi and Izi are the second moments of area of the beam cross-section. The deformation PDE corresponding to (9) is 
+
+˙vi + ˙ vξi − ˜rbi ˙ωi + ˜ ωivib i + R⊤
+
+> oi
+
+g
+
++ 1
+
+ρiAi
+
+Iv2i r′′′′  
+
+> ξi
+
+− 1
+
+ρiAi
+
+Iv1i r′′ 
+
+> ξi
+
+= Wia δi(ai) − Wic δi(ci)+ WJiaδi(ai) − WJicδi(ci)
+
+(17) where δi is the Dirac delta distribution concentrated at the respective endpoints. Integrating (17) over ξi ∈ [ai, c i] and dividing by ρiAi yields 
+
+˙vi + 1
+
+li
+
+Z ci
+
+> ai
+
+˙vξi dξ − ˜rbi ˙ωi + ˜ ωivib i + R⊤
+
+> oi
+
+g
+
++ 1
+
+ρiAi
+
+Iv2i r′′′′  
+
+> ξi
+
+− 1
+
+ρiAi
+
+Iv1i r′′ 
+
+> ξi
+
+= 1
+
+ρiAi
+
+ Wia + WJia − Wic − WJic
+
+
+
+(18) The translational row of the dynamic equation (9), divided by 
+
+ρiAi, reads 
+
+li ˙vi +
+
+Z ci
+
+> ai
+
+˙vξi dξ +
+
+Z ci
+
+> ai
+
+˜ωivib i dξ + liR⊤
+
+> oi
+
+g
+
+= 1
+
+ρiAi
+
+ FextB i − FextT i + FJi
+
+ (19) Subtracting (19) from (18), the terms ˙vi, R⊤
+
+> oi
+
+g, ˜rbi ˙ωi, and 
+
+˜ωivbi cancel identically — the last via the decomposition 
+
+vib i = vξi + vbi — and the boundary wrench terms cancel by the natural boundary conditions (21)–(24), leaving the strain-rate PDE 
+
+˙vξi + ˜ ωivξi + 1
+
+ρiAi
+
+Iv2i r′′′′  
+
+> ξi
+
+− 1
+
+ρiAi
+
+Iv1i r′′  
+
+> ξi
+
+= 0 (20) The boundary conditions acting on link i are 6
+
+Iv2i r′′′  
+
+> ξi
+
+(ai) − Iv1i r′ 
+
+> ξi
+
+(ai) = FextB i (21) 
+
+Iv2i r′′′  
+
+> ξi
+
+(ci) − Iv1i r′ 
+
+> ξi
+
+(ci) = FextT i (22) 
+
+−Iv2i r′′  
+
+> ξi
+
+(ai) = Hτ extB i (23) 
+
+−Iv2i r′′  
+
+> ξi
+
+(ci) = Hτ extT i (24) The matrix H connects the bending moment from the deformation PDE to the corresponding external torque 
+
+H =
+
+
+
+0 0 00 0 10 1 0
+
+ (25) The terms Iv1i r′′  
+
+> ξi
+
+and Iv2i r′′′′  
+
+> ξi
+
+represent the elastic restoring force per unit length arising from axial and bending stiffness respectively. The boundary conditions (21)–(24) are the natural boundary conditions of the variational principle, equating the boundary values of the internal elastic forces and moments to the externally applied wrenches Wexta i and Wextb i ∈ se ∗(3) .Dynamic equation (9) together with the deformation PDE (17) constitute a coupled PDE system in the spatial variable ξi ∈ [ai, c i] and time t. The dynamic equation (9) governs the motion of the body-fixed frame and is an ODE in time, while (17) is a fourth-order PDE in ξi and second-order in t, governing the distributed deformation field rξi (ξi, t )
+
+along the beam axis. The two equations are coupled through 
+
+D∗ 
+
+> i
+
+, which introduces elastic acceleration ˙vξi into the rigid body equation. This PDE system forms a well-posed dynamic model for an individual flexible link i [9] and the multibody synthesis [28]. In Section IV, development of a subsystem-based controller corresponding to presented dynamic model is investigated. IV. S UBSYSTEM -BASED CONTROLLER FOR FLEXIBLE LINK USING LIE ALGEBRAIC MODEL 
+
+The model (9) with the coupled deformation PDE (17) represents dynamic of the decomposed manipulator link. How-ever, the model is not suitable for feedback control design in the current form, as distributed inertia term Di( ˙Vξi ) is an acceleration-level term corresponding to distributed states Vξi
+
+that are uncontrollable with limited actuation input wrenches 
+
+Wi. Additionally, all dynamic terms potentially feature para-metric uncertainty, which has to be considered in controller design. However, to highlight the main contribution of the work which is the subsystem-based design itself, initially the controller is designed for nominal system, and the adaptive modification is investigated subsequently. The control problem is formularized with the following structure: (i) obtaining desired twists from desired endpoint trajectory (ii) transforming the model 9 to a controllable form for body-fixed twists. (iii) stability-proven subsystem-based control for individual links (iv) system-level synthesis of subsystem-based controllers. 
+
+A. Calculation of reference twists 
+
+The desired endpoint trajectory is specified as a time-varying pose gd,e (t) ∈ SE (3) with corresponding desired endpoint twist Vd,e (t) = [ ω⊤
+
+> d,e
+
+, v⊤
+
+> d,e
+
+]⊤ ∈ se (3) . For rigid-link manipulators, desired joint-space trajectories follow directly from the endpoint specification via the geometric Jacobian. For flexible-link manipulators this mapping is complicated by the deformation contribution to the endpoint position: the actual inertial position of the tip of the terminal link n is 
+
+> 0
+
+pe = fkin (qj ) + δe, (26) where fkin (qj ) denotes the standard rigid-body forward-kinematics map evaluated at the joint coordinate vector qj ,and 
+
+δe =
+
+> n
+
+X
+
+> i=1
+
+Roi rξi (ci, t ) (27) is the cumulative tip deflection expressed in the inertial frame, obtained by mapping each link’s tip deformation field 
+
+rξi (ci, t ), evaluated at the tip coordinate ξi = ci, from the body-fixed frame Fi to the inertial frame via Roi . Because 
+
+δe depends on the distributed deformation field governed by the PDE (17), the joint-space target that achieves the desired endpoint position must be corrected at every sample to account for the current elastic state. 
+
+Position-level correction: Given the desired endpoint po-sition 0pe,d (t) and an estimate δest  
+
+> e
+
+(t) of the current tip deflection obtained from the deformation field via onboard sensing, the deflection-corrected rigid-body target is 
+
+> 0
+
+pcorr  
+
+> e,d
+
+(t) = 0pe,d (t) − δest  
+
+> e
+
+(t), (28) where 
+
+δest  
+
+> e
+
+(t) = 
+
+> n
+
+X
+
+> i=1
+
+Roi rξi (ci, t ). (29) The tip deformation rξi (ci, t ) is the boundary value of the deformation field at ξi = ci, governed by the PDE (17) together with boundary conditions (21)–(24), and is available from direct measurement via distributed sensing such as strain gauges or tip-mounted accelerometers. The desired joint coor-dinate vector is then obtained by solving the inverse kinematics problem for the rigid-body chain at the corrected target 
+
+qj,d (t) = f −1kin 
+
+ 0pcorr  
+
+> e,d
+
+(t) . (30) 
+
+Velocity-level mapping: Differentiating (26) with respect to time yields  
+
+> 0
+
+˙pe = Jkin (qj ) ˙ qj + ˙δe, (31) where Jkin (qj ) = ∂fkin /∂ qj is the geometric Jacobian of the rigid-body chain. The time derivative of the deflection follows from differentiating (27) 7
+
+˙δe =
+
+> n
+
+X
+
+> i=1
+
+( ˜ ωi Roi rξi (ci, t ) + Roi ˙rξi (ci, t )) , (32) where ˜ωiRoi rξi (ci, t ) accounts for the rotation of the body-fixed frame carrying the deformation, and Roi ˙rξi (ci, t ) is the inertially expressed rate of change of the tip deformation field, with ˙rξi (ci, t ) being the body-fixed time derivative of rξi
+
+evaluated at ξi = ci. Setting 0 ˙pe = 0 ˙pe,d and solving (31) for the desired joint velocity gives 
+
+˙qj,d = J†
+
+> kin
+
+(qj,d )
+
+0 ˙pe,d − ˙δest 
+
+> e
+
+
+
+, (33) where (·)† denotes the Moore–Penrose pseudoinverse, ˙δest 
+
+> e
+
+is obtained from (32) using the measured deformation field boundary values rξi (ci, t ) and ˙rξi (ci, t ), and the Jacobian is evaluated at the desired configuration qj,d rather than the actual joint configuration qj . Evaluating at the desired configuration ensures that the reference velocity ˙qj,d remains consistent with the corrected position target (30), and avoids introducing an additional error term proportional to qj − qj,d 
+
+into the reference that would complicate the subsequent sta-bility analysis. 
+
+Desired body-fixed twists: Given qj,d and ˙qj,d , the desired body-fixed twist for link i follows from the kinematic rela-tion (3) evaluated along the desired trajectory 
+
+Vd,i =
+
+ J(θd,i ) ˙θj,d,i 
+
+˙rd,i + ^J(θd,i ) ˙θj,d,i rd,i 
+
+ ∈ se (3) , (34) where θd,i and rd,i are the desired orientation parameters and origin position of frame Fi obtained from the forward kinematics at qj,d , and J(θd,i ) is the body-frame Jacobian of the exponential map [29]. The desired twist Vd,i serves as the reference signal for the subsystem controller of link i
+
+developed in Section IV-B. The complete reference generation procedure is summarised as follows. At each time instant tk:1) Obtain 0pe,d (tk) and 0 ˙pe,d (tk) from the endpoint tra-jectory specification. 2) Evaluate δest  
+
+> e
+
+(tk) and ˙δest  
+
+> e
+
+(tk) from (29) and (32) using the measured boundary values rξi (ci, t k) and ˙rξi (ci, t k).3) Compute the corrected target (28) and solve the inverse kinematics (30). 4) Compute the desired joint velocity (33). 5) Assemble Vd,i for each link via (34). The reference generation procedure operates independently of the subsystem controllers: the deflection correction (28) modifies only the joint-space reference trajectory, while each subsystem controller tracks its own Vd,i through feedback on the twist error eVi = Vd,i − Vi defined in (40). The deformation field rξi (ξi, t ) is therefore not commanded di-rectly but is regulated indirectly through the corrected joint reference and the elastic boundary conditions imposed by the applied wrenches (21)–(24). This separation keeps the subsystem stability analysis of Section IV-C unaffected by the reference generation procedure. 
+
+B. Dynamic model in controllable form 
+
+To obtain a controllable form of (9), the distributed inertia term Di( ˙Vξi ) is eliminated by substituting the strain-rate PDE (20), which expresses ˙vξi algebraically in terms of the deformation field and the rigid-body motion: 
+
+˙vξi = − ˜ωivξi − 1
+
+ρiAi
+
+Iv2i r′′′′  
+
+> ξi
+
++ 1
+
+ρiAi
+
+Iv1i r′′  
+
+> ξi
+
+. (35) Substituting (35) into the distributed inertia operator (11) yields 
+
+Di( ˙Vξi ) = ρiAi
+
+Z ci
+
+> ai
+
+˜rib i ˙vξi dξ 
+
+Z ci
+
+> ai
+
+˙vξi dξ 
+
+
+
+=
+
+
+
+− ρiAi
+
+Z ci
+
+> ai
+
+˜rib i ˜ωivξi dξ 
+
++
+
+Z ci
+
+> ai
+
+˜rib i
+
+ Iv1i r′′  
+
+> ξi
+
+− Iv2i r′′′′ 
+
+> ξi
+
+ dξ 
+
+− ρiAi
+
+Z ci
+
+> ai
+
+˜ωivξi dξ 
+
++
+
+Z ci
+
+> ai
+
+ Iv1i r′′  
+
+> ξi
+
+− Iv2i r′′′′ 
+
+> ξi
+
+ dξ 
+
+
+
+.
+
+(36) Adding (36) to the generalized force term (12), the velocity-dependent Coriolis integrals combine via vib i = vξi + vbi .
+
+ρiAi
+
+Z ci
+
+> ai
+
+˜ωivib i dξ − ρiAi
+
+Z ci
+
+> ai
+
+˜ωivξi dξ 
+
+= ρiAi
+
+Z ci
+
+> ai
+
+˜ωivbi dξ, 
+
+(37) and identically for the rotational block. The vξi dependence therefore cancels exactly between Hi and Di( ˙Vξi ), and substituting into (9) yields the controllable form 
+
+Mi ˙Vi + Hc,i + WJ,i = Wi, (38) where Hc,i collects all remaining velocity- and deformation-dependent terms 
+
+Hc,i =
+
+
+
+ρiAi
+
+Z ci
+
+> ai
+
+˜rib i ˜ωivbi dξ 
+
++ ρiAi
+
+Z ci
+
+> ai
+
+˜rib i R⊤
+
+> oi
+
+g dξ 
+
++
+
+Z ci
+
+> ai
+
+˜rib i (Iv1i r′′  
+
+> ξi
+
+− Iv2i r′′′′  
+
+> ξi
+
+) dξ ρiAi
+
+Z ci
+
+> ai
+
+˜ωivbi dξ + miR⊤
+
+> oi
+
+g
+
++
+
+Z ci
+
+> ai
+
+(Iv1i r′′  
+
+> ξi
+
+− Iv2i r′′′′  
+
+> ξi
+
+) dξ 
+
+
+
+(39) The key structural property of (38) is that Hc,i depends on 
+
+Vi and rξi but not on ˙Vi, making (38) affine in the acceler-ation ˙Vi and amenable to model-based feedback design. The distributed elastic acceleration ˙vξi has been fully absorbed into the stiffness integrals in Hc,i via (35). 8
+
+C. Subsystem-based controller design and stability proof 
+
+The subsystem-level twist error is defined as 
+
+eVi = Vd,i − Vi (40) 
+
+Remark 1. The twist error eVi = Vd,i − Vi is formed as a difference of coordinate vectors in R6, which is admissible because both Vd,i and Vi are expressed in the same body-fixed frame Fi. The Lie algebra se (3) is a vector space, and subtraction of two elements expressed in the same frame is a well-defined linear operation. The time derivative ˙eVi =˙Vd,i − ˙Vi follows directly by linearity, where ˙Vd,i and ˙Vi are body-fixed time derivatives as defined in Appendix A (127). This differs from the configuration error on SE (3) , which would require the group logarithm; here the error is formed at the velocity level in se (3) and is therefore linear. 
+
+Error dynamics: Subtracting the actual dynamics (38) from the identity obtained by replacing ˙Vi with ˙Vd,i in (38) and denoting the corresponding interaction wrench by WJ,d,i :
+
+Mi
+
+ ˙Vd,i − ˙Vi
+
+
+
++ ( WJ,d,i − WJ,i ) = 0, (41) where Hc,i cancels identically because it depends only on 
+
+(Vi, rξi ) and not on ˙Vi, and is therefore the same in both terms. Using eVi = Vd,i − Vi, equation (41) becomes 
+
+Mi ˙eVi = WJ,d,i − WJ,i , (42) showing that in the absence of a control input the twist error is driven entirely by the difference between the desired and actual interaction wrenches. The term WJ,d,i is not required to be computed in the control law; it enters the analysis only through the residual WJ,d,i −WJ,i , whose cancellation across subsystems is established in Section IV-D. 
+
+Control law: Theorem 1. Consider subsystem i governed by the controllable dynamics (38). The control law 
+
+Wi = Mi ˙Vd,i + Hc,i + KiMieVi , (43) where Ki ≻ 0 is a symmetric positive definite gain matrix, renders the subsystem twist error eVi = Vd,i − Vi input-to-state stable with respect to the interaction wrench residual 
+
+pi. Specifically, the per-subsystem Lyapunov function νi =
+
+e⊤ 
+
+> Vi
+
+Mi eVi satisfies 
+
+ddt νi ≤ − αi νi + pi, (44) where αi = 2 λmin (KiMi)/λ max (Mi) > 0, and 
+
+pi = 2 e⊤ 
+
+> Vi
+
+(WJ,d,i − WJ,i ) (45) is the virtual power residual arising from the interaction wrench at the subsystem boundary. The term pi cannot be signed at the subsystem level and prevents a standalone expo-nential stability conclusion for link i in isolation. Exponential stability of the full n-link system is established in Theorem 2 by showing that Pni=1 pi = 0 .
+
+Proof. Substituting (43) into (38): 
+
+Mi ˙Vi = Mi ˙Vd,i + Hc,i + KiMieVi − Hc,i − WJ,i 
+
+= Mi ˙Vd,i + KiMieVi − WJ,i . (46) Using ˙eVi = ˙Vd,i − ˙Vi and adding (42) to (46) rearranged. 
+
+Mi ˙eVi = −KiMieVi + WJ,d,i − WJ,i , (47) where WJ,d,i is the interaction wrench consistent with the desired trajectory, introduced via the error dynamics (42): subtracting (42) from (46) rearranged gives (47) directly, without requiring the reference dynamics to be evaluated as a separate physical equation. The candidate Lyapunov function for subsystem i is 
+
+νi = e⊤ 
+
+> Vi
+
+MieVi ≥ 0. (48) Since Mi ≻ 0, νi is positive definite and radially unbounded in eVi . Its time derivative along trajectories of (47) is 
+
+ddt νi = 2 e⊤ 
+
+> Vi
+
+Mi ˙eVi
+
+= −2e⊤ 
+
+> Vi
+
+KiMieVi + 2 e⊤ 
+
+> Vi
+
+(WJ,d,i − WJ,i ) .
+
+(49) Using λmin (KiMi) > 0 and νi ≤ λmax (Mi)∥eVi ∥2, the dissipative term satisfies 
+
+2e⊤ 
+
+> Vi
+
+KiMieVi ≥ 2λmin (KiMi)
+
+λmax (Mi) νi = αi νi, (50) where αi = 2λmin (KiMi)/λ max (Mi) > 0. Substitut-ing (50) into (49): 
+
+ddt νi ≤ − αi νi + 2 e⊤ 
+
+> Vi
+
+(WJ,d,i − WJ,i )
+
+| {z }
+
+> pi
+
+. (51) This concludes the proof of Theorem 1. The subsystem result is therefore an ISS-type estimate: the Lyapunov function 
+
+νi decays at rate αi modulo the interaction power input pi. No assumption on the sign or magnitude of pi is required at this stage; the cancellation Pni=1 pi = 0 established in Theorem 2 is the mechanism that closes the stability argument at the system level. 
+
+D. System-level stability of nominal controller 
+
+Theorem 2. Under the control laws (43), the composite Lyapunov function V = Pni=1 νi satisfies V(t) ≤ V (0) e−αt 
+
+for all t ≥ 0, where α = min i αi > 0. Consequently, all twist errors eVi , i = 1 , . . . , n , converge to zero exponentially at rate α/ 2, and the elastic deformation field rξi (ξ, t ) remains bounded in H2([ ai, c i]) for all t ≥ 0.
+
+Proof. Summing the subsystem result (51) over all links: 9
+
+ddt V =
+
+> n
+
+X
+
+> i=1
+
+ddt νi ≤ − 
+
+> n
+
+X
+
+> i=1
+
+αi νi +
+
+> n
+
+X
+
+> i=1
+
+pi. (52) It remains to show that Pni=1 pi = 0 . Each link i is subject to an interaction wrench at its base interface, WBJ,i , transmitted from link i − 1 through the joint, and an interaction wrench at its tip interface, WTJ,i , transmitted to link i+1 , so that WJ,i =
+
+WTJ,i − WBJ,i and equivalently for the desired counterparts. The virtual power residual pi therefore decomposes as 
+
+pi = 2 e⊤ 
+
+> Vi
+
+(WJ,d,i − WJ,i )= 2 e⊤
+
+> Vi
+
+
+
+WTJ,d,i − WTJ,i 
+
+| {z }
+
+> pT ,i
+
+− 2e⊤
+
+> Vi
+
+
+
+WBJ,d,i − WBJ,i 
+
+| {z }
+
+> pB,i
+
+,
+
+(53) and the total sum becomes 
+
+> n
+
+X
+
+> i=1
+
+pi =
+
+> n
+
+X
+
+> i=1
+
+(pT,i − pB,i ) = pT,n − pB, 1 +
+
+> n−1
+
+X
+
+> i=1
+
+(pT,i − pB,i +1 ).
+
+(54) 
+
+Cancellation of internal terms. At the joint between link 
+
+i and link i + 1 , two preliminary relations are required: a wrench transformation and a twist error transformation, both at the joint interface. 
+
+a) Tip twist and body-fixed twist.: The twist at the tip endpoint ξi = ci, expressed in frame Fi, is obtained by shifting the reference point of Vi from the body-fixed frame origin to the tip location rbi (ci) via the point-shift spatial transform 
+
+XTi =
+
+ I3 0
+
+erbi (ci) I3
+
+
+
+∈ R6×6, (55) which is a pure reference-point shift within frame Fi, with no change of orientation ( R = I3). The tip twist is therefore 
+
+VTi = XTi Vi + Vtip  
+
+> ξi
+
+, (56) where Vtip  
+
+> ξi
+
+= [ 0⊤, (˙ rξi (ci, t ) + ˜ ωirξi (ci, t )) ⊤]⊤ ∈ se (3) is the deformation twist at the tip, consistent with (3) and (6). The same relation holds for the desired trajectory: 
+
+Vd,T i = XTi Vd,i + Vtip  
+
+> d,ξ i
+
+. (57) Subtracting (56) from (57), the tip twist error is 
+
+eVi tip = XTi eVi + etip  
+
+> ξi
+
+, (58) where etip  
+
+> ξi
+
+= Vtip  
+
+> d,ξ i
+
+− Vtip  
+
+> ξi
+
+is the deformation twist error at the tip. By the same point-shift argument applied at the base coordinate ξi+1 = ai+1 , the base twist error eVi+1 base 
+
+denotes the rigid-body part of the twist error of link i + 1 
+
+referred to its base endpoint. 
+
+b) Wrench transformation.: The tip interaction wrench 
+
+WTJ,i ∈ se ∗(3) , expressed in frame Fi, and the base interaction wrench WBJ,i +1 , expressed in frame Fi+1 , represent the same physical contact force. By Newton’s third law and the co-Adjoint transformation: 
+
+WBJ,i +1 = Ad −⊤ 
+
+> (i+1) i
+
+WTJ,i , (59) and identically for the desired wrenches. The interaction wrench acts only in directions consistent with the joint con-straint, i.e. in the range of P⊤ 
+
+> i+1
+
+by the principle of virtual work. Consequently the power product (etip  
+
+> ξi
+
+)⊤WTJ,i vanishes: the deformation twist error at the tip lies in the null space of Pi+1 since the joint constraint acts only on rigid-body velocity directions, not on the distributed deformation field. Therefore (58) reduces to 
+
+e⊤ 
+
+> Vitip
+
+WTJ,i =  XTi eVi
+
+⊤ WTJ,i , (60) and identically for the desired wrench residual. Furthermore, since WTJ,i is the contact wrench applied at the tip point ξi =
+
+ci and is already referred to that point as its moment reference, the point-shift acts trivially on it: 
+
+(XTi )⊤WTJ,i = WTJ,i . (61) 
+
+c) Joint constraint on the error.: The holonomic joint constraint enforces, for both actual and desired trajectories: 
+
+Pi+1 
+
+Ad oi VTi − Ad o(i+1) VBi+1 
+
+ = 0, (62) where Pi+1 is the joint projection matrix [28] projecting onto the constrained velocity directions in the inertial frame. Subtracting actual from desired, and using (60) to replace the tip twist error by its rigid-body part: 
+
+Pi+1 
+
+Ad oi XTi eVi − Ad o(i+1) eVi+1 base 
+
+ = 0. (63) Left-multiplying by Ad (i+1) o and using Ad (i+1) oAd oi =
+
+Ad (i+1) i:
+
+Ad (i+1) i XTi eVi
+
+> Pi+1
+
+= eVi+1 base , (64) where Pi+1 
+
+= denotes equality after projection by Pi+1 .
+
+d) Virtual power cancellation.: Substituting (59), (60), (61), and (64) into pB,i +1 :10 
+
+pB,i +1 = 2 e⊤ 
+
+> Vi+1 base
+
+
+
+WBJ,d,i +1 − WBJ,i +1 
+
+
+
+= 2  Ad (i+1) i XTi eVi
+
+⊤ Ad −⊤ 
+
+> (i+1) i
+
+
+
+WTJ,d,i − WTJ,i 
+
+
+
+= 2 e⊤ 
+
+> Vi
+
+(XTi )⊤ Ad ⊤
+
+> (i+1) i
+
+Ad −⊤ 
+
+> (i+1) i
+
+| {z } 
+
+> =I
+
+
+
+WTJ,d,i − WTJ,i 
+
+
+
+= 2 e⊤ 
+
+> Vi
+
+(XTi )⊤
+
+WTJ,d,i − WTJ,i 
+
+| {z }
+
+= WTJ,d,i − WTJ,i by (61) 
+
+= 2 e⊤
+
+> Vi
+
+
+
+WTJ,d,i − WTJ,i 
+
+
+
+= pT,i .
+
+(65) The cancellation follows from two independent properties: the frame-invariance of the natural power pairing on se (3) ×
+
+se ∗(3) , which eliminates Ad (i+1) i in line 3, and the trivial action of (XTi )⊤ on a wrench already referred to the tip point, which eliminates the point-shift in line 4 via (61). Therefore 
+
+pT,i − pB,i +1 = 0 for each i = 1 , . . . , n − 1.
+
+Cancellation of boundary terms. The base of link 1 is attached to the fixed robot base, where no error wrench is transmitted: WBJ,d, 1 − WBJ, 1 = 0, giving pB, 1 = 0 . The tip of link n is the free endpoint subject only to external task wrenches that are accounted for in Wn, so WTJ,d,n −WTJ,n =
+
+0 and pT,n = 0 .The sum (54) therefore telescopes to zero: 
+
+> n
+
+X
+
+> i=1
+
+pi = 0 . (66) Substituting (66) into (52) and setting α = min i αi > 0:
+
+ddt V ≤ − 
+
+> n
+
+X
+
+> i=1
+
+αi νi ≤ − α V. (67) By the comparison lemma [30], V(t) ≤ V (0) e−αt . Since 
+
+Mi ≻ 0, each νi satisfies λmin (Mi)∥eVi ∥2 ≤ νi ≤
+
+λmax (Mi)∥eVi ∥2, and therefore 
+
+∥eVi (t)∥ ≤ 
+
+s
+
+λmax (Mi)
+
+λmin (Mi) ∥eVi (0) ∥ e− α 
+
+> 2t
+
+, i = 1 , . . . , n, 
+
+(68) which establishes exponential stability of the full nominal closed-loop system. 
+
+Remark 2. The cancellation (66) relies on two independent properties: Newton’s third law at each joint interface, which establishes the wrench pairing (59), and the holonomic con-straint consistency, which establishes the projected twist error pairing. The latter is guaranteed by the reference generation of Section IV-A, which constructs Vd,i consistent with the joint constraints. Neither the actual interaction wrenches WJ,i nor the desired interaction wrenches WJ,d,i are required in the control law (43); both appear only in the stability analysis, where their difference telescopes to zero upon summation over all links. 
+
+Boundedness of elastic deformation: The exponential sta-bility result (68) establishes that ∥eVi (t)∥ → 0 exponentially, and since Vd,i is bounded by construction of the reference trajectory, it follows that Vi = [ v⊤ 
+
+> i
+
+, ω⊤ 
+
+> i
+
+]⊤ is bounded for all t ≥ 0. Moreover, from (47), and noting that eVi and 
+
+WJ,d,i are bounded, and that WJ,i is bounded by assump-tion of admissible joint forces consistent with the holonomic constraints [28], ˙eVi is bounded, and hence ˙Vi = [ ˙ v⊤ 
+
+> i
+
+, ˙ω⊤ 
+
+> i
+
+]⊤
+
+is bounded. Boundedness of the elastic deformation field rξi (ξ, t ) for 
+
+ξ ∈ (ai, c i) is then established through the deformation PDE (17), which for interior points ξ ∈ (ai, c i) takes the form 
+
+˙vξi = − ˙vi + ˜ rbi ˙ωi − ˜ωivib i − R⊤
+
+> oi
+
+g
+
+− 1
+
+ρiAi
+
+Iv2i r′′′′  
+
+> ξi
+
++ 1
+
+ρiAi
+
+Iv1i r′′  
+
+> ξi
+
+, (69) with no distributed forcing in the interior — boundary conditions are imposed separately at ξ = ai and ξ = ci. Each term on the right-hand side of (69) is now analysed:  
+
+> •
+
+˙vi and ˙ωi are bounded as established above;  
+
+> •
+
+˜rbi ˙ωi and ˜ωivib i are bounded since rbi , ωi, and vib i are all bounded;  
+
+> •
+
+R⊤
+
+> oi
+
+g is bounded by ∥g∥; 
+
+> •
+
+the elastic terms Iv2i r′′′′  
+
+> ξi
+
+/(ρiAi) and Iv1i r′′  
+
+> ξi
+
+/(ρiAi) con-stitute the restoring force of the Euler–Bernoulli beam, with Iv1i ⪰ 0 and Iv2i ⪰ 0.Equation (69) therefore constitutes a forced Euler–Bernoulli beam equation. The forcing fi(t) = − ˙vi + ˜ rbi ˙ωi − ˜ωivib i −
+
+R⊤
+
+> oi
+
+g is bounded for all t ≥ 0 since each constituent term is bounded as established above. Moreover, because Vi and ˙Vi
+
+each decompose into a desired part (bounded by construction of the reference trajectory) and an error part bounded by (68), the forcing admits the explicit time-varying upper bound 
+
+∥fi(t)∥ ≤ c0,i + c1,i e− α  
+
+> 2t
+
+=: ¯fi(t), (70) where c0,i > 0 collects contributions from the gravity term and the bounded desired trajectory, and c1,i = c1βi > 0 with 
+
+βi = pλmax (Mi)/λ min (Mi) ∥eVi (0) ∥ as defined in (68). Defining the total mechanical energy of the elastic subsys-tem as 
+
+Ei = ρiAi
+
+2
+
+Z ci
+
+> ai
+
+∥vξi ∥2 dξ 
+
++ 12
+
+Z ci
+
+> ai
+
+h r′
+
+> ξi
+
+⊤ Iv1i r′ 
+
+> ξi
+
++  r′′ 
+
+> ξi
+
+⊤ Iv2i r′′ 
+
+> ξi
+
+i
+
+dξ, 
+
+(71) and differentiating the elastic energy Ei defined in (71) along trajectories of (69), applying integration by parts with the natural boundary conditions (21)–(24), and applying the Cauchy–Schwarz inequality: 
+
+ddt Ei ≤ ρiAi
+
+Z ci
+
+> ai
+
+∥vξi ∥ ∥ fi(t)∥ dξ ≤ ¯fi(t)pρiAili
+
+p2Tf,i ,
+
+(72) 11 
+
+as R ci 
+
+> ai
+
+∥vξi ∥ dξ ≤ √li
+
+R ci 
+
+> ai
+
+∥vξi ∥2 dξ 
+
+1/2
+
+=
+
+√li
+
+p2Tf,i /(ρiAi), and Tf,i = ρiAi
+
+> 2
+
+R ci 
+
+> ai
+
+∥vξi ∥2 dξ ≤ Ei.Since p2Tf,i ≤ √2Ei, applying Young’s inequality 
+
+ab ≤ a2 
+
+> 2ϵ
+
++ ϵb 2 
+
+> 2
+
+to (72): 
+
+ddt Ei ≤ ρiAili
+
+2ϵ ¯fi(t)2 + ϵ E i (73) for any ϵ > 0. Expanding ¯fi(t)2:
+
+¯fi(t)2 =  c0,i + c1,i e− α 
+
+> 2t
+
+2 ≤ 2c20,i + 2 c21,i e−αt , (74) where (a+b)2 ≤ 2a2 +2 b2 has been used. Substituting (74) into (73) and applying the Gr¨ onwall–Bellman lemma [30]: 
+
+Ei(t) ≤ Ei(0) eϵt 
+
++ ρiAilic20,i 
+
+ϵ
+
+ eϵt − 1
+
++ ρiAilic21,i 
+
+ϵ
+
+ eϵt − e−αt 
+
+ϵ + α
+
+
+
+.
+
+(75) For any fixed finite horizon T < ∞, Ei(t) is bounded on [0 , T ] by (75). For the global-in-time bound, note that as 
+
+t → ∞ the dominant term in (75) is driven by c0,i , which corresponds to the gravity and desired trajectory forcing that persists even after the twist error has decayed. Since c0,i 
+
+and c1,i are finite constants and ϵ > 0 is fixed, each term in (75) is finite for every finite t ≥ 0. The bound therefore establishes Ei(t) < ∞ on every bounded interval [0 , T ].Global boundedness follows from the fact that the right-hand side of (73) satisfies a linear growth condition in Ei with a bounded time-varying coefficient ¯fi(t)2, so no finite escape time can occur [30]. Therefore Ei(t) < ∞ for all t ≥ 0.
+
+Remark 3. The persistent c0,i term in (70) arises from gravity and the bounded desired trajectory: even after perfect twist error convergence, the beam is continuously forced by the rigid-body acceleration of the desired trajectory. Asymptotic decay of Ei to zero would require the desired trajectory itself to be asymptotically constant, which is not assumed here. The only physically meaningful guarantee is therefore boundedness of Ei for all t ≥ 0.Boundedness of Ei implies boundedness of both the elas-tic kinetic energy Tf,i and the vibrational potential energy 
+
+Uk,i [9], which in turn implies — via the H2([ ai, c i]) Sobolev embedding theorem [31] — pointwise boundedness of rξi (ξ, t )
+
+and its spatial derivatives throughout the beam domain (ai, c i)
+
+for all t ≥ 0.V. A DAPTIVE MODIFICATION OF NOMINAL CONTROLLER 
+
+The nominal controller (43) relies on exact knowledge of 
+
+Mi and Hc,i . In practice, the physical parameters ρi, Ai,
+
+Ei, Iyi , Izi entering these terms are uncertain. This section presents an adaptive modification that replaces exact param-eter values with online estimates, preserving the exponential convergence of the twist error while driving the parameter estimation errors to zero. The adaptive design follows an indirect model reference philosophy [32], [33]: a parallel model evaluated at the current parameter estimates generates predicted system outputs, and the discrepancy between pre-dicted and true outputs drives the parameter update law. This output-error formulation ensures that parameter convergence is not conditioned on the magnitude of the tracking error — a known limitation of direct, control-error-driven adaptation laws — so that the adaptation remains active and effective even when the nominal controller achieves small twist errors. 
+
+A. Parametric uncertainty structure 
+
+The uncertain parameters of link i are collected in the vector 
+
+si, comprising all physical parameters appearing in Mi, Di,and Hc,i :
+
+si =
+
+
+
+ρiAi
+
+vec( Ibi )vec( Iv1i )vec( Iv2i )
+
+ ∈ R28 , (76) where vec( ·) denotes the column-stacking vectorization operator, Ibi ∈ R3×3 is the rotational inertia integral matrix appearing in Mi, and Iv1i , Iv2i ∈ R3×3 are the bending stiffness integral matrices entering the elastic force terms in 
+
+Hc,i . The scalar ρiAi determines all remaining distributed inertial and velocity-dependent terms in Mi, Di, and Hc,i .
+
+Remark 4. The formulation (76) represents the most gen-eral uncertainty structure corresponding to the model (9). In practice, symmetry of Ibi , Iv1i , Iv2i and the diagonal structure imposed by the principal beam axes reduce the dimension of si significantly. For the Euler–Bernoulli beam model considered here, only a small subset of elements is non-trivial and independently identifiable, so that the effective parameter vector used in implementation is of substantially lower dimension than R28 .The parameter estimation error is defined as 
+
+esi = si − ˆsi. (77) 
+
+Assumption 1. Finite lower and upper bounds si,l and si,h 
+
+for each uncertain parameter vector si are known, with all elements of si,l and si,h strictly positive. The admissible parameter space is denoted Qi = {si : si,l ≺ si ≺ si,h }.B. Projection-based adaptation law 
+
+To ensure that parameter estimates remain inside Qi at all times, the projection operator P is employed. For scalar quantities s, sl, sh and update signal e, it is defined element-wise as [34] 
+
+P(s, s l, s h, e ) = 
+
+
+
+0 if s ≥ sh and e > 0,
+
+0 if s ≤ sl and e < 0,e otherwise. (78) 12 
+
+Lemma 1. If ˙ˆsi = P(ˆ si, si,l , si,h , es), then the following hold for all t ≥ 0:
+
+ˆsi ∈ Q i, (79) 
+
+e⊤ 
+
+> si
+
+(es − P (ˆ si, si,l , si,h , es)) ≤ 0. (80) 
+
+Proof . Standard property of the projection operator; see [34]. 
+
+C. Adaptive control law 
+
+The adaptive control law replaces Mi and Hc,i in the nominal law (43) with their current estimates: 
+
+Wi = ˆMi ˙Vd,i + ˆHc,i + Ki ˆMieVi . (81) 
+
+Regressor formulation: To derive a measurable adaptation signal, the dynamic equations (38) and (20) are written in regressor form with respect to the uncertain parameter vector 
+
+si ∈ R28 (76). The controllable form (38) is linear in si through Mi and 
+
+Hc,i , and can be written as 
+
+YV,i (Vi, ˙Vi, rξi , ˙rξi ) si + WJ,i = Wi, (82) where YV,i ∈ R6×28 is the regressor matrix whose columns correspond to the parametric contributions of ρiAi, vec( Ibi ),
+
+vec( Iv1i ), and vec( Iv2i ) to the inertial and force terms of (38). The columns associated with ρiAi collect the distributed trans-lational inertia and velocity-dependent contributions scaling 
+
+Mi and Hc,i ; the columns associated with vec( Ibi ) collect the rotational inertia contributions to the angular block of Mi; and the columns associated with vec( Iv1i ) and vec( Iv2i ) collect the axial and bending stiffness contributions to the elastic restoring terms in Hc,i .Similarly, the strain PDE (20) is linear in the stiffness parameters Iv1i and Iv2i through the elastic restoring terms, and can be written at any measurement point ξ ∈ [ai, c i] as 
+
+Yξ,i ( ˙ vξi , r′′  
+
+> ξi
+
+, r′′′′  
+
+> ξi
+
+) sξ,i = 0, (83) where sξ,i = [vec( Iv1i )⊤, vec( Iv2i )⊤]⊤ ∈ R18 is the stiffness subvector of si, and Yξ,i ∈ R3×18 collects the spatial derivative terms of (20) corresponding to the axial and bending stiffness contributions. Evaluation at the tip ξ = ci is motivated by the typical availability of endpoint measurements from the sensing infrastructure; evaluations at interior points are equally valid but require distributed sensing. 
+
+Remark 5. The full regressors YV,i ∈ R6×28 and Yξ,i ∈
+
+R3×18 are retained in the general formulation. In practice, the symmetry and diagonal structure of Ibi , Iv1i , and Iv2i elim-inate redundant columns, and the effective parameter vector is of substantially lower dimension than R28 , as discussed in Remark 4. The stability proof holds for any reduced form of 
+
+si since the regressor structure and projection argument are dimension-independent. Defining a parallel model of (38) and (20) evaluated at the current parameter estimates ˆsi, the output residuals are 
+
+ϵV,i = YV,i si − YV,i ˆsi = YV,i esi , (84) 
+
+ϵξ,i = Yξ,i sξ,i − Yξ,i ˆsξ,i = Yξ,i esξ,i , (85) where esξ,i is the subvector of esi corresponding to the stiffness parameters sξ,i . Both residuals are computable from system measurements and the parallel model without knowl-edge of the true parameter values si.
+
+Parameter adaptation law: The stacked regressor ¯Yi ∈
+
+R9×28 is defined as 
+
+¯Yi =
+
+"YV,i 
+
+¯Yξ,i 
+
+#
+
+, (86) where ¯Yξ,i ∈ R3×28 is the zero-padded extension of Yξ,i ,obtained by inserting zero columns at the positions of the non-stiffness parameters ρiAi and vec( Ibi ) in si, so that ¯Yiesi is dimensionally consistent. The lumped adaptation signal Γi ∈ R28 is defined as 
+
+Γi = Y⊤
+
+> V,i
+
+ϵV,i +
+
+" 0Y⊤
+
+> ξ,i
+
+ϵξ,i 
+
+#
+
+= ¯Y⊤ 
+
+> i
+
+¯Yi esi , (87) where the first term updates all parameters in si from the dynamic equation residual (84), and the second term provides an additional update for the stiffness subvector sξ,i from the strain PDE residual (85). The equality Γi = ¯Y⊤ 
+
+> i
+
+¯Yiesi holds analytically by linearity of the regressors in the parameter error and is used in the stability proof but not in implementation, where Γi is computed directly from the measurable residuals 
+
+ϵV,i and ϵξ,i .The parameter adaptation law is 
+
+˙ˆsi = P(ˆ si, si,l , si,h , Λi Γi) , (88) where Λi ≻ 0 is the diagonal adaptation gain matrix. Both ϵV,i and ϵξ,i entering Γi are evaluated as residuals between the true system and the parallel model at ˆsi —not between the system and the desired reference Vd,i . This output-error (model reference) structure [32], [33] ensures that adaptation remains active even when the controller achieves small tracking errors. 
+
+D. Subsystem stability of adaptive controller 
+
+Theorem 3. The adaptive control law (81) with adaptation law (88) results in 
+
+ddt νai ≤ − α′ νai + cQ,i + pi, (89) where νai is the augmented subsystem Lyapunov func-tion defined in (90), α′ = min( αi, β i − ϵ) > 0 for any 
+
+ϵ ∈ (0 , β i/2) , βi = 2 λmin ( ¯Y⊤ 
+
+> i
+
+¯Yi(t)) λmin (Λ−1 
+
+> i
+
+) > 0, and 
+
+cQ,i ≥ 0 is a finite residual constant representing the Lyapunov mismatch due to model uncertainty during adaptation, defined in (100), which vanishes as the parameter estimation error 13 
+
+esi → 0. The term pi is the interaction wrench residual from (51). 
+
+Proof. The augmented Lyapunov candidate for subsystem i
+
+is 
+
+νai = νi + νs,i = e⊤ 
+
+> Vi
+
+MieVi + e⊤ 
+
+> si
+
+Λ−1 
+
+> i
+
+esi , (90) where νi is the nominal CLF (48) and νs,i = e⊤ 
+
+> si
+
+Λ−1 
+
+> i
+
+esi ≥
+
+0. The parameter estimation error appears in the Lyapunov analysis only — in implementation, the measurable residuals 
+
+ϵV,i and ϵξ,i serve as its surrogate. 
+
+Derivative of νs,i . Since si is constant, ˙esi = −˙ˆsi:
+
+ddt νs,i = −2e⊤ 
+
+> si
+
+Λ−1 
+
+> i
+
+P(ˆ si, si,l , si,h , ΛiΓi) . (91) Applying Lemma 1 with es = ΛiΓi:
+
+ddt νs,i ≤ − 2e⊤ 
+
+> si
+
+Λ−1 
+
+> i
+
+ΛiΓi = −2e⊤ 
+
+> si
+
+Γi. (92) Substituting the analytical identity (87): 
+
+2e⊤ 
+
+> si
+
+Γi = 2 e⊤
+
+> si
+
+¯Y⊤ 
+
+> i
+
+¯Yiesi
+
+≥ 2λmin ( ¯Y⊤ 
+
+> i
+
+¯Yi)∥esi ∥2
+
+≥ βi νs,i ,
+
+(93) giving 
+
+ddt νs,i ≤ − βi νs,i . (94) 
+
+Derivative of νi under adaptive controller. Substituting (81) into (38) and retaining model mismatch terms eMi = Mi −
+
+ˆMi and eHi = Hc,i − ˆHc,i , both linear in esi through the regressor (82), the error dynamics become 
+
+Mi ˙eVi = −Ki ˆMieVi − eMi
+
+˙Vd,i − eHi + WJ,d,i − WJ,i .
+
+(95) The time derivative of νi along (95), after applying the dissipation bound (50) and using ˆMi = Mi − eMi , gives 
+
+ddt νi ≤ − αi νi + εQ,i + pi, (96) where εQ,i collects the cross-terms arising from model uncertainty: 
+
+εQ,i ≜ 2e⊤ 
+
+> Vi
+
+KieMi eVi − 2e⊤ 
+
+> Vi
+
+eMi
+
+˙Vd,i − 2e⊤ 
+
+> Vi
+
+eHi . (97) Since eMi and eHi are linear in esi , their norms satisfy 
+
+∥eMi ∥ ≤ cM,i ∥esi ∥ and ∥eHi ∥ ≤ cH,i ∥esi ∥ for constants 
+
+cM,i , c H,i > 0 bounded within Qi by Assumption 1, where 
+
+cM,i = max  
+
+> k
+
+∥∂sk Mi∥, cH,i = max  
+
+> k
+
+∥∂sk Hc,i ∥, (98) with ∂sk Mi and ∂sk Hc,i the constant partial derivative matrices of Mi and Hc,i with respect to the k-th element of si. Applying Young’s inequality to each term of (97): 
+
+|εQ,i | ≤ 2∥Ki∥ cM,i ∥eVi ∥2∥esi ∥
+
++ 2 cM,i ∥ ˙Vd,i ∥ ∥ eVi ∥∥ esi ∥
+
++ 2 cH,i ∥eVi ∥∥ esi ∥.
+
+(99) Using ∥eVi ∥ ≤ pνi/λ min (Mi), ∥esi ∥ ≤ pλmax (Λi)νs,i ,and ab ≤ ϵ 
+
+> 2
+
+a2 + 12ϵ b2 applied to each cross-product term, all three terms of (99) are bounded by ϵ ν s,i +cQ,i for the constant 
+
+cQ,i defined in (100). 
+
+cQ,i ≜
+
+
+
+2∥Ki∥cM,i + cM,i ∥ ˙Vd,i ∥ + cH,i 
+
+2
+
+λmax (Λi)2ϵ λ min (Mi)
+
+× sup 
+
+> Qi
+
+∥esi ∥2
+
+(100) is a non-negative function of νai that vanishes when esi →
+
+0, i.e. when adaptation is complete. Substituting into (96): 
+
+ddt νi ≤ − αi νi + ϵ ν s,i + cQ,i (νi) + pi. (101) 
+
+Total augmented derivative. Adding (94) and (101): 
+
+ddt νai ≤ − αi νi − (βi − ϵ) νs,i + cQ,i (νi) + pi
+
+≤ − α′ νai + cQ,i + pi,
+
+(102) where α′ = min( αi, β i − ϵ) > 0 and cQ,i =sup t≥0 cQ,i (νi(t)) is finite since ˆsi ∈ Q i for all t ≥ 0 by Lemma 1, so ∥esi ∥ is bounded within Qi by Assumption 1, and ∥ ˙Vd,i ∥ is bounded by construction of the reference trajectory.. 
+
+Remark 6. The residual cQ,i represents the transient mis-match between Mi, Hc,i and their estimates ˆMi, ˆHc,i during the adaptation phase. It decreases monotonically as ∥esi ∥ → 0
+
+and vanishes at parameter convergence, confirming that the residual set shrinks to zero as adaptation completes. The bound (100) depends on cM,i and cH,i , computable from the constant partial derivative matrices ∂sk Mi and ∂sk Hc,i 
+
+of the Euler–Bernoulli model. The diagonal gains Λi are free design parameters selected to balance convergence speed across parameter channels; their specific values enter the decay rate βi = 2 λmin ( ¯Y⊤ 
+
+> i
+
+¯Yi)λmin (Λ−1 
+
+> i
+
+) and should be tuned so that βi ≈ αi, preventing either the twist error or the parameter estimation error from dominating the transient response. In the simulation of Section VI, independent gains are assigned to each parameter channel — ρiAi, Ieff  
+
+> b,i
+
+, sIv 1,i , and sIv 2,i 
+
+— reflecting the different signal magnitudes and convergence timescales of each channel, as detailed in Section VI. This establishes (89). The term pi cannot be signed at the subsystem level; its cancellation is established in Section V-E. 
+
+□
+
+E. System-level stability of adaptive controller 
+
+Theorem 4. Suppose the reference trajectory Vd,i (t), i =1, . . . , n , is such that the stacked regressor ¯Yi(t), determined 14 
+
+by the closed-loop system equations (82)–(83), satisfies the persistent excitation (PE) condition: there exist T > 0 and 
+
+δ > 0 such that 
+
+Z t+Tt
+
+¯Y⊤ 
+
+> i
+
+(τ ) ¯Yi(τ ) dτ ≥ δ I, ∀ t ≥ 0, (103) for each i = 1 , . . . , n . Under the PE condition (103), the time-averaged excitation is bounded away from zero over every window of length T , which by standard arguments [34] implies that λmin ( ¯Y⊤ 
+
+> i
+
+¯Yi(t)) is positive on a set of positive measure, ensuring βi > 0 in a time-averaged sense suffi-cient for (93). Then the total augmented Lyapunov function 
+
+Va = Pni=1 νai under the adaptive control laws (81) and (88) satisfies 
+
+Va(t) ≤ V a(0) e−μt + cQ
+
+μ
+
+ 1 − e−μt  , (104) where μ = min i α′ 
+
+> i
+
+> 0 and cQ = Pni=1 cQ,i ≥ 0. The bound (104) establishes exponential ultimate boundedness of the full adaptive closed-loop system, with the residual set determined by cQ/μ . Since cQ,i → 0 as esi → 0 by (100), exponential convergence of both eVi and esi to zero is recovered as adaptation completes. 
+
+Proof. Summing (102) over all links: 
+
+ddt Va ≤ − 
+
+> n
+
+X
+
+> i=1
+
+α′ 
+
+> i
+
+νai + cQ +
+
+> n
+
+X
+
+> i=1
+
+pi. (105) The adaptive control law (81) modifies the applied wrench 
+
+Wi relative to the nominal law, but the interaction wrenches 
+
+WJ,i at the joint interfaces are determined by the holonomic constraint forces, not directly by Wi. The wrench transfor-mation (59), the point-shift (61), and the projected twist error pairing (64) are therefore unchanged, and the cancellation argument of Section IV-D applies without modification, giving Pni=1 pi = 0 . Substituting and setting μ = min i α′ 
+
+> i
+
+> 0:
+
+ddt Va ≤ − μ Va + cQ. (106) By the comparison lemma [30], Va(t) ≤ Va(0) e−μt + 
+
+> cQ
+> μ
+
+(1 − e−μt ), establishing (104). Since Mi ≻ 0 and Λi ≻ 0,each subsystem Lyapunov function satisfies νai ≤ V a, so the individual errors are bounded by 
+
+∥eVi (t)∥ ≤ 
+
+s
+
+Va(t)
+
+λmin (Mi) , (107) 
+
+∥esi (t)∥ ≤ pλmax (Λi) Va(t), i = 1 , . . . , n, (108) which are bounded for all t ≥ 0 and decay to the resid-ual set of radius pcQ/(μλ min (Mi)) and pλmax (Λi)cQ/μ 
+
+respectively, determined by the model mismatch term (100). As cQ,i → 0 with parameter convergence, both residual sets shrink to zero and exponential convergence at rate μ/ 2 is recovered.                                                                                                                        
+
+> // Initialization i. Input: mechanical and geometric properties of each link i=1, . . . , n
+> ii. Input: desired endpoint trajectory ope,d (t),o˙pe,d (t)
+> iii. Input: initial body-fixed states iVi(0) ,rξi(ξ, 0) ,˙rξi(ξ, 0) ,
+> Ad oi (0)
+> iv. Set: uncertainty bounds si,l ,si,h and initial estimates
+> ˆsi(0) ∈ Q ifrom (76)
+> v. Set: control gains Ki≻0, adaptation gains Λi≻0
+> vi. Set: initial estimates ˆsi(0) ∈ Q ifrom (76); compute cM,i ,
+> cH,i offline via (98) from the constant partial derivative matrices
+> ∂skMi,∂skHc,i for monitoring of the residual bound (100)
+> vii. Initialize: ˆMi(0) ,ˆHc,i (0) from ˆsi(0)
+> // Sample k(k≥1)viii. State measurement:
+> read: body-fixed twist Vi(k)from joint encoders and IMUs read: tip deformation rξi(ci, k ),˙rξi(ci, k )from strain/tip sensors update: Ad oi (k)from iqi(k)
+> ix. Reference generation (§IV-A):
+> compute: deflection estimate δest
+> e(k)via (29) compute: corrected target opcorr
+> e,d (k)via (28) solve: inverse kinematics (30) →qj,d (k),˙qj,d (k)
+> assemble: desired twists Vd,i (k)via (34) compute: ˙Vd,i (k)by numerical differentiation
+> x. Twist error:
+> compute: eVi(k) = Vd,i (k)−Vi(k)via (40)
+> xi. Control input (81):
+> evaluate: ˆMi(k),ˆHc,i (k)from current ˆsi(k)
+> compute:
+> Wi(k) = ˆMi˙Vd,i + ˆHc,i +KiˆMieVi
+> apply: joint torques and tip forces via (13)
+> xiii. Parameter adaptation (88):
+> update:
+> ˆsi(k+1) = ˆ si(k) + TsP ˆsi,si,l ,si,h ,ΛiΓi
+> 
+> enforce: ˆsi(k+1) ∈ Q ivia (78)
+> xiii. Parameter adaptation (88):
+> update:
+> ˆsi(k+1) = ˆ si(k) + TsP ˆsi,si,l ,si,h ,ΛiΓi+λQ,i
+> 
+> enforce: ˆsi(k+1) ∈ Q ivia (78)
+> xiv. k=k+ 1 , goto (viii)
+
+TABLE I: SLPC implementation algorithm. Ts denotes the sampling period. 
+
+Remark 7. The PE condition (103) is a property of the closed-loop trajectory and cannot be enforced by controller design. It is satisfied when the reference trajectory generates sufficient joint-space motion to excite all parametric directions of ¯Yi
+
+over every window of length T . In practice, PE is verified offline by numerically evaluating (103) along the simulated trajectory and checking that the smallest eigenvalue of the windowed Gramian R t+Tt ¯Y⊤ 
+
+> i
+
+¯Yi dτ remains bounded away from zero. For the multi-axis trajectory used in the simulation study of Section VI, this check can be performed directly from the logged regressor data ¯Yi(t) without any additional experiments. The decay rate μ = min i α′ 
+
+> i
+
+couples the twist convergence rate αi and the parameter adaptation rate βi − ϵ;in practice Λi should be tuned so that βi ≈ αi, preventing either error from dominating the transient response. The implementation procedure for the presented Subsystem-based Lie Algebraic PDE Control (SLPC) scheme is described in Table I. 15 
+
+VI. R ESULTS AND DISCUSSION 
+
+Controller design for flexible multibody systems tradition-ally imposes significant analytic overhead: inertia matrices, Coriolis and elastic force terms, and stability conditions must be rederived from scratch whenever the system topology, num-ber of links, or material properties change. The screw-theoretic PDE framework presented here eliminates this burden by sep-arating the problem into invariant components. The subsystem dynamic model (9)–(13) and the virtual power flow structure of Section IV remain valid for any configuration of flexible links, since the Lie-algebraic representation on SE (3) is topology-independent and the inter-link coupling cancels via Newton’s third law regardless of system size. At the implementation level, the distributed deformation field is resolved analytically through modal projection — separation of variables applied locally to each link — without requiring a global finite element mesh or reformulation of the controller when links are added or modified. This modular structure is the principal contribution of the work: a general, reusable framework in which the analyst specifies only the per-link geometric and material properties, and the subsystem control law, stability proof, and adaptation structure follow automatically from the invariant theory. The results below demonstrate three properties of this framework: closed-loop implementability in three-dimensional space under the subsystem-based adaptive controller, con-sistency of the response with the theoretical stability and boundedness results of Sections IV–V, and the practical advantage of the model-based and twist-based formulations over conventional joint-space control. A simulation study on a two-link rigid–flexible manipulator executing a spatial circular trajectory illustrates endpoint tracking, online parameter con-vergence, and deformation field availability under three con-trollers of increasing sophistication: the proposed subsystem-based Lie algebraic PDE controller (SLPC), a twist-based controller (TBC) that retains the se (3) reference structure without model-based feedforward, and a naive joint-space PD controller (PD). The three-way comparison isolates the respective contributions of the model-based dynamic can-cellation, the twist-based kinematic reference generator, and the Lie-algebraic problem formulation — demonstrating that each layer of the framework adds measurable performance benefit independently of the others. Targeted improvements — tighter vibration suppression, faster adaptation, higher-order mode retention — are straightforwardly incorporated by modifying the per-link components without altering the overall framework structure or repeating the stability analysis. 
+
+Illustrative simulation study: flexible manipulator endpoint trajectory tracking with adaptive control 
+
+The simulated system consists of a rigid first link and a flexible second link connected in series, operating in three-dimensional space. The mechanical properties are: Young’s modulus E = 2.1 × 10 11 [Pa], densities ρ1 = ρ2 =7800 [kg/m 3], cross-sections b1 × h1 = 10 × 30 [mm] and 
+
+b2 × h2 = 10 × 50 [mm], and lengths l1 = 1 .2 [m] and 
+
+l2 = 1 .0 [m]. The two links are connected by two revolute joints. The base joint, actuating link 1 about its y- and z-axes, is modeled as a two-degree-of-freedom joint with configuration space SO (2) × SO (2) . The connecting joint, actuating link 2 about its body-fixed z-axis, is modeled as a single-degree-of-freedom revolute joint with configuration space SO (2) . The joint constraint projection matrices (62) corresponding to this configuration are 
+
+I3 − oA1 oA⊤ 
+
+> 1
+
+= diag(0 , 1, 1) ,
+
+I3 − oA2 oA⊤ 
+
+> 2
+
+= diag(0 , 0, 1) , (109) where oAi is the unit vector along the free rotation axis of joint i expressed in the inertial frame. The diagonal structure of (109) confirms that link 1 is free to rotate about the y- and 
+
+z-axes of its body-fixed frame, while link 2 is constrained to rotate about its z-axis only, with the x-components of both twist errors projected to zero by the constraint. The simulation is initialised with both links at non-zero joint angles ( θ1z (0) = π/ 6, θ2z (0) = θ1z (0) + π/ 8 in the inertial frame) to demonstrate that the initial condition is handled cor-rectly by the blend-based reference generation (111). Elastic modal coordinates are initialised to zero. The desired endpoint trajectory is a circular path of radius 
+
+rd = 0 .5 [m] in the yz -plane of the inertial frame, parame-terised as 
+
+> 0
+
+pe,d,y (t) = rd sin( ωdt) ρ(t),
+
+> 0
+
+pe,d,z (t) = rd cos( ωdt) ρ(t), (110) where ωd = 1 .0 [rad/s] and ρ(t) = 1 −e−t/τ ramp is a smooth ramp with τramp = 1 .5 [s] that brings the trajectory amplitude up from zero to avoid significant discontinuous initial com-mand. The corresponding desired joint angles, obtained from the deflection-corrected inverse kinematics (28)–(30) with total link length L = l1 + l2, are 
+
+θ1z,d (t) = 
+
+> 0
+
+pe,d,y (t)
+
+L + θ1z (0) b(t),θ1y,d (t) = −
+
+> 0
+
+pe,d,z (t)
+
+L + θ1y (0) b(t),θ2z,d (t) = 
+
+> 0
+
+pe,d,y (t)
+
+L + θ2z (0) b(t), (111) where b(t) = e−t/τ blend with τblend = 2 .0 [s] is a blend function that smoothly drives the initial configuration offsets 
+
+θ1z (0) = π/ 6, θ1y (0) = 0, θ2z (0) = θ1z (0) + π/ 8 to zero without introducing discontinuities in the control input or twist reference. The time derivatives of (111) yield the desired angular velocity components, from which the desired body-fixed twists Vd,i and their time derivatives ˙Vd,i are assembled via (34) and numerical differentiation at each sample. The simulation is run for tf = 25 [s] at a fixed time step T = 10 −3 [s], implemented according to the algorithm of Table I. Implementation details of the modal projection, shape functions, separation-of-variables solution, and integration procedure are identical to those reported in the companion modeling study [9]. 16 
+
+Three controllers are compared throughout the simulation. The proposed subsystem-based Lie algebraic PDE controller (SLPC) is defined by the adaptive control law (81). The twist-based controller (TBC) retains the se (3) error structure and the inter-link kinematic reference generation of Section IV-A but omits the model-based feedforward terms, with control law 
+
+WTBC  
+
+> i
+
+= Ki eVi = Ki(Vd,i − Vi) , (112) where Vd,i ∈ se (3) is the desired body-fixed twist con-structed via the deflection-corrected inverse kinematics (111) and inter-link kinematic propagation through the Adjoint map (34), including the geometrically consistent translational component vd, 2 computed from the rotational velocity of link 1 and the offset r20 . The naive joint-space PD controller (PD) has no knowledge of the twist structure or chain geom-etry, with control law 
+
+τ PD  
+
+> i
+
+= Kp,i (θd,i − θi) + Kd,i 
+
+ ˙θd,i − ˙θi
+
+
+
+, (113) where θd,i and ˙θd,i are the desired joint angles and their time derivatives from the scalar inverse kinematics (111), with no inter-link propagation or Lie group structure. 
+
+Nominal controller: The nominal model-based con-troller (43) constitutes the primary contribution of the frame-work. By cancelling the inertial, Coriolis, and elastic restoring terms through the feedforward components Mi ˙Vd,i +Hc,i , the closed-loop error dynamics reduce to the dissipative form (47), whose exponential convergence is guaranteed by Theorem 1 independently of the system topology. This is in direct contrast to model-free approaches, where the absence of dynamic cancellation introduces a systematic lag between desired and actual twists that grows with trajectory speed and inertial loading. The control gains are K1 = diag(0 , 0, 0, 0, 300 , 300) 
+
+and K2 = diag(0 , 0, 0, 0, 0, 200) , acting on the rotationally active axes consistent with the joint actuation structure. Motor inertia of [1 .0, 3.0, 1.7] [kg.m 2] is considered at the joints. Gains for PD controllers are Kp = 500 , Kd = 20 for the active axes of link 1 and Kp = 400 , Kd = 20 for link 2. Torque saturation of ±100 [Nm] is implemented on the inputs. 
+
+Twist response. The body-fixed twist components for both links under the SLPC are shown in Fig. 2. The translational velocity of link 1, v1, is identically zero throughout the simulation — as expected, since the body-fixed frame of link 1 is attached to the base joint which does not translate in the inertial frame. The angular velocity ω1 is dominated by the y- and z-components corresponding to the two active trajectory axes, while the x-component remains identically zero, consistent with the joint constraint projection (109). Link 2 inherits a full six-dimensional twist: its angular velocity receives contributions from both the chain propagation of 
+
+ω1 through the Adjoint map and the relative rotation at the connecting joint, while its translational velocity v2 arises from the rotational motion of link 1 acting through the geometric offset r20 . This is consistent with the multibody synthesis result of [28], where the twist of each subsystem is related to that of its predecessor through the constraint-projected Adjoint transformation, with the deformation field rξi (ci, t )
+
+contributing an additional elastic correction at the tip. All twist components remain bounded throughout the 25 [s] horizon, confirming the boundedness result of Section IV-D and the physical consistency of the Lie-algebraic formulation across the full kinematic chain. 
+
+Joint tracking and endpoint trajectory. Figure 3 shows the joint angle tracking responses and three-dimensional endpoint trajectory under all three controllers. All actively controlled joint angles under the SLPC track their desired references with the blend function (111) successfully absorbing the initial configuration offset without discontinuities, and with inset magnifications confirming small residual error throughout the steady-state phase. The TBC achieves comparable steady-state tracking — the twist-based reference structure already accounts for three-dimensional kinematic coupling and elastic deflection — but exhibits a larger transient error during the ramp-up phase where the absence of feedforward compensa-tion produces a phase lag that feedback alone cannot eliminate instantaneously. The naive PD produces substantially larger errors throughout, confirming that the twist-based reference generation is a significant independent contributor to tracking performance, separable from the model-based feedforward. The SLPC advantage over TBC is most pronounced during the transient, where cancellation of the dominant inertial and Cori-olis contributions through ˆMi ˙Vd,i + ˆHc,i drives the twist error consistently with the exponential bound (68). Crucially, SLPC stability is guaranteed by Theorem 2 for any positive gain matrix, whereas TBC and PD stability significantly depends on gain tuning. The three-dimensional endpoint trajectories are shown in Fig. 3(a). The SLPC traces the desired circular path closely, overlapping the reference throughout the steady-state phase. The TBC produces a small but visible geometric deviation, most apparent near the trajectory extrema where velocity is highest and inertial loading is greatest. The naive PD produces a substantially larger geometric deviation. 
+
+Control inputs. The control input torques under all three controllers are shown in Figs. 4 An initial torque spike is observed in all three controllers at t ≈ 0, arising from the non-zero initial configuration offset and the discontinuity between the initial state and the trajectory reference at startup. The spike is most pronounced in the naive PD controller, which reacts to the full initial position error through feedback alone without any reference blending at the torque level, and least pronounced in the SLPC where the blend function (111) par-tially attenuates the feedforward contribution during startup. The initial torque transient is a common characteristic of controllers operating from non-zero initial conditions and can be minimized through trajectory pre-planning, startup torque shaping, or modification of the blend parameters — all straightforwardly applicable within the general framework pre-sented here without altering the controller structure or stability proof. Beyond the initial transient, the three controllers exhibit qualitatively different torque profiles reflecting their respective design philosophies: the SLPC produces the smoothest steady-state torque as the feedforward cancellation of inertial and Coriolis terms reduces the feedback effort required; the TBC produces a comparable profile since it shares the twist-based 17 
+
+reference structure; and the naive PD produces a more oscil-latory torque as the feedback term must compensate the full tracking error without dynamic cancellation. The ±100 [Nm] saturation bound is active only during the initial transient for all three controllers. 
+
+Adaptive controller: The adaptive modification (81)–(88) addresses parametric uncertainty in the model. The general uncertainty structure (76) admits up to 28 uncertain parameters per link; full identification of all 56 parameters simultane-ously is impractical for real-time implementation. Instead, the present implementation identifies the 5 × 2 = 10 domi-nant parametric effects across both links, capturing all non-negligible contributions to the dynamic response for slender beams: 
+
+ˆsi =
+
+h
+
+ˆρiAi, \[Ibi ]22 , \[Ibi ]33 , [EI yi , dEI zi
+
+i⊤
+
+∈ R5, (114) where ρiAi governs all distributed inertial terms; [Ibi ]22 
+
+and [Ibi ]33 are the only nonzero independent rotational inertia entries for a symmetric cross-section; and EI yi , EI zi are the principal bending stiffnesses. Axial stiffness EA i is treated as known since its contribution is of order (b/l )2 ≈ 10 −4
+
+relative to the bending terms. Remaining parametric effects not captured by ˆsi are accommodated as bounded uncertainty within Qi. Full parametric identification can be incorporated by extending ˆsi without modifying the controller structure. The estimates are initialised at offsets distributed within 
+
+±10% of their true values, with ±20% projection bounds enforced by the operator (78). The adaptation signal Γi (87) is assembled from the residuals ϵV,i and ϵξ,i between the true system and the parallel model evaluated at ˆsi, computed at each sample from the controllable form (38) and the strain PDE (20) evaluated at the link tip. The diagonal gain matrix 
+
+Λi = diag( λρ,i , λ b22 ,i , λ b33 ,i , λ EIy,i , λ EIz,i ) takes values 
+
+λρ,i = 5 × 10 5, λb22 ,i = λb33 ,i = 10 3, λEIy,i = 10 ,
+
+λEIz,i = 100 for both links, reflecting the differing sensitivity of each residual channel to the corresponding parameter: the larger λρ,i compensates for the weaker signal strength of the translational acceleration residual relative to the parameter magnitude, while the asymmetry between λEIy,i and λEIz,i 
+
+reflects stronger z-plane excitation by the circular trajectory. The ϵV,i residual provides the update signal for ρiAi and 
+
+[Ibi ]22 ,33 through the inertial and angular blocks of the re-gressor YV,i (82), while ϵξ,i provides the update for EI yi
+
+and EI zi through the stiffness columns of Yξ,i (83). Figure 5(a) shows convergence of all ten parameters within the 25 [s] simulation. Inertia parameters converge in 3–5 [s] driven by the strong angular acceleration signal; EI zi con-verges faster than EI yi due to stronger z-plane excitation by the circular trajectory; ρiAi converges more slowly reflecting the weaker endpoint signal, but reaches the true value within the simulation horizon. All estimates remain within Qi at all times by Lemma 1. Normalised estimation errors reduce from the initial 10% to below 2% within the first 5 [s] for inertia and stiffness parameters and by 10 [s] for density, while joint tracking performance remains essentially identical to the nominal case, confirming that Theorem 4 holds in practice and that the stability and adaptation loops operate independently as established in Section V-E. The persistent excitation condition (103) is verified numer-ically in Figure 5(b), which plots the minimum eigenvalue of the windowed Gramian R t+Tt ¯Y⊤ 
+
+> i
+
+¯Yi dτ for both links over the window T = 2π/ω d, corresponding to one full period of the reference trajectory. The eigenvalue remains strictly positive and bounded away from zero throughout the active adaptation phase, confirming that (103) is satisfied by the circular reference trajectory. The decay of λmin in the later phase of the simulation is consistent with parameter convergence: as ˆsi → si the prediction residuals ϵV,i , ϵξ,i → 0
+
+by (84)–(85), giving Γi → 0 by (87), and the Gramian decreases accordingly, which is the expected behavior of a correctly converging adaptive system rather than a violation of the PE condition. 
+
+Deformation field. The distributed deformation fields of the flexible second link are shown in Fig. 6. The deformation is maximum at the free tip ( ξ = l2) and zero at the clamped base (ξ = 0 ), consistent with the clamped-free boundary condi-tions (21)–(24). Peak tip deflections of approximately 65 [mm] in the y- and z-directions remain small relative to l2 = 1 [m], confirming the small-deformation assumption underlying the modal projection. The axial deformation irξx 2 is of order 
+
+10 −4 [m] — four orders of magnitude smaller than the bending deflections — consistent with the high axial stiffness EA i and confirming that the axial parameter was correctly excluded from the adaptation vector ˆsi. The full spatiotemporal field is available at every sample as a direct consequence of the PDE-based representation, enabling distributed state monitoring without FEM discretization overhead — a capability absent from lumped or finite-element formulations without significant additional computational cost. The simulation results collectively demonstrate the key properties of the proposed framework. Twist convergence, joint tracking, and endpoint trajectory are physically consistent with the theoretical stability and boundedness results of Sec-tions IV–V across the full 25 [s] horizon. The three-controller comparison illustrates that the twist-based reference generation and the model-based feedforward are independent and com-plementary contributions: the former provides kinematically consistent references that improve tracking regardless of the control law, while the latter provides a stability certificate and predictable transient behaviour that pure feedback cannot offer. The online parameter adaptation operates independently of the tracking loop, converging from uncertain initial estimates without destabilising the closed-loop system. The distributed deformation field, available at every sample without FEM overhead, demonstrates the practical value of retaining the PDE structure through to implementation rather than dis-cretizing at the modeling stage — a distinction that becomes particularly significant in model-based control and sensing applications where distributed state information is required. VII. C ONCLUSION 
+
+This paper has presented a subsystem-based control frame-work for serial flexible manipulators with an arbitrary number 18 
+
+(a) (b) 
+
+(c) (d) 
+
+Fig. 2: Body-fixed twist components under SLPC: (a) angular velocity 0ω1, (b) translational velocity 0v1, (c) angular velocity 
+
+> 0
+
+ω2, (d) translational velocity 0v2. All components bounded and physically consistent throughout the 25 [s] simulation horizon. of links, grounded in a screw-theoretic Lie-algebraic model in which all dynamic quantities are expressed as body-fixed twists and dual wrenches on se (3) . The development pro-ceeded in four stages. First, the per-link dynamic model was transformed into a controllable form by substituting the strain-based deformation PDE into the dynamic equation, eliminating the distributed elastic acceleration term and yielding a repre-sentation governed solely by the body-fixed twist acceleration and the deformation field. Second, desired subsystem twist trajectories were generated from the task-space endpoint tra-jectory through a deflection-compensating inverse kinematics procedure, in which the tip deformation field provides a real-time correction to the rigid-body joint-space reference. Third, a nominal subsystem-level controller was designed for each link and proven to produce exponential decay of the twist error via a per-subsystem Lyapunov function; the interaction power terms arising at the subsystem boundaries were shown to telescope to zero upon summation over all links by Newton’s third law and the frame invariance of the natural power pairing on se (3) × se ∗(3) , establishing exponential stability of the full n-link system. Fourth, an adaptive modification was derived that replaces exact physical parameters with online estimates governed by a projection-based adaptation law, with exponential convergence of both the twist error and the parameter estimation error established at the subsystem and system levels. Throughout, the screw-theoretic geometric structure serves not only as a modeling convenience but as the mechanism that renders the interaction term cancellation exact and the stability certificate modular and scalable to chains of arbitrary length. Several directions remain open for future investigation. The most immediate is experimental validation of the proposed framework on representative flexible manipulator platforms, which will quantify the closed-loop performance, verify the theoretical convergence rates, and assess the practical sen-sitivity to measurement noise and model approximation. On the sensing side, the framework currently assumes availabil-ity of the tip deformation field rξi (ci, t ) and its rate for the deflection-compensating reference generation. A practi-cally deployable realization of this requirement motivates the integration of inertial measurement unit (IMU) networks distributed along the links, which offer a field-deployable and instrumentation-efficient means of reconstructing the dis-tributed elastic state without recourse to laboratory-grade op-tical or strain-gauge sensing. The incorporation of external dis-turbances — including fluid loading, payload uncertainty, and base vibration — into the stability analysis represents a further extension, requiring either disturbance-observer augmentation or robust modifications to the Lyapunov argument. Finally, the subsystem architecture developed here is compatible with a range of alternative controller structures beyond the twist-error proportional law adopted in this work; investigations into passivity-based controllers, model predictive formulations, and sliding-mode designs within the same se (3) subsystem decom-19 
+
+(a) (b) 
+
+(c) (d) 
+
+Fig. 3: Endpoint trajectory and joint angle tracking: (a) three-dimensional endpoint trajectory comparison between SLPC, TBC, PD, and desired reference, (b) iθ1y , (c) iθ1z , (d) iθ2z . Insets show transient detail. SLPC and TBC both use twist-based reference generation; PD uses scalar joint-space error only. position are natural continuations that may offer improved transient performance or stronger robustness guarantees for specific application classes. REFERENCES [1] F. Boyer, V. Lebastard, F. Candelier, and F. Renda, “Dynamics of continuum and soft robots: A strain parameterization based approach,” 
+
+IEEE Transactions on Robotics , vol. 37, 2021. [Online]. Available: https://doi.org/10.1109/TRO.2020. [2] B. Xu, Y. X. Li, and C. K. Ahn, “Pde-based boundary event-triggered control of uncertain flexible manipulator with input nonlinearities,” 
+
+Nonlinear Dynamics , vol. 111, pp. 10 229–10 246, 6 2023. [3] S. Yaqubi, S. M. Tahamipour-Z, and J. Mattila, “Semi-analytical de-sign of pde endpoint controller for flexible manipulator with non-homogenous boundary conditions,” IEEE Transactions on Automation Science and Engineering , 2023. [4] Z. Liu, J. Liu, and W. He, “Dynamic modeling and vibration control for a nonlinear 3-dimensional flexible manipulator,” International Journal of Robust and Nonlinear Control , vol. 28, pp. 3927–3945, 9 2018. [5] A. Walsh and J. R. Forbes, “Modeling and control of flexible telescoping manipulators,” IEEE Transactions on Robotics , vol. 31, pp. 936–947, 8 2015. [Online]. Available: https://ieeexplore.ieee.org/ document/7128733/ [6] S. S. Rao, Vibration of Continuous Systems (2007) . John Wileys, 2007. [7] H. Yang, J. Liu, and X. Lan, “Observer design for a flexible-link manipulator with pde model,” Journal of Sound and Vibration , vol. 341, pp. 237–245, 4 2015. [Online]. Available: https://linkinghub.elsevier. com/retrieve/pii/S0022460X14010372 [8] F. Cao and J. Liu, “An adaptive iterative learning algorithm for boundary control of a coupled ode–pde two-link rigid–flexible manipulator,” 
+
+Journal of the Franklin Institute , vol. 354, pp. 277–297, 2017. [Online]. Available: http://dx.doi.org/10.1016/j.jfranklin.2016.10.013 [9] S. Yaqubi, A. Barjini, and J. Mattila, “Screw theoretic nonlinear pde dynamic model of a flexible link using body-fixed coordinates,” Applied Mathematical Modelling , p. 116960, 4 2026. [Online]. Available: https://linkinghub.elsevier.com/retrieve/pii/S0307904X26002210 [10] W.-H. Zhu, Virtual Decomposition Control . Springer Berlin Heidelberg, 2010, vol. 60. [Online]. Available: http://link.springer.com/10.1007/ 978-3-642-10724-5 [11] X. Zhang, W. Xu, S. S. Nair, and V. S. Chellaboina, “Pde modeling and control of a flexible two-link manipulator,” IEEE Transactions on Control Systems Technology , vol. 13, pp. 301–312, 2005. [12] R. Featherstone, Rigid Body Dynamics Algorithms . Springer US, 2008. [Online]. Available: http://link.springer.com/10.1007/ 978-1-4899-7560-7 [13] A. M¨ uller, “Screw and lie group theory in multibody kinematics: Mo-tion representation and recursive kinematics of tree-topology systems,” 
+
+Multibody System Dynamics , vol. 43, pp. 37–70, 5 2018. [14] J. Koivumaki, J.-P. Humaloja, L. Paunonen, W.-H. Zhu, and J. Mattila, “Subsystem-based control with modularity for strict-feedback form nonlinear systems,” IEEE Transactions on Automatic Control , vol. 68, pp. 1–8, 7 2022. [Online]. Available: https: //ieeexplore.ieee.org/document/9891804/ [15] H. Gao, Z. Yu, J. Hu, and C. Sun, “Adaptive composite learning control of a flexible two-link manipulator with unknown spatiotemporally vary-ing disturbance,” International Journal of Robust and Nonlinear Control ,8 2024. [16] A. Cibicik and O. Egeland, “Kinematics and dynamics of flexible 20 
+
+(a) (b) 
+
+(c) 
+
+Fig. 4: Control inputs comparing SLPC, TBC, and PD with ±67 [Nm] saturation: (a) τ1y , (b) τ1z , (c) τ2z .
+
+(a) (b) 
+
+Fig. 5: Parameter adaptation analysis: (a) normalized parameter estimation errors for all ten adapted parameters — all converge from initial offsets within ±20% bounds to below 2% within 0.2 [s]; (b) minimum eigenvalue of the windowed regressor Gramian R t+Tt ¯Y⊤ 
+
+> i
+
+¯Yi dτ for both links. 
+
+robotic manipulators using dual screws,” IEEE Transactions on Robotics ,vol. 37, pp. 206–224, 2 2021. [17] B. Li, X. Li, H. Gao, and F.-Y. Wang, “Advances in flexible robotic manipulator systems—part i: Overview and dynamics modeling methods,” IEEE/ASME Transactions on Mechatronics , vol. 29, pp. 1100–1110, 4 2024. [Online]. Available: https://ieeexplore.ieee.org/ document/10438059/ [18] H. Gao, Z. Yu, and J. Hu, “A survey on modeling and control methods for flexible systems,” in 2023 6th International Symposium on Autonomous Systems (ISAS) . IEEE, 6 2023, pp. 1–6. [Online]. Available: https://ieeexplore.ieee.org/document/10164342/ [19] B. Zhang, T. Tao, and X. Mei, “A dynamic identification method for general serial manipulators from an analytical perspective based on lie theory,” Nonlinear Dynamics , vol. 112, pp. 19 939–19 958, 11 2024. [20] A. A. Shabana, Dynamics of Multibody Systems , 4th ed. Cambridge: Cambridge University Press, 2013. [21] H. Sugiyama, A. A. Shabana, M. A. Omar, and W. Y. Loh, “Development of nonlinear elastic leaf spring model for multibody vehicle systems,” 
+
+Computer Methods in Applied Mechanics and Engineering , vol. 195, pp. 6925–6941, 10 2006. [22] M. Sharifnia and A. Akbarzadeh, “A constrained assumed modes method for solution of a new dynamic equation for an axially moving beam,” Computers and Mathematics with Applications , vol. 72, pp. 2167–2180, 2016. [Online]. Available: http://dx.doi.org/10.1016/j. camwa.2016.08.018 [23] D. Trivedi, A. Lotfi, and C. D. Rahn, “Geometrically exact models for 21 
+
+(a) (b) 
+
+(c) (d) 
+
+(e) (f) 
+
+Fig. 6: Distributed deformation field of both links: (a) irξx 1 (axial, order 10 −4 [m]), (b) irξy 1 (bending), (c) irξz 1 (bending), (d) irξx 2 (axial, order 10 −4 [m]), (e) irξy 2 (bending), (f) irξz 2 (bending). Deformation satisfies clamped-free boundary conditions (21)–(24) with zero at the base ( ξ = 0 ) and maximum at the free tip ( ξ = li) for both links throughout the simulation horizon. 
+
+soft robotic manipulators,” IEEE Transactions on Robotics , vol. 24, pp. 773–780, 8 2008. [24] F. Demoures, F. Gay-Balmaz, S. Leyendecker, S. Ober-Bl¨ obaum, T. S. Ratiu, and Y. Weinand, “Discrete variational lie group formulation of geometrically exact beam dynamics,” Numerische Mathematik , vol. 130, pp. 73–123, 5 2015. [25] M. Herrmann and P. Kotyczka, “Relative-kinematic formulation of geometrically exact beam dynamics based on lie group variational integrators,” Computer Methods in Applied Mechanics and Engineering ,vol. 432, 12 2024. [26] J. Chen, Z. Huang, and Q. Tian, “A multisymplectic lie algebra varia-tional integrator for flexible multibody dynamics on the special euclidean group se (3),” Mechanism and Machine Theory , vol. 174, 8 2022. [27] S. Grazioso, G. D. Gironimo, D. Iglesias, and B. Siciliano, “Screw-based dynamics of a serial/parallel flexible manipulator for demo blanket remote handling,” Fusion Engineering and Design , vol. 139, pp. 39–46, 2 2019. [28] S. Yaqubi, A. Kitzinger, A. M¨ uller, H. Gattinger, and J. Mattila, “Scalable screw-theoretic synthesis for pde-based dynamic modeling of multibody flexible manipulators,” 4 2026. [Online]. Available: http://arxiv.org/abs/2601.16242 [29] R. M. Murray, Z. Li, and S. S. Sastry, A Mathematical Introduction to Robotic Manipulation . Boca Raton, FL: CRC Press, 1994. [30] H. K. Khalil, Nonlinear systems . Prentice Hall, 20142002. [31] R. A. Adams and J. J. F. Fournier, Sobolev Spaces , 2nd ed., ser. Pure and Applied Mathematics. Amsterdam: Academic Press, 2003, vol. 140. [32] L. Ljung, System Identification: Theory for the User , 2nd ed. Upper Saddle River, NJ: Prentice Hall, 1999. [33] J.-J. E. Slotine and W. Li, “Composite adaptive control of robot manipulators,” Automatica , vol. 25, no. 4, pp. 509–519, 1989. [34] P. A. Ioannou and J. Sun, Robust Adaptive Control . Prentice Hall, 1996. [Online]. Available: https://www.taylorfrancis.com/books/ 9781420073652/chapters/10.1201/b10384-41 [35] H. Baruh, Analytical Dynamics . McGraw-Hill, 1999. 22 
+
+APPENDIX AKINEMATIC IDENTITIES AND FRAME DERIVATIVES 
+
+The inertial time-derivative of any vector r expressed in the body-fixed frame is related to its body-fixed derivative by the transport theorem [35] 
+
+ddt r = ˙ r + ωi × r = ˙ r + ˜ ωir (115) Applying (115) to the position vectors defined in Section II 
+
+ddt ri = ˙ ri + ˜ ωiri (116) 
+
+ddt rξi = ˙ rξi + ˜ ωirξi (117) 
+
+ddt rbi = ˜ ωirbi (118) where ˙rbi = 0 since the reference geometry is time-invariant in the body-fixed frame. The inertial velocity of element dΩi
+
+follows from substituting (116)–(118) in (8) 
+
+ddt rob i = ˙ ri + ˙ rξi + ˜ ωirob i (119) The second inertial time-derivative is calculated by apply-ing (115) iteratively, noting the antisymmetry of the skew-symmetric operator 
+
+d2
+
+dt 2 (ri) = ddt (˙ ri + ˜ ωiri)= ¨ ri − ˜ri ˙ωi + 2 ˜ ωi ˙ri + ˜ ω2 
+
+> i
+
+ri (120) On this basis, the second time-derivatives of position vectors connecting the inertial and body-fixed frames to element dΩi
+
+are 
+
+d2
+
+dt 2 (rib i ) = ¨ rξi − (˜ rξi + ˜ rbi ) ˙ ωi
+
++ 2 ˜ ωi ˙rξi + ˜ ω2 
+
+> i
+
+(rξi + rbi ) (121) 
+
+d2
+
+dt 2 (rob i ) = ¨ ri + ¨ rξi − (˜ ri + ˜ rξi + ˜ rbi ) ˙ ωi
+
++ 2 ˜ ωi(˙ ri + ˙ rξi ) + ˜ ω2 
+
+> i
+
+(ri + rbi + rξi )= ¨ ri + ¨ rξi − ˜rob i ˙ωi + 2 ˜ ωi ˙rob i + ˜ ω2 
+
+> i
+
+rob i (122) The body-fixed twists Vi, Vξi , Vbi ∈ se (3) , consistently with (3), are assembled from ωi and the body-fixed frame expressions of the twist derivatives from (116)–(118) 
+
+> i
+
+Vi =
+
+ωi
+
+vi
+
+
+
+=
+
+ ωi
+
+˙ri + ˜ ωiri
+
+
+
+∈ se (3) (123) 
+
+> i
+
+Vξi =
+
+ 0vξi
+
+
+
+=
+
+ 0
+
+˙rξi + ˜ ωirξi
+
+
+
+∈ se (3) (124) 
+
+> i
+
+Vbi =
+
+ 0vbi
+
+
+
+=
+
+ 0
+
+˜ωirbi
+
+
+
+∈ se (3) (125) The small adjoint ad Vi ∈ R6×6 is the matrix representation of the Lie bracket on se (3) , such that ad Vi u = [ Vi, u]se (3) 
+
+for any u ∈ se (3) [29] 
+
+ad Vi =
+
+ ˜ωi 0
+
+˜vi ˜ωi
+
+
+
+(126) The body-fixed derivative ˙Vi required for numerical integra-tion follows directly from differentiating (3) in the body-fixed frame 
+
+˙Vi =
+
+ ˙ωi
+
+¨ri − ˜ri ˙ωi + ˜ ωi ˙ri
+
+
+
+(127) The inertial time-derivative of the twist, where ˙vi denotes the translational row of (127), is given by the Lie derivative on se (3) [29] 
+
+dVi
+
+dt = ˙Vi + ad Vi Vi =
+
+ ˙ωi
+
+˙vi
+
+
+
+(128) 
+
+dVξi
+
+dt = ˙Vξi + ad Vi Vξi =
+
+ 0
+
+˙vξi + ˜ ωivξi
+
+
+
+(129) 
+
+dVbi
+
+dt = ˙Vbi + ad Vi Vbi =
+
+ 0
+
+˙vbi + ˜ ωivbi
+
+
+
+(130) The Lie derivative relation dVi 
+
+> dt
+
+= ˙Vi + ad Vi Vi is ver-ified by substituting (127): the translational row of ad Vi Vi
+
+contributes ˜viωi + ˜ ωivi, which vanishes identically since 
+
+˜viωi = − ˜ωivi, leaving ˙vi as the sole translational component, consistent with (128).

@@ -1,0 +1,371 @@
+Title: Learning myopic mixed-integer nonlinear model predictive control from expert demonstrations
+
+URL Source: https://arxiv.org/pdf/2605.07401v1
+
+Published Time: Mon, 11 May 2026 00:50:54 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Learning myopic mixed-integer nonlinear model predictive control from expert demonstrations 
+
+Christopher A. Orrico ∗ W.P.M.H. Heemels ∗
+
+Dinesh Krishnamoorthy ∗,∗∗ ∗ Department of Mechanical Engineering, Eindhoven University of Technology, 5600 MB Eindhoven, The Netherlands. (e-mail: c.a.orrico@tue.nl, m.heemels@tue.nl).  
+
+> ∗∗
+
+Department of Engineering Cybernetics, Norwegian University of Science and Technology, O. S. Bragstads Plass 2D, 7034 Trondheim, Norway (e-mail: dinesh.krishnamoorthy@ntnu.no) 
+
+Abstract: Applying nonlinear model predictive control (NMPC) to systems with hybrid dynamics or discrete actions typically yields mixed-integer nonlinear programs (MINLPs), whose real-time solution remains a major challenge and limits the applicability of mixed-integer NMPC (MINMPC). This paper proposes a myopic MINMPC framework that incorporates value-function approximation to substantially reduce the online computational burden. Using Bellman’s principle of optimality, we shorten the prediction horizon and append a value function learned offline from expert state–action demonstrations via inverse optimization with optimality residual minimization. A central feature is the dual treatment of discrete decisions, whereby integer constraints are relaxed during offline learning to enable KKT-residual-based value function synthesis, while the online controller enforces the true integer constraints to ensure feasibility. The learned value function induces a policy that is approximately policy-consistent 
+
+with the expert demonstrations. The resulting controller achieves high closed-loop performance with a significantly shorter horizon, enabling real-time MINMPC. The effectiveness of the approach is demonstrated on the Lotka–Volterra fishing problem and a satellite attitude control system with discrete actuators. 
+
+Keywords: Model predictive control; Learning methods for optimal control; Optimal control of hybrid systems 
+
+1. INTRODUCTION Model predictive control (MPC) is a powerful tool for controlling complex dynamical systems that arise in many applications. MPC formulates the control problem as a discrete-time, finite-horizon optimal control problem (OCP). At each time step in the control loop, the OCP is solved and the first control input is implemented. In application domains with discrete actuators, switching sys-tems, disjoint constraint sets, specified logics, etc., MPC may be applied by formulating the OCP with both con-tinuous and integer decision variables (Richards and How, 2005; Bemporad and Morari, 1999). The resulting mixed-integer nonlinear MPC (MINMPC) framework requires the online solution of mixed-integer nonlinear program-ming (MINLP) problems at each sampling instant. MINLP problems are generally NP -hard, making them challenging for real-time control (Bemporad and Morari, 1999). This is especially problematic when controllers must con-sider the effect of the control actions far into the future (long prediction horizons) to achieve better performance. The size of the optimization problem and, thus, computa-tional cost, increases with the length of the prediction hori-zon. This is further amplified when solving MINLPs, where computational cost scales exponentially with the number of decision variables (Bemporad and Morari, 1999). 
+
+Related work Various strategies and heuristics have been proposed to address real-time MINMPC problems. These include solving the relaxed problem by removing integer constraints and obtaining the integer trajectory through rounding schemes like sum-up-rounding (Sager, 2009) or the penalty term homotopy method (Sager et al., 2006; Orrico et al., 2023). Piecewise linearization may be used to transform the MINLP into mixed-integer linear or quadratic programs. However, such approximations may not always be applicable or sufficiently accurate. Real-time iteration schemes for MINMPC based on outer con-vexification and rounding have been extended (De Mauri et al., 2020), although this method is challenging if discrete variables appear in inequality constraints. For switched linear systems, Antunes and Heemels (2016) use existing knowledge of policy bounds or stabilizing policies to in-form policy estimation. In other direct policy approxima-tion approaches, the MPC policy is approximated using deep neural networks trained on large amounts of offline-generated state-action data pairs (Karg and Lucia, 2018). This requires extensive data covering the entire feasible state space and poses challenges for any later updates 
+
+> arXiv:2605.07401v1 [eess.SY] 8 May 2026
+
+in the controller (Krishnamoorthy, 2021; Mesbah et al., 2022). The burden of generating the training data set only increases further for MINMPC. Seemingly, a straightforward approach would be to shorten the online prediction horizon, reducing the problem size and, consequently, the computational cost. Naively using a short prediction horizon can lead to performance degrada-tion. We can, however, leverage Bellman’s principle of opti-mality to split the problem into two parts, where the opti-mal value function of the tail part of the prediction horizon is replaced by a value function that captures the remaining 
+
+cost-to-go . The online controller is then reduced to as small as a one-step-look-ahead controller without jeopardizing performance (Bertsekas, 2019). Computing the true value function is an intractable problem, so instead approxi-mate value functions can be employed. This has been predominantly studied under the context of approximate dynamic programming (ADP) and reinforcement learning (RL), whereby the value function is learned from closed-loop performance data, cf. Bertsekas (2019); Powell (2007); Mesbah et al. (2022) and the references therein. Generally, learning from closed-loop performance data (as done in RL) requires several episodes of interaction with a real system that trade-off exploration and exploitation to learn the value function. The ability to interact with the real system (or a high fidelity simulation of the system) may not always be possible in many engineering applications. This motivates the use of offline expert demonstrations to learn a suitable value function. Some recent works have explored learning value func-tions from expert demonstrations in the form of opti-mal state–value pairs (Abdufattokhov et al., 2021; Bal-tussen et al., 2025; Chatzikiriakos et al., 2024). Within the context of learning from demonstrations (LfD), how-ever, expert data typically consists of optimal state–action pairs rather than state–value pairs, especially if given by alternative control policies, or human experts. While standard supervised learning methods based on empirical loss minimization are a default choice when optimal state-value pairs are available, learning a value function directly from optimal state–action demonstrations requires inverse optimization, which seeks to recover the parameters of an optimal control problem that rationalize an observed policy (Ab Azar et al., 2020). Prior work has applied inverse optimization to linear MPC (Keshavarz et al., 2011; Akhtar et al., 2021) and nonlinear MPC (NMPC) (Molloy et al., 2018). A particularly promising technique in this context is the Karush–Kuhn–Tucker (KKT) resid-ual minimization (Keshavarz et al., 2011), which learns a value function whose parameters make the demonstrated state–action pairs approximately satisfy the KKT con-ditions. This differs fundamentally from the empirical loss–based approaches (Ab Azar et al., 2020). However, extending KKT residual minimization to mixed-integer MPC is not straightforward, as classical KKT conditions apply only to continuous optimization problems and do not directly characterize optimality in mixed-integer pro-grams. This constitutes the first major bottleneck ad-dressed in this paper, namely finding a way to leverage KKT-based inverse learning in the MINMPC context. A second challenge is the prohibitive cost of generating expert demonstrations, which requires solving numerous long-horizon mixed-integer OCPs offline. Our work aims to also address this challenge. 
+
+Main contribution This paper extends inverse optimiza-tion via KKT residual minimization to the setting of NMPC with mixed-integer decision variables, thereby en-abling short-horizon MINMPC. The central idea is to relax the integer constraints during the offline learning phase. This relaxation makes it possible to formulate the classical KKT conditions and apply optimality-residual minimization in a context where such conditions would otherwise not exist for the original MINLP. In addition, we show that the offline state–action data can also be gen-erated from continuous relaxations of the MINMPC prob-lem. The resulting approximate cost-to-go function learned from state-action demonstrations is then used in an online myopic MINMPC controller. This architecture simultane-ously (i) overcomes the theoretical barrier posed by the absence of KKT conditions in mixed-integer programs, and (ii) alleviates the computational difficulty of generating long-horizon mixed-integer demonstrations, since the re-laxed learning problems are substantially cheaper to solve. Together, these elements form a practical and scalable approach for MINMPC with learned value function ap-proximations. Our proposed strategy is based on the ob-servation that MPC-based schemes can still exhibit good closed-loop performance even when the learned cost-to-go function is only approximate (Wang et al., 2015). Unlike policy learning from expert demonstrations, exact recovery of the expert’s value function is not necessary. The ap-proximate value function merely needs to be informative enough to compensate for the shortened horizon of the resulting myopic MPC formulation. 2. MINMPC PROBLEM FORMULATION Consider the MINMPC problem 
+
+V ∗(x(t)) = min x0,...,x N  
+
+> w0,...,w N−1
+> N−1
+
+∑
+
+> k=0
+
+ℓ(xk, w k) + Vf (xN ), (1a) s.t. xk+1 = f (xk , w k), k = 0 , 1, . . . , N − 1, (1b) 
+
+g(xk, w k ) ≤ 0, k = 0 , 1, . . . , N − 1, (1c) 
+
+x0 = x(t), (1d) 
+
+xN ∈ X f , (1e) with state xk ∈ Rnx and decision variables wk := [ uk, z k]T.Here, uk ∈ Rnu and zk ∈ Znz denote the set of continuous and discrete controls, respectively, predicted over the hori-zon of length N ∈ N from an initial state x(t) at discrete-time step t. The stage cost is defined as ℓ : Rnx × Rnu ×
+
+Znz → R, system dynamics are f : Rnx ×Rnu ×Znz → Rnx ,and the constraints are g : Rnx ×Rnu ×Znz → Rng . At each discrete-time step, the first control element w∗ 
+
+> 0
+
+= [ u∗
+
+> 0
+
+, z ∗ 
+
+> 0
+
+]T
+
+of an optimal MINLP solution ( x∗ 
+
+> 0
+
+, . . . , x ∗ 
+
+> N
+
+, w ∗ 
+
+> 0
+
+, . . . , w ∗ 
+
+> N−1
+
+)(1) is implemented and the above process is repeated at 
+
+t + 1, resulting in a control policy w∗(t) = π(x(t)). 
+
+Problem setting: The MINMPC problem (1) is well de-signed with a sufficiently long horizon length N , such that the terminal set Xf does not restrict the feasible state-space X . However, the MINMPC is computationally too intensive to solve within the desired computation time, thereby prohibiting real-time implementation. Objective: Learning from demonstrations of the “expert” MINMPC (1) queried offline, we aim to build a simpler control policy that is amenable for online implementation. The OCP for the tail of the prediction horizon starting at the state xη at prediction step η ≪ N can be denoted by 
+
+Vη (xη ) = min xη ,...,x N   
+
+> wη,...,w N−1
+> N−1
+
+∑
+
+> k=η
+
+ℓ(xk, w k) + Vf (xN ) (2a) s.t. xk+1 = f (xk , w k), k = η, η + 1 , . . . , N − 1, (2b) 
+
+g(xk, w k ) ≤ 0, k = η, η + 1 , . . . , N − 1 (2c) 
+
+xN ∈ X f , (2d) where Vη is the optimal-cost-to-go when starting from state xη. By Bellman’s principle of optimality, we can truncate (1) to equivalently solve 
+
+V ∗(x(t)) = min x0,...,x η 
+
+> u0,...,u η−1
+> η−1
+
+∑
+
+> k=0
+
+ℓ(xk , w k) + Vη(xη ), (3a) s.t. xk+1 = f (xk, w k), k = 0 , 1, . . . , η − 1, (3b) 
+
+g(xk , w k) ≤ 0, k = 0 , 1, . . . , η − 1, (3c) 
+
+x0 = x(t), (3d) given the true cost-to-go Vη (x) appended to the truncated problem. In separating the value function in this way, we significantly reduce the online complexity of the MINMPC controller, which now only must solve for decisions wk for 
+
+k = 0 , . . . , η − 1, where η can be as small as 1. 3. LEARNING THE COST-TO-GO WITH KKT RESIDUAL MINIMIZATION Unfortunately, calculating the optimal value function 
+
+Vη (x) in (3) for all possible states is an intractable prob-lem. Instead, we propose using inverse optimization to synthesize a function ˆV(x, θ ), parameterized by θ, from expert demonstrations of (1). Here, we take the extreme case of η = 1 to achieve the largest possible reduction in controller complexity over (1), although any η ≪ N could be used in principle. We formulate a myopic MINMPC problem from (3) with ˆV(x, θ ) for η = 1, and some x(t) as min  
+
+> w
+
+ℓ(x(t), w ) + ˆV(f (x(t), w ), θ ), (4a) s.t. g(x(t), w ) ≤ 0. (4b) 
+
+Definition 1. (Expert demonstration). The expert policy 
+
+π(xi) = w∗ 
+
+> i
+
+is observed by querying the expert for different states xi ∈ X , i = 1 , 2, . . . , M (which need not be ordered in time), each generating an optimal state-action pair (xi, w ∗ 
+
+> i
+
+). This yields the data set D := {(xi, w ∗ 
+
+> i
+
+)}Mi=1 .While we consider the setting where (1) is the expert, expert demonstrations could come from any suitable pol-icy, including human experts. We assume that the expert demonstrations are primal feasible (i.e., g(xi, w ∗ 
+
+> i
+
+) ≤ 0, i =1, 2, . . . , M ). Our aim is to compute ˆV(x, θ ) from the expert demonstrations D := {(xi, w ∗ 
+
+> i
+
+)}Mi=1 such that we obtain a policy that is consistent with the expert demon-strations. In classical statistical estimation, consistency refers to the property that an estimator ˆθ converges in probability to the true parameter θ∗ as M → ∞ . In our setting, however, the primary objective is not exact recov-ery of the value function, but rather recovery of the policy induced by it when used as the terminal value function in the myopic MPC formulation. This motivates the following notion of policy consistency. 
+
+Definition 2. (Policy consistency). The control policy ˆ πθ (x)obtained by solving (4) with ˆV(f (x.w ), θ ) inferred from M
+
+demonstrations is said to be policy-consistent if, for any 
+
+ǫ > 0, lim M→∞ P(‖ˆπθ(x) − π(x)‖ > ǫ ) = 0. Although the above definition is asymptotic and formal, a natural way to check consistency in practice is if D
+
+(approximately) satisfies the optimality conditions of (4). The inverse optimization method of the optimality resid-ual minimization (Keshavarz et al., 2011) is a promising approach to do this. The challenge remains that (4) is a mixed-integer OCP, and classical KKT conditions cannot be directly for-mulated for problems with integer variables, as the re-quired differentiability and constraint qualification condi-tions fail. Instead, we formulate the KKT conditions of (4) under suitable regularity conditions, but now with g(·) ex-pressed as a continuous relaxation of the integer constraint in (4), such that z ∈ Rnz (i.e., w = [ u, z ]⊤ ∈ Rnu +nz ): 
+
+∇w
+
+(
+
+ℓ(x, w ) + ˆV(f (x, w ), θ )
+
+)
+
++ ∇w g(x, w )λ = 0 , (5a) 
+
+g(x, w ) ≤ 0, (5b) 
+
+λ ◦ g(x, w ) = 0 , (5c) 
+
+λ ≥ 0. (5d) Here, ◦ denotes the Hadamard product. For the ith state-action pair (xi, w ∗ 
+
+> i
+
+) in D, we define residuals of the stationarity and complementary slackness conditions as 
+
+r(i)stat (θ, λ i) = ∇w
+
+(
+
+ℓ(xi, w ∗ 
+
+> i
+
+) + ˆV(f (xi, w ∗ 
+
+> i
+
+), θ )
+
+)
+
+. . . + ∇w g(xi, w ∗ 
+
+> i
+
+)λi, (6a) 
+
+r(i)comp (λi) = λi ◦ g(xi, w ∗ 
+
+> i
+
+). (6b) In line with Abdufattokhov et al. (2021); Keshavarz et al. (2011), we choose a quadratic cost function ˆV(x, θ ) := 
+
+xTPx : Rnx → R, parameterized by the matrix θ = P.Collecting the KKT residuals of the dataset D, we can formulate the KKT residual minimization problem as min 
+
+> P,{λi}
+> M
+
+∑
+
+> i=1
+
+‖r(i)stat (P, λ i)‖22 + ‖r(i)comp (λi)‖22, (7a) s.t. λi ≥ 0, i = 1 , 2, . . . , M, (7b) 
+
+P ≻ 0, (7c) where (7a) seeks to find a symmetric, positive-definite P
+
+that minimizes the unweighted KKT residuals and (7b) ensures non-negativity of the Lagrange multipliers. Note that the constraint P ≻ 0 explicitly excludes the trivial solution P = 0 from the feasible set. Once we compute the approximate value function using the relaxed problem, we can then reintroduce the integer constraint when solving (4) online, i.e. w = [ u, z ]⊤, with and z ∈ Znz as in (1). Although expert demonstrations could originate from a MINMPC, the KKT residual minimization problem (7) is formulated for the continuous relaxation of the myopic MINMPC. For such a relaxation, integer actions do not satisfy the stationarity conditions of a continuous opti-mization problem. The KKT residuals, hence, cannot be driven to zero. Instead, by solving (7), we aim to find the value function ˆV(x, θ ) which minimizes the KKT residuals. The expert demonstrations ( xi, w ∗ 
+
+> i
+
+) then approximately satisfy the KKT conditions in (5) for ˆV(x, θ ) i = 1 , . . . , M 
+
+and are, therefore, approximately consistent with the con-tinuous relaxation of (4). This does not jeopardize the integer constraints in the problem, because the approxi-mate value function is used online in a myopic MINMPC with integer constraints. Thus, the continuous relaxation serves as a differentiable surrogate for learning, while the controller remains fully mixed-integer. We emphasize that the KKT conditions in (5) are only nec-essary optimality conditions for the (generally nonconvex) continuous relaxation of the myopic MPC problem (4). The learned value function is shaped so that stationary solutions align with that of the observed expert behav-ior, without a sufficient condition for optimality. This is, however, consistent with how nonlinear MPC problems are practically solved, whereby standard numerical solvers (e.g., SQP or interior-point methods) aim to compute first-order stationary points that satisfy the KKT conditions. Lastly, by deliberately restricting the hypothesis class to a quadratic function, the KKT residual minimization problem becomes an SDP. Consistent with VC-dimension theory (Vidyasagar, 2003), this reduces the effective com-plexity of learning a value function and improves sample efficiency, enabling recovery of sufficiently-accurate func-tions from only a small number of demonstrations. This is particularly important given the high cost of generating the offline samples through MINLP solvers. However, there are other choices for ˆV(·). For instance, one could attempt to learn θ for an arbitrary function approximator, shaped by enforcing a descent condition as done in Baltussen et al. (2025). This more generalized approach may improve per-formance, but comes at the expense of requiring a larger training dataset and possibly non-convex optimization de-pending on the choice of ˆV(·). Yet, enforcing a descent condition on the learning of ˆV(·) may improve stability under the resulting myopic MINMPC policy. 4. ILLUSTRATIVE EXAMPLES We apply the proposed method to two systems: the Lotka-Volterra fishing problem and the control of a satellite in orbit. For each system, the MINMPC takes the form (1) with objective function ℓ(x, w ) := xTQx + wTRw , tuning parameters Q and R, and transcribed with direct multi-ple shooting using 4th-order Runge-Kutta discretization We construct the controllers in Matlab with the CasADi 
+
+toolbox (Andersson et al., 2018). All MINLPs are warm-started and solved using Bonmin (Bonami et al., 2008). We generate offline data for each system using the original MINMPCs. We aim to learn xTPx of the myopic MIN-MPC with η = 1. Each SDP (7) is formulated with the 
+
+YALMIP toolbox and computed using the MOSEK SDP solver (L¨ ofberg, 2004; ApS, 2019). The systems here have states and inputs O(1), thus no normalization is applied (though normalization may be desirable for multi-magnitude sys-tems). We compare the myopic MINMPC against the original MINMPC in terms of reference tracking perfor-mance and computation cost in discrete-time simulations with added plant-model mismatch. All computations were performed on an Intel(R) Core TM i5 processor running at 2.40 GHz with 15.7 GB of usable RAM.       
+
+> 0.5 11.5
+> 0.4 0.6 0.8 11.2
+> 01
+> 0246810 12
+> 10 -2
+> 10 0
+> 10 2
+> (a) (b) (c) (d)
+
+Fig. 1. (a) Prey and (b) predator state populations for the expert demonstrations (in light blue), MINMPC controller (in blue), and myopic MINMPC controller (in red). The (c) control decisions and (d) the com-putation time per controller decision. 
+
+4.1 Lotka-Volterra fishing problem 
+
+We first consider the Lotka-Volterra fishing problem (Sager et al., 2006), a foundational benchmark example for mixed-integer optimal control problem. This problem applies an optimal fishing allowance to stabilize predator and prey populations. The dynamic system (8) describes the coupled evolution of the prey population x1 and the predator population x2 in continuous time as 
+
+[ ˙x1
+
+˙x2
+
+]
+
+=
+
+[ x1 − x1x2 − c1x1z
+
+−x2 + x1x2 − c2x2z
+
+]
+
+, (8a) 
+
+z ∈ { 0, 1}, (8b) [x1, x 2]⊤ ≥ 0. (8c) The binary decision variable w = z represents the decision to fish ( z = 1) or not to fish ( z = 0) with rate coefficients 
+
+c1 = 0 .4 and c2 = 0 .2. The continuous-time system is dis-cretized with Ts = 0 .1 (s). For the MINMPC formulation, 
+
+Q = diag([1 , 1]), R = 0 .01, N = 30. 
+
+Learning the cost-to-go offline To compute P, the origi-nal MINMPC was run in an offline feedback control simu-lation with perfect state observation for three initial states, resulting a data set D of size M = 360 consisting of three trajectories. Note that D in this case was generated without 
+
+relaxing the binary constraint (8b). These offline expert demonstrations are shown in light blue dotted lines in Fig. 1. The dataset required tCPU = 8 .42 × 10 3 (s) in total to solve. We solved the SDP (7) for the P given the dataset 
+
+D, yielding 
+
+P =
+
+[0.5965 0 .4627 0.4627 0 .3589 
+
+]
+
+,
+
+The maximum KKT residuals, ‖rstat ‖∞ = 9 .70 ×10 −5, and 
+
+‖rcomp ‖∞ = 9 .67 × 10 −5 are small compared to the magni-tude of P. This suggests that (4) using ˆV(x, θ ) := xTPx is approximately consistent with the expert demonstrations. 
+
+Online controller performance The controllers were de-signed to track a reference [ xref 1 , x ref 2 ]T = 1. Plant-model mismatch was implemented as 10% error in the fishing coefficients, with the true c1 = 0 .44 and c2 = 0 .22 in the plant simulator. The results are given in Fig. 1. As shown in Fig. 1a and 1b, the myopic MINMPC controller produces a similar state trajectory to that of the long pre-diction horizon MINMPC controller, but at a significantly lower CPU time as shown in 1d. Note that a MINMPC controller with a short prediction horizon ( ≪ N ) and without the learned cost-to-go does not drive the state to the reference. 
+
+4.2 Satellite problem 
+
+We consider the control of a simple satellite of unit mass. The satellite must maintain a desired altitude using impulsive thrust in the radial ˆ er and angular ˆ eθ directions. The satellite’s orbital dynamics are defined in the polar coordinate frame in continuous time as 
+
+[ ˙x1
+
+˙x2
+
+˙x3
+
+]
+
+=
+
+
+
+x2
+
+x1x23 − d1
+
+x21
+
++ d3z1
+
+− 2x2x3
+
+x1
+
+− d2x23
+
+x1
+
++ d3z2
+
+x1
+
+ , (9a) 
+
+z1, z 2 ∈ {− 1, 0, 1}, (9b) 3 ≤ x1 ≤ 7, (9c) where the celestial body about which the satellite orbits is the origin. The states are the radius r = x1, the radial velocity ˙r = x2, and the angular velocity ˙θ = x3. The thrust in ˆer is z1, the thrust in ˆeθ is z2, d1 = 2 is the gravitational constant, d2 = 0 .1 is atmospheric drag, 
+
+d3 = 0 .1 is the thrust efficiency, and the constraints on 
+
+x1 represent the “safe” orbital region of the satellite. The continuous-time system is discretized with Ts = 0 .5 (s). The MINMPC Q = diag([10 , 1, 1]) and R = diag([1 , 1]), and the prediction horizon is N = 30. 
+
+Learning the cost-to-go offline The computational com-plexity of the satellite problem is significantly greater than that of the Lotka-Volterra problem. The Lotka-Volterra problem has a single binary decision variable, meaning computation time necessary to solve the under-lying MINLP at each time step scales ∝ 2N . However, the satellite problem has two decision variables with three distinct integer values each, meaning computation time scales ∝ 32N . Generating even a single satellite trajectory required tCPU = 1 .26 × 10 4 (s) to compute. This computational cost motivated generation of training data for cost-to-go learning using a relaxed formulation of the satellite problem, where z1, z 2 ∈ [−1, 1] rather than 
+
+z1, z 2 ∈ {− 1, 0, 1}. The integer constraint were then only introduced for the online myopic MINMPC. To this end, we generated three trajectories without integer constraints using a relaxed NMPC controller offline, solved with IPOPT 
+
+(W¨ achter and Biegler, 2006). The resulting dataset of size 
+
+M = 120 required only tCPU = 2 .06 (s) to solve in total. The offline expert demonstrations are shown as light blue dotted-lines in Fig. 2. We then solved for P in (7) given the dataset of NMPC trajectories, yielding 
+
+P =
+
+[48 .7 81 .4 81 .581 .4 164 239 81 .5 239 509 
+
+]
+
+,
+
+Fig. 2. (a) Polar plot of the satellite trajectories for the offline expert demonstrations (light blue), MINMPC (blue), and myopic MINMPC (red). Each initial state is denoted by a circle. (b) z1 and (c) z2 for each con-troller. (d) computation time per controller decision. with ‖rstat ‖∞ = 0 .663 and ‖rcomp ‖∞ = 0 .296. As with the fishing problem, the residuals are small relative to the mag-nitude of P, suggesting approximate policy consistency. 
+
+Online controller performance We examine the simu-lation results for the satellite problem using the original MINMPC and the myopic MINMPC in Fig. 2. The con-trollers tracked a reference [ xref 1 , x ref 2 , x ref 3 ]T = [5 , 0, 0.126] T.Plant-model mismatch was introduced as variable drag 
+
+d3(x1) = exp ((5 − x1 + 2 log(0 .1)) /2) in the plant simula-tor. Note that, although the training data did not consider integer decision variables, we compare the performance of the myopic MINMPC with the full horizon MINMPC, both of which consider integer decision variables. Despite learning the cost-to-go from NMPC demonstrations with-out integer constraints, the myopic MINMPC produces a similar trajectory to the original MINMPC. Without the learned cost-to-go, a MINMPC with a short prediction horizon drives the satellite into the upper state constraint. 
+
+4.3 Computational performance                           
+
+> Benchmark Total offline Maximum online tCPU (s) problem tCPU for D(s) MINMPC myopic MINMPC
+> Fishing 8.42 ×10 32.03 ×10 34.62 ×10 −2
+> Satellite 2.06 2.16 ×10 31.01 ×10 −1
+
+We compare the computational performance of each method, shown in Fig. 1d and Fig. 2d, in the table below. Both of the original MINMPC controllers were very computationally expensive, each exhibiting maximum computation times of over 30 min per solution. However, the maximum computation times of the myopic MINMPC controllers were only 4 .62 × 10 −2 (s) and 1 .01 × 10 −1 (s) for the fishing and satellite problems, respectively. The myopic MINMPC is consistently over four orders of mag-nitude faster than the original MINMPC, demonstrating the potential of this approach 5. CONCLUSION In this work, we have shown that the KKT residual minimization method could be a promising means to ap-proximate the cost-to-go for a myopic MINMPC from a set of expert demonstrations in the form of optimal state-action pairs computed offline. We show that, for two illustrative examples, the myopic MINMPC controller using the learned cost-to-go closely replicates the refer-ence tracking performance of the original, long prediction horizon MINMPC controller, but at a significant reduction in computation time per controller decision. While we ap-proximate the cost-to-go with a quadratic function because the resulting OCP is easily solvable as an SDP, a quadratic term may not be the best approach for a given MINMPC problem. Other approximate cost-to-go function classes, including general function approximators, may improve the optimality residual. While residuals are evaluated at fi-nite samples, future work involves generalization to unseen samples and the impact of this on closed-loop performance. REFERENCES Ab Azar, N., Shahmansoorian, A., and Davoudi, M. (2020). From inverse optimal control to inverse rein-forcement learning: A historical review. Annual Reviews in Control , 50, 119–138. Abdufattokhov, S., Zanon, M., and Bemporad, A. (2021). Learning convex terminal costs for complexity reduction in mpc. In 2021 60th IEEE Conference on Decision and Control (CDC) , 2163–2168. IEEE. Akhtar, S.A., Kolarijani, A.S., and Esfahani, P.M. (2021). Learning for control: An inverse optimization approach. 
+
+IEEE Control Systems Letters , 6, 187–192. Andersson, J., Gillis, J., Horn, G., Rawlings, J., and Diehl, M. (2018). Casadi—a software framework for nonlinear optimization and optimal control. Mathematical Pro-gramming Computation , 11(1), 1–36. Antunes, D. and Heemels, W.M. (2016). Linear quadratic regulation of switched systems using informed policies. 
+
+IEEE Transactions on Automatic Control , 62(6), 2675– 2688. ApS, M. (2019). The MOSEK optimization tool-box for MATLAB manual. Version 10.1. URL 
+
+http://docs.mosek.com/10.1/toolbox/index.html .Baltussen, T.M.J.T., Orrico, C.A., Katriniok, A., Heemels, W.P.M.H., and Krishnamoorthy, D. (2025). Value function approximation for nonlinear mpc: Learning a terminal cost function with a descent property. 2025 IEEE 64th Conference on Decision and Control (CDC) ,5507–5514. Bemporad, A. and Morari, M. (1999). Control of systems integrating logic, dynamics, and constraints. Automat-ica , 35(3), 407–427. Bertsekas, D. (2019). Reinforcement learning and optimal control , volume 1. Athena Scientific. Bonami, P., Biegler, L.T., Conn, A.R., Cornu´ ejols, G., Grossmann, I.E., Laird, C.D., Lee, J., Lodi, A., Margot, F., Sawaya, N., et al. (2008). An algorithmic framework for convex mixed integer nonlinear programs. Discrete optimization , 5(2), 186–204. Chatzikiriakos, N., Wabersich, K.P., Berkel, F., Pauli, P., and Iannelli, A. (2024). Learning soft constrained mpc value functions: Efficient mpc design and implementa-tion providing stability and safety guarantees. In 6th Annual Learning for Dynamics & Control Conference ,387–398. PMLR. De Mauri, M., Van Roy, W., Gillis, J., Swevers, J., and Pipeleers, G. (2020). Real time iterations for mixed-integer model predictive control. In 2020 European Control Conference (ECC) , 699–705. IEEE. Karg, B. and Lucia, S. (2018). Deep learning-based embedded mixed-integer model predictive control. In 
+
+2018 European Control Conference (ECC) , 2075–2080. Keshavarz, A., Wang, Y., and Boyd, S. (2011). Imputing a convex objective function. In 2011 IEEE international symposium on intelligent control , 613–619. IEEE. Krishnamoorthy, D. (2021). A sensitivity-based data augmentation framework for model predictive control policy approximation. IEEE Transactions on Automatic Control , 67(11), 6090–6097. L¨ ofberg, J. (2004). Yalmip : A toolbox for modeling and optimization in matlab. In In Proceedings of the CACSD Conference . Taipei, Taiwan. Mesbah, A., Wabersich, K.P., Schoellig, A.P., Zeilinger, M.N., Lucia, S., Badgwell, T.A., and Paulson, J.A. (2022). Fusion of machine learning and mpc under uncertainty: What advances are on the horizon? In 2022 American Control Conference (ACC) , 342–357. IEEE. Molloy, T.L., Ford, J.J., and Perez, T. (2018). Finite-horizon inverse optimal control for discrete-time nonlin-ear systems. Automatica , 87, 442–446. Orrico, C.A., van Berkel, M., Bosman, T.O., Heemels, W., and Krishnamoorthy, D. (2023). Mixed-integer mpc strategies for fueling and density control in fusion tokamaks. IEEE Control Systems Letters , 7, 1897–1902. Powell, W.B. (2007). Approximate Dynamic Program-ming: Solving the curses of dimensionality , volume 703. John Wiley & Sons. Richards, A. and How, J. (2005). Mixed-integer pro-gramming for control. In American Control Conference, 2005. Proceedings of the 2005 , 2676–2683. IEEE. Sager, S. (2009). Reformulations and algorithms for the optimization of switching decisions in nonlinear optimal control. Journal of Process Control , 19(8), 1238–1247. Sager, S., Bock, H.G., Diehl, M., Reinelt, G., and Schloder, J.P. (2006). Numerical methods for optimal control with binary control functions applied to a lotka-volterra type fishing problem. In Recent Advances in Optimization ,269–289. Springer. Vidyasagar, M. (2003). Vapnik-chervonenkis, pseudo-and fat-shattering dimensions. In Learning and Generalisa-tion: With Applications to Neural Networks , 115–147. Springer. W¨ achter, A. and Biegler, L.T. (2006). On the implemen-tation of an interior-point filter line-search algorithm for large-scale nonlinear programming. Mathematical programming , 106(1), 25–57. Wang, Y., O’Donoghue, B., and Boyd, S. (2015). Ap-proximate dynamic programming via iterated bellman inequalities. International Journal of Robust and Non-linear Control , 25(10), 1472–1496.

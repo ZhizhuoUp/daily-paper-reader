@@ -1,0 +1,1304 @@
+Title: Model-Driven Policy Optimization in Differentiable Simulators via Stochastic Exploration
+
+URL Source: https://arxiv.org/pdf/2605.07520v1
+
+Published Time: Mon, 11 May 2026 01:32:18 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# Model-Driven Policy Optimization in Differentiable Simulators via Stochastic Exploration 
+
+Yuval Aroosh, Ayal Taitler 
+
+Department of Industrial Engineering and Management Ben-Gurion University of the Negev Be’er Sheva, Israel 
+
+yuvalaro@post.bgu.ac.il, ataitler@bgu.ac.il 
+
+## Abstract 
+
+Differentiable planning enables gradient-based optimization of decision-making problems by leveraging differentiable models of system dynamics. However, in highly nonlinear and hybrid discrete–continuous domains, the resulting optimiza-tion landscapes are often ill-conditioned, with flat regions and sharp transitions that hinder effective optimization. We propose Model-Driven Policy Optimization (MDPO), a framework that introduces stochastic exploration into differentiable planning by injecting noise into the action space during optimization. Leverag-ing access to the model, MDPO further adapts the noise magnitude based on gradient-derived sensitivity of the trajectory objective, yielding a time-dependent exploration profile. This enables improved exploration of the objective landscape and helps escape poor local optima via dynamic allocation of exploration across timesteps and iterations. Experiments on benchmark domains demonstrate that MDPO consistently outperforms deterministic differentiable planning, including both the noise-free variant of our method and available state-of-the-art implementa-tions, as well as model-free baselines such as PPO, significantly improving solution quality across challenging nonlinear and hybrid settings. We further analyze the evolution of the adaptive noise magnitude across both time steps and optimization iterations, providing insight into how exploration is allocated during learning. 
+
+## 1 Introduction 
+
+Many real-world decision-making systems operate in environments where structured models of the dynamics are available or can be constructed. From aerospace and robotics to energy systems and logistics, control pipelines routinely rely on models encoding physical laws and domain knowledge. Their success highlights the effectiveness of model-based decision making. At the same time, model-free learning, particularly reinforcement learning (RL) [ 14 ], has achieved strong results in domains where accurate models are unavailable. These methods rely on interaction with the environment and incorporate explicit exploration mechanisms, such as stochastic policies or action perturbations, to discover high-quality solutions [ 18 , 4 , 7 , 11 ]. While effective, they do not explicitly exploit known system structure. When models are available, a key question is how to leverage them for improved decision quality, sample efficiency, and robustness. This has led to differentiable planning [ 12 ], which formulates planning as a differentiable computation graph and enables gradient-based optimization of actions or policies via backpropagation. Planning by backpropagation [ 19 ] demonstrated this approach in deterministic settings, later extended to stochastic domains via reparameterization [ 1] and to hybrid discrete–continuous systems using differentiable relaxations [ 2]. These methods provide a unified framework for model-based optimization through automatic differentiation. 
+
+> Preprint.
+> arXiv:2605.07520v1 [cs.AI] 8 May 2026
+
+However, extending differentiable planning to complex domains typically requires smooth relaxations of discrete or logical structure. While these relaxations enable gradient propagation, they can distort the underlying problem and introduce additional plateaus and sharp transitions in the optimization landscape [ 15 ]. More broadly, differentiable planning lacks an explicit mechanism for exploration, relying instead on deterministic gradient updates that may be insufficient in complex landscapes. As a result, differentiable planning often struggles in highly nonlinear and hybrid domains due to ill-conditioned and highly non-convex optimization landscapes. Gradients become uninformative in flat or saturated regions [ 10 ], while relaxations exacerbate these effects. Optimization is therefore dominated by poor local minima, slow convergence, and sensitivity to initialization and hyperparame-ters. Crucially, these challenges persist even when the underlying model is accurate, suggesting that the primary limitation lies not only in modeling, but in the optimization dynamics used to solve the resulting problems. We introduce Model-Driven Policy Optimization (MDPO), a framework that improves optimization in differentiable planning via stochastic exploration. We inject noise into the action space during optimization, drawing inspiration from stochastic gradient methods and variance reduction techniques [ 3], enabling exploration of the objective landscape and escape from poor local optima. Unlike standard RL exploration, the noise is applied within the planning model and can be adaptively scaled using information derived from the computation graph, enabling structure-aware, model-driven exploration. Unlike standard stochastic optimization or gradient noise methods, MDPO introduces structured, model-driven perturbations at the level of action trajectories, allowing exploration that respects system dynamics and targets regions of high objective sensitivity. 
+
+Contributions. (i) We identify optimization pathologies in differentiable planning, particularly in hybrid domains; (ii) we propose a stochastic action-space exploration mechanism with adaptive, model-driven noise scaling; (iii) we demonstrate substantial improvements in solution quality and convergence across benchmark problems. 
+
+## 2 Background and Optimization Challenges in Differentiable Planning 
+
+Markov decision processes. We consider a finite-horizon Markov decision process (MDP) with state space S, action space A, transition model p(st+1 |st, a t), and reward function r(st, a t). Starting from an initial state s0, the objective is to maximize the expected cumulative reward over a horizon 
+
+H, by finding a policy π : S → A :
+
+J(π) = E
+
+"H−1X
+
+> t=0
+
+r(st, a t)
+
+#
+
+. (1) The expectation is taken w.r.t. the trajectory distribution induced by at = π(st) and p(st+1 |st, a t).
+
+2.1 Differentiable Planning in Continuous, Stochastic, and Hybrid Domains 
+
+Differentiable planning formulates decision making as gradient-based optimization over a differ-entiable model of the dynamics. In deterministic settings [ 19 ], the transition model can be written as 
+
+st+1 = f (st, a t), (2) and the objective in Eq. (1) reduces to a deterministic function of the trajectory. 
+
+Deterministic differentiable planning. Planning can be posed as optimizing the action sequence 
+
+a = ( a0, . . . , a H−1):
+
+max  
+
+> a
+
+J(a) s.t. st+1 = f (st, a t). (3) Unrolling Eq. (2) yields a differentiable computation graph, enabling gradient-based optimization [ 8]via backpropagation: 
+
+∇at J =
+
+> H−1
+
+X
+
+> k=t
+
+∂r (sk, a k)
+
+∂s k
+
+ds k
+
+da t
+
++ ∂r (st, a t)
+
+∂a t
+
+, (4) where sensitivities are computed recursively using the transition Jacobians: 
+
+ds k+1 
+
+ds k
+
+= ∂f ∂s (sk, a k), ds k+1 
+
+da k
+
+= ∂f ∂a (sk, a k). (5) 2Policy parameterization. Instead of optimizing actions directly, we optimize a parametric policy 
+
+at = πθ (st), where πθ is a differentiable function (e.g., a neural network). This formulation, often referred to as deep reactive policies (DRP) [ 1 ], enables optimization over policy parameters via backpropagation through the system dynamics. This yields the objective 
+
+J(θ) = E
+
+"H−1X
+
+> t=0
+
+r(st, π θ (st)) 
+
+#
+
+.
+
+In deterministic settings, this reduces to a standard differentiable program where gradients ∇θ J are obtained by backpropagation through both the policy and the dynamics. 
+
+Stochastic dynamics and reparameterization. In stochastic domains, transitions depend on exogenous noise: 
+
+st+1 ∼ p(· | st, a t), or equivalently st+1 = f (st, a t, ξ t), ξt ∼ p(ξ).
+
+The objective becomes 
+
+J(θ) = Eξ
+
+"H−1X
+
+> t=0
+
+r(st, π θ (st)) 
+
+#
+
+.
+
+Using reparameterization, the expectation is rewritten over noise variables independent of θ, allowing gradients to pass through the trajectory: 
+
+∇θ J(θ) = Eξ
+
+"H−1X
+
+> t=0
+
+dr (st, π θ (st)) 
+
+dθ 
+
+#
+
+.
+
+This transformation converts the stochastic computation graph into a fully differentiable one, enabling low-variance gradient estimation via standard backpropagation. In practice, expectations are approximated using Monte Carlo rollouts: 
+
+ˆJ(θ) = 1
+
+N
+
+> N
+
+X
+
+> i=1
+> H−1
+
+X
+
+> t=0
+
+r(si,t , π θ (si,t )) ,
+
+which defines the optimization objective used in stochastic gradient descent [1]. 
+
+Hybrid discrete–continuous domains. In hybrid domains, the transition model includes discrete components and logical structure that are not directly differentiable. To enable gradient-based optimization, the system and reward are approximated by a differentiable surrogate: 
+
+st+1 ≈ ˜f (st, a t, ξ t),
+
+where discrete operations are replaced by smooth relaxations, such as t-norms [5]. For example, Boolean conjunction and conditional branching may be approximated as: 
+
+a ∧ b ≈ T (a, b ), if c then a else b ≈ ca + (1 − c)b, 
+
+yielding a fully differentiable computation graph over relaxed variables [ 2]. However, this induces a fundamental trade-off: faithful approximations yield ill-conditioned objectives, while stronger relaxation makes optimization easier at the cost of distorting the underlying problem. 
+
+2.2 Optimization Landscape Pathologies 
+
+We now analyze the optimization landscape induced by the formulation in Section 2.1 and highlight key challenges that arise in hybrid domains. In particular, we focus on the effects of differentiable relaxations on the geometry of the objective function and their implications for gradient-based optimization. 3(a) Exact: discontinuous landscape         
+
+> (b) w= 50 : sharp but dif-ferentiable
+> (c) w= 2 : smoother, dis-torted
+> (d) w=0.01 :fully smooth, low fidelity
+
+Figure 1: Optimization landscapes in the PowerGen domain under different levels of relaxation. The exact dynamics (left) produce a non-smooth objective with discontinuities and flat regions. Increasing relaxation smooths the surface but introduces a trade-off between optimization tractability and fidelity to the original problem. 
+
+Motivating example: Power generation domain. The Power generation (PowerGen ) domain is a continuous relaxation of the classical unit commitment problem presented in the 2023 International Planning Competition (IPC) [ 15 ], where the objective is to meet demand using a set of generators while minimizing operational costs. Each generator is controlled by a continuous action representing its production level, subject to capacity constraints and cost functions that include fixed and variable components. The underlying dynamics include threshold-based and logical conditions (e.g., activation costs and feasibility constraints), which introduce non-smooth behavior in the exact formulation. In this example, we consider two generators with actions a(1) , a (2) ∈ [1 , 6] , and evaluate constant policies over a fixed horizon, allowing us to visualize the induced objective landscape of J(a(1) , a (2) )
+
+as a function of the constant action pair. Figure 1(a) shows the true objective surface under the exact (non-relaxed) dynamics. The landscape exhibits sharp discontinuities induced by underlying discrete decisions (e.g., activation thresholds and logical constraints), resulting in large flat regions separated by abrupt transitions. In such regions, gradients are either undefined or uninformative, rendering gradient-based optimization ineffective. To enable gradient-based optimization, hybrid dynamics are approximated using smooth relaxations (Section 2.1), controlled by a parameter w (e.g., sigmoid or t-norm sharpness). Figures 1(b)–(d) illustrate the effect of varying this parameter. For large values of w (Figure 1(b)), the relaxation closely approximates the original dynamics, preserving the overall structure of the objective. However, the resulting surface remains highly ill-conditioned, with steep transitions and extended flat regions, leading to poor gradient signal. For moderate values (Figure 1(c)), the surface becomes smoother and gradients are better behaved. However, this smoothing begins to alter the geometry of the objective, shifting optima and distorting the relative quality of solutions. For small values (Figure 1(d)), the landscape becomes fully smooth and easy to optimize, but significantly deviates from the true objective, potentially leading to solutions that are suboptimal or infeasible under the original dynamics. 
+
+Trade-off between fidelity and optimization. These observations highlight a fundamental trade-off: relaxations that closely approximate the original problem yield differentiable but poorly con-ditioned optimization landscapes, while more aggressive smoothing improves gradient behavior at the cost of fidelity to the true objective. As a result, gradient-based optimization in differentiable planning is inherently challenging. Optimizers may become trapped in flat regions, fail to traverse sharp transitions, or converge to solutions that are optimal for the relaxed problem but suboptimal for the true dynamics. These challenges persist even when the underlying model is accurate and the relaxation is carefully tuned. This motivates the need for optimization strategies that explicitly account for the structure of the landscape and enable more effective exploration of the action space. 
+
+## 3 Model-Driven Policy Optimization via Stochastic Exploration 
+
+We introduce Model-Driven Policy Optimization (MDPO), a framework that augments differentiable planning with stochastic exploration in the action space. We consider a parametric policy πθ
+
+(implemented as a neural network), and optimize its parameters via gradient-based methods. The key idea is to replace deterministic policy execution with a stochastic perturbation, enabling improved 4exploration of the optimization landscape while preserving end-to-end differentiability. Unlike standard stochastic optimization techniques that inject isotropic noise, MDPO introduces structured stochasticity guided by the planning dynamics and model structure. We refer to this as model-driven stochasticity because perturbations are applied at the level of action trajectories within the planning model, ensuring that exploration respects system dynamics rather than operating directly in parameter space. Specifically, perturbations are applied in a way that preserves trajectory feasibility while encouraging exploration across discontinuities in the optimization landscape. 
+
+3.1 Stochastic Action Perturbation 
+
+Given a parametric policy πθ (st), standard differentiable planning executes actions deterministically: 
+
+at = πθ (st).
+
+In MDPO, we instead define a stochastic policy by injecting additive noise: 
+
+˜at = ˜ πθ (st) = πθ (st) + ϵt, ϵt ∼ N (0 , Σt),
+
+where Σ is the covariance matrix controlling the magnitude and structure of the perturbation. The system then evolves according to the (possibly stochastic or relaxed) dynamics: 
+
+st+1 = f (st, ˜at, ξ t).
+
+Objective under stochastic policy. Under this formulation, the optimization objective becomes the expected cumulative reward under the perturbed policy: 
+
+J(θ) = Eϵ,ξ 
+
+"H−1X
+
+> t=0
+
+r(st, ˜at)
+
+#
+
+In practice, this expectation is approximated using Monte Carlo rollouts. 
+
+Gradient estimation. Using the reparameterization ˜at = πθ (st) + ϵt, where ϵt is independent of θ,gradients can be computed by backpropagation through the stochastic computation graph: 
+
+∇θ J(θ) = Eϵ,ξ 
+
+"
+
+∇θH−1X
+
+> t=0
+
+r(st, ˜at)
+
+#
+
+.
+
+Since ϵt does not depend on θ, it does not contribute to the gradient, and standard automatic differentiation can be applied. 
+
+Theorem 1 Under the reparameterized dynamics, the gradient ∇θ J(θ) can be computed by back-propagation through the stochastic computation graph, and is equivalent to differentiating the cumulative reward along sampled trajectories. 
+
+∇θ J(θ) = Eϵ,ξ 
+
+"H−1X
+
+> t=0
+
+∂r ∂˜at
+
+∂π θ
+
+∂θ +
+
+> H−1
+
+X
+
+> t=0
+
+∂r ∂s t
+
+∂s t
+
+∂θ 
+
+#
+
+A full expansion of the gradient in terms of the system Jacobians is provided in the appendix. The stochastic policy ˜πθ induces exploration directly in the action space, allowing the optimizer to probe nearby regions of the objective landscape. Such exploration is particularly important in hybrid domains, where flat regions and sharp transitions can hinder deterministic gradient-based optimization. This stochastic perturbation enables the optimizer to explore directions that would be inaccessible under deterministic gradients, particularly in flat or saturated regions of the objective landscape. As a result, the method can escape poor local optima and discover higher-quality solutions. In this context, the covariance Σ becomes a domain-dependent parameter that governs the extent and structure of exploration, and must be chosen to effectively navigate the underlying optimization landscape. The introduction of stochastic perturbations induces a trade-off. For small values of Σ, the perturbed policy remains close to the original deterministic policy, and the resulting objective closely approxi-mates the original optimization problem. As Σ increases, the sampling distribution deviates further from the deterministic policy, introducing bias with respect to the original objective. At the same time, the gradient estimator becomes higher variance due to increased stochasticity in the sampled trajectories. Thus, the choice of Σ plays a critical role in balancing exploration and optimization stability. 5Extension to discrete actions. While the formulation above assumes continuous action spaces, the same principle can be extended to discrete settings by introducing stochastic relaxations or sampling mechanisms (e.g., via softmax or Gumbel-based perturbations), enabling analogous exploration in hybrid or discrete domains. 
+
+3.2 Adaptive Noise Scaling 
+
+Since the planning model is fully available, we can leverage it to derive informative exploration signals directly from the optimization landscape. We propose an adaptive mechanism for controlling the magnitude of action-space exploration based on the local sensitivity of the trajectory objective. This results in a time-dependent noise profile {σt}H−1 
+
+> t=0
+
+.We propose a two-pass procedure in which each iteration consists of two rollouts. First, an analysis rollout is generated using the current policy without action noise. This rollout is used to estimate the sensitivity of the objective with respect to actions along the trajectory. Based on this analysis, a timestep-dependent noise profile is constructed. Then, a second update rollout is performed using the derived noise profile to update the policy parameters. This separates the estimation of the optimization landscape from the stochastic optimization step. We consider stochastic dynamics of the form 
+
+st+1 = f (st, a t, ξ t), ξt ∼ p(ξ),
+
+where ξt represents exogenous randomness that is not controlled by the policy. A trajectory induced by a deterministic policy and a realization of ξ0: H−1 is 
+
+τ (θ, ξ ) = ( s0, a 0, s 1, a 1, . . . , s H , ξ 0, . . . , ξ H−1), at = πθ (st) ∈ Rn.
+
+The objective is the expected cumulative reward: 
+
+J(θ) = Eξ
+
+"H−1X
+
+> t=0
+
+r(st, π θ (st)) 
+
+#
+
+.
+
+Using the reparameterized dynamics, gradients can be propagated through the trajectory while treating ξt as fixed samples. Given an analysis trajectory τ (θ, ξ ), we compute, for each timestep t,the multi-dimensional gradient of the vector at ∈ Rn:
+
+gt = ∇at
+
+> H−1
+
+X
+
+> k=0
+
+r(sk, a k) = ∂J ∂a (1) 
+
+> t
+
+, . . . , ∂J ∂a (n)
+
+> t
+
+!
+
+which corresponds to a Monte Carlo estimate of ∇at J(θ). We define a scalar sensitivity score: 
+
+st = ∥gt∥2.
+
+In principle, the expectation over ξ can be estimated using multiple rollouts. In practice, we use a single trajectory sample per iteration, which was found sufficient in our experiments. To obtain comparable values across the trajectory, sensitivities are normalized using a high quantile: 
+
+ˆst = clip 
+
+ st
+
+qp + λ , 0, 1
+
+
+
+, qp = Quantile p({st}),
+
+where λ is a small regularization term to avoid division by zero, and p = 0 .95 in this work. The normalized sensitivity is mapped to a timestep-dependent noise scale: 
+
+σt = σmax + ( σmin − σmax )(1 − ˆst)α,
+
+where σmin , σmax , and α control the range and shape of the mapping. The resulting profile is used in the update rollout: 
+
+˜at = πθ (st) + ηt, ηt ∼ N (0 , σ 2 
+
+> t
+
+I),
+
+and the policy parameters are updated using the resulting trajectory. This mapping assigns larger noise to timesteps with higher sensitivity, encouraging exploration where actions have greater impact on the trajectory objective. 64 Experiments 
+
+Benchmark Problems We evaluate the proposed method on three benchmark domains from the probabilistic planning and RL track of 2023 IPC [ 15 ]: PowerGen [ 9], Reservoir Control [ 20 ], and HVAC [ 17 ]. These domains exhibit nonlinear and hybrid discrete–continuous dynamics, making them suitable testbeds for differentiable planning. For each domain, we consider two instances, resulting in six evaluation settings. A detailed description is provided in the appendix. 
+
+PowerGen. A continuous relaxation of the unit commitment problem, where generators must meet stochastic demand while minimizing production and switching costs. The domain combines continuous control with threshold-based activation and nonlinear demand. We consider instances with 7 and 11 generators. 
+
+HVAC. A nonlinear control problem over interconnected zones, where actions regulate airflow and heating to maintain comfort while minimizing energy cost. The dynamics involve nonlinear heat transfer and coupling between zones. We consider instances with 10 and 20 zones. 
+
+Reservoir Control. A network of reservoirs with stochastic inflow, evaporation, and flow constraints. Actions control water release, with penalties for deviations from desired levels. We consider instances with 15 and 30 reservoirs. 
+
+Methods and Baselines. We compare MDPO against several baselines to isolate the effect of stochastic exploration. 
+
+Deterministic differentiable planning. A noise-free version of our method ( Σ = 0 ), sharing the same model, policy parameterization, and optimizer. This baseline isolates the effect of stochastic exploration. 
+
+JaxPlan. A publicly available implementation of differentiable planning based on relaxed hybrid dynamics. This serves as a strong optimization baseline representative of prior work [2]. 
+
+MDPO (Constant noise). We consider fixed Gaussian noise with σ ∈ { 1, 3} applied to the action space during optimization. These variants evaluate the effect of non-adaptive stochastic exploration. These values were chosen as representative moderate noise levels that provide consistent improvements while avoiding instability, as larger noise magnitudes can lead to distributional drift and degrade optimization. 
+
+MDPO (Adaptive). Our method uses a time-dependent noise profile derived from gradient-based sensitivity. In all experiments, we set σmin = 0 and a large σmax (typically in the range [9 , 11] ), providing a wide exploration range and allowing the method to flexibly adapt noise levels to the local optimization landscape. Results were not highly sensitive to the exact choice of σmax , provided it remained sufficiently large. 
+
+Model-free RL. We include Proximal Policy Optimization (PPO) [ 13 ] as a model-free baseline. PPO uses the same policy architecture, horizon, and initialization, and performs 10 updates per rollout. 
+
+Implementation Details. All differentiable planning methods operate on models using t-norm relaxations with weight w = 100 , providing a close approximation to the original dynamics. MDPO was implemented in PyTorch. PPO, as a model-free baseline, is trained directly on the true (non-relaxed) environment. Policies are parameterized by feedforward neural networks with two hidden layers of 12 neurons each, ensuring that performance differences reflect optimization rather than representational capacity. All methods are trained for 3000 iterations using RMSProp [ 6 ] (learning rate 0.01 ) with horizon H = 120 , where each iteration consists of a single rollout and gradient update. All methods share the same initialization, training budget, and optimization settings. Experiments are conducted over 20 seeds, with evaluations averaged over 20 rollouts on the true (non-relaxed) dynamics in an external pyRDDLGym [ 16 ] implementation. All experiments were conducted on a compute cluster, with each run allocated 2 CPUs and 8GB of memory. 
+
+Overall Performance. Table 1 summarizes final performance across all benchmark instances. PPO performs poorly in all domains, showing little improvement within the given budget, highlighting the difficulty of learning without a model. Deterministic differentiable planning and JaxPlan achieve similar results, consistently converging to suboptimal solutions. Introducing stochasticity via fixed action noise improves performance, but remains sensitive to the choice of scale and varies across domains. In contrast, the adaptive noise method consistently achieves the best performance across all instances. In addition, MDPO exhibits low variance across seeds while maintaining high solution quality. PPO shows low variance only due to its lack of improvement, resulting in nearly constant returns. In HVAC20 , although MDPO does not have the lowest variance, it is the only method that achieves meaningful optimization, while others remain significantly worse. These results empirically 7HVAC PowerGen Reservoir                                                                                                                   
+
+> Method 10 20 711 15 30 PPO -4,706,559.94 ±0.38 -5,799,263.08 ±0.21 -119,950.01 ±217.92 -120,000.00 ±0.00 -1,567,404.88 ±258.54 -3,821,075.16 ±226.01 Deterministic -3,268,060.37 ±441,267.23 -5,799,274.81 ±44.65 -38,565.41 ±25,582.69 -57,528.37 ±30,444.41 -683,721.06 ±221,923.57 -2,219,640.67 ±296,596.36 JaxPlan -2,987,355.11 ±979,087.04 -5,793,011.93 ±89,429.51 -44,747.36 ±33,219.89 -54,034.04 ±24,745.46 -688,683.95 ±205,670.07 -2,364,420.45 ±388,492.15 Constant 1 -1,693,569.37 ±129,419.57 -5,799,302.46 ±17.11 6,753.42 ±5,279.33 16,345.46 ±3,977.71 -249,675.61 ±20,927.82 -1,217,795.17 ±151,823.21 Constant 3 -1,555,612.12 ±47,196.07 -5,799,423.99 ±58.96 4,622.72 ±7,027.73 13,772.41 ±5,851.97 -248,132.79 ±21,170.60 -1,115,865.90 ±69,979.64 Adaptive -1,371,468 ±194.35 -2,086,875.93 ±42,832.24 10,076 ±3,925.23 16,890.15 ±3,138.48 -246,613.49 ±18,382.48 -815,510.27 ±59,029.69
+
+Table 1: Final performance across benchmark domains and instances. Results are averaged over 20 seeds and 20 evaluation rollouts per seed on the true dynamics, using the mean performance over the last 5 optimization iterations. Adaptive noise consistently outperforms deterministic planning, JaxPlan, and constant-noise variants, while PPO performs poorly. 
+
+Adaptive Deterministic ( σ = 0 ) Const. noise ( σ = 1 ) Const. noise ( σ = 3 ) JaxPlan PPO 
+
+(a) PowerGen7 (b) HVAC10 (c) Reservoir15 
+
+(d) PowerGen11 (e) HVAC20 (f) Reservoir30 
+
+Figure 2: Learning curves across benchmark instances. Performance over 3000 optimization iterations for all methods, averaged over 20 random seeds (shaded regions indicate standard deviation). Deterministic differentiable planning and JaxPlan quickly plateau, while PPO shows limited improve-ment under the given optimization budget. Introducing stochastic exploration improves performance, with constant noise yielding moderate gains. The proposed adaptive method consistently achieves faster convergence and higher final performance, with the advantage becoming more pronounced in harder instances. support the hypothesis that stochastic exploration mitigates optimization pathologies arising from flat and ill-conditioned regions of the objective landscape. 
+
+Learning Dynamics. Figure 2 shows learning curves across all benchmark instances. PPO remains near its initial performance throughout training. Deterministic differentiable planning and JaxPlan exhibit rapid early progress but quickly plateau, indicating that optimization becomes trapped in poor regions of the objective landscape. Adding stochasticity enables continued improvement. Fixed-noise variants often achieve faster initial gains but may stagnate depending on the noise scale. In contrast, adaptive noise maintains sustained improvement, enabling both faster convergence and continued progress over time. These effects are more pronounced in harder instances. In HVAC20 (Figure 2e) and Reservoir30 (Figure 2f), adaptive noise continues to improve while other methods plateau early. 
+
+PowerGen11 presents a different regime, where relatively small noise is sufficient to find high-quality policies; the adaptive method matches this performance by adjusting the noise level appropriately, as further analyzed below. 
+
+Adaptive Noise Analysis. To better understand the behavior of the adaptive mechanism, we analyze how the noise magnitude evolves across both timesteps and optimization iterations. We focus on the most challenging instance from each domain. Figures 3a-3c show the average noise magnitude as a function of the timestep within the planning horizon. The results reveal that noise allocation 8(a) PowerGen11 : average σt over horizon               
+
+> (b) HVAC20 : average σtover horizon
+> (c) Reservoir30: average σtover horizon
+> (d) PowerGen11 :σtacross timesteps and iterations
+> (e) HVAC20 :σtacross timesteps and iterations
+> (f) Reservoir30: σtacross timesteps and iterations
+
+Figure 3: Adaptive noise behavior across timesteps and optimization iterations. Top row: average noise magnitude σt as a function of timestep, averaged over optimization iterations. Bottom row: heatmaps showing noise magnitude across timesteps (vertical axis) and optimization iterations (horizontal axis). Results are shown for the most challenging instance of each domain. The adaptive method produces a structured, time-dependent noise profile that varies across both timesteps and training iterations. The allocation of noise is highly dynamic and problem-dependent, with different domains exhibiting distinct patterns. is domain-dependent and reflects the underlying dynamics. In Reservoir30 (Figure 3c), higher noise is concentrated in earlier timesteps, indicating the importance of early decisions. In HVAC20 
+
+(Figure 3b), noise is high at early timesteps, decreases sharply over the first third of the horizon, and then follows a non-monotonic variation over the remaining timesteps, suggesting that later decisions intermittently regain importance. In PowerGen11 (Figure 3a), the noise magnitude stabilizes around 
+
+σ ≈ 1 across the horizon, consistent with the strong performance of fixed noise at this scale (Figure 2d). Figure 3 provides a joint view of how noise is allocated across both timesteps and optimization iterations. Initially, high noise is applied broadly across the trajectory. As optimization progresses, the noise distribution evolves, often becoming more concentrated on subsets of timesteps. This behavior reflects the changing sensitivity of the objective and highlights the dynamic nature of the adaptive mechanism. These results demonstrate that the adaptive method can automatically capture the structure of the optimization problem, allocating exploration to regions where it appears most beneficial both temporally within the trajectory and across the course of learning. 
+
+## 5 Conclusion and Discussion 
+
+The empirical results confirm that differentiable planning is fundamentally limited by optimization challenges arising from flat gradients and sharp transitions, particularly in nonlinear and hybrid domains. By introducing stochastic perturbations in the action space, MDPO mitigates these issues, enabling the optimizer to escape poor local optima and achieve substantially improved performance. The effectiveness of adaptive noise further highlights the importance of tailoring exploration to the local structure of the optimization landscape. This work demonstrates that the primary limitation of differentiable planning in complex domains lies not only in modeling, but in the optimization dynamics used to solve the resulting problems. Rather than modifying the model or its relaxation, MDPO improves performance by enhancing the optimization process itself through structured, model-driven exploration. This provides a simple and general approach for addressing optimization pathologies in model-based planning. More broadly, our findings highlight the role of stochastic exploration in differentiable planning. While exploration in this setting differs from its role in reinforcement learning, the parallels suggest a deeper connection between model-based gradient optimization and exploration-driven learning. Bridging these perspectives may offer promising directions for developing more robust and scalable decision-making methods. 9References 
+
+[1] Thiago P Bueno, Leliane N de Barros, Denis D Mauá, and Scott Sanner. Deep reactive policies for planning in stochastic nonlinear domains. In Proceedings of the AAAI Conference on Artificial Intelligence ,volume 33, pages 7530–7537, 2019. [2] Michael Gimelfarb, Ayal Taitler, and Scott Sanner. Jaxplan and gurobiplan: Optimization baselines for replanning in discrete and mixed discrete-continuous probabilistic domains. In Proceedings of the International Conference on Automated Planning and Scheduling , volume 34, pages 230–238, 2024. [3] Evan Greensmith, Peter L Bartlett, and Jonathan Baxter. Variance reduction techniques for gradient estimates in reinforcement learning. Journal of Machine Learning Research , 5(Nov):1471–1530, 2004. [4] Tuomas Haarnoja, Aurick Zhou, Pieter Abbeel, and Sergey Levine. Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor. In International conference on machine learning , pages 1861–1870. Pmlr, 2018. [5] Petr Hájek. Metamathematics of fuzzy logic , volume 4. Springer Science & Business Media, 2001. [6] Geoffrey Hinton. Neural networks for machine learning, lecture 6e: Rmsprop, 2012. Coursera lecture. [7] Timothy P Lillicrap, Jonathan J Hunt, Alexander Pritzel, Nicolas Heess, Tom Erez, Yuval Tassa, David Silver, and Daan Wierstra. Continuous control with deep reinforcement learning. In International Conference on Learning Representations (ICLR) , 2016. [8] Jorge Nocedal and Stephen J Wright. Numerical optimization . Springer, 2006. [9] Narayana Prasad Padhy. Unit commitment-a bibliographical survey. IEEE Transactions on power systems ,19(2):1196–1205, 2004. [10] Razvan Pascanu, Tomas Mikolov, and Yoshua Bengio. On the difficulty of training recurrent neural networks. In International conference on machine learning , pages 1310–1318. Pmlr, 2013. [11] Deepak Pathak, Pulkit Agrawal, Alexei A Efros, and Trevor Darrell. Curiosity-driven exploration by self-supervised prediction. In International conference on machine learning , pages 2778–2787. PMLR, 2017. [12] John Schulman, Nicolas Heess, Theophane Weber, and Pieter Abbeel. Gradient estimation using stochastic computation graphs. Advances in neural information processing systems , 28, 2015. [13] John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. Proximal policy optimization algorithms. arXiv preprint arXiv:1707.06347 , 2017. [14] Richard S Sutton, Andrew G Barto, et al. Reinforcement learning: An introduction , volume 1. MIT press Cambridge, 1998. [15] Ayal Taitler, Ron Alford, Joan Espasa, Gregor Behnke, Daniel Fišer, Michael Gimelfarb, Florian Pom-merening, Scott Sanner, Enrico Scala, Dominik Schreiber, Javier Segovia-Aguas, and Jendrik Seipp. The 2023 international planning competition. AI Magazine , 45(2):280–296, 2024. [16] Ayal Taitler, Michael Gimelfarb, Jihwan Jeong, Sriram Gopalakrishnan, Martin Mladenov, Xiaotian Liu, and Scott Sanner. pyrddlgym: From rddl to gym environments. arXiv preprint arXiv:2211.05939 , 2022. [17] Tûba Ti˘ grek, Soura Dasgupta, and Theodore F Smith. Nonlinear optimal control of hvac systems. IFAC Proceedings Volumes , 35(1):149–154, 2002. [18] Ronald J Williams. Simple statistical gradient-following algorithms for connectionist reinforcement learning. Machine learning , 8(3):229–256, 1992. [19] Ga Wu, Buser Say, and Scott Sanner. Scalable planning with tensorflow for hybrid nonlinear domains. 
+
+Advances in Neural Information Processing Systems , 30, 2017. [20] William W-G Yeh. Reservoir management and operations models: A state-of-the-art review. Water resources research , 21(12):1797–1818, 1985. 
+
+10 A Gradient Derivation for Stochastic Action Perturbations 
+
+In this appendix, we derive the gradient expression stated in Theorem 1. We consider a stochastic policy obtained by perturbing a deterministic policy with additive noise: 
+
+˜at = πθ (st) + ϵt, ϵt ∼ N (0 , Σt),
+
+where the noise is independent of the policy parameters θ. The system evolves according to: 
+
+st+1 = f (st, ˜at).
+
+The objective is defined as: 
+
+J(θ) = Eϵ
+
+"H−1X
+
+> t=0
+
+r(st, ˜at)
+
+#
+
+.
+
+Under standard regularity conditions (e.g., smoothness and boundedness), we interchange gradient and expectation: 
+
+∇θ J(θ) = Eϵ
+
+"H−1X
+
+> t=0
+
+∇θ r(st, ˜at)
+
+#
+
+.
+
+Applying the chain rule, each term decomposes as: 
+
+∇θ r(st, ˜at) = ∂r ∂s t
+
+ds t
+
+dθ + ∂r ∂˜at
+
+d˜at
+
+dθ ,
+
+where ∂ 
+
+> ·
+
+denotes partial derivatives and ddθ denotes total derivatives through the computational graph. Since ϵt is independent of θ, we have: 
+
+d˜at
+
+dθ = dπ θ (st)
+
+dθ = ∂π θ (st)
+
+∂θ + ∂π θ (st)
+
+∂s t
+
+ds t
+
+dθ .
+
+Differentiating the system dynamics yields: 
+
+ds t+1 
+
+dθ = ∂f ∂s t
+
+ds t
+
+dθ + ∂f ∂˜at
+
+d˜at
+
+dθ .
+
+Substituting the expression for d˜at 
+
+> dθ
+
+, we obtain: 
+
+ds t+1 
+
+dθ =
+
+ ∂f ∂s t
+
++ ∂f ∂˜at
+
+∂π θ
+
+∂s t
+
+ ds t
+
+dθ + ∂f ∂˜at
+
+∂π θ
+
+∂θ .
+
+Assuming that the initial state is independent of θ, we have ds 0 
+
+> dθ
+
+= 0 . Unrolling the recursion gives: 
+
+ds t
+
+dθ =
+
+> t−1
+
+X 
+
+> τ=0
+
+
+
+> t−1
+
+Y 
+
+> j=τ+1
+
+ ∂f ∂s j
+
++ ∂f ∂˜aj
+
+∂π θ
+
+∂s j
+
+ ∂f ∂˜aτ
+
+∂π θ
+
+∂θ ,
+
+with the convention that an empty product equals the identity matrix. 
+
+Connection to Theorem 1. Substituting this expression into the gradient expansion, we obtain: 
+
+∇θ J(θ) = Eϵ
+
+"H−1X
+
+> t=0
+
+ ∂r ∂s t
+
+ds t
+
+dθ + ∂r ∂˜at
+
+d˜at
+
+dθ 
+
+#
+
+.
+
+The first term captures the indirect effect of θ through the state trajectory: 
+
+∂r ∂s t
+
+ds t
+
+dθ ,
+
+which, after substitution, corresponds to the accumulation of sensitivity through the dynamics. 11 The second term captures the direct effect through the action: 
+
+∂r ∂˜at
+
+d˜at
+
+dθ = ∂r ∂˜at
+
+ ∂π θ
+
+∂θ + ∂π θ
+
+∂s t
+
+ds t
+
+dθ 
+
+
+
+.
+
+Combining these contributions yields the expression stated in Theorem 1, consisting of: (i) a direct term corresponding to the immediate influence of actions on rewards, and (ii) an indirect term capturing the propagation of parameter influence through the system dynamics. This establishes that the gradient can be computed via standard backpropagation through the stochastic computation graph under reparameterized action noise. 
+
+## B Noise Extension to Multiple Action Types 
+
+In domains such as HVAC , the action at time t is not a single vector but a collection of action tensors. For example, one may have 
+
+at =  a(1)  
+
+> t
+
+, a (2)  
+
+> t
+
+, . . . , a (M )
+
+> t
+
+,
+
+where each a(m) 
+
+> t
+
+, for m = 1 , . . . , M , corresponds to a different action fluent type. In HVAC , these are the action tensors associated with fan-in(zone) and heat-input(heater) . which can be viewed as a structured matrix (or collection of tensors), where each block a(m) 
+
+> t
+
+corresponds to a different action fluent type. The trajectory objective remains a scalar, 
+
+J(τ ),
+
+but we now differentiate it separately with respect to each action tensor: 
+
+g(m) 
+
+> t
+
+= ∇a(m)
+
+> t
+
+J(τ ), m = 1 , . . . , M. 
+
+Each such gradient is converted into a scalar action-level sensitivity: 
+
+c(m) 
+
+> t
+
+= g(m) 
+
+> t2
+
+.
+
+These action-level sensitivities are then aggregated into a single timestep score. In the current implementation, the default aggregation is the mean: 
+
+st = 1
+
+M
+
+> M
+
+X
+
+> m=1
+
+c(m) 
+
+> t
+
+= 1
+
+M
+
+> M
+
+X
+
+> m=1
+
+∇a(m)
+
+> t
+
+J(τ ) 2
+
+.
+
+Once st is obtained, the rest of the pipeline is unchanged: the timestep scores are normalized across the trajectory, mapped to a scalar noise level σt, and this same σt is then broadcast to all action tensors at timestep t. Thus, in the multi-action setting, the current method still produces one scalar noise level per timestep, not one separate noise level per action type. 
+
+## C Benchmark Domains 
+
+C.1 Power Generation Domain 
+
+The Power Generation (PowerGen) domain is a continuous relaxation of the classical unit commitment problem, where a set of generators must meet a stochastic demand while minimizing operational costs. The system evolves over a finite horizon H, with dynamics defined over continuous and discrete state variables. 
+
+State and action space. Let P denote the set of generators. For each generator p ∈ P , the system maintains: - a continuous production level from the previous timestep, x(p) 
+
+> t
+
+∈ R≥0,12 - a binary activation state o(p) 
+
+> t
+
+∈ { 0, 1}.Additionally, the system includes a continuous exogenous temperature variable Tt ∈ R.At each timestep, the controller selects a continuous action: 
+
+a(p) 
+
+> t
+
+∈ [0 , a (p)max ],
+
+representing the intended production level of generator p.
+
+Activation and effective production. A generator is active if its production exceeds a minimum threshold: 
+
+o(p) 
+
+> t
+
+= I
+
+h
+
+a(p) 
+
+> t
+
+≥ a(p)min 
+
+i
+
+.
+
+The effective production is defined as: 
+
+˜a(p) 
+
+> t
+
+=
+
+(
+
+clip 
+
+
+
+a(p) 
+
+> t
+
++ η(p) 
+
+> t
+
+, a (p)min , a (p)max 
+
+
+
+, if o(p) 
+
+> t
+
+= 1 ,
+
+0, otherwise ,
+
+where η(p) 
+
+> t
+
+∼ Weibull (kp, λ p) models stochastic fluctuations in production. 
+
+State transitions. The production and activation states evolve as: 
+
+x(p) 
+
+> t+1
+
+= ˜ a(p) 
+
+> t
+
+, o(p) 
+
+> t+1
+
+= o(p) 
+
+> t
+
+.
+
+The temperature evolves stochastically: 
+
+Tt+1 = clip  Tt + ξt, T min , T max 
+
+, ξt ∼ N (0 , σ 2 
+
+> T
+
+).
+
+Demand model. Demand is a nonlinear function of temperature: 
+
+Dt = D0 + α(Tt − T ∗)2,
+
+where T ∗ is the reference temperature minimizing demand. The fulfilled demand is given by: 
+
+Ft = min 
+
+Dt, X
+
+> p∈P
+
+˜a(p)
+
+> t
+
+ .
+
+Reward function. The reward at each timestep combines multiple components: 
+
+Rt = − X
+
+> p∈P
+
+cp˜a(p) 
+
+> t
+
++ ρF t − I[Dt > F t] · P − X
+
+> p∈P
+
+λp ˜a(p) 
+
+> t
+
+− x(p) 
+
+> t
+
+− X
+
+> p∈P
+
+κpI
+
+h
+
+(1 − o(p) 
+
+> t
+
+) · o(p)
+
+> t+1
+
+i
+
+,
+
+where: - cp is the production cost per unit, - ρ is the revenue per unit of fulfilled demand, - P is the penalty for unmet demand, - λp penalizes changes in production, - κp penalizes switching a generator on. 
+
+C.2 HVAC Domain 
+
+The HVAC domain models the control of temperature in a network of interconnected zones subject to energy costs and comfort constraints. The system evolves over a finite horizon H, with nonlinear dynamics and stochastic occupancy. 13 State and action space. Let Z denote the set of zones and H the set of heaters. The state consists of: - zone temperatures δ(z) 
+
+> t
+
+∈ R for each z ∈ Z ,- heater temperatures θ(h) 
+
+> t
+
+∈ R for each h ∈ H ,- occupancy variables o(z) 
+
+> t
+
+∈ { 0, 1} indicating whether zone z is occupied. The control actions are continuous: - airflow into each zone a(z) 
+
+> t
+
+≥ amin ,- heat input to each heater u(h) 
+
+> t
+
+∈ R.
+
+Occupancy dynamics. Occupancy evolves stochastically according to: 
+
+o(z) 
+
+> t+1
+
+= o(z) 
+
+> t
+
+· ξ(z) 
+
+> t
+
+, ξ(z) 
+
+> t
+
+∼ Bernoulli (1 − p(z)),
+
+where p(z) is the probability of becoming unoccupied. 
+
+Heater dynamics. Each heater aggregates incoming air from connected zones. Let Z(h) denote the zones connected to heater h. The heater temperature evolves as: 
+
+θ(h) 
+
+> t+1
+
+= −κh(θ(h) 
+
+> t
+
+)2 + θ(h) 
+
+> t
+
++ ∆tVh
+
+¯a(h)
+
+> t
+
+¯δ(h) 
+
+> t
+
+− Tout 
+
+
+
++ ∆tKV h
+
+˜u(h) 
+
+> t
+
+,
+
+where: - ¯a(h) 
+
+> t
+
+is the average airflow into heater h,- ¯δ(h) 
+
+> t
+
+is the average temperature of connected zones, - ˜u(h) 
+
+> t
+
+is a clipped version of the heat input, - κh models heat dissipation. 
+
+Zone dynamics. Zone temperatures evolve according to nonlinear heat transfer: 
+
+δ(z) 
+
+> t+1
+
+= −κz (δ(z) 
+
+> t
+
+− Tout )2 + δ(z) 
+
+> t
+
++ ∆tVz
+
+a(z)
+
+> t
+
+X
+
+> h∈H (z)
+
+θ(h) 
+
+> t
+
+− δ(z)
+
+> t
+
+|H (z)| + ∆ t X
+
+> z′∈Z
+
+γz,z ′ (δ(z′) 
+
+> t
+
+− δ(z) 
+
+> t
+
+),
+
+where: - H(z) denotes heaters connected to zone z,- γz,z ′ represents thermal conductivity between adjacent zones, - Vz is the zone volume. 
+
+Reward function. The reward penalizes energy consumption and temperature deviations from a comfort range [δ(z)min , δ (z)max ]:
+
+Rt = − X
+
+> h∈H
+
+ch (˜ u(h) 
+
+> t
+
+)2 − ca
+
+X
+
+> z∈Z
+
+(a(z) 
+
+> t
+
+)2 − λ X
+
+> z∈Z
+
+I[o(z) 
+
+> t
+
+= 1] · ϕ(δ(z) 
+
+> t
+
+),
+
+where the discomfort penalty is: 
+
+ϕ(δ) = 
+
+
+
+(δ − δmin )2, δ < δ min ,
+
+(δ − δmax )2, δ > δ max ,
+
+0, otherwise .
+
+C.3 Reservoir Control Domain 
+
+The Reservoir Control domain models the regulation of water levels in a network of interconnected reservoirs subject to stochastic inflow, evaporation, and physical constraints. The system evolves over a finite horizon H.14 State and action space. Let R denote the set of reservoirs. The state consists of continuous water levels 
+
+ℓ(r) 
+
+> t
+
+∈ [0 , ℓ (r)max ], r ∈ R .
+
+At each timestep, the controller selects a continuous action 
+
+a(r) 
+
+> t
+
+∈ [0 , ℓ (r)max ],
+
+representing the amount of water released from reservoir r.
+
+Stochastic inflow and evaporation. Each reservoir receives stochastic rainfall: 
+
+r(r) 
+
+> t
+
+= |ξ(r) 
+
+> t
+
+|, ξ(r) 
+
+> t
+
+∼ N (0 , σ 2 
+
+> r
+
+),
+
+and loses water due to evaporation: 
+
+e(r) 
+
+> t
+
+= β · ℓ(r)
+
+> t
+
+ℓ(r)
+
+> top
+
+,
+
+where β is the evaporation factor. 
+
+Flow and constraints. The effective release is clipped to feasible bounds: 
+
+˜a(r) 
+
+> t
+
+= min 
+
+
+
+ℓ(r) 
+
+> t
+
+, max(0 , a (r) 
+
+> t
+
+)
+
+
+
+.
+
+Water is distributed across downstream reservoirs according to the connectivity graph. Let D(r)
+
+denote the set of reservoirs downstream of r. The flow from r to each downstream reservoir is: 
+
+f (r) 
+
+> t
+
+= ˜a(r)
+
+> t
+
+|D (r)| + I[sea (r)] .
+
+The total inflow to reservoir r is: inflow (r) 
+
+> t
+
+= X
+
+> r′∈U (r)
+
+f (r′) 
+
+> t
+
+,
+
+where U(r) denotes upstream reservoirs. Overflow is defined as: overflow (r) 
+
+> t
+
+= max 
+
+
+
+0, ℓ (r) 
+
+> t
+
+− ˜a(r) 
+
+> t
+
+− ℓ(r)
+
+> top
+
+
+
+.
+
+State transition. The reservoir level evolves as: 
+
+ℓ(r) 
+
+> t+1
+
+= min 
+
+
+
+ℓ(r) 
+
+> top
+
+, max 
+
+
+
+0, ℓ (r) 
+
+> t
+
++ inflow (r) 
+
+> t
+
++ r(r) 
+
+> t
+
+− e(r) 
+
+> t
+
+− ˜a(r) 
+
+> t
+
+− overflow (r)
+
+> t
+
+ 
+
+.
+
+Reward function. The objective is to maintain reservoir levels within a desired range [ℓ(r)min , ℓ (r)max ].The reward penalizes deviations using piecewise linear costs: 
+
+Rt = X
+
+> r∈R
+
+ψ(ℓ(r)
+
+> t+1
+
+),
+
+where 
+
+ψ(ℓ) = 
+
+
+
+c(r) 
+
+> low
+
+· (ℓ(r)min − ℓ), ℓ < ℓ (r)min ,c(r) 
+
+> high
+
+· (ℓ − ℓ(r)max ), ℓ(r)max < ℓ ≤ ℓ(r) 
+
+> top
+
+,c(r) 
+
+> high
+
+· (ℓ − ℓ(r)max ) + c(r) 
+
+> overflow
+
+· overflow , ℓ > ℓ (r) 
+
+> top
+
+,
+
+0, otherwise .
+
+15
