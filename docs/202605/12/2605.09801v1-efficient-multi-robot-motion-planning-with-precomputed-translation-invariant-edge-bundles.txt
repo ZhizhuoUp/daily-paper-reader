@@ -1,0 +1,699 @@
+Title: Efficient Multi-Robot Motion Planning with Precomputed Translation-Invariant Edge Bundles
+
+URL Source: https://arxiv.org/pdf/2605.09801v1
+
+Published Time: Tue, 12 May 2026 02:24:43 GMT
+
+Number of Pages: 27
+
+Markdown Content:
+# Efficient Multi-Robot Motion Planning with Precomputed Translation-Invariant Edge Bundles 
+
+Himanshu Gupta 1, Paul Motter 2, Aritra Chakrabarty 2, Rishabh Sodani 3, Srikrishna Bangalore Raghu 2,Alessandro Roncone 2, Bradley Hayes 2 and Zachary Sunberg 1
+
+Abstract —Solving multi-robot motion planning (MRMP) re-quires generating collision-free kinodynamically feasible trajec-tories for multiple interacting robots. We introduce Kinodynamic Translation-Invariant Edge Bundles or KiTE-Extend, a planner-agnostic action selection mechanism for sampling-based kinody-namic motion planning. KiTE-Extend uses a library of trajectory segments computed offline to guide action selection during online planning, improving the ability of existing planners to identify feasible motion segments without altering state propagation, collision checking, or cost evaluation, and without changing their theoretical guarantees. While KiTE-Extend can modestly improve single-agent planners, its benefits are most clear in the multi-agent setting, where it is able to explore more effectively and significantly improve planning through the dense spatiotem-poral constraints introduced by robot-robot interaction. Through experiments on multiple kinodynamic systems and environments, we show that KiTE-Extend reduces planning time and improves scalability across the three most common MRMP paradigms: centralized, prioritized, and conflict-based. (Project Webpage) 
+
+I. I NTRODUCTION 
+
+Coordinating multiple robots in shared environments re-quires computing trajectories that avoid both static obstacles and inter-robot collisions. We consider the multi-robot motion planning (MRMP) problem. Given multiple robots governed by kinodynamic constraints, the objective is to compute a set of time-parameterized trajectories to their respective goal regions that are dynamically feasible for each robot and collision-free for all robots over time. Multi-agent path finding (MAPF), the discrete analogue of MRMP has been extensively studied in the literature [28], where agents move along edges of a finite graph with known traversal times. However, solution methods for MAPF do not extend straightforwardly to MRMP, as MRMP operates in continuous state spaces, must account for robot geometry, and cannot assume that transitions between discrete states are dynamically realizable [6, 12]. Existing MRMP methods can be broadly categorized into three paradigms based on how multi-robot coordination is handled. Centralized planners search directly in the joint state space, offering a principled formulation but suffering from exponential growth in computational complexity with the num-ber of robots [31, 26]. Prioritized planners plan sequentially according to a fixed or adaptive priority ordering, treating previously planned robots as dynamic obstacles; while often effective in practice, their performance is sensitive to priority 
+
+*This work was supported by NSF CAREER Award #2340958. Affiliations: 1Smead Aerospace Engineering Sciences, University of Col-orado Boulder; 2Department of Computer Science, University of Colorado Boulder; 3Cherry Creek High School, Greenwood Village, CO, USA. 
+
+Fig. 1: Example multi-robot solution for 30 quadcopters with double-integrator dynamics in a cluttered environment. KCBS is used for high-level coordination, with KiTE-Extend guided RRT as the low-level kinodynamic planner. Colored curves denote agent trajectories, with matching-colored markers indicating start and goal states; gray prisms represent static obstacles. 
+
+choices, and completeness typically requires exploring a large priority tree [30, 33, 34]. Conflict-based search (CBS)-style methods strike a balance by performing a coupled search over conflicts and constraints at a high level, while invoking a single-robot planner at the low level to compute trajectories that satisfy accumulated spatiotemporal constraints [6, 12]. Despite substantial differences in coordination strategies, all MRMP paradigms incur the cost of generating dynam-ically feasible trajectories under coupled inter-robot con-straints, which in practice is dominated by repeated low-level node expansion and feasibility checking under evolving spatiotemporal constraints. To mitigate this cost, recent works incorporate offline computation within search-based frame-works, leveraging translation invariance to reuse precomputed motion segments across the workspace [12, 14]. In these approaches, motion representations are first constructed to facilitate combinatorial coordination, and dynamic feasibility is subsequently enforced through repair, tracking, or optimiza-tion stages. While effective in some settings, this separation introduces additional computational overhead, as the cost of the optimization stage scales poorly with both the number of agents and the trajectory horizon. A key property of sampling-based planning (SBP) for kinodynamic systems is that dynamical feasibility is preserved 
+
+> arXiv:2605.09801v1 [cs.RO] 10 May 2026
+
+by construction through forward simulation, avoiding the need for a separate repair step. This property motivates a different role for offline computation in MRMP: rather than producing motion representations that must later be repaired, offline computation can be used to directly accelerate feasible SBP expansions during online planning, while still exploiting translation invariance to enable reuse. This paper introduces Ki nodynamic Translation-Invariant 
+
+Edge-Bundles or KiTE-Extend, a planner-agnostic action se-lection scheme for sampling-based kinodynamic motion plan-ning. KiTE-Extend leverages offline computation to bias on-line node expansion using translation-invariant kinodynamic edge bundles, improving the efficiency of reaching useful suc-cessor states while leaving the underlying planner unchanged. Unlike motion-primitive or lattice-based planners that define a discrete search space, KiTE-Extend operates within a con-tinuous sampling-based framework, where edge bundles are used only to guide expansion rather than restrict it. Candidate motions are re-propagated from the current state and validated under current constraints. As a result, KiTE-Extend preserves continuous exploration and maintains the theoretical properties of the base sampling-based planner. KiTE-Extend operates purely at the level of action selection and is compatible with a broad class of sampling-based kinodynamic planners and can be integrated into centralized, prioritized, and CBS-style MRMP frameworks alike. The main contributions of this work are:  
+
+> •
+
+We introduce KiTE-Extend, a planner-agnostic action selection scheme that exploits translation-invariant offline computation to accelerate kinodynamic node expansion while preserving the theoretical guarantees of sampling-based planning.  
+
+> •
+
+We demonstrate that incorporating KiTE-Extend into sampling-based planners improves success rates, reduces computation time, and yields higher-quality solutions when used within centralized, prioritized, and CBS-style MRMP frameworks across cluttered environments and multiple kinodynamic systems. We emphasize that our focus is not on designing new high-level coordination strategies, but on improving the efficiency of SBP through offline computation for MRMP. Our results show that incorporating offline reuse within sampling-based planning consistently improves performance, and can outper-form existing approaches that use offline computation within discontinuity-bounded, optimization-based pipelines such as db-CBS [12]. While more sophisticated coordination mech-anisms can further improve performance, they are orthogonal to our contribution; the proposed approach can be combined with such methods to yield additional gains. II. RELATED WORK Single-agent kinodynamic motion planning has been ex-tensively studied using optimization-based methods [24, 10], lattice-based search [19, 20], and sampling-based planning (SBP) [7, 8]. Among these, SBP has been widely adopted due to its generality and strong theoretical guarantees, including probabilistic completeness and asymptotic optimality. In prac-tice, SBP’s performance is often dominated by node selection and expansion mechanisms, particularly for kinodynamic sys-tems where feasibility constraints are tight, foreshadowing the difficulties encountered in multi-robot settings. 
+
+Kinodynamic expansion: In SBP, extending the search tree toward a sampled state for kinodynamic systems requires solv-ing a steering problem involving system dynamics. For many robotic systems, exact solutions to such two-point boundary value problems (TPBVPs) are unavailable, and computing feasible connections requires nonlinear trajectory optimization, which is computationally expensive. To mitigate this cost, prior work has explored approximate steering via local lineariza-tion [18] or analytic steering functions for specific system classes [32], limiting applicability to systems with favorable structure. Other approaches avoid solving TPBVPs by forward propagating randomly sampled controls for random durations [3, 8], or by selecting among multiple propagated trajectories based on proximity to the sampled state [5, 9]. However, random or weakly guided control propagation is uninformative for highly nonlinear or underactuated systems, leading to poor exploration efficiency [23, 1]. When such expansion inefficiencies are compounded by repeated replanning, as in MRMP, they quickly dominate overall computation. 
+
+Learned expansions: Recent work improves node expansion by replacing random control sampling with learned steering functions or action proposals [1, 23, 2]. These approaches are primarily evaluated in single-agent settings with static environments. In practice, learned expansions must still un-dergo revalidation and subtree repair [1] or be rejected in favor of fallback random sampling [23, 2], diminishing their informativeness and resulting in wasted computation when replanning is triggered repeatedly. 
+
+Offline reuse: Other complementary works explore offline precomputation to improve kinodynamic expansion by con-structing dynamically feasible trajectory segments. Edge bun-dles, large collections of kinodynamically feasible trajectory segments sampled across the state space, have been used to guide search [25, 17]. However, achieving adequate cov-erage in higher-dimensional or larger environments requires large libraries, and candidate segments must be repeatedly filtered under changing spatiotemporal constraints, introducing significant online overhead. Lattice-based planners [19] and motion-primitive approaches [22] exploit translation invariance to precompute reusable trajectory segments over discretized state spaces, reducing online control synthesis at the cost of restricting the search to a finite set of states and transitions. Recent discontinuity-bounded planners, iDb-A ∗ [15] and iDb-RRT [16], further refine this idea, but rely on post hoc tra-jectory optimization to repair infeasible concatenations. Such repair-based approaches introduce significant computational overhead, as the cost of the underlying optimization scales poorly with the number of constraints and the trajectory hori-zon, limiting scalability in interaction-rich MRMP settings. 
+
+MRMP: Coordinating dynamically constrained agents while avoiding collisions makes MRMP substantially more complex than single-agent planning. A variety of MRMP approaches have been proposed to improve scalability, including con-tinuous space–time reasoning [29, 27], decomposition-based coordination [21, 11], relaxed continuity [13], and heuristic prioritization [34], often trading completeness or exact kinody-namic feasibility for scalability. Conflict-Based Search (CBS) has therefore been widely adopted due to its favorable balance between scalability and principled coordination [6, 12]. K-CBS [6] integrates sampling-based kinodynamic planners into CBS while preserving probabilistic completeness guarantees. Recent works such as db-CBS [12] and db-ECBS [14] incor-porate offline computations into MRMP. These works use db-A* as a low-level planner to rapidly generate approximately feasible trajectories, followed by joint trajectory optimization to enforce continuity and inter-agent collision constraints. While effective for small teams, this approach requires solving large joint optimization problems whose cost grows with both the number of agents and the trajectory horizon, limiting scalability in densely coupled settings. Another method, db-LaCAM [13], improves scalability through more efficient coordination and by removing the repair step, but does not guarantee feasible trajectories due to relaxed continuity. In contrast, SBP constructs dynamically feasible trajectories through forward simulation and does not require a repair step. Consequently, effectively leveraging offline computation to improve the efficiency of SBP in MRMP remains an important and largely open direction. The preceding discussion highlights a gap between offline kinodynamic reuse and its effective deployment under re-peated, constraint-driven expansion in MRMP. KiTE-Extend directly addresses this gap by reframing node expansion as a retrieval problem over a large translation-invariant space of kinodynamically feasible trajectory segments. While both mo-tion primitives and translation-invariant edge bundles represent reusable trajectory objects, the key distinction lies in how they are used within the planner. Search-based planners use motion primitives to define the edges of a fixed graph, restricting planning to a finite set of states and transitions. In contrast, KiTE-Extend operates within a continuous sampling-based framework, using edge bundles only to guide node expansion rather than define the search space. Candidate motions are re-propagated from the current state and validated under current spatiotemporal constraints, enabling efficient filtering without repeated optimization, learned inference, or feasibility repair. As a result, KiTE-Extend improves the efficiency of SBP in MRMP while preserving its key properties. III. PROBLEM FORMULATION 
+
+a) System Model and Collision Constraints: We consider a team of N agents indexed by i ∈ { 1, . . . , N }. Agent i has state xi(t) ∈ X i ⊂ Rdi and control input ui(t) ∈ U i ⊂ Rmi .Its dynamics are governed by the differential equation 
+
+˙xi(t) = fi(xi(t), u i(t)) . (1) A continuous-time trajectory for agent i is the 3-tuple πi ≜ xi(·), u i(·), T i
+
+ defined over the time horizon t ∈ [0 , T i], such that xi(0) = xsi and xi(Ti) ∈ G i, where Gi ⊂ X i is a goal region. Agents move in a workspace W ⊂ Rdw containing static obstacles O ⊂ W, where Si(xi) is the set of points in workspace occupied by agent i when in state xi. A trajectory is collision-free with respect to static obstacles if it never intersects obstacles: 
+
+∀t ∈ [0 , T i], Si(xi(t)) ∩ O = ∅. (2) Two agents i̸ = j are pairwise feasible if they never collide: 
+
+∀t ∈ [0 , T ], Si(xi(t)) ∩ Sj (xj (t)) = ∅, (3) where T ≜ max {Ti, T j } and we adopt the standard convention that an agent remains at its terminal state after arrival (i.e., 
+
+xi(t) = xi(Ti) for t ≥ Ti). 
+
+b) Translation Invariance: Many mobile-robot models exhibit symmetry with respect to global translations of the workspace. We assume the following translation-invariance property. We can decompose each agent state as xi =[xi, pos , x i, rem ], where xi, pos ∈ Rdw denotes translational po-sition in the workspace and xi, rem collects the remaining components (e.g., heading, velocities, or internal states). For any translation β ∈ Rdw , define the translated state 
+
+xi ⊕ β ≜ [ xi, pos + β, x i, rem ].
+
+We assume agent i has translation-invariant dynamics : for any translation β ∈ Rdw , any admissible control ui(·) and any solution xi(·) of (1), the translated trajectory xi(·) ⊕ β is also a solution under the same control. Equivalently, for all translations β ∈ Rdw , all xi and all ui,
+
+fi(xi ⊕ β, u i) = fi(xi, u i). (4) Translation invariance holds for the dynamics of each agent. Obstacles O and other agents are defined in a fixed world frame, so translating an agent trajectory can change its colli-sions: a shifted trajectory xi(·)⊕β can intersect O or Sj (xj (t)) 
+
+even when xi(·) does not. 
+
+c) Objective: We seek a set of trajectories Π ≜ {πi}Ni=1 
+
+such that each πi = ( xi(·), u i(·), T i) starts at xsi , reaches the goal region Gi, satisfies the dynamics (1), and the team satisfies the collision constraints (2)–(3). We study the feasibility problem: 
+
+find Π = {πi}Ni=1 , πi = ( xi(·), u i(·), T i)
+
+s.t. ˙xi(t) = fi(xi(t), u i(t)) , ∀ t ∈ [0 , T i], ∀ixi(0) = xsi , xi(Ti) ∈ G i, ∀iSi(xi(t)) ∩ O = ∅, ∀ t ∈ [0 , T i], ∀iSi(xi(t)) ∩ Sj (xj (t)) = ∅, ∀ t ∈ [0 , T ]
+
+∀ 1 ≤ i < j ≤ N
+
+(5) where T ≜ max {Ti, T j }
+
+Once a feasible solution Π is found, an additive per-agent cost is computed as follows: 
+
+Ci(πi) ≜
+
+Z Ti
+
+> 0
+
+ℓi(xi(t), u i(t)) dt, (6) where ℓi(·) ≥ 0 is a user-defined running cost. Team cost is 
+
+C(Π) ≜
+
+> N
+
+X
+
+> i=1
+
+Ci(πi), (7) IV. METHODOLOGY We introduce KiTE-Extend, a planner-agnostic mechanism for accelerating kinodynamic sampling-based motion planning by improving the efficiency of local tree expansions. KiTE-Extend does not modify the system dynamics, collision model, or optimality objective of the underlying planner. Instead, it augments local node expansion using offline precomputed motion proposals that are validated online under the same feasibility checks as the baseline planner. 
+
+A. Sampling-Based Motion Planning 
+
+Kinodynamic sampling-based motion planners typically fol-low the structure described in Algorithm 1. They incrementally grow a search tree by repeatedly sampling a target state, selecting a nearby tree node, and attempting short-horizon extensions from that node using randomly sampled con-trol–duration pairs. While generating candidate control inputs is typically inexpensive, many randomly propagated rollouts either result in collisions, violate state or spatiotemporal con-straints, or make poor progress toward the sampled target, especially in interaction-rich MRMP settings. Consequently, planners often spend substantial computation evaluating large numbers of low-quality candidate expansions. In this tem-plate, KiTE-Extend modifies the local node extension routine 
+
+Rand-Extend (·). Instead of naive random control sampling, it proposes a small, ranked set of candidate control–duration pairs drawn from an offline library, while leaving node selec-tion, propagation, and validity checks unchanged. 
+
+B. Kinodynamic Translation-Invariant Edge Bundles (KiTE) 
+
+KiTE is built around a library of short, dynamically fea-sible motion segments, referred to as edge bundles , that are generated offline and reused during planning. Each edge cor-responds to rolling out the system dynamics under a constant control input for a finite duration, producing a short trajectory segment and its terminal state. For translation-invariant sys-tems, these motion segments can be reused across workspace locations while preserving their local dynamical behavior. This enables the construction of reusable motion libraries that are independent of the global environment geometry. 
+
+a) Precomputing the edge bundle: Algorithm 2 is used to construct the edge bundle B offline. Each edge is generated from a canonical start state x0 whose positional components are fixed at the origin of the workspace, while the remaining state components are sampled within admissible limits. A control input u and a duration T are sampled, where T
+
+is an integer multiple of ∆t and T ≤ Tmax . The system dynamics are propagated under constant control u for duration 
+
+T to obtain a trajectory segment τ and terminal state xf .Only dynamically feasible segments are retained. Each edge is stored as (κ, u, T, x f ), where κ denotes the projection of 
+
+Algorithm 1: Sampling Based Planner 
+
+Input: start xs, goal region G, free space Xfree , budget 
+
+Nmax , extension trials K ≥ 1
+
+Output: Trajectory π or Infeasible  
+
+> 1
+
+Initialize tree T with root xs 
+
+> 2
+
+for k = 1 ..N max do  
+
+> 3
+
+xrand ← Sample (Xfree ) 
+
+> 4
+
+v ← SelectNode (T, x rand ) 
+
+> 5
+
+(xnew , τ, ok ) ← Rand -Extend (v, x rand , K ) 
+
+> 6
+
+if ok then  
+
+> 7
+
+Add (T, x new , τ, v ) 
+
+> 8
+
+if xnew ∈ G then  
+
+> 9
+
+return ExtractPath (T, x new ) 
+
+> 10
+
+return Infeasible  
+
+> 11
+
+Procedure Rand -Extend( v, x rand , K ) 
+
+> 12
+
+xv ← state of v; ok ← false ; dmin ← +∞ 
+
+> 13
+
+for j = 1 ..K do  
+
+> 14
+
+u ← SampleAction ()  
+
+> 15
+
+∆t ← SampleDuration ()  
+
+> 16
+
+(x′, τ ′) ← Propagate (xv , u, ∆t) 
+
+> 17
+
+if IsValid (τ ′) and Dist (x′, x rand ) < d min then  
+
+> 18
+
+dmin ← Dist (x′, x rand ) 
+
+> 19
+
+xnew ← x′; τ ← τ ′; ok ← true  
+
+> 20
+
+return (xnew , τ, ok )
+
+Algorithm 2: KITE: Precomputing translation-invariant edges 
+
+Input: Time Discretization ∆t; Maximum duration Tmax ;Target bundle size E
+
+Output: Edge bundle B; optional index I  
+
+> ▷Start states are sampled at the workspace origin
+> 1
+
+B ← ∅ ; e ← 0 
+
+> 2
+
+while e < E do  
+
+> 3
+
+x0 ← SampleStartAtOrigin ()  
+
+> 4
+
+u ← SampleAction ()  
+
+> 5
+
+T ← ∆t · UniformInt (1 , ⌊Tmax /∆t⌋) 
+
+> 6
+
+τ ← Propagate (x0, u, T, ∆t) 
+
+> 7
+
+if IsDynFeasible (τ, u ) then  
+
+> 8
+
+xf ← τ [end]  
+
+> 9
+
+κ ← Key (x0) 
+
+> 10
+
+B ← B ∪ { (κ, u, T, x f )} 
+
+> 11
+
+e ← e + 1   
+
+> ▷Optional: build a retrieval structure over stored keys (e.g., KD-tree).
+> 12
+
+I ← BuildIndex ({κ | (κ, u, T, x f ) ∈ B} ) 
+
+> 13
+
+return B, I
+
+the start state onto its translation-invariant components. An optional index over stored keys can be constructed to support efficient retrieval during planning. 
+
+b) Retrieval, ranking, and fallback during node expan-sion: Upon the first expansion of a node xnear , KiTE-Extend retrieves an edge set by querying the edge bundle. Specifically, edges are selected whose stored keys κ lie within a δ-radius neighborhood of κ(xnear ), yielding candidate edges whose starting states have translation-invariant components similar to those of xnear . The retrieved edge set is stored locally for each node and reused across future expansions from that node. Algorithm 3: KiTE -Extend 
+
+Input: xnear ; sampled target xrand ; edge bundle B; index I;radius δ; skip factor p; random fallback probability ϵ
+
+Output: Accepted extension (xnew , τ ) or FAIL  
+
+> ▷ ϵ -greedy random expansion.
+> 1
+
+if Uniform (0 , 1) < ϵ then  
+
+> 2
+
+return Rand -Extend (xnear , x rand , K =1)    
+
+> ▷Initialize the node-local available edge set on first expansion of xnear .
+> 3
+
+if C(xnear ) is undefined then  
+
+> 4
+
+κnear ← Key (xnear ) 
+
+> 5
+
+C(xnear ) ← { e ∈ B | ∥ κ(e) − κnear ∥ ≤ δ} ▷ using I  
+
+> ▷If no retrieved edges are available, use random expansion.
+> 6
+
+if C(xnear ) = ∅ then  
+
+> 7
+
+return Rand -Extend (xnear , x rand , K =1)     
+
+> ▷Rank by predicted progress toward xrand using stored endpoints.
+> 8
+
+Crank ← SortBy (C(xnear ), d (xf (e), x rand ))  
+
+> 9
+
+for j ← 1 to ⌈|C rank |/p ⌉ do  
+
+> 10
+
+e ← C rank [ 1 + ( j − 1) p ] 
+
+> 11
+
+C(xnear ) ← C (xnear ) \ { e} ▷ Mark e unavailable for future expansions from xnear . 
+
+> 12
+
+(u, T ) ← EdgeParams (B, e ) 
+
+> 13
+
+(xnew , τ ) ← Propagate (xnear , u, T, ∆t) 
+
+> 14
+
+if IsValid (τ ) then  
+
+> 15
+
+return (xnew , τ )     
+
+> ▷Fallback if no stride-pcandidate from Crank succeeds.
+> 16
+
+return Rand -Extend (xnear , x rand , K =1) 
+
+At each expansion step, the available candidates are ranked using a heuristic that favors progress toward the sampled target 
+
+xrand , e.g., based on the distance between the stored terminal state xf and xrand . Edges are then attempted in ranked order using a stride-p traversal of the ranked list. Each attempt consists of re-propagation under (u, T ) followed by validity checking (see Fig. 2). Whenever an edge is attempted, it is removed from the node’s candidate set and is not reconsidered for future expansions from the same node. 
+
+c) Preservation of theoretical properties: KiTE-Extend preserves the exploration structure of the underlying sampling-based planner. State sampling, node selection, and nearest-neighbor queries are unchanged, and only the local extension routine is modified to prioritize candidate motions drawn from the edge bundle. Candidate edges retrieved for a node are finite and monotonically decrease as they are attempted and removed from the node’s candidate set. If no retrieved candidate yields a valid extension, or if no retrieved candidates remain for the node, KiTE-Extend falls back to the baseline random extension step. Additionally, with probability ϵ, KiTE-Extend performs a random extension regardless of bundle availability. As a result, every node retains a non-zero probability of sampling from the full admissible control space, preserving the exploration behavior and theoretical properties of the underlying planner. 
+
+C. Single-Agent Instantiation 
+
+KiTE-Extend plugs into any kinodynamic sampling-based planner at the point where a short-horizon control–duration pair is proposed for local expansion. Given an expansion state 
+
+xnear and a guidance signal (e.g., a sampled target xrand ), 
+
+Fig. 2: Ranked edge-bundle expansion in KiTE-Extend. Top: 
+
+From a given tree node, KiTE ranks precomputed, dynamically feasible trajectory segments by the distance of their endpoints to the sampled state xrand and attempts them in order, skipping infeasible edges caused by obstacles. Bottom: Under agent collision constraints, the same mechanism naturally favors safe alternatives, including near-zero-velocity trajectories that avoid conflicts. Yellow vehicles denote the controlled agent, red and blue vehicles denote dynamic obstacles, and faint yellow states indicate candidate edge-bundle start configurations sampled within a δ-ball around the current node. 
+
+KiTE-Extend (Algorithm 3) retrieves and ranks candidate motions from the offline bundle, and returns the first valid propagated segment. The guidance signal is planner-dependent and is used only to rank candidate edges before propagation. In RRT-style planners, the sampled target xrand naturally serves this role by ranking edges based on the proximity of their pre-dicted endpoints. In cost-aware planners, the same mechanism can rank candidates using the planner’s existing local cost or progress metric evaluated at the predicted endpoint. 
+
+D. Multi-Robot Instantiations 
+
+We integrate the same low-level KiTE-Extend primitive into three representative multi-robot motion planning paradigms. In each case, only the mechanism by which agents are coupled differs; the underlying KiTE-based candidate generation re-mains unchanged. 
+
+1) Centralized Joint-State Planning: In centralized plan-ning, the search tree is constructed in the joint state space 
+
+X1 × · · · × X N . During a joint expansion, KiTE-Extend is invoked independently for each agent from its current compo-nent state, yielding candidate controls and durations (ui, T i).Since the proposed durations may differ across agents, we synchronize the joint rollout by propagating all agents for (a) Swap (20 ×20) 
+
+> (b) Narrow (5 ×4)
+> (c) Small Cluttered (15 ×15)
+> (d) Large Cluttered (40 ×40)
+> (e) Large Cluttered 3D (14 ×14 ×10)
+
+Fig. 3: Benchmark environments. The goal region of each vehicle is a circle/sphere of the same color. 
+
+Tmin ≜ min i Ti, truncating longer segments accordingly and evaluating interactions at the shared discrete time instants. The joint extension is accepted only if all truncated agent segments are individually valid and no collisions occur between any pair of agents at any discrete time t ∈ [0 , T min ].
+
+2) Prioritized Planning: Here, agents are planned sequen-tially under a fixed priority ordering. When planning for agent 
+
+i, the committed trajectories of agents 1, . . . , i − 1 are treated as time-indexed dynamic obstacles. During propagation, can-didate segments proposed by KiTE-Extend with duration T are accepted only if they avoid both static obstacles and higher-priority agents at all discrete times t ∈ [0 , T ].
+
+3) Conflict-Based Search: In CBS-style planners [6], coor-dination is enforced by adding spatiotemporal constraints and replanning only the affected agent. We use KiTE-Extend as the low-level expansion primitive when replanning a single agent under a given constraint set. Candidate segments are retrieved and ranked as in the unconstrained case, but are rejected if any state along the propagated segment violates an active constraint at the corresponding discrete time. Since CBS repeatedly replans at the low level, improving local node expansion efficiency has an outsized impact in this setting. 
+
+Optional pruning and reuse: Replanning from scratch at every branch of the conflict tree is simple but can be wasteful, as large portions of a previously explored low-level tree may remain valid after adding a new constraint. As an engineering optimization, we optionally reuse portions of a previously explored low-level tree after adding a new constraint. Given a conflict interval [ts, t f ], we discard the subtree downstream of the first edge whose time span overlaps ts. All remaining edges are revalidated against the new constraint, and expansion resumes from the remaining tree. This optimization reduces repeated low-level planning effort during high-level branching without altering feasibility semantics. V. E XPERIMENTS 
+
+A. Kinodynamic Systems and Environments 
+
+We consider three different models of kinodynamic systems and match our robot parameters to those used in [6, 12]. 
+
+Unicycle (UC, 2D): Circular robot with state (x, y, θ ),controls (v, ω ) and dynamics ˙x = v cos θ, ˙y = v sin θ,
+
+˙θ = ω. Control bounds are v ∈ [−0.5, 0.5] m/s and 
+
+ω ∈ [−0.5, 0.5] rad /s and radius is r = 0 .4 m.
+
+Second-Order Car (SOC, 2D): Rectangular robot with state (x, y, θ, v, ϕ ), controls (a, ω ) and dynamics ˙x = v cos θ,
+
+˙y = v sin θ, ˙θ = vL tan ϕ, ˙v = a, ˙ϕ = ω. Bounds are 
+
+v ∈ [−1, 1] m /s, ϕ ∈ [−π/ 3, π/ 3] rad , a ∈ [−2, 2] m /s2
+
+and ω ∈ [−0.5, 0.5] rad /s with length l = 0 .7 m and width 
+
+w = 0 .4 m.
+
+Double Integrator (DI, 3D): Spherical robot with state 
+
+x = [ p⊤, v⊤]⊤ where p = ( px, p y , p z ), v = ( vx, v y , v z ), con-trols u = ( ax, a y , a z ) and dynamics ˙p = v, ˙v = u. Velocity and accelerations are bounded as vx,y,z ∈ [−0.5, 0.5] m /s,
+
+ax,y,z ∈ [−2.0, 2.0] m /s2 and radius is r = 0 .1 m.We evaluate the planning performance of the systems op-erating in 2D space across the first four environments shown in Fig. 3. Each environment emphasizes distinct challenges in MRMP. Swap forces agents to exchange destinations in a confined area, and Narrow Corridor requires explicit ordering and waiting behavior. Both small and large cluttered envi-ronments require avoiding inter-agent collisions and collisions with arbitrarily placed static obstacles. For the DI model, we evaluate planning performance in 3D versions of the Swap and Large Cluttered environments. 
+
+B. Baselines 
+
+We compare four MRMP approaches. Three are sampling-based and differ only in their high-level coordination strategy, while sharing a common sampling-based planning framework. The fourth represents a fundamentally different search-and-repair approach. For each sampling-based MRMP method, we evaluate two variants that differ only in their node ex-pansion mechanism. The first uses a standard sampling-based expansion scheme, in which k random control rollouts are generated, and the rollout terminating closest to the randomly sampled target state is selected (Alg. 1). The second replaces this expansion step with KiTE-Extend (Alg. 3), while keeping all other components unchanged. Although KiTE-Extend is agnostic to the underlying sampling-based planner, we instan-tiate it within the RRT algorithm [7] in this work. 
+
+a) Centralized joint-state planning: cRRT plans in the joint state space using the RRT algorithm. cRRT+KiTE 
+
+differs only in the use of KiTE for joint-state node expansion. 
+
+b) Prioritized planning: pRRT performs sequential planning under a fixed global priority ordering, using RRT TABLE I: Representative results across systems and environments at two team sizes per setting. Full results (510 conditions) are reported in Appendix.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+
+> Domain Variant cRRT pRRT KCBS dbCBS
+> SR (%) CT (s) PT (s) SR (%) CT (s) PT (s) SR (%) CT (s) PT (s) SR (%) CT (s) PT (s) Small Cluttered Base 100 13.2 ±1.2 428 ±8.0 100 1.34 ±0.11 132 ±3.1 100 2.17 ±0.16 116 ±2.0 0--SOC (N=4) KiTE 100 0.639 ±0.049 223 ±5.5 100 0.258 ±0.019 102 ±1.8 100 0.479 ±0.042 87.6 ±1.4 ---Small Cluttered Base 1221 ±0.0 1668 ±0.0 95 7.27 ±1.2 278 ±5.3 100 7.13 ±0.39 188 ±2.4 0--SOC (N=8) KiTE 93 13.0 ±2.3 643 ±16 97 5.68 ±2.1 219 ±3.5 100 1.72 ±0.12 146 ±1.6 ---Small Cluttered Base 0--73 50.4 ±5.5 632 ±11 73 141 ±9.2 290 ±2.6 0--SOC (N=15) KiTE 33 244 ±8.1 2211 ±71 79 26.0 ±4.5 504 ±6.7 99 43.2 ±4.1 250 ±1.9 ---Large Cluttered Base 95 82.4 ±6.1 2476 ±23 87 4.67 ±1.2 644 ±8.0 100 3.89 ±0.22 588 ±6.0 100 96.5 ±0.26 266 ±0.0 UC (N=5) KiTE 100 2.97 ±0.18 853 ±13 89 2.84 ±1.9 379 ±4.1 100 1.23 ±0.097 340 ±3.1 ---Large Cluttered Base 0--630.3 ±4.1 2557 ±132 90 106 ±6.9 1753 ±10 0--UC (N=20) KiTE 43 248 ±4.3 7353 ±146 13 28.3 ±9.1 1477 ±30 100 38.7 ±3.8 1070 ±4.6 ---Large Cluttered Base 0--498.3 ±26 4284 ±64 4237 ±28 2702 ±44 0--UC (N=30) KiTE 0--617.4 ±2.9 2390 ±81 65 140 ±7.5 1637 ±3.6 ---Narrow Corridor Base 100 2.40 ±0.17 192 ±4.4 26 51.9 ±12 110 ±5.6 27 81.4 ±15 96.9 ±5.1 100 5.08 ±0.033 28.6 ±0.048 UC (N=3) KiTE 100 2.33 ±0.17 140 ±4.8 34 34.0 ±8.6 81.2 ±3.3 53 36.1 ±7.1 74.6 ±3.2 ---Swap 3D Base 93 27.9 ±4.1 313 ±4.1 100 0.0549 ±0.0012 69.4 ±0.52 100 0.0632 ±0.0012 70.7 ±0.50 60 290 ±0.69 64.6 ±0.0 DI (N=5) KiTE 100 0.115 ±0.0031 140 ±1.9 100 0.0160 ±0.00030 64.1 ±0.50 100 0.0272 ±0.0084 64.8 ±0.45 ---Swap 3D Base 0--100 0.269 ±0.0073 253 ±1.4 100 0.275 ±0.0047 251 ±0.97 0--DI (N=20) KiTE 100 3.57 ±0.060 989 ±12 100 0.0635 ±0.0017 229 ±0.90 100 0.0639 ±0.00081 226 ±0.89 ---Swap 3D Base 0--100 0.473 ±0.012 421 ±2.1 100 0.461 ±0.0066 409 ±1.4 0--DI (N=30) KiTE 100 11.7 ±0.17 1864 ±20 100 0.0989 ±0.00082 375 ±1.2 100 0.111 ±0.0013 373 ±1.1 ---Large Cluttered Base 0--100 4.55 ±0.46 1171 ±3.9 100 5.60 ±0.66 831 ±2.8 0--DI (N=30) KiTE 0--100 1.51 ±0.25 780 ±3.2 100 2.02 ±0.39 768 ±2.8 ---
+
+SR: Success Rate | CT: Computation Time | PT: Total Path Time 
+
+for each agent. pRRT+KiTE replaces the per-agent node expansion step with KiTE. 
+
+c) Conflict-Based Search: K-CBS is a probabilistically complete conflict-based search planner that uses RRT for low-level replanning under constraints. K-CBS+KiTE replaces the low-level expansion mechanism with KiTE in RRT while keeping the high-level CBS logic unchanged. 
+
+d) Discontinuity-bounded CBS (dbCBS): While it is not a SBP approach, dbCBS is a competing probabilistically complete baseline. It utilizes translation-invariant precompu-tations to speed up search before solving a joint optimization for ensuring feasibility [12]. For improved performance, we use db-A ∗
+
+ω instead of db-A ∗ as the low-level planner within dbCBS, following the updated formulation in [14]. 
+
+C. Experimental Details 
+
+Each experimental setting is defined by a choice of envi-ronment, kinodynamic system, and number of robots. For each setting, we run 100 independent trials with different random seeds, using the same set of seeds across the three sampling-based baselines. The number of robots varies from 4 to 30, depending on the environment. All experiments were run on a AMD Ryzen Threadripper PRO 7985WX system (64 cores, 515 GB RAM) using a single-threaded implementation. Each planner is given a maximum runtime budget of 300 seconds per trial. A trial is considered successful if the planner produces a set of dynamically feasible, collision-free trajectories for all robots within the allotted time. We report (i) success rate (SR), (ii) total path computation time (CT), and (iii) solution cost measured as the sum of individual robot trajectory durations (PT). Reported computation times include only online planning time, and averages for time and cost metrics are computed only over successful trials. For planners using KiTE-Extend, edge bundles are pre-computed once per kinodynamic system and are environment agnostic. Edge bundle generation takes approximately 5 to 10 seconds per system and is excluded from reported runtimes. We use translation-invariant edge bundles of size 30k for the Unicycle, 50k for the Second-Order Car, and 100k for the Dou-ble Integrator. An ablation study on the effect of edge bundle size is provided in the Appendix. In addition to translational invariance, we explored rotational symmetry for UC and SOC, which required significantly smaller edge bundles to achieve comparable performance. These results are omitted to maintain consistency with the dbCBS comparison setting, which does not exploit such symmetries. For fairness, we use the same maximum number of propagations per expansion step in both extension routines. Specifically, KiTE-Extend dynamically sets the skip factor to p = ⌈|C (xnear )|/10 ⌉ at each expansion with 
+
+ϵ = 0 .01 , while Rand-Extend uses a rollout count of K = 10 .We implemented all sampling-based baselines within acommon Python codebase, using Numba just-in-time com-pilation to eliminate interpreter overhead. For dbCBS, we use the authors’ publicly available implementation [4]. To ensure compatibility and fair comparison, our implementations match the collision-checking scheme, kinodynamic system parameters, and time discretization used by dbCBS, allowing us to reuse the motion primitives and solver they provide without modification. Trajectories are generated using fourth-order Runge-Kutta integration with a fixed time step ∆t = 0 .1,and collision checking is performed at this temporal resolution across all planners. For fair comparison with dbCBS, which resolves conflicts without agent merging, we evaluate K-CBS with merging disabled. Since the released dbCBS implemen-tation supports only Unicycle and Double Integrator systems, comparisons with dbCBS are reported for those systems only. VI. RESULTS Table I summarizes representative performance trends across all kinodynamic systems and environments. Com-plete results are provided in the Appendix (Tables II–IV) for the Unicycle, Second-Order Car, and Double Integrator systems. Across all settings, KiTE-Extend improves planning performance, but the nature of the improvement depends on 4 5 8 10 15 20 25 30                                                             
+
+> 0
+> 1000
+> 2000
+> 3000
+> 4000
+> 5000
+> Swap UC 45810 15 20 25 30
+> 0
+> 500
+> 1000
+> 1500
+> 2000
+> 2500
+> Swap SOC 45810 15 20 25 30
+> 0
+> 250
+> 500
+> 750
+> 1000
+> 1250
+> 1500
+> 1750
+> Swap DI 345678910 12 15 18 20
+> 0
+> 1000
+> 2000
+> 3000
+> 4000
+> Small Cluttered UC 345678910 12 15 18 20
+> 0
+> 500
+> 1000
+> 1500
+> 2000
+> Small Cluttered SOC 45810 15 20 25 30
+> 0
+> 1000
+> 2000
+> 3000
+> 4000
+> 5000
+> 6000
+> 7000
+> Large Cluttered UC 45810 15 20 25 30
+> 0
+> 1000
+> 2000
+> 3000
+> 4000
+> 5000
+> Large Cluttered SOC 23456810 15 20 25 30
+> 0
+> 500
+> 1000
+> 1500
+> 2000
+> 2500
+> 3000
+> 3500
+> Large Cluttered DI
+
+Fig. 4: Average total solution path time (seconds, y-axis) versus number of agents (x-axis) across environments and dynamical models. Darker curves correspond to KiTE-Extend variants, which consistently achieve lower solution times than their baseline counterparts. 
+
+the baseline coordination strategy. For cRRT, KiTE-Extend primarily improves scalability and feasibility in hard multi-agent regimes; for pRRT and KCBS, KiTE-Extend primarily improves computation time and solution quality. KiTE-Extend substantially improves the scalability of cen-tralized planning. As expected, baseline cRRT degrades rapidly with increasing team size and often fails beyond moderate robot counts. In contrast, cRRT+KiTE maintains high success rates in cases where cRRT fails, e.g., swap and small cluttered environments with 15 and 20 robots. These results indicate that improving the node expansion mechanism significantly extends the practical applicability of joint-state sampling-based planning to larger teams. In standard cRRT, joint controls are sampled uniformly at random, making co-ordinated, collision-free progress increasingly unlikely as the number of robots grows. KiTE-Extend increases the frequency of productive expansions while reducing time spent exploring unpromising branches. However, as the robot count increases further, cRRT+KiTE’s success rate reduces, reflecting the persistent combinatorial complexity of joint-state planning. KiTE-Extend makes pRRT consistently faster, while largely preserving its strong success rates. Across the representative settings in Table I, pRRT+KiTE reduces computation time by a mean of approximately 4.2× while achieving comparable success rates. For pRRT, success is largely governed by the imposed priority ordering. KiTE-Extend improves the effi-ciency of each robot’s individual planning call and can recover additional successes in some harder settings, but it does not systematically resolve priority-induced infeasibility. KiTE-Extend improves KCBS by accelerating low-level replanning while leaving the high-level CBS constraint search unchanged. Since KCBS repeatedly invokes its low-level plan-ner as constraints are incrementally added, reductions in per-call planning cost accumulate across the high-level search, leading to substantial runtime improvements. Across the evaluated settings, KCBS+KiTE consistently achieves large computation-time reductions while maintaining, and often improving, success rates as the number of robots increases. Be-yond speed, KiTE-Extend alters the set of motions considered during low-level replanning. The edge candidates considered by KiTE-Extend frequently include low velocity or pause-like motions that remain feasible when agents must yield to other agent’s trajectories, naturally supporting stop–wait–move behaviors that are effective in tightly coupled multi-robot settings (see Fig 2). In contrast, KCBS without KiTE-Extend relies on random control sampling, making such coordinated waiting behavior unlikely to arise consistently. This effect becomes especially pronounced when low-level search trees are pruned and reused across replans, where KCBS+KiTE readily exploits feasible waiting or recovery motions following constraint updates. Results for experiments with pruning can be found in Table V in the Appendix. Across all coordination paradigms, KiTE consistently im-proves solution quality as measured by total path duration. When comparing trials in which both the baseline planner and KiTE-augmented planners succeed, KiTE-Extend produces shorter duration trajectories on average, with reductions of approximately 40–60% for cRRT and 20–30% for pRRT and KCBS in the evaluated settings (see Fig 4). Although edge bundles are generated through random offline sampling, performance gains arise from retrieving locally compatible trajectory segments and prioritizing those that make the most progress toward the sampled target state during online ex-pansion. We observed that retrieving locally compatible edge candidates alone already improves performance over naive random sampling, but the combination of retrieval and rank-ing consistently yields the strongest performance across all MRMP paradigms, highlighting the importance of the ranking mechanism. This improvement reduces detours and oscillatory motion while still allowing low-velocity or wait-like behavior when required for feasibility. dbCBS achieves very low path durations in small and mod-erately sized Unicycle environments when it succeeds, often producing shorter trajectories than sampling-based planners. However, this improvement comes at the cost of substantially higher computation time and poor scalability as the number of agents increases or the environment size grows. In larger or more cluttered settings, dbCBS frequently requires orders of magnitude more time to find a feasible solution, and in many cases fails to do so within the allotted time budget. In con-trast, KiTE-guided planners trade some solution optimality for significantly improved scalability, producing feasible solutions much more quickly while maintaining competitive, though not always minimal path durations. VII. C ONCLUSION 
+
+This paper presented KiTE-Extend, a planner-agnostic ac-tion selection scheme that leverages translation-invariant of-fline computation to accelerate node expansion in sampling-based kinodynamic motion planning. By reframing node ex-pansion as a retrieval and ranking problem over precomputed trajectory segments, KiTE-Extend enables efficient reuse of of-fline computation while preserving feasibility through forward simulation. This makes KiTE particularly effective for multi-robot motion planning, where planning under spatiotemporal constraints amplifies the cost of inefficient expansion. Across cluttered environments and multiple kinodynamic systems, augmenting sampling-based planners with KiTE-Extend im-proves success rates, reduces computation time, and yields higher-quality solutions when used within centralized, priori-tized, and CBS-style MRMP frameworks, without sacrificing theoretical guarantees. More broadly, this work highlights low-level expansion efficiency as a central bottleneck in MRMP and suggests a principled path toward scalability through improved reuse of feasible expansions rather than increased coordination complexity. 
+
+Limitations: As the dimensionality of the translation-invariant state components increases, larger edge bundles may be required to achieve adequate coverage, increasing offline computation and retrieval cost. This challenge becomes sig-nificant for high-dimensional systems with limited symmetry. Future work will investigate structured bundle generation, ad-ditional symmetry exploitation, and problem-specific retrieval strategies to improve scalability in such settings. REFERENCES 
+
+[1] Pranav Atreya and Joydeep Biswas. State supervised steering function for sampling-based kinodynamic plan-ning. In International Conference on Autonomous Agents and Multiagent Systems (AAMAS) , 2022. [2] Yaniv Hassidof, Tom Jurgenson, and Kiril Solovey. Train-once plan-anywhere kinodynamic motion planning via diffusion trees. In Conference on Robot Learning ,pages 1847–1878. PMLR, 2025. [3] David Hsu, Robert Kindel, Jean-Claude Latombe, and Stephen Rock. Randomized kinodynamic motion plan-ning with moving obstacles. The International Journal of Robotics Research , 21(3):233–255, 2002. [4] IMRCLab. db-CBS: Dependency-based conflict-based search. https://github.com/IMRCLab/db-CBS, 2023. Ac-cessed: December 2025. [5] Maciej Kalisiak and Michiel van de Panne. Rrt-blossom: Rrt with a local flood-fill behavior. In Proceedings 2006 IEEE International Conference on Robotics and Automation, 2006. ICRA 2006. , pages 1237–1242. IEEE, 2006. [6] Justin Kottinger, Shaull Almagor, and Morteza Lahi-janian. Conflict-Based Search for Multi-Robot Mo-tion Planning with Kinodynamic Constraints. In 2022 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , pages 13494–13499, 2022. doi: 10. 1109/IROS47612.2022.9982018. URL https://ieeexplore. ieee.org/document/9982018. [7] Steven M LaValle and James J Kuffner Jr. Randomized kinodynamic planning. The international journal of robotics research , 20(5):378–400, 2001. [8] Yanbo Li, Zakary Littlefield, and Kostas E Bekris. Asymptotically optimal sampling-based kinodynamic planning. The International Journal of Robotics Re-search , 35(5):528–564, 2016. [9] Zakary Littlefield and Kostas E Bekris. Informed asymp-totically near-optimal planning for field robots with dy-namics. In Field and Service Robotics: Results of the 11th International Conference , pages 449–463. Springer, 2017. [10] Danylo Malyuta, Taylor P Reynolds, Michael Szmuk, Thomas Lew, Riccardo Bonalli, Marco Pavone, and Behc ¸et Ac ¸ıkmes ¸e. Convex optimization for trajectory generation: A tutorial on generating dynamically feasible trajectories reliably and efficiently. IEEE Control Systems Magazine , 42(5):40–113, 2022. [11] Courtney McBeth, James Motes, Isaac Ngui, Marco Morales, and Nancy M Amato. Scalable multi-robot motion planning using guidance-informed hypergraphs. 
+
+arXiv preprint arXiv:2311.10176 , 2023. [12] Akmaral Moldagalieva, Joaquim Ortiz-Haro, Marc Tou-ssaint, and Wolfgang H¨ onig. db-cbs: Discontinuity-bounded conflict-based search for multi-robot kinody-namic motion planning. In 2024 IEEE International Conference on Robotics and Automation (ICRA) , pages 14569–14575. IEEE, 2024. [13] Akmaral Moldagalieva, Keisuke Okumura, Amanda Pro-rok, and Wolfgang H¨ onig. db-lacam: Fast and scal-able multi-robot kinodynamic motion planning with discontinuity-bounded search and lightweight mapf. 
+
+arXiv preprint arXiv:2512.06796 , 2025. [14] Akmaral Moldagalieva, Joaquim Ortiz-Haro, and Wolf-gang H¨ onig. db-ecbs: Interaction-aware multirobot kin-odynamic motion planning. IEEE Transactions on Robotics , 42:244–260, 2025. [15] Joaquim Ortiz-Haro, Wolfgang Hoenig, Valentin N Hart-mann, and Marc Toussaint. idb-a*: Iterative search and optimization for optimal kinodynamic motion planning. 
+
+IEEE Transactions on Robotics , 2024. [16] Joaquim Ortiz-Haro, Wolfgang H¨ onig, Valentin N Hart-mann, Marc Toussaint, and Ludovic Righetti. idb-rrt: Sampling-based kinodynamic motion planning with motion primitives and trajectory optimization. In 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , pages 10702–10709. IEEE, 2024. [17] Anuj Pasricha and Alessandro Roncone. The virtues of laziness: Multi-query kinodynamic motion planning with lazy methods. In 2024 IEEE International Conference on Robotics and Automation (ICRA) , pages 14286–14292. IEEE, 2024. [18] Alejandro Perez, Robert Platt, George Konidaris, Leslie Kaelbling, and Tomas Lozano-Perez. Lqr-rrt*: Optimal sampling-based motion planning with automatically de-rived extension heuristics. In 2012 IEEE International Conference on Robotics and Automation , pages 2537– 2542. IEEE, 2012. [19] Mihail Pivtoraiko and Alonzo Kelly. Kinodynamic mo-tion planning with state lattice motion primitives. In 2011 IEEE/RSJ International Conference on Intelligent Robots and Systems , pages 2172–2179. IEEE, 2011. [20] Mihail N Pivtoraiko. Differentially constrained motion planning with state lattice motion primitives. 2012. [21] Mike Qin, Irving Solis, James D Motes, Marco Morales, and Nancy M Amato. K-arc: Adaptive robot coordination for multi-robot kinodynamic planning. IEEE Robotics and Automation Letters , 2025. [22] Basak Sakcak, Luca Bascetta, Gianni Ferretti, and Maria Prandini. Sampling-based optimal kinodynamic planning with motion primitives. Autonomous Robots , 43(7):1715– 1732, 2019. [23] Liam Schramm and Abdeslam Boularias. Learning-guided exploration for efficient sampling-based motion planning in high dimensions. In 2022 International conference on robotics and automation (ICRA) , pages 4429–4435. IEEE, 2022. [24] John Schulman, Yan Duan, Jonathan Ho, Alex Lee, Ibrahim Awwal, Henry Bradlow, Jia Pan, Sachin Patil, Ken Goldberg, and Pieter Abbeel. Motion planning with sequential convex optimization and convex colli-sion checking. The International Journal of Robotics Research , 33(9):1251–1270, 2014. [25] Rahul Shome and Lydia E Kavraki. Asymptoti-cally optimal kinodynamic planning using bundles of edges. In 2021 IEEE International Conference on Robotics and Automation (ICRA) , pages 9988–9994. IEEE, 2021. URL https://ieeexplore.ieee.org/stamp/ stamp.jsp?arnumber=10802168. [26] Rahul Shome, Kiril Solovey, Andrew Dobson, Dan Halperin, and Kostas E Bekris. drrt*: Scalable and in-formed asymptotically-optimal multi-robot motion plan-ning. Autonomous Robots , 44(3):443–467, 2020. [27] Joonyeol Sim, Seonghyeon Lim, and Changjoo Nam. St-cbs: Spatio-temporal conflict based search in continuous space for multi-agent pathfinding. In Proceedings of the 40th ACM/SIGAPP Symposium on Applied Computing ,pages 815–822, 2025. [28] Roni Stern, Nathan Sturtevant, Ariel Felner, Sven Koenig, Hang Ma, Thayne Walker, Jiaoyang Li, Dor Atzmon, Liron Cohen, TK Kumar, et al. Multi-agent pathfinding: Definitions, variants, and benchmarks. In 
+
+Proceedings of the International Symposium on Combi-natorial Search , volume 10, pages 151–158, 2019. [29] Biwei Tang, Kui Xiang, Muye Pang, and Zhu Zhanxia. Multi-robot path planning using an improved self-adaptive particle swarm optimization. Interna-tional Journal of Advanced Robotic Systems , 17(5): 1729881420936154, 2020. [30] Jur P Van Den Berg and Mark H Overmars. Prioritized motion planning for multiple robots. In 2005 IEEE/RSJ International Conference on Intelligent Robots and Sys-tems , pages 430–435. IEEE, 2005. [31] Glenn Wagner and Howie Choset. Subdimensional expansion for multirobot path planning. Artificial intel-ligence , 219:1–24, 2015. [32] Dustin J Webb and Jur Van Den Berg. Kinodynamic rrt*: Asymptotically optimal motion planning for robots with linear dynamics. In 2013 IEEE international conference on robotics and automation , pages 5054–5061. IEEE, 2013. [33] Konstantin Yakovlev, Anton Andreychuk, and Vitaly Vorobyev. Prioritized multi-agent path finding for dif-ferential drive robots. In 2019 European Conference on Mobile Robots (ECMR) , pages 1–6, 2019. doi: 10.1109/ECMR.2019.8870957. [34] Xiaotong Zhang, Yuanjing Wang, Siyu Teng, Luxi Li, and Long Chen. Alternating partition prioritized plan-ning for scalable multi-robot coordination in congested environments. IEEE Robotics and Automation Letters ,2025. APPENDIX 
+
+Contents 
+
+A Results for the Unicycle model . . . . . 12 B Results for the Second Order Car model 16 C Results for the Double Integrator model 20 D Effect of pruning in KCBS for the Second-Order Car model. . . . . . . . . 23 E Ablation to analyze the effect of edge bundle size. . . . . . . . . . . . . . . . 26 F Ablation to analyze the effect of skip factor p . . . . . . . . . . . . . . . . . . 26 OVERVIEW 
+
+This appendix provides complete experimental results, abla-tion studies, and additional analyses that complement the main paper. Specifically, it includes: (i) full planner performance tables for all evaluated motion models (Unicycle, Second Order Car, and Double Integrator) across environments and robot counts, (ii) distributional visualizations illustrating vari-ability and tail behavior underlying aggregate statistics, (iii) an analysis of pruning in the KCBS low-level planner and its interaction with KiTE-Extend, and (iv) ablation studies examining the effect of edge-bundle size and skip factor on KiTE-Extend performance. Unless otherwise stated, trends discussed here are consistent with those reported in the main paper and are intended to provide additional insight rather than introduce new claims. The supplementary material additionally includes videos demonstrating side-by-side executions of baseline planners and their KiTE-Extend variants for selected environments and robot counts. A. Results for the Unicycle model 
+
+Table II reports complete results for the Unicycle model across all environments and planners. KiTE-Extend consis-tently improves feasibility and scalability for sampling-based planners, most notably for cRRT, where it converts widespread failure at higher robot counts into consistent success across swap, and cluttered settings. For pRRT and KCBS, KiTE-Extend yields substantial reductions in computation time and path duration while largely preserving success rates, with the largest gains occurring in cluttered and high-density settings. Across all environments, these trends mirror those reported in the main paper and indicate that KiTE’s benefits are robust to both environment structure and agent count. To complement the aggregate statistics reported in Table II, Fig. 5 and Fig. 6 visualize performance distributions for representative envi-ronments in experiments with the Unicycle model, including success rate (bar charts) as well as computation time and total path duration (boxen plots). TABLE II: Planner performance for the Unicycle (UC) model across environments and robot counts. Results compare baseline planners and their KiTE-Extend variants for cRRT, pRRT, KCBS, and dbCBS, reported in terms of success rate (SR), computation time (CT), and total path time (PT). Bold entries indicate the best value for each metric within a given planner and environment; for success rate, all entries achieving the maximum value are bolded. 
+
+Domain Variant cRRT pRRT KCBS dbCBS 
+
+SR (%) CT (s) PT (s) SR (%) CT (s) PT (s) SR (%) CT (s) PT (s) SR (%) CT (s) PT (s) Narrow Corridor Base 100 2.40 ± 0.17 192 ± 4.4 26 51.9 ± 12 110 ± 5.6 27 81.4 ± 15 96.9 ± 5.1 100 5.08 ± 0.033 28.6 ± 0.048 (N=3) KiTE 100 2.33 ± 0.17 140 ± 4.8 34 34.0 ± 8.6 81.2 ± 3.3 53 36.1 ± 7.1 74.6 ± 3.2 - - -Swap Base 100 11.7 ± 0.67 1120 ± 10.0 100 0.645 ± 0.038 330 ± 3.9 100 1.42 ± 0.10 292 ± 3.2 100 49.2 ± 0.088 162 ± 0.0 (N=4) KiTE 100 0.539 ± 0.014 329 ± 2.9 100 0.107 ± 0.0063 197 ± 1.3 100 0.218 ± 0.013 179 ± 0.68 - - -Swap Base 100 29.0 ± 2.4 1540 ± 14 100 0.539 ± 0.022 401 ± 4.5 100 1.25 ± 0.067 364 ± 3.8 100 23.6 ± 0.099 233 ± 0.0 (N=5) KiTE 100 0.933 ± 0.024 438 ± 4.0 100 0.104 ± 0.013 230 ± 1.8 100 0.192 ± 0.011 212 ± 0.73 - - -Swap Base 20 210 ± 13 3315 ± 35 100 1.30 ± 0.10 700 ± 5.3 100 11.1 ± 1.0 544 ± 3.2 0 - -(N=8) KiTE 100 5.73 ± 0.23 932 ± 8.7 99 0.370 ± 0.024 420 ± 2.2 100 6.86 ± 0.72 350 ± 0.66 - - -Swap Base 7 237 ± 19 4837 ± 126 98 1.61 ± 0.12 882 ± 6.6 96 56.7 ± 5.7 652 ± 3.1 0 - -(N=10) KiTE 100 9.63 ± 0.37 1333 ± 12 99 0.51 ± 0.04 547 ± 2.5 97 35.11 ± 4.3 437 ± 0.63 - - -Swap Base 0 - - 72 8.89 ± 2.0 1409 ± 11 11 127 ± 25 943 ± 6.3 0 - -(N=15) KiTE 100 63.9 ± 4.8 2661 ± 23 80 1.74 ± 0.19 865 ± 5.6 30 77.4 ± 9.8 645 ± 1.7 - - -Swap Base 0 - - 48 15.3 ± 2.4 1968 ± 14 0 - - 0 - -(N=20) KiTE 14 268 ± 5.0 4638 ± 91 62 14.9 ± 6.1 1213 ± 7.5 0 - - - - -Swap Base 0 - - 20 37.0 ± 5.3 2510 ± 30 0 - - 0 - -(N=25) KiTE 0 - - 19 10.1 ± 1.8 1612 ± 18 0 - - - - -Swap Base 0 - - 2 66.3 ± 20 3042 ± 63 0 - - 0 - -(N=30) KiTE 0 - - 6 15.3 ± 5.6 2019 ± 27 0 - - - - -Small Cluttered Base 100 1.34 ± 0.090 422 ± 8.4 100 0.730 ± 0.049 163 ± 2.8 100 1.07 ± 0.087 158 ± 2.6 100 4.25 ± 0.028 56.2 ± 0.0 (N=3) KiTE 100 0.287 ± 0.023 166 ± 3.5 100 0.190 ± 0.014 88.1 ± 1.3 100 0.217 ± 0.012 88.2 ± 1.3 - - -Small Cluttered Base 100 3.97 ± 0.24 696 ± 10 100 1.06 ± 0.075 226 ± 4.5 100 1.50 ± 0.10 212 ± 3.7 100 6.25 ± 0.18 68.5 ± 0.0 (N=4) KiTE 100 0.646 ± 0.040 267 ± 6.7 100 0.264 ± 0.016 118 ± 2.0 100 0.326 ± 0.023 116 ± 1.7 - - -Small Cluttered Base 100 9.00 ± 0.64 958 ± 13 100 1.22 ± 0.061 290 ± 5.2 100 2.06 ± 0.11 260 ± 3.7 100 12.0 ± 0.067 92.9 ± 0.0 (N=5) KiTE 100 1.02 ± 0.049 350 ± 6.6 100 0.332 ± 0.020 154 ± 2.6 100 0.415 ± 0.022 140 ± 1.6 - - -Small Cluttered Base 100 17.3 ± 0.81 1343 ± 18 100 1.43 ± 0.070 339 ± 5.8 100 2.35 ± 0.11 311 ± 4.3 100 13.3 ± 0.092 111 ± 0.0 (N=6) KiTE 100 1.71 ± 0.067 489 ± 9.1 100 0.381 ± 0.023 184 ± 3.3 100 0.527 ± 0.028 165 ± 2.0 - - -Small Cluttered Base 100 38.2 ± 3.3 1756 ± 22 98 1.94 ± 0.16 403 ± 6.3 100 3.34 ± 0.18 339 ± 4.2 100 18.3 ± 0.067 127 ± 0.0 (N=7) KiTE 100 2.91 ± 0.13 629 ± 12 100 1.08 ± 0.38 220 ± 3.3 100 0.677 ± 0.035 188 ± 1.8 - - -Small Cluttered Base 98 49.6 ± 3.3 2080 ± 25 95 4.64 ± 1.1 460 ± 6.8 100 5.49 ± 0.33 350 ± 4.3 100 21.2 ± 0.24 141 ± 0.0 (N=8) KiTE 100 4.37 ± 0.17 736 ± 13 95 0.908 ± 0.095 252 ± 4.1 100 1.20 ± 0.068 197 ± 1.8 - - -Small Cluttered Base 51 179 ± 9.1 3183 ± 43 90 5.15 ± 0.61 607 ± 8.5 100 10.9 ± 0.66 429 ± 4.6 100 22.3 ± 0.83 183 ± 0.0 (N=10) KiTE 100 17.6 ± 0.87 1162 ± 24 90 1.68 ± 0.17 321 ± 4.3 100 2.04 ± 0.13 244 ± 2.1 - - -Small Cluttered Base 1 204 ± 0.0 4206 ± 0.0 86 11.9 ± 1.6 745 ± 12 100 19.4 ± 1.4 496 ± 5.3 0 - -(N=12) KiTE 100 31.9 ± 1.6 1578 ± 26 89 4.88 ± 1.6 402 ± 6.5 100 3.43 ± 0.18 288 ± 1.8 - - -Small Cluttered Base 0 - - 77 24.2 ± 4.9 963 ± 13 98 66.0 ± 4.9 564 ± 4.7 100 224 ± 0.74 287 ± 0.0 (N=15) KiTE 100 94.5 ± 4.5 2460 ± 45 79 7.45 ± 2.8 534 ± 7.0 100 9.59 ± 0.58 348 ± 1.9 - - -Small Cluttered Base 0 - - 53 41.0 ± 5.8 1274 ± 17 50 177 ± 10 645 ± 5.7 0 - -(N=18) KiTE 76 209 ± 6.4 3726 ± 64 61 9.81 ± 2.1 694 ± 9.2 99 54.6 ± 5.9 408 ± 1.5 - - -Small Cluttered Base 0 - - 51 53.0 ± 7.1 1436 ± 20 15 192 ± 15 705 ± 8.9 0 - -(N=20) KiTE 7 261 ± 5.1 3809 ± 139 61 31.1 ± 8.6 808 ± 11 87 97.6 ± 7.8 450 ± 1.4 - - -Large Cluttered Base 100 25.8 ± 1.8 1837 ± 18 89 7.45 ± 3.9 527 ± 7.1 100 3.59 ± 0.25 482 ± 6.8 100 78.5 ± 0.14 209 ± 0.0 (N=4) KiTE 100 1.27 ± 0.060 624 ± 8.1 97 1.06 ± 0.41 313 ± 3.6 100 0.934 ± 0.086 287 ± 2.4 - - -Large Cluttered Base 95 82.4 ± 6.1 2476 ± 23 87 4.67 ± 1.2 644 ± 8.0 100 3.89 ± 0.22 588 ± 6.0 100 96.5 ± 0.26 266 ± 0.0 (N=5) KiTE 100 2.97 ± 0.18 853 ± 13 89 2.84 ± 1.9 379 ± 4.1 100 1.23 ± 0.097 340 ± 3.1 - - -Large Cluttered Base 3 279 ± 5.6 4805 ± 128 67 12.5 ± 4.1 985 ± 12 100 10.3 ± 0.73 833 ± 6.7 100 149 ± 0.98 400 ± 0.0 (N=8) KiTE 100 10.9 ± 0.72 1642 ± 23 85 2.35 ± 0.37 587 ± 5.5 100 2.78 ± 0.31 500 ± 3.1 - - -Large Cluttered Base 0 - - 70 8.19 ± 1.8 1355 ± 16 100 18.6 ± 1.2 1044 ± 8.0 100 202 ± 0.22 517 ± 0.0 (N=10) KiTE 100 27.6 ± 1.3 2501 ± 34 83 2.38 ± 0.36 788 ± 7.2 100 6.01 ± 0.68 621 ± 3.5 - - -Large Cluttered Base 0 - - 21 35.1 ± 12 1855 ± 25 97 52.5 ± 3.3 1374 ± 8.6 0 - -(N=15) KiTE 100 110 ± 4.4 4565 ± 78 38 11.0 ± 3.1 1114 ± 14 100 16.1 ± 1.3 829 ± 2.9 - - -Large Cluttered Base 0 - - 6 30.3 ± 4.1 2557 ± 132 90 106 ± 6.9 1753 ± 10 0 - -(N=20) KiTE 43 248 ± 4.3 7353 ± 146 13 28.3 ± 9.1 1477 ± 30 100 38.7 ± 3.8 1070 ± 4.6 - - -Large Cluttered Base 0 - - 3 40.5 ± 16 3357 ± 121 46 180 ± 11 2232 ± 10 0 - -(N=25) KiTE 0 - - 8 29.7 ± 9.7 2024 ± 56 94 74.5 ± 5.6 1384 ± 3.9 - - -Large Cluttered Base 0 - - 4 98.3 ± 26 4284 ± 64 4 237 ± 28 2702 ± 44 0 - -(N=30) KiTE 0 - - 6 17.4 ± 2.9 2390 ± 81 65 140 ± 7.5 1637 ± 3.6 - - -
+
+SR: Success Rate | CT: Computation Time | PT: Total Path Time SWAP: N = 4 robots             
+
+> SWAP: N= 15 robots
+> Narrow Corridor: N= 3 robots
+> Small Cluttered: N= 4 robots
+> Small Cluttered: N= 10 robots
+
+Fig. 5: Detailed results for selected environments in experiments with the Unicycle model. Each row corresponds to one experimental setting (environment and agent count N ) and contains, from left to right: (i) success rate (SR; bar chart), (ii) computation time (CT; boxen plot), and (iii) total path time (PT; boxen plot), comparing each baseline planner to its KiTE-Extend variant. These plots visualize variability and tail behavior underlying the aggregate results in Table II. Small Cluttered: N = 15 robots             
+
+> Small Cluttered: N= 18 robots
+> Large Cluttered: N= 4 robots
+> Large Cluttered: N= 15 robots
+> Large Cluttered: N= 30 robots
+
+Fig. 6: Detailed results for selected environments in experiments with the Unicycle model (continued). Each row corresponds to one experimental setting (environment and agent count N ) and contains, from left to right: (i) success rate (SR; bar chart), (ii) computation time (CT; boxen plot), and (iii) total path time (PT; boxen plot), comparing each baseline planner to its KiTE-Extend variant. These plots visualize variability and tail behavior underlying the aggregate results in Table II. B. Results for the Second Order Car model 
+
+Table III reports complete results for the Second Order Car (SOC) model across all environments and planners. KiTE-Extend consistently extends successful planning to higher robot counts for sampling-based planners, with the most pronounced gains observed for cRRT, where it frequently converts failure into success across swap and cluttered environ-ments. For pRRT and KCBS, KiTE-Extend yields substantial reductions in computation time and total path duration while largely preserving success rates, and in several high-density settings extends successful planning relative to the baseline. Overall, the observed trends closely mirror those seen for the Unicycle model, indicating that KiTE’s benefits persist under more challenging second-order dynamics and are robust to both environment complexity and robot count. To complement the aggregate statistics reported in Table III, Fig. 7 and Fig. 8 present results for representative environments in experiments with the Second Order Car model, including success rate (bar charts) as well as computation time and total path time (boxen plots). TABLE III: Planner performance for the Second Order Car (SOC) model across environments and robot counts. Results compare baseline planners and their KiTE-Extend variants for cRRT, pRRT, KCBS, and dbCBS, reported in terms of success rate (SR), computation time (CT), and total path time (PT). Bold entries indicate the best value for each metric within a given planner and environment; for success rate, all entries achieving the maximum value are bolded. 
+
+Domain Variant cRRT pRRT KCBS 
+
+SR (%) CT (s) PT (s) SR (%) CT (s) PT (s) SR (%) CT (s) PT (s) Narrow Corridor Base 64 102 ± 9.9 106 ± 3.3 42 51.7 ± 7.8 56.4 ± 2.3 81 113 ± 9.3 48.3 ± 1.3 
+
+(N=3) KiTE 92 46.9 ± 5.4 128 ± 4.3 39 32.3 ± 7.7 71.5 ± 3.2 85 94.8 ± 9.1 53.6 ± 1.7 Swap Base 100 22.3 ± 3.2 579 ± 7.3 100 0.234 ± 0.017 175 ± 1.6 100 0.459 ± 0.033 162 ± 1.4 (N=4) KiTE 100 0.261 ± 0.043 239 ± 3.0 100 0.0440 ± 0.0023 140 ± 0.97 100 0.0792 ± 0.0069 130 ± 0.99 
+
+Swap Base 86 53.2 ± 6.2 852 ± 11 100 0.251 ± 0.015 211 ± 2.4 100 0.451 ± 0.026 190 ± 1.7 (N=5) KiTE 100 0.342 ± 0.025 323 ± 4.2 100 0.0492 ± 0.0024 165 ± 1.4 100 0.0891 ± 0.0057 154 ± 1.3 
+
+Swap Base 1 298 ± 0.0 1730 ± 0.0 100 0.515 ± 0.024 372 ± 3.1 100 2.60 ± 0.17 292 ± 2.1 (N=8) KiTE 100 1.22 ± 0.072 663 ± 7.5 100 1.00 ± 0.84 301 ± 2.1 100 0.651 ± 0.062 235 ± 1.5 
+
+Swap Base 0 - - 100 4.73 ± 2.9 474 ± 3.8 100 9.13 ± 0.98 344 ± 2.4 (N=10) KiTE 98 2.80 ± 0.14 922 ± 11 100 0.809 ± 0.44 384 ± 2.4 100 2.55 ± 0.28 283 ± 1.4 
+
+Swap Base 0 - - 92 6.64 ± 2.0 744 ± 5.8 30 128 ± 17 457 ± 4.1 (N=15) KiTE 96 16.3 ± 0.44 1754 ± 21 96 7.61 ± 3.4 603 ± 4.2 74 80.0 ± 9.0 395 ± 1.7 
+
+Swap Base 0 - - 72 26.1 ± 6.4 1080 ± 9.3 0 - -(N=20) KiTE 38 229 ± 6.3 2746 ± 55 91 17.0 ± 4.5 878 ± 4.9 0 - -Swap Base 0 - - 48 66.7 ± 11 1418 ± 10.0 0 - -(N=25) KiTE 0 - - 56 42.2 ± 8.4 1165 ± 8.9 0 - -Swap Base 0 - - 25 118 ± 17 1868 ± 22 0 - -(N=30) KiTE 0 - - 23 79.5 ± 19 1507 ± 19 0 - -Small Cluttered Base 100 2.03 ± 0.17 243 ± 5.4 100 0.861 ± 0.089 92.5 ± 1.6 100 1.32 ± 0.14 86.2 ± 1.6 (N=3) KiTE 100 0.254 ± 0.018 138 ± 4.6 100 0.159 ± 0.018 67.1 ± 1.1 100 0.293 ± 0.040 64.3 ± 1.1 
+
+Small Cluttered Base 100 13.2 ± 1.2 428 ± 8.0 100 1.34 ± 0.11 132 ± 3.1 100 2.17 ± 0.16 116 ± 2.0 (N=4) KiTE 100 0.639 ± 0.049 223 ± 5.5 100 0.258 ± 0.019 102 ± 1.8 100 0.479 ± 0.042 87.6 ± 1.4 
+
+Small Cluttered Base 95 55.9 ± 6.5 635 ± 11 100 1.41 ± 0.098 173 ± 3.1 100 2.53 ± 0.18 149 ± 2.3 (N=5) KiTE 100 4.54 ± 1.8 321 ± 8.6 100 0.349 ± 0.050 133 ± 2.6 100 0.649 ± 0.047 113 ± 1.9 
+
+Small Cluttered Base 52 83.4 ± 9.7 856 ± 23 100 3.82 ± 1.7 224 ± 4.9 100 2.90 ± 0.16 176 ± 2.5 (N=6) KiTE 100 4.96 ± 1.0 439 ± 12 99 0.533 ± 0.055 168 ± 3.2 100 0.751 ± 0.046 134 ± 2.3 
+
+Small Cluttered Base 17 137 ± 18 1149 ± 26 100 4.30 ± 1.1 259 ± 5.1 100 4.09 ± 0.23 187 ± 2.5 (N=7) KiTE 96 11.9 ± 3.3 520 ± 14 99 3.79 ± 1.5 198 ± 3.7 100 1.01 ± 0.050 140 ± 1.5 
+
+Small Cluttered Base 1 221 ± 0.0 1668 ± 0.0 95 7.27 ± 1.2 278 ± 5.3 100 7.13 ± 0.39 188 ± 2.4 (N=8) KiTE 93 13.0 ± 2.3 643 ± 16 97 5.68 ± 2.1 219 ± 3.5 100 1.72 ± 0.12 146 ± 1.6 
+
+Small Cluttered Base 0 - - 88 22.3 ± 5.1 378 ± 6.8 100 12.6 ± 0.68 228 ± 2.3 (N=10) KiTE 85 25.9 ± 3.4 959 ± 23 87 9.45 ± 2.6 302 ± 5.9 100 3.15 ± 0.19 183 ± 1.9 
+
+Small Cluttered Base 0 - - 86 30.4 ± 4.1 455 ± 6.4 100 36.5 ± 3.1 260 ± 2.3 (N=12) KiTE 91 68.9 ± 5.8 1449 ± 36 85 16.4 ± 5.0 368 ± 5.9 100 8.25 ± 0.69 207 ± 1.4 
+
+Small Cluttered Base 0 - - 73 50.4 ± 5.5 632 ± 11 73 141 ± 9.2 290 ± 2.6 (N=15) KiTE 33 244 ± 8.1 2211 ± 71 79 26.0 ± 4.5 504 ± 6.7 99 43.2 ± 4.1 250 ± 1.9 
+
+Small Cluttered Base 0 - - 54 94.9 ± 8.9 802 ± 11 5 229 ± 27 343 ± 5.7 (N=18) KiTE 0 - - 56 46.1 ± 7.5 652 ± 11 56 140 ± 9.7 287 ± 1.9 
+
+Small Cluttered Base 0 - - 43 116 ± 11 936 ± 15 0 - -(N=20) KiTE 0 - - 53 59.0 ± 7.5 758 ± 15 15 156 ± 17 317 ± 4.3 
+
+Large Cluttered Base 96 26.8 ± 4.5 1018 ± 13 95 9.38 ± 3.5 293 ± 4.0 100 1.69 ± 0.10 260 ± 3.4 (N=4) KiTE 100 0.874 ± 0.095 483 ± 9.3 97 5.38 ± 3.0 229 ± 3.3 100 0.424 ± 0.036 205 ± 2.7 
+
+Large Cluttered Base 63 70.9 ± 9.0 1371 ± 19 97 7.36 ± 2.3 340 ± 4.1 100 2.03 ± 0.13 301 ± 3.2 (N=5) KiTE 100 1.15 ± 0.056 615 ± 9.9 94 3.16 ± 1.9 270 ± 3.7 100 0.534 ± 0.048 244 ± 2.6 
+
+Large Cluttered Base 1 171 ± 0.0 2837 ± 0.0 84 17.4 ± 4.9 534 ± 6.9 100 4.67 ± 0.32 432 ± 3.4 (N=8) KiTE 100 4.04 ± 0.18 1217 ± 22 83 4.43 ± 2.0 418 ± 4.4 100 1.18 ± 0.082 345 ± 2.9 
+
+Large Cluttered Base 0 - - 77 18.6 ± 5.7 733 ± 8.9 100 11.9 ± 0.86 527 ± 4.6 (N=10) KiTE 100 10.4 ± 0.46 1845 ± 35 76 5.60 ± 2.7 571 ± 6.9 100 2.59 ± 0.22 436 ± 3.2 
+
+Large Cluttered Base 0 - - 34 42.3 ± 12 1031 ± 17 100 26.5 ± 2.3 711 ± 5.2 (N=15) KiTE 100 51.9 ± 1.7 3529 ± 63 32 27.1 ± 11 819 ± 17 100 5.13 ± 0.31 580 ± 3.1 
+
+Large Cluttered Base 0 - - 14 42.7 ± 19 1373 ± 30 95 65.2 ± 5.3 890 ± 5.5 (N=20) KiTE 30 228 ± 8.2 5666 ± 157 12 52.7 ± 24 1084 ± 25 100 11.3 ± 0.90 728 ± 4.1 
+
+Large Cluttered Base 0 - - 9 79.1 ± 27 1857 ± 41 71 124 ± 8.0 1121 ± 5.1 (N=25) KiTE 0 - - 11 41.8 ± 21 1466 ± 33 98 33.7 ± 3.5 915 ± 4.0 
+
+Large Cluttered Base 0 - - 3 103 ± 36 2487 ± 62 14 201 ± 15 1325 ± 12 (N=30) KiTE 0 - - 7 43.5 ± 11 1821 ± 31 75 102 ± 8.0 1055 ± 4.4 
+
+SR: Success Rate | CT: Computation Time | PT: Total Path Time SWAP: N = 4 robots             
+
+> SWAP: N= 10 robots
+> SWAP: N= 15 robots
+> Small Cluttered: N= 4 robots
+> Small Cluttered: N= 10 robots
+
+Fig. 7: Detailed results for selected environments in experiments with the Second Order Car model. Each row corresponds to one experimental setting (environment and agent count N ) and contains, from left to right: (i) success rate (SR; bar chart), (ii) computation time (CT; boxen plot), and (iii) total path time (PT; boxen plot), comparing each baseline planner to its KiTE-Extend variant. These plots visualize variability and tail behavior underlying the aggregate results in Table III. Small Cluttered: N = 15 robots             
+
+> Small Cluttered: N= 18 robots
+> Large Cluttered: N= 4 robots
+> Large Cluttered: N= 15 robots
+> Large Cluttered: N= 30 robots
+
+Fig. 8: Detailed results for selected environments in experiments with the Second Order Car model (continued). Each row corresponds to one experimental setting (environment and agent count N ) and contains, from left to right: (i) success rate (SR; bar chart), (ii) computation time (CT; boxen plot), and (iii) total path time (PT; boxen plot), comparing each baseline planner to its KiTE-Extend variant. These plots visualize variability and tail behavior underlying the aggregate results in Table III. C. Results for the Double Integrator model 
+
+Table IV reports complete results for the Double Integrator (DI) model across all environments and planners. KiTE-Extend consistently extends successful planning to higher robot counts for sampling-based planners, with particularly pronounced gains for cRRT, where baseline performance de-grades rapidly and KiTE-Extend recovers high success rates across both swap and cluttered environments. For pRRT and KCBS, KiTE-Extend yields substantial and consistent reductions in computation time and total path duration while preserving success rates across nearly all settings. Taken together with the Unicycle and Second Order Car results, these findings indicate that KiTE’s benefits persist under higher-dimensional and more challenging dynamics, and are not lim-ited to simpler motion models. To complement the aggregate statistics reported in Table IV, Fig. 9 presents results for representative environments in experiments with the Double Integrator model, including success rate (bar charts) as well as computation time and total path duration (boxen plots). TABLE IV: Planner performance for the Double Integrator (DI) model across environments and robot counts. Results compare baseline planners and their KiTE-Extend variants for cRRT, pRRT, KCBS, and dbCBS, reported in terms of success rate (SR), computation time (CT), and total path time (PT). Bold entries indicate the best value for each metric within a given planner and environment; for success rate, all entries achieving the maximum value are bolded. 
+
+Domain Variant cRRT pRRT KCBS dbCBS 
+
+SR (%) CT (s) PT (s) SR (%) CT (s) PT (s) SR (%) CT (s) PT (s) SR (%) CT (s) PT (s) Swap Base 100 3.74 ± 0.53 214 ± 3.0 100 0.0484 ± 0.0013 58.7 ± 0.47 100 0.0808 ± 0.016 57.3 ± 0.43 100 231 ± 0.54 51.7 ± 0.0 (N=4) KiTE 100 0.0722 ± 0.0029 103 ± 1.6 100 0.0127 ± 0.00022 53.0 ± 0.40 100 0.0246 ± 0.011 53.5 ± 0.42 - - -Swap Base 93 27.9 ± 4.1 313 ± 4.1 100 0.0549 ± 0.0012 69.4 ± 0.52 100 0.0632 ± 0.0012 70.7 ± 0.50 60 290 ± 0.69 64.6 ± 0.0 (N=5) KiTE 100 0.115 ± 0.0031 140 ± 1.9 100 0.0160 ± 0.00030 64.1 ± 0.50 100 0.0272 ± 0.0084 63.8 ± 0.45 - - -Swap Base 2 173 ± 4.7 676 ± 31 100 0.105 ± 0.0027 120 ± 0.73 100 0.129 ± 0.0028 120 ± 0.65 0 - -(N=8) KiTE 100 0.381 ± 0.0093 279 ± 3.9 100 0.0263 ± 0.00062 108 ± 0.58 100 0.0297 ± 0.00057 109 ± 0.56 - - -Swap Base 0 - - 100 0.111 ± 0.0030 123 ± 0.79 100 0.184 ± 0.022 123 ± 0.67 0 - -(N=10) KiTE 100 0.621 ± 0.014 351 ± 5.8 100 0.0296 ± 0.00038 111 ± 0.60 100 0.0923 ± 0.022 111 ± 0.61 - - -Swap Base 0 - - 100 0.198 ± 0.0048 203 ± 1.2 100 0.214 ± 0.0036 199 ± 0.84 0 - -(N=15) KiTE 100 1.79 ± 0.035 663 ± 8.1 100 0.0460 ± 0.00050 183 ± 0.86 100 0.0511 ± 0.00064 181 ± 0.71 - - -Swap Base 0 - - 100 0.269 ± 0.0073 253 ± 1.4 100 0.275 ± 0.0047 251 ± 0.97 0 - -(N=20) KiTE 100 3.57 ± 0.060 989 ± 12 100 0.0635 ± 0.0017 229 ± 0.90 100 0.0639 ± 0.00081 226 ± 0.89 - - -Swap Base 0 - - 100 0.347 ± 0.0081 339 ± 1.7 100 0.380 ± 0.0057 335 ± 1.1 0 - -(N=25) KiTE 100 6.64 ± 0.096 1444 ± 18 100 0.0837 ± 0.0020 307 ± 0.93 100 0.0918 ± 0.0013 305 ± 0.78 - - -Swap Base 0 - - 100 0.473 ± 0.012 421 ± 2.1 100 0.461 ± 0.0066 409 ± 1.4 0 - -(N=30) KiTE 100 11.7 ± 0.17 1864 ± 20 100 0.0989 ± 0.00082 375 ± 1.2 100 0.111 ± 0.0013 373 ± 1.1 - - -Large Cluttered Base 100 0.633 ± 0.029 179 ± 2.2 100 0.109 ± 0.0058 115 ± 0.87 100 0.113 ± 0.0042 81.1 ± 0.65 0 - -(N=2) KiTE 100 0.0865 ± 0.0040 101 ± 1.2 100 0.0303 ± 0.0015 72.2 ± 0.63 100 0.0462 ± 0.0092 72.7 ± 0.60 - - -Large Cluttered Base 100 11.9 ± 2.9 347 ± 3.5 100 0.159 ± 0.0050 172 ± 1.1 100 0.214 ± 0.015 121 ± 0.80 0 - -(N=3) KiTE 100 0.468 ± 0.17 182 ± 2.3 100 0.0517 ± 0.0018 110 ± 0.76 100 0.0696 ± 0.0085 110 ± 0.79 - - -Large Cluttered Base 59 100 ± 11 573 ± 7.3 100 0.251 ± 0.0082 230 ± 1.4 100 0.300 ± 0.020 161 ± 0.91 0 - -(N=4) KiTE 100 2.49 ± 0.54 287 ± 3.8 100 0.0807 ± 0.0035 145 ± 0.91 100 0.118 ± 0.015 147 ± 0.88 - - -Large Cluttered Base 1 154 ± 0.0 785 ± 0.0 100 0.290 ± 0.0078 272 ± 1.6 100 0.444 ± 0.034 195 ± 1.1 0 - -(N=5) KiTE 100 5.32 ± 1.6 381 ± 5.1 100 0.0970 ± 0.0029 176 ± 1.1 100 0.179 ± 0.024 176 ± 1.1 - - -Large Cluttered Base 0 - - 100 0.434 ± 0.034 299 ± 1.5 100 0.593 ± 0.052 214 ± 1.1 0 - -(N=6) KiTE 98 8.53 ± 2.3 466 ± 6.0 100 0.118 ± 0.0047 194 ± 0.95 100 0.218 ± 0.027 194 ± 1.1 - - -Large Cluttered Base 0 - - 100 1.59 ± 0.23 382 ± 2.1 100 3.49 ± 0.84 274 ± 1.4 0 - -(N=8) KiTE 93 15.7 ± 3.2 725 ± 11 100 0.640 ± 0.12 253 ± 1.4 100 1.21 ± 0.38 252 ± 1.5 - - -Large Cluttered Base 0 - - 99 3.91 ± 0.73 463 ± 2.3 100 7.00 ± 1.3 329 ± 1.5 0 - -(N=10) KiTE 85 27.3 ± 5.6 984 ± 14 100 1.21 ± 0.31 303 ± 1.6 100 1.36 ± 0.28 303 ± 1.5 - - -Large Cluttered Base 0 - - 100 3.89 ± 0.71 648 ± 3.1 100 7.63 ± 1.5 460 ± 2.2 0 - -(N=15) KiTE 43 68.4 ± 10 1700 ± 30 100 1.97 ± 0.43 426 ± 2.1 100 1.06 ± 0.17 424 ± 2.2 - - -Large Cluttered Base 0 - - 99 2.80 ± 0.41 836 ± 3.0 100 5.14 ± 1.4 599 ± 2.8 0 - -(N=20) KiTE 5 165 ± 44 2917 ± 177 100 1.27 ± 0.23 553 ± 2.4 100 1.14 ± 0.14 548 ± 2.1 - - -Large Cluttered Base 0 - - 99 3.51 ± 0.37 1018 ± 4.1 100 4.26 ± 0.42 727 ± 2.7 0 - -(N=25) KiTE 5 144 ± 8.2 3611 ± 195 100 1.14 ± 0.13 676 ± 2.7 100 1.83 ± 0.21 668 ± 2.5 - - -Large Cluttered Base 0 - - 100 4.55 ± 0.46 1171 ± 3.9 100 5.60 ± 0.66 831 ± 2.8 0 - -(N=30) KiTE 0 - - 100 1.51 ± 0.25 780 ± 3.2 100 2.02 ± 0.39 768 ± 2.8 - - -
+
+SR: Success Rate | CT: Computation Time | PT: Total Path Time SWAP 3D: N = 15 robots          
+
+> SWAP 3D: N= 30 robots
+> Large Cluttered 3D: N= 15 robots
+> Large Cluttered 3D: N= 30 robots
+
+Fig. 9: Detailed results for selected environments in experiments with the Double Integrator model. Each row corresponds to one experimental setting (environment and agent count N ) and contains, from left to right: (i) success rate (SR; bar chart), (ii) computation time (CT; boxen plot), and (iii) total path time (PT; boxen plot), comparing each baseline planner to its KiTE-Extend variant. These plots visualize variability and tail behavior underlying the aggregate results in Table IV. D. Effect of pruning in KCBS for the Second-Order Car model. 
+
+Table V compares KCBS with and without low-level tree pruning for the SOC model, both with and without KiTE-Extend. Across both environments, pruning primarily reduces computation time (CT) at moderate to high agent counts by avoiding full replanning when new conflicts are introduced, while largely preserving success rates. When combined with KiTE-Extend, pruning sometimes yields slightly higher total path time (PT), particularly at higher densities. This behavior is consistent with KiTE-Extend’s ability to select low-velocity or wait-like trajectory segments that resolve conflicts by slowing down rather than rerouting entirely. Under pruning, such adaptations are often realized by modifying existing trajectories instead of discov-ering alternative homotopy classes, improving feasibility and efficiency at the expense of longer execution times. In lower-density or less constrained settings, pruning pro-vides limited benefit. In these settings, the overhead of pruning and tree maintenance can offset its advantages, leading to similar performance between KCBS and KCBS+Pruning, for both the base planner and their KiTE-Extend variants, as conflicts are infrequent and replanning is rarely triggered. To complement the aggregate statistics reported in Ta-ble V, the accompanying boxen plots in Fig. 10 visualize the distribution of computation time and total path time for representative SOC settings, highlighting variability and tail behavior underlying the reported means. TABLE V: Planner performance for KCBS with and without low-level pruning under the Second-Order Car (SOC) model. Results compare baseline KCBS and KCBS+Pruning planners, both with and without KiTE-Extend, across Swap and Large Cluttered environments and varying robot counts. Metrics include success rate (SR), computation time (CT), and total path time (PT). Bold entries indicate the best value for each metric within a given planner and environment; for success rate, all entries achieving the maximum value are bolded. 
+
+Domain Variant KCBS KCBS+Pruning 
+
+SR CT (s) PT (s) SR CT (s) PT (s) Swap Base 100 0.145 ± 0.0098 113 ± 1.5 100 0.149 ± 0.011 114 ± 1.4 (N=3) KiTE 100 0.0259 ± 0.0018 89.7 ± 0.93 100 0.0258 ± 0.0018 90.3 ± 0.91 
+
+Swap Base 100 0.585 ± 0.052 162 ± 1.4 100 0.454 ± 0.035 168 ± 1.5 (N=4) KiTE 100 0.0905 ± 0.014 130 ± 0.99 100 0.0662 ± 0.0043 136 ± 0.99 
+
+Swap Base 100 0.404 ± 0.024 190 ± 1.7 100 0.408 ± 0.028 198 ± 1.5 (N=5) KiTE 100 0.0790 ± 0.0052 154 ± 1.3 100 0.0778 ± 0.0041 161 ± 1.1 
+
+Swap Base 100 2.31 ± 0.16 295 ± 2.1 100 2.04 ± 0.15 329 ± 2.0 (N=8) KiTE 100 0.605 ± 0.059 236 ± 1.4 100 0.640 ± 0.066 268 ± 1.3 
+
+Swap Base 100 11.9 ± 1.7 345 ± 2.4 100 6.14 ± 1.0 408 ± 1.7 (N=10) KiTE 100 2.07 ± 0.21 284 ± 1.3 100 1.45 ± 0.15 333 ± 1.3 
+
+Swap Base 30 128 ± 17 457 ± 4.1 88 82.6 ± 8.9 596 ± 2.3 (N=15) KiTE 74 80.0 ± 9.0 395 ± 1.7 95 42.7 ± 5.9 493 ± 1.6 
+
+Swap Base 0 - - 2 180 ± 33 813 ± 3.6 (N=20) KiTE 0 - - 4 178 ± 39 671 ± 4.5 
+
+Swap Base 0 - - 0 - -(N=25) KiTE 0 - - 0 - -Large Cluttered Base 100 1.43 ± 0.11 228 ± 3.0 100 1.10 ± 0.070 234 ± 3.1 (N=3) KiTE 100 0.316 ± 0.033 180 ± 1.8 100 0.281 ± 0.032 181 ± 2.1 
+
+Large Cluttered Base 100 1.97 ± 0.14 261 ± 3.5 100 1.62 ± 0.12 271 ± 3.3 (N=4) KiTE 100 0.549 ± 0.062 206 ± 2.8 100 0.437 ± 0.043 212 ± 2.9 
+
+Large Cluttered Base 100 2.11 ± 0.14 304 ± 3.1 100 1.85 ± 0.13 318 ± 3.4 (N=5) KiTE 100 0.599 ± 0.071 246 ± 2.6 100 0.541 ± 0.058 252 ± 2.8 
+
+Large Cluttered Base 100 4.92 ± 0.28 443 ± 3.3 100 4.65 ± 0.38 477 ± 4.4 (N=8) KiTE 100 1.53 ± 0.14 355 ± 3.0 100 1.35 ± 0.11 373 ± 3.2 
+
+Large Cluttered Base 100 12.3 ± 0.89 556 ± 4.5 100 11.5 ± 0.87 608 ± 5.1 (N=10) KiTE 100 3.72 ± 0.34 450 ± 3.4 100 3.41 ± 0.33 480 ± 3.6 
+
+Large Cluttered Base 100 30.7 ± 2.3 754 ± 4.3 100 23.1 ± 1.6 839 ± 5.8 (N=15) KiTE 100 9.10 ± 0.73 615 ± 3.5 100 6.96 ± 0.68 663 ± 3.9 
+
+Large Cluttered Base 99 76.9 ± 6.2 972 ± 5.1 98 47.3 ± 3.3 1077 ± 6.3 (N=20) KiTE 100 20.2 ± 2.0 780 ± 3.3 100 15.8 ± 1.3 850 ± 4.8 
+
+Large Cluttered Base 71 124 ± 8.0 1121 ± 5.1 92 96.9 ± 5.5 1405 ± 6.8 (N=25) KiTE 98 33.7 ± 3.5 915 ± 4.0 99 45.1 ± 4.7 1109 ± 4.6 
+
+Large Cluttered Base 14 201 ± 15 1325 ± 12 48 178 ± 9.8 1678 ± 9.6 (N=30) KiTE 75 102 ± 8.0 1055 ± 4.4 89 96.8 ± 7.1 1334 ± 5.2                 
+
+> KCBS: Kinodynamic CBS |-KiTE: planner augmented with KiTE |Pruning: Low-level KCBS Planner augmented to reuse portions of a previous tree SWAP: N= 5 robots
+> SWAP: N= 15 robots
+> Large Cluttered: N= 4 robots
+> Large Cluttered: N= 30 robots
+
+Fig. 10: Detailed results for selected environments in experiments with the Second Order Car model. Each row corresponds to one experimental setting (environment and agent count N ) and contains, from left to right: (i) success rate (SR; bar chart), (ii) computation time (CT; boxen plot), and (iii) total path time (PT; boxen plot), comparing each KCBS planner to its pruning enabled variant. These plots visualize variability and tail behavior underlying the aggregate results in Table V. E. Ablation to analyze the effect of edge bundle size. 
+
+Table VI varies the number of precomputed edges in the KiTE bundle for the SOC model in the Small Cluttered environment with N = 15 robots, using a fixed skip factor 
+
+p = 10 . Results are averaged over a common subset of trials for each planner in which all tested bundle sizes succeeded, ensuring fair comparison across configurations. As the bundle size increases, total path time (PT) decreases, consistent with a larger library providing higher-quality candidate segments for the progress-based ranking heuristic. Computation time (CT) reflects a tradeoff between increased retrieval and sort-ing overhead and reduced downstream effort: larger bundles increase the candidate set |C| , but also increase the likelihood of selecting a valid edge early in the stride-p evaluation of the ranked list (Alg. 3), thereby reducing the number of expensive propagation and validity checks before acceptance. This interaction can yield non-monotone CT behavior across bundle sizes while preserving the monotone improvement in PT. 
+
+F. Ablation to analyze the effect of skip factor p
+
+Table VII varies the skip factor p used to subsample the ranked candidate list in the KiTE-Extend routine (Alg. 3), while fixing the edge-bundle size to 50k for the SOC model in the Small Cluttered environment with N = 15 robots. Across planners, total path time (PT) remains largely invariant to p,indicating that the ranking heuristic tends to select similarly effective edges once a valid candidate is found. Computa-tion time (CT) varies non-monotonically with p, reflecting a tradeoff between evaluating more candidates (smaller p) and potentially delaying selection of a valid edge by skipping viable candidates in the ranked list (larger p). The p value that minimizes CT is planner-dependent in this setting. Results for cRRT+KiTE are omitted because there were no trials in which all tested p values succeeded under the common-success evaluation protocol (Rounds = 0 ). TABLE VI: Effect of KiTE edge-bundle size on planner performance for the Second-Order Car (SOC) model in the Small Cluttered environment with N = 15 robots. Results are shown for KiTE-augmented cRRT, pRRT, and KCBS using edge bundles of varying size (25k, 50k, and 75k edges). Reported metrics include computation time (CT) and total path time (PT), averaged over a common subset of trials for each planner in which all tested edge-bundle sizes successfully produced a solution. The column “Rounds” indicates the number of such common trials used for aggregation. 
+
+#Edges cRRT+KiTE pRRT+KiTE KCBS+KiTE 
+
+Rounds CT (s) PT (s) Rounds CT (s) PT (s) Rounds CT (s) PT (s) 25k 4 204 ± 32 2302 ± 296 50 34.8 ± 8.7 509 ± 9.8 99 30.4 ± 3.0 257 ± 1.7 50k 4 260 ± 4.6 1993 ± 71 50 22.7 ± 4.5 505 ± 8.5 99 42.8 ± 4.6 250 ± 1.9 75k 4 264 ± 25 1691 ± 190 50 24.5 ± 6.1 488 ± 8.8 99 35.8 ± 3.5 244 ± 1.5     
+
+> CT: Computation Time |PT: Total Path Time |Rounds: Number of trials (random seeds) for which all tested edge-bundle sizes succeeded for a given planner
+
+TABLE VII: Effect of skip factor p on KiTE-augmented planner performance for the Second-Order Car (SOC) model in the Small Cluttered environment with N = 15 robots, using a fixed edge-bundle size of 50k. Results are reported for pRRT+KiTE and KCBS+KiTE in terms of computation time (CT) and total path time (PT). Metrics are averaged over a common subset of trials for each planner in which all tested skip-factor settings successfully produced a solution. The column “Rounds” indicates the number of such common trials used for aggregation. 
+
+## Skip factor p pRRT+KiTE KCBS+KiTE 
+
+## Rounds CT (s) PT (s) Rounds CT (s) PT (s) 5 54 41.4 ± 8.8 507 ± 9.4 99 27.5 ± 2.3 251 ± 1.8 10 54 29.1 ± 7.1 509 ± 8.8 99 42.7 ± 4.6 250 ± 1.9 25 54 43.4 ± 8.4 509 ± 9.4 99 39.3 ± 4.3 246 ± 1.5     
+
+> CT: Computation Time |PT: Total Path Time |Rounds: Number of trials (random seeds) for which all tested skip-factor values succeeded for a given planner
+
+Summary of Appendix Findings. 
+
+Taken together, the results in this appendix demonstrate that the performance gains of KiTE-Extend are consistent across motion models, environments, and coordination strategies. The complete tables and distributional plots corroborate the aggregate trends reported in the main paper, while the pruning analysis and ablations provide insight into how KiTE-Extend interacts with low-level planning reuse and how its parameters influence the tradeoff between computation time and path quality. These additional results support the robustness of KiTE-Extend’s benefits without altering the conclusions drawn in the main text.

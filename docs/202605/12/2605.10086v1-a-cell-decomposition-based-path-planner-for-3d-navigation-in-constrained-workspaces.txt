@@ -1,0 +1,510 @@
+Title: A cell-decomposition based path planner for 3D navigation in constrained workspaces
+
+URL Source: https://arxiv.org/pdf/2605.10086v1
+
+Published Time: Tue, 12 May 2026 02:14:12 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# A cell-decomposition based path planner for 3D navigation in constrained workspaces ⋆
+
+João P. L. Morais ∗ Luciano C. A. Pimenta ∗,∗∗∗ 
+
+Marcelo A. Santos ∗∗ Guilherme V. Raffo ∗,∗∗∗ ∗ Graduate Program in Electrical Engineering, Universidade Federal de Minas Gerais, Belo Horizonte, MG, Brazil  
+
+> ∗∗
+
+Department of Management, Information and Production Engineering, University of Bergamo, Dalmine, BG, Italy  
+
+> ∗∗∗
+
+Department of Electronic Engineering, Universidade Federal de Minas Gerais, Belo Horizonte, MG, Brazil 
+
+Abstract: This paper proposes a cell decomposition algorithm for binary occupancy grids that ensures mutual complete visibility from each cell to at least one adjacent cell. This decomposition establishes a simplified framework for verifying path feasibility that can be easily embedded in optimization problems. To illustrate its utility, we formulate both second-order cone programs (SOCP) and their mixed-integer variant (MISOCP) within the proposed framework. Furthermore, we propose the KSP-SOCP method, which combines Yen’s k-shortest path algorithm with the SOCP, achieving improved solutions compared to a standard SOCP approach while avoiding the computational burden of MISOCP. The cell decomposition algorithm, KSP-SOCP, and MISOCP approaches were evaluated in 9 city-like workspaces. The decomposition efficiently partitioned each map, enabling both optimization methods to compute feasible paths. The proposed KSP-SOCP achieved time performance comparable to the MISOCP while requiring less memory, making it highly suitable for large-scale problems. 
+
+Keywords: Robotics, Path planning, cell decomposition, 3D workspaces, graph search, mixed-integer programming, cone programming. 1. INTRODUCTION Path planning is a core challenge for autonomous sys-tems, playing a key role in their navigation in dynamic workspaces and under sensing uncertainty and online plan-ning constraints (Du Toit and Burdick, 2012; Katrakazas et al., 2015). Path planners typically use high-level map representations, either unstructured, as in sampling-based methods like RRT (Karaman et al., 2011), or structured, as in cells or roadmap-based approaches for deterministic path generation (Choset et al., 2005; Lupascu et al., 2019). Within the structured path planning methods, a frequent approach is to employ mixed-integer programming (MIP) to either model collision avoidance constraints (Schouwe-naars et al., 2001; Mellinger et al., 2012) or to select a se-quence of convex safe sets that the path is to remain within (Deits and Tedrake, 2015b; Marcucci et al., 2023). Such MIPs can ensure optimality, but become intractable for large-scale problems without convex relaxation (Marcucci et al., 2024b). Alternatively, heuristic approaches employ line graphs to identify a feasible low-cost sequence of con-        
+
+> ⋆This manuscript version is made available under the CC-BY-NC-ND 4.0 license. This work was supported by the Brazilian agen-cies CAPES through the Academic Excellence Program (PROEX), CNPq under the grants 317058/2023-1 and 422143/2023-5, and FAPEMIG. Marcelo A. Santos acknowledges support from the Lom-bardy Region under the PR FESR 20212027 "Collabora & Innova" call (Decree no. 11969, 2 August 2024), Project "HARMONY" (CUP: E59I25000850007).
+
+vex safe regions. The resulting path, computed via convex optimization, trades optimality for reduced computational complexity (Marcucci et al., 2024a). Recent methods to generate convex safe sets for the afore-mentioned path planning approaches include the iterative region inflation by semidefinite programming (IRIS) (Deits and Tedrake, 2015a) and the safe corridor generation based on voxel grids (Toumieh and Lambert, 2022). The former method requires semi-algebraic representations of obstacle sets, while the latter requires an occupancy grid. In both cases, a set of intersecting convex safe regions is obtained, with such intersections being used as nodes in their respec-tive line graphs. Despite their contributions, the aforementioned works still present significant gaps regarding path planning within cell-decomposed workspaces. In the convex safe set gen-eration context, the presented approaches rely on inter-sections between convex sets to obtain safe regions for path optimization, which excludes scenarios where non-overlapping cell decompositions are more suitable, such as coverage paths. Although Nielsen et al. (2019) have presented a non-overlapping cell decomposition for 2D polygonal workspaces where the union of each adjacent cell pair is convex, allowing the generation of safe paths in the same fashion, no works providing a similar result for 3D or higher dimension workspaces were found. 
+
+> arXiv:2605.10086v1 [cs.RO] 11 May 2026
+
+In the path optimization context, heuristic approaches are constrained to the initially selected cell sequence found by the graph traverse algorithm, while MIPs become in-tractable in large-scale scenarios. However, optimization approaches that extend the heuristic approach by search-ing and testing additional cell sequences could achieve the optimality guarantees of MIPs without its computational complexity. The optimization approaches are also formu-lated for specific objectives, such as shortest length or minimum-fuel path (Schouwenaars et al., 2001), without providing a general framework for path optimization that can accommodate different objectives. To address these gaps, this paper generalizes our path planning method presented in Morais et al. (2025). In the new method, we propose a cell decomposition al-gorithm for 3D binary occupancy grids that generates non-overlapping, axis-aligned, box-shaped cells subject to boundary uniformity constraints. This design choice, which is supported by the performance and practicality ar-guments presented in Marcucci et al. (2024a) and Toumieh and Lambert (2022), respectively, ensures complete pair-wise visibility between adjacent cells. This visibility prop-erty yields results analogous to those found in Nielsen et al. (2019) for 3D environments. Furthermore, the extended method solves certain issues related to the preservation of Euclidean space connectivity observed in the original cell decomposition procedure. This paper also introduces simplified path feasibility constraints applicable to a wide range of optimiza-tion problems, thereby creating a general framework for optimization-based path planning. We demonstrate this framework by formulating second-order cone programs (SOCP) and their mixed-integer variant (MISOCP) for shortest path problems. Furthermore, we propose the KSP-SOCP method, which combines Yen’s k-shortest path algorithm with an SOCP solver to explore multiple feasi-ble cell sequences. This approach improves solution qual-ity while mitigating the computational burden associated with the MISOCP formulation. For comparison purposes, both the KSP-SOCP and MIS-OCP approaches are tested against a Basic Theta* path planner (Daniel et al., 2010). Theta* is an any-angle path planner for grids that provides near-optimal shortest paths with time performance comparable to A* (Hart et al., 1968). This comparison provides an estimate for the op-timality gap of the paths found by KSP-SOCP and MIS-OCP, and highlights the difference in performance between the proposed path planning framework and a standard grid-based search on the occupancy grid. The remainder of this paper is organized as follows. Section 2 presents the extended cell decomposition algorithm. Sec-tion 3 introduces the path-feasibility framework and the SOCP, MISOCP, and KSP-SOCP formulations. Section 4 presents simulation results in city-like workspaces, and Section 5 concludes the paper. 2. CELL DECOMPOSITION Consider a 3D Euclidean space Y ⊂ R3, containing an unknown number No of axis-aligned, box-shaped obstacle regions Oi. Let O be the union of all obstacles, and Yf
+
+be the free space within Y . The space Y is discretized into a binary occupancy grid D ∈ { 0, 1}Nx×Ny ×Nz , where 
+
+Dijk = 1 if it intersects an obstacle, and 0 otherwise. D
+
+is then decomposed into Nc axis-aligned box-shaped cells, represented by a matrix C ∈ N6×Nc and a Boolean vector 
+
+o ∈ { 0, 1}Nc . For the n-th cell, the first three elements in column n are the voxel indices of its lowermost corner, and the last three are its uppermost corner. Furthermore, on
+
+indicates whether the cell is an obstacle ( on = 1 ) or not. All cells in C must satisfy the following properties: P1) No cell overlap : no intersection between the internal volumes of any cells; P2) Internal uniformity : all voxels inside a cell must be uniformly 1 or 0, ensuring an exact decomposition relative to D;P3) Mutual complete visibility : All cells must have mutual complete visibility with at least one adjacent cell of the same type (unless there are none). In this work, two cells Ci, C j ⊂ Yf are said to be in complete visibility if, for every pair of points a ∈ Ci and b ∈ Cj ,the line segment joining a and b lies entirely within the free space Yf ;P4) Face boundary uniformity : all cells’ boundaries must be uniform to prevent partial obstructions, i.e., all voxels adjacent to that boundary share the same occupancy value. P1 implies that every voxel in D is covered by a single cell and that cell expansion occurs only into uncovered regions of D. P2 implies that all free cells are safe and that the entire free space in D is included within a free cell. P3 implies that it is possible to build a roadmap connecting all reachable free cells by placing a representative point in each cell and connecting them based on whether their cells satisfy P3. This property also means that each represen-tative point can be adjusted to match any given start and goal point within the reachable cells, thereby enabling both path planning and optimization through the roadmap. P4 implies that there is at most one portal per cell boundary, and if a portal exists, it spans the entire face boundary. Furthermore, it implies that for any cell satisfaying P1-P4, it is possible to create a unit volume cell on each uniform neighborhood that also satisfies P1-P4, which is crucial for the proper execution of the proposed cell de-composition. With all cells satisfying P1-P4, the resulting cell decomposition can ensure resolution-limited topology preservation of Y , since it entirely preserves the topology of the occupancy grid D, and thus its connectivity is only limited by the latter’s resolution. The major change to the algorithm proposed in (Morais et al., 2025) is the integration of property P3 directly into the decomposition process. Previously, P3 was only checked after decomposition, which could result in a fea-sible cell being disconnected from the graph even if it was physically reachable. The extended algorithm now enforces P3 during cell formation to prevent this issue. The proposed cell decomposition procedure 1 used to generate C is outlined in Algorithm 1, and utilizes the following auxiliary variables:   
+
+> 1For a visual demonstration of the cell decomposition procedure, please refer to the following video: https://youtu.be/-yTLp6bC9_o .
+
+• B ∈ NNx×Ny ×Nz : a matrix that maps each voxel in 
+
+D to the cell that contains it; 
+
+• M ∈ N>0: an upper bound for Nc, employed to terminate the recursive calls of Algorithm 1; 
+
+• J ⊂ D: the adjacent region of the current cell provided to the recursive calls of Algorithm 1; 
+
+• p ∈ { 0, 1}4: a property flag vector where pi indicates if P i is satisfied; 
+
+• u ∈ { 0, 1}6: a flag vector where each element indicates if the voxels adjacent to each boundary of C∗,n are uniform. The first three elements correspond to the cell boundaries in the negative x, y, and z directions, respectively, while the latter three correspond to the positive direction counterparts; 
+
+• F ∈ N6×6 
+
+> >0
+
+: a set of subregions of D where F∗,i contains the neighboring region of the i-th face of C∗,n , in the same order as in u;
+
+• e ∈ { 0, 1}3: a flag vector indicating if the current cell can expand in the positive x, y, and z direction, respectively; 
+
+• l ∈ N3: the current expansion step size for the cell in the positive x, y, and z direction for the current cell, respectively; 
+
+• q ∈ { 0, 1}3: A flag vector where qi indicates if li can be increased; 
+
+• d ∈ { 1, 2, 3}: An iterator for the current expansion direction (positive x, y, and z direction, respectively); 
+
+• i ∈ N3
+
+> >0
+
+: The voxel indices of the current cell’s starting point. Algorithm 1, starting with cell index n = 1 and C =[1 , 1, 1, 1, 1, 1] ′ (Lines 2-4), expands C∗,n in the positive 
+
+x, y and z directions, one at a time (Lines 9-11). At each expansion step, it validates properties P1-P4 with the following dedicated procedures, whose algorithms are outlined in Appendix A: 
+
+• CheckP1( C∗,n , B ) scans the section of B contained in 
+
+C∗,n to check for overlaps, returning a Boolean value to p1;
+
+• CheckP2( C∗,n , D ) scans the section of D contained in 
+
+C∗,n to verify internal uniformity, returning a Boolean value to p2;
+
+• CheckP3( C, B, D ) identifies adjacent feasible cells from C∗,n by scanning the elements of B adjacent to C∗,n , performs a mutual visibility check between the remaining adjacent cells and the n-th cell, and returns a Boolean value to p3;
+
+• CheckP4( C∗,n , D ) scans the voxels adjacent to each face of C∗,n to check for boundary uniformity, return-ing Boolean values to p4 and u; boundaries coinciding with the grid limits are automatically considered uni-form. If the expansion of the n-th cell in the d-th direction is successful (i.e., no false values in p and qd = 1), the step size ld is doubled, allowing for exponential growth of the n-th cell. However, if any value of p becomes 0 or a grid boundary is crossed, the last expansion is reverted to restore the n-th cell to its previous valid size. Subsequently, 
+
+ld is halved and qd = 0 to prevent further step increases in the current direction. This sequence effectively creates a bisection-like search for the maximum valid cell size for 
+
+C∗,n in each direction. If ld = 1 when halved, expansion in the d-th direction terminates ( ed = 0 ). If p4 = 0 , each 
+
+Algorithm 1 Cell Decomposition                                                                                                                                                                                                                                                                                       
+
+> Input: D∈{0,1}Nx×Ny×Nz,
+> M∈N>0
+> Output: C∈N6×Nc
+> >0,o∈{0,1}Nc
+> #Variable initialization 1: B←0Nx×Ny×Nz;2: n←1;e←11×3;
+> p←11×4;h←11×3;
+> q←11×3;i←11×3;# Main loop 3: while ∃i1∈ { 1, ..., N x}, i 2∈{1, ..., N y}, i 3∈ { 1, ..., N z} |
+> Bi1,i 2,i 3= 0 do
+> #Cell initialization 4: C∗,n ←[i, i ]′
+> ;#Grid boundary check and correction 5: for d= 1 to 3do
+> 6: if Cd+3 ,n ≥size( D, d )then
+> 7: Cd+3 ,n ←size( D, d );ed←
+> 0;8: end if
+> #Cell expansion 9: if ed= 1 then
+> 10: Cd+3 ,n ←Cd+3 ,n +hd;11: end if
+> #P1-P3 check and correc-tion 12: p1←CheckP1 (C∗,n , B );13: p2←CheckP2 (C∗,n , D );14: p3←CheckP3 (C, B, D );15: if ∃pk= 0 ∀k= 1 .. 3then
+> 16: Cd+3 ,n ←C(d+ 3 , n )−l(d);
+> qd←0,p←[1 ,1,1] ;17: if ld= 1 then ed←0;18: else ld←ld/2;19: end if
+> 20: end if
+> 21: end for
+> #P4 check and correction 22: p4, u ←CheckP4 (C∗,n , D );23: if p4= 0 then
+> #Cell boundary selection 24: for k= 1 to 6do
+> 25: v←(( k−1) mod 2) + 1 ;26: F∗,k ←C∗,n ;27: if v=kthen
+> 28: Fv,k , F v+3 ,k ←Ck,n −1;29: else
+> 30: Fv,k , F v+3 ,k ←Ck,n + 1 ;31: end if
+> # Recursive call to recover P4 32: if uk= 0 then
+> #Auxiliar vector for index-ing D
+> 33: j←F∗,k ;34: J←Dj1:j4,j 2:j5,j 3:j6;35: t←
+> CellDecomposition (J, 1) ;#Expansion flag update af-ter recursive reduction 36: for k= 1 to 3do
+> 37: if tk+3 +jk̸=jk+3 −1then
+> 38: ek←0;39: end if
+> 40: end for
+> 41: p4, u ←CheckP4 (C∗,n , D );42: end if
+> 43: end for
+> 44: end if
+> #End of cell expansion 45: if e=01×3then
+> #Update of cell coverage matrix B
+> 46: for d= 1 to 3do
+> #Auxiliar vector for index-ing B
+> 47: jd, j d+3 ←Cd,n , C d+3 ,n ;48: end for
+> 49: Bj1:j4,j 2:j5,j 3:j6←n;#Increment of cell index 50: n←n+ 1 ;#Early return for recursive calls 51: if n > M then return C
+> 52: end if
+> #Search for starting point of the next cell within the neighborhood of current cell 53: for k= 1 to 6do
+> 54: i←F1:3 ,k ;55: if Bi1,i 2,i 3=0then break
+> 56: end if
+> 57: end for
+> #Variable reset 58: e←[1 ,1,1] ;p←[1 ,1,1,1] ;
+> h←[1 ,1,1] ;q←[1 ,1,1] ;59: end if
+> 60: end while
+> 61: return C, o ;
+
+boundary of the n-th cell with non-uniform adjacent voxels is individually reduced to restore P4. This is achieved by identifying a single valid cell t within each F∗,k such that uk = 0 ∀ k; the dimensions of t will define the new boundary. Algorithm 1 is called recursively on the subset of D delimited by F∗,k (named J) to find t. If 
+
+p4 = 0 during the formation of t, this process repeats recursively for its non-uniform boundaries, reducing a non-singleton dimension of J to 1. This recursion is guaranteed to terminate when J is reduced to have only a single non-singleton dimension (which happens after 2 recursive calls for a 3D workspace), since in this case any cell in J would only have two isolated voxels as neighbors, thereby automatically satisfying P4. Once the recursive call returns the cell t, the respective boundary of the parent cell C∗,n is reduced to match the dimensions of 
+
+t. The values of the expansion flag e associated with the affected coordinates of C∗,n are set to 0, as C∗,n can no longer expand in these directions without violating P3. When all values of e are 0, the expansion of C∗,n is concluded. The voxels within C∗,n are then marked in the coverage array B as belonging to cell n. The cell index n is subsequently incremented, and the variables e, p, h, and q
+
+are reset to begin forming the next cell, which is initialized in one of the neighboring voxels of the current cell. The entire procedure finishes when all voxels in B are assigned (non-zero) or when the maximum cell count M is exceeded (for the recursive calls), returning the complete cell matrix 
+
+C and the obstacle cell vector o. The dimensions of each cell in C are scaled by the pixel-to-meter ratio of the occupancy grid, ensuring that the cell boundaries match the real dimensions of the workspace. 3. PATH FINDING AND OPTIMIZATION After the decomposition of D, the connectivity between the feasible cells in C can be represented by a line graph 
+
+G = {V, E, c }. The vertex set V ∈ I1: Nc represents the cells encoded in C, and the edge set E ⊂ { i, j | i, j ∈
+
+V, i ̸ = j} contains all free cell pairs that are at least partially adjacent and whose convex hull neither contains nor intersects any obstacle cells. The cost function c :
+
+E → R>0 is defined as the traversal cost for each edge, represented by the distance between the representative points of each connected cell (Marcucci et al., 2024a). From G, an adjacency function U : V × V → { 0, 1} can be defined, where U (i, j ) = 1 if the i-th and j-th cell are connected in G (i.e., {i, j } ∈ E) and 0 otherwise. To obtain a feasible polyline path, W , between any pair of feasible start ( win ) and goal ( wt) points in the free space Yf , let 
+
+W = {w1, w 2, ..., w Nw } ∈ Y Nw 
+
+> f
+
+, be the sequence of Nw
+
+waypoints, with w1 = win , wNw = wt and Nw ≥ 2. A path is feasible if and only if the following conditions as satisfied (Ahuja et al., 1993): 
+
+> Nw
+
+∑
+
+> i=2
+
+U (Si, S i−1) = Nw − 1, (1) 
+
+C1:3 ,S i + ϵ ≤ Wi ≤ C4:6 ,S i − ϵ, i = 1 , 2, ..., N w, (2) with S ∈ V Nw being the cell sequence that contains the respective waypoint in W , and ϵ being a safety margin matrix for each cell boundary. Eq. (1) ensures that S
+
+qualifies as a feasible path in G and Eq. (2) guarantees that each waypoint in W is contained within its corresponding cell listed in S with safety margin ϵ. Since Property P3 guarantees complete visibility between any two waypoints lying in adjacent cells of G, verifying (1) and (2) is sufficient to attest W as a feasible path from win to wt,eliminating the need for explicit collision checks or the placement of additional boundary waypoints. Using Eqs. (1)-(2), we can formulate W and S as the solution to a mixed-integer optimization problem. this problem includes (1) and (2) as feasibility constraints, with the general formulation given by 
+
+{W ∗, S ∗, N w, x } = arg min   
+
+> W,S,N w,x
+
+f (W, S, x ) (3) s.t: g(W, S, x ) ≤ 0,h(W, S, x ) = 0 ,W1 = win , W Nw = wt,
+
+(1) , (2) ,
+
+where f (W, S, x ) represents the cost functional to be opti-mized by the path planning problem, while x, g(W, S, x ),and h(W, S, x ) represent any additional optimization vari-ables, inequality constraints, and equality constraints of the problem, respectively. Now let SG be the shortest cell path in G obtained from graph traverse algorithms (such as Dijkstra and A*), and let W G be the shortest path constrained to SG. If such a sequence is provided a priori 
+
+as a fixed optimization parameter, only (2) is required to ensure feasibility for W , which reduces (3) to 
+
+{W G, x } = arg min  
+
+> W,x
+
+f (W, x ) (4) s.t: g(W, x ) ≤ 0,h(W, x ) = 0 ,W1 = win , W Nw = wt,
+
+(2) ,
+
+by fixing the integer variables associated with S. Although Eq. (3) can jointly optimize for the path W and the cell sequence S, providing an exact solution, its NP-hard nature makes it impractical for large-scale problems (Liberti, 2019). In contrast, Eq. (4) offers a more tractable approach that computes the shortest path W G for a fixed cell sequence SG. However, W G ≡ W ∗ holds only if 
+
+SG ≡ S∗, a condition not guaranteed by standard graph-based shortest path algorithms. To illustrate the proposed framework, the next subsection presents a path-finding problem that minimizes the Eu-clidean path length, along with an efficient procedure to obtain P and S.
+
+3.1 Minimum-distance path optimization 
+
+A minimum-distance path optimization problem, derived from (3) and following the formulation of Marcucci et al. (2024b), can be obtained by setting f (W, S, x ) = 
+
+∑Nw 
+
+> i=2
+
+|| wi − wi−1|| 2, with no additional variables x or constraints g(·) and h(·), resulting in a MISOCP. The same procedure, when applied to the formulation based on (4), yields an SOCP. To assign meaningful traversal costs to each edge in the connectivity graph G in order to obtain SG, representative points Qi are first optimized within each feasible cell to minimize the total edge distance across adjacent cells. This yields the optimization problem 
+
+Q∗ = arg min 
+
+> Q
+
+12
+
+> NC
+
+∑
+
+> i=1
+> NC
+
+∑
+
+> j=1
+
+U (i, j )|| Qi − Qj || 2 (5) s.t: C1:3 ,i + ϵ ≤ Qi ≤ C4:6 ,i − ϵ, i ∈ I1: NC .
+
+The optimal points Q∗ 
+
+> i
+
+are then used to define the edge weights c(i, j ) as c(i, j ) = 
+
+
+
+|| Q∗ 
+
+> i
+
+− Q∗ 
+
+> j
+
+|| 2, i, j ̸ = {S1, S NW },
+
+|| win − Q∗ 
+
+> j
+
+|| 2, i = S1,
+
+|| Q∗ 
+
+> i
+
+− win || 2, j = S1,
+
+|| wt − Q∗ 
+
+> j
+
+|| 2, i = SNW ,
+
+|| Q∗ 
+
+> i
+
+− wt|| 2, j = SNW ,
+
+(6) for all pair (i, j ) holding U (i, j ) = 1 . This construction en-sures that the edge weights reflect the minimum Euclidean distance between the optimized representative points of adjacent cells, while respecting the safety margin ϵ.The MISOCP formulation, while providing exact solu-tion, is intractable for large-scale problems. Conversely, the SOCP formulation is more tractable but does not guarantee optimality. To overcome this limitation, we pro-pose the KSP-SOCP approach, which integrates Yen’s k-shortest path algorithm (Yen, 1971) with the SOCP solver. The method generates several candidate sequences for SG
+
+from Yen’s algorithm, starting at k = 2 and increasing it as the k-th shortest path is found. For each spur path evaluated, it solves (4) to find the corresponding k-th shortest path, and then tests the k-th path found in (4) to improve W G. In this way, the optimality of W G is improved while preserving the computational efficiency of the SOCP formulation by focusing the search effort on the most promising cell sequences according to the weight function of G. Stopping search criterias for KSP-SOCP can be defined by an upper bound on either k or in the search time, in which case the largest k Furthermore, since the list of k-shortest paths in G is guaranteed to contain S∗ for a sufficiently large k, the proposed KSP-SOCP converges to the optimal solution P ∗, thus recovering the optimality guarantees of the MISOCP formulation. 4. NUMERICAL RESULTS The cell decomposition and path planning methods were tested on 9 randomly generated city-like workspaces, each discretized into an occupancy grid of variable size L ×
+
+L × H. For each workspace, a path from (1 , 1, 1) meters to (L − 1, L − 1, H − 1) meters was computed using four methods: 
+
+• The proposed KSP-SOCP using A* (Hart et al., 1968) as the graph-traversing algorithm, with Euclidean distance to the goal as a heuristic, and using MAT-LAB coneprog( ·) function to solve each SOCP; 
+
+• An A*-SOCP approach, which is equivalent to KSP-SOCP with k = 1 ;
+
+• A MISOCP solver based on the Big-M formulation, implemented in Gurobi 12.0.2 with the MATLAB API; 
+
+• The Basic Theta* planner, employed on the original occupancy grids, which provides a near-optimal ref-erence in terms of path length and a time benchmark for grid-based path planning methods. All simulations were performed in MATLAB R2024b run-ning in a single thread of an Intel i7-14700 CPU with 32 GB of RAM. 
+
+4.1 Cell decomposition results 
+
+The occupancy grids for all workspaces were defined with a resolution of 1 voxel/m 3, with L = {100 , 150 , ..., 500 }
+
+and H = 200 . The i-th workspace was constructed by subdividing the XY floorpan into a (Li/50) × (Li/50) 
+
+grid. Each cell in this grid contains an obstacle with a building-like shape randomly placed inside it. These obstacles were generated by stacking a random number of axis-aligned boxes with integer dimensions, ensuring that the upper surface of each box was fully contained within that of the box below, and that the total height remained below H. Fig. 1 illustrates the L = 500 workspace and its corresponding feasible-cell decomposition, highlighting the overall topology of the workspaces considered and their cell decomposition according to Algorithm 1. Table 1 summarizes the size and performance metrics obtained for the cell decomposition of each workspace.                                          
+
+> Number Number LTime (s) Memory (kB) of cells of edges 100 12 156 380 1149 150 29 338 823 2472 200 75 982 2385 7334 250 127 1605 3888 12084 300 211 2165 5249 16275 350 297 2686 6484 20484 400 399 3709 8976 28090 450 524 4055 9813 30719 500 658 5457 13208 41306
+
+Table 1. Performance and size metrics of the cell decomposition procedure. The memory usage of the final output from the cell decomposition procedure comprises the space occupied by the cell matrix C (6×Nc numbers), the occupancy vector o
+
+(Nc numbers), the representative points of each cell ( 3×Nc
+
+numbers), the edge list E, and the weight list c. All these numbers were stored as 64-bit floating-point or integer values. Across all workspaces, the number of cells presented a quadratic relationship with L, fitted by ˜Nc(L) = 0 .0528 L2
+
+with coefficient of determination R2 = 0 .9958 . Since H was fixed and the number of obstacles was also proportional to L2 with a relatively homogeneous spatial distribution, this result suggests that Nc, in workspaces with uniform occupancy, scales with the number of voxels. For similar 3D workspaces where H = L, it follows that NC ∝ L3.The number of edges was nearly proportional to Nc, with an average of 3.1 edges per cell. The mean and median number of connections per cell were both 6, with minimum and maximum numbers of 1 and 23, respectively. Notably, 99% of the cells had between 1 and 19 connections. The cell decomposition computation time, Tc, also exhib-ited a quadratic relationship with respect to L (Tc ∝ L2), fitted by ˜Tc(L) = 0 .0025 L2 with R2 = 0 .9962 . This L2
+
+dependence can be explained by noting that Tc is essen-tially given by the average computational time per cell multiplied by the number of cells, allowing L2 to serve as a suitable proxy for Nc. It is worth noting that the av-erage computational time per cell may include additional contributions from non-constant-time procedures, such as polytope intersection checks (for P3), 2D-3D interval scans (for P1-P2), and recursive calls. Fig. 1. (a) A 3D city-like workspace with L = 500 . (b) Its cell decomposition with only feasible cells shown. 
+
+4.2 Path planning results 
+
+In the path planning simulations, the safety margin ϵ
+
+was set to 1 m for every free cell boundary adjacent to obstacle cells, and the maximum search time was limited to 5 minutes. To ensure consistent initialization across methods, the MISOCP solver was warm-started using the cell-path solution obtained from A*-SOCP. As shown in Table 2, Basic Theta* produced paths with lengths close to the Euclidean straight-line distance between start and goal points. However, its execution times exhibited a high sensitivity to the size of the occupancy grid D and depended significantly on whether a direct path existed or if the algorithm needed to navigate around obstacles. The A*-SOCP approach, on the other hand, quickly found feasible paths on G, but produced paths up to 32% longer than those from Basic Theta*. Both KSP-SOCP and MISOCP improved upon the A*-SOCP solutions, albeit marginally in larger workspaces, with mixed results re-garding the time evolution of the shortest path found (as presented in Fig. 2). In the scenarios where both methods were successfully executed, they presented similar convergence behavior. Specifically, MISOCP outperformed KSP-SOCP for L = 100 and 250 , while KSP-SOCP was ahead for L = 150 and 200 .The largest value of k achieved by KSP-SOCP within the time limit showed a decreasing trend as L increased, justified by the increase with L on path length and on the time cost of running A* for each spur path. The major difference appeared in the memory usage: KSP-SOCP required significantly less memory than MISOCP in all cases, maintaining nearly constant memory con-sumption up to L = 400 . In sharp contrast, MISOCP exceeded the 32 GB limit at L = 300 , which prevented simulations at larger scales. This difference is attributed to the expensive model building required by MISOCP before solving and to its inherent scaling cost. Since the number of nodes, representative points, and edges in G all scale with 
+
+L2, the memory requirements grow accordingly, quickly reaching the system’s RAM limit. The KSP-SOCP approach mitigates this memory growth by embedding the flow constraints and an estimate of 0 25 50 75 100 125 150 175 200 225 250 275 300 240 255 270                                                                                                  
+
+> Length  (m)
+> KSP-SOCP
+> MISOCP (a) 025 50 75 100 125 150 175 200 225 250 275 300 310 320
+> Length  (m)
+> (b) 025 50 75 100 125 150 175 200 225 250 275 300 370 375 380 385
+> Length  (m)
+> (c) 025 50 75 100 125 150 175 200 225 250 275 300 480 490 500
+> Length  (m)
+> (d) 025 50 75 100 125 150 175 200 225 250 275 300 560 580 600 620
+> Length  (m)
+> (e) 025 50 75 100 125 150 175 200 225 250 275 300 650 675 700
+> Length  (m)
+> (f) 025 50 75 100 125 150 175 200 225 250 275 300 760 765 770
+> Length  (m)
+> (g) 025 50 75 100 125 150 175 200 225 250 275 300 850 860
+> Length  (m)
+> (h) 025 50 75 100 125 150 175 200 225 250 275 300 849 850 851
+> Length  (m)
+> T ime (s) (i)
+
+Fig. 2. Time evolution of solutions found by KSP-SOCP and MISOCP for (a) L = 100 , (b) L = 150 ,..., (i) 
+
+L = 500 .the traversal distance per cell directly in G, using A* to determine SG. This strategy eliminates the need for integer Basic Theta* A*-SOCP KSP-SOCP MISOCP                                                                                       
+
+> LTime (s) Length (m) Time (s) Length (m) Length (m) Largest kMemory (MB) Length (m) Memory (MB) 100 55.72 241.69 0.02 264.79 247.47 711 243.3 243.26 434.5 150 40.72 288.12 0.08 321.59 306.57 145 189.8 318.24 1110.6 200 2.60 342.95 0.2 380.07 375.05 65 113.0 380.07 8486.2 250 199.03 402.83 0.3 495.64 492.52 43 148.6 480.47 21336.8 300 84.26 466.18 0.39 602.43 555.65 135 123.9 Out of memory (> 32 GB) 350 1275 531.26 0.59 697.08 655.27 19 133.1 Out of memory (> 32 GB) 400 1347 596.67 0.74 767.52 762.79 13 1955.9 Out of memory (> 32 GB) 450 589.33 664.39 1.00 860.00 848.4 41941.0 Out of memory (> 32 GB) 500 524.36 731.67 1.34 850.78 849.8 32042.7 Out of memory (> 32 GB)
+
+Table 2. Performance metrics for the path planning methods evaluated. variables and flow constraints within the SOCP, applying second-order cone constraints only to the waypoints con-tained in SG. As a result, memory usage is limited to that required for executing A* and storing the spur and the 
+
+k-shortest paths found in the allotted time limit. Further-more, the smaller number of feasible paths searched by KSP-SOCP in larger workspaces partially compensates the increased memory demand due to higher L. Therefore, the proposed KSP-SOCP approach is capable of computing feasible solutions faster than Basic Theta* and refining the initial graph-traverse paths with a speed comparable to MISOCP, all while using less memory. This enanles its application to large-scale scenarios that may be unfeasible for MISOCP approaches. 5. CONCLUSIONS The extended cell decomposition algorithm efficiently partitioned dense, discretized 3D workspaces with axis-aligned box-shaped obstacles, while successfully ensuring complete visibility and exactness properties. This achieve-ment enabled a simplified framework for path feasibility that was seamlessly integrated into optimization prob-lems. For the minimum Euclidean path distance prob-lem, the decomposition supported the formulation of both MISOCP and SOCP solvers for path queries in dense workspaces. The proposed KSP-SOCP method computed feasible paths as efficiently as standard SOCP-based ap-proaches, while improving solution quality through the convergence guarantees of MISOCP and offering superior memory efficiency for large-scale workspaces. In future work, we will explore alternative techniques to find suitable solutions for SG. The aim is to develop an SOCP-based approach that achieves faster convergence without compromising the memory efficiency or rapid solu-tion generation achieved by KSP-SOCP. Furthermore, we plan to extend the proposed cell decomposition algorithm from a discrete occupancy grid to handle workspaces con-taining general polyhedral obstacles in arbitrary positions. REFERENCES Ahuja, R.K., Magnanti, T.L., and Orlin, J.B. (1993). 
+
+Network flows: theory, algorithms, and applications .Prentice-Hall, Inc., USA. Choset, H., Lynch, K., Hutchinson, S., Kantor, G., and Burgard, W. (2005). Principles of Robot Motion: The-ory, Algorithms, and Implementations . MIT Press. Daniel, K., Nash, A., Koenig, S., and Felner, A. (2010). Theta*: any-angle path planning on grids. J. Artif. Int. Res. , 39(1), 533–579. Deits, R. and Tedrake, R. (2015a). Computing Large Con-vex Regions of Obstacle-Free Space Through Semidef-inite Programming , 109–124. Springer International Publishing. Deits, R. and Tedrake, R. (2015b). Efficient mixed-integer planning for uavs in cluttered environments. In 2015 IEEE ICRA , 42–49. Du Toit, N.E. and Burdick, J.W. (2012). Robot motion planning in dynamic, uncertain environments. IEEE Trans. Robot. , 28(1), 101–115. Hart, P.E., Nilsson, N.J., and Raphael, B. (1968). A formal basis for the heuristic determination of minimum cost paths. IEEE Trans. Syst. Sci. Cybern. , 4(2), 100–107. Karaman, S., Walter, M.R., Perez, A., Frazzoli, E., and Teller, S. (2011). Anytime motion planning using the rrt*. In 2011 IEEE ICRA , 1478–1483. Katrakazas, C., Quddus, M., Chen, W.H., and Deka, L. (2015). Real-time motion planning methods for autonomous on-road driving: State-of-the-art and future research directions. Transp. Res. C: Emerg. Technol. ,60, 416–442. Liberti, L. (2019). Undecidability and hardness in mixed-integer nonlinear programming. RAIRO-Oper. Res. ,53(1), 81–109. doi:10.1051/ro/2018036. Lupascu, M., Hustiu, S., Burlacu, A., and Kloetzer, M. (2019). Path planning for autonomous drones using 3d rectangular cuboid decomposition. In 2019 23rd ICSTCC , 119–124. Marcucci, T., Nobel, P., Tedrake, R., and Boyd, S. (2024a). Fast path planning through large collections of safe boxes. IEEE Trans. Robot. , 40, 3795–3811. Marcucci, T., Petersen, M., von Wrangel, D., and Tedrake, R. (2023). Motion planning around obstacles with convex optimization. Science Robotics , 8(84), eadf7843. Marcucci, T., Umenberger, J., Parrilo, P., and Tedrake, R. (2024b). Shortest paths in graphs of convex sets. SIAM J. Optim. , 34(1), 507–532. Mellinger, D., Kushleyev, A., and Kumar, V. (2012). Mixed-integer quadratic program trajectory generation for heterogeneous quadrotor teams. In 2012 IEEE International Conference on Robotics and Automation ,477–483. doi:10.1109/ICRA.2012.6225009. Morais, J.P.L., Pimenta, L.C.A., Alves, M.A., and Raffo, G.V. (2025). A multi-layer mpc scheme for autonomous uav navigation in constrained environments. In 2025 IFAC ACA .Nielsen, L.D., Sung, I., and Nielsen, P. (2019). Convex decomposition for a coverage path planning for au-tonomous vehicles: Interior extension of edges. Sensors ,19(19). Schouwenaars, T., De Moor, B., Feron, E., and How, J. (2001). Mixed integer programming for multi-vehicle path planning. In 2001 ECC , 2603–2608. Toumieh, C. and Lambert, A. (2022). Voxel-grid based convex decomposition of 3d space for safe corridor generation. J. Intell. & Robot. Syst. , 105(4). Yen, J.Y. (1971). Finding the k shortest loopless paths in a network. Management Science , 17(11), 712–716. Appendix A. ALGORITHMS OF CHECKP1-P4 PROCEDURES 
+
+Algorithm 2 CheckP1 
+
+Input: C ∈ N6
+
+> >0
+
+, B ∈ NNx×Ny ×Nz
+
+> >0
+
+Output: p ∈ { 0, 1}
+
+1: i ← C1:3 , p ← 1
+
+2: while i3 ≤ C6 do 
+
+3: if Bi1,i 2,i 3̸ = 0 then p ← 0
+
+4: break 
+
+5: end if 
+
+6: i1 ← i1 + 1 
+
+7: for j = 1 to 2 do 
+
+8: if ij > C j+3 then 
+
+9: ij+1 ← ij+1 + 1 , ij ← Cj
+
+10: end if 
+
+11: end for 
+
+12: end while 
+
+13: return p
+
+Algorithm 3 CheckP2 
+
+Input: C ∈ N6
+
+> >0
+
+, D ∈ { 0, 1}Nx×Ny ×Nz
+
+Output: p ∈ { 0, 1}
+
+1: sum _cell ← sum( BC1:C4,C 2:C5,C 3:C6 )
+
+2: vol _cell ← product( C4:6 − C1:3 + [1 , 1, 1] ′)
+
+3: if sum _cell = 0 or sum _cell = vol _cell then p ← 1
+
+4: else p ← 0
+
+5: end if 
+
+6: return p
+
+Algorithm 4 CheckP3 
+
+Input: C ∈ N6×n>0 , B ∈ NNx×Ny ×Nz , D ∈ {0, 1}Nx×Ny ×Nz ,
+
+n ∈ N>0
+
+Output: p ∈ { 0, 1}
+
+1: adj _c ← ∅ , o ← DC1,n ,C 2,n ,C 3,n 
+
+2: for k = 1 to 6 do 
+
+3: v ← (( k − 1) mod 2) + 1 
+
+4: if v = k then Fv , F v+3 ← Ck,n − 1
+
+5: else Fv , F v+3 ← Ck,n + 1 
+
+6: end if 
+
+7: adj _c ← append( adj _c, uniqueValues( BF1:F4,F 2:F5,F 3:F6 )) 
+
+8: end for 
+
+9: for ∀ i ∈ adj _c do 
+
+10: box ← [min( C1:3 ,n , C 1:3 ,adj _ci )′, max( C4:6 ,n , C 4:6 ,adj _ci )′]′
+
+11: if ∀ Dbox 1:box 4,box 2:box 5,box 3:box 6 = o then p ← 1
+
+12: else 
+
+13: n_df _vox ← numElements( Dbox 1:box 4,box 2:box 5,box 3:box 6̸ = o)
+
+14: px, p y , p z ← findIndices( Dbox 1:box 4,box 2:box 5,box 3:box 6̸ = o)
+
+15: for j = 1 to n_df _vox do 
+
+16: V∗,j ← [pxj − 1, p yj − 1, p zj − 1, p xj , p yj , p zj ]′
+
+17: Ah, b h ← convHull( C∗,n , C ∗,i )
+
+18: Av , b v ← convHull( V∗,j )
+
+19: obstruction ← checkIntersection( Ah, b h, A v , b v )
+
+20: if obstruction = True then return p ← 0
+
+21: else p ← 1
+
+22: end if 
+
+23: end for 
+
+24: end if 
+
+25: end for 
+
+26: return p ← 1
+
+Algorithm 5 CheckP4 
+
+Input: C ∈ N6
+
+> >0
+
+, D ∈ { 0, 1}Nx×Ny ×Nz
+
+Output: p ∈ { 0, 1}, u ∈ { 0, 1}6
+
+1: p ← 1
+
+2: for k = 1 to 6 do 
+
+3: v ← (( k − 1) mod 2) + 1 
+
+4: if v = k then Fv , F v+3 ← Ck − 1
+
+5: else Fv , F v+3 ← Ck + 1 
+
+6: end if 
+
+7: sum _face ← sum( DF1:F4,F 2:F5,F 3:F6 )
+
+8: vol _face ← product( F4:6 − F1:3 + [1 , 1, 1] ′)
+
+9: if sum _face = 0 or sum _face = vol _face then uk ← 1
+
+10: else uk ← 0, p ← 0
+
+11: end if 
+
+12: end for 
+
+13: return p, u

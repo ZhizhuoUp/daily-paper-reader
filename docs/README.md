@@ -6,73 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-05-11
-- 运行时间：2026-05-11 21:04:16 UTC
+- 最新运行日期：2026-05-12
+- 运行时间：2026-05-12 20:33:02 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日深度研读 17 篇前沿成果，重点聚焦柔性机械臂的模块化控制与随机轨迹优化的推理加速。
-推荐关注李代数 PDE 控制在多体系统中的应用，以及 PISTO 算法在处理随机轨迹优化时的卓越表现。
-建议开发者深入探索复杂动力学建模与大规模多智能体局部通信的结合点。
-- 详情：[/202605/11/README](/202605/11/README)
+今日精选17篇前沿论文，重点攻克轨迹扩散模型提速与多智能体避障安全难题。
+推荐关注提速显著的 Muninn 轨迹扩散模型，以及基于安全集实现高效避障的去中心化 MPC 方案。
+建议普通读者从语言引导操控与动态环境抓取技术入手，了解 AI 如何更精准地介入复杂物理世界。
+- 详情：[/202605/12/README](/202605/12/README)
 
 ### 精读区论文标签
-1. [Modular Lie Algebraic PDE Control of Multibody Flexible Manipulators](/202605/11/2605.06709v1-modular-lie-algebraic-pde-control-of-multibody-flexible-manipulators)  
+1. [Muninn: Your Trajectory Diffusion Model But Faster](/202605/12/2605.09999v1-muninn-your-trajectory-diffusion-model-but-faster)  
+   标签：评分：9.0/10、query:q8
+   evidence：使用扩散模型的机器人运动实时轨迹优化
+2. [Decentralized Contingency MPC based on Safe Sets for Nonlinear Multi-agent Collision Avoidance](/202605/12/2605.10738v1-decentralized-contingency-mpc-based-on-safe-sets-for-nonlinear-multi-agent-collision-avoidance)  
    标签：评分：9.0/10、query:profile-1
-   evidence：多体柔性机械臂的实时控制
-2. [PISTO: Proximal Inference for Stochastic Trajectory Optimization](/202605/11/2605.07215v1-pisto-proximal-inference-for-stochastic-trajectory-optimization)  
-   标签：评分：9.0/10、query:q3
-   evidence：随机轨迹优化与近端推理
-3. [Stochastic Differential Dynamic Programming for Trajectory Optimization under Partial Observability](/202605/11/2605.07529v1-stochastic-differential-dynamic-programming-for-trajectory-optimization-under-partial-observability)  
-   标签：评分：9.0/10、query:q7
-   evidence：不确定性下的航天器轨迹优化
-4. [Learning myopic mixed-integer nonlinear model predictive control from expert demonstrations](/202605/11/2605.07401v1-learning-myopic-mixed-integer-nonlinear-model-predictive-control-from-expert-demonstrations)  
-   标签：评分：8.0/10、query:q2
-   evidence：非线性模型预测控制的实时求解
-5. [Coordinated Motion Planning is FPT on Discretized Simple Polygons](/202605/11/2605.07570v1-coordinated-motion-planning-is-fpt-on-discretized-simple-polygons)  
-   标签：评分：8.0/10、query:q4
-   evidence：多机器人协同运动规划
-6. [Interactive Trajectory Planning with Learning-based Distributionally Robust Model Predictive Control and Markov Systems](/202605/11/2605.07768v1-interactive-trajectory-planning-with-learning-based-distributionally-robust-model-predictive-control-and-markov-systems)  
+   evidence：具有非线性动力学的避障分布式MPC
+3. [A low-cost mockup to simulate robotic laser cutting in nuclear decommissioning](/202605/12/2605.08947v1-a-low-cost-mockup-to-simulate-robotic-laser-cutting-in-nuclear-decommissioning)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：用于六自由度机械臂反应式避障的受限任务空间自适应运动控制器
+4. [IMPACT: An Implicit Active-Set Augmented Lagrangian for Fast Contact-Implicit Trajectory Optimization](/202605/12/2605.09127v1-impact-an-implicit-active-set-augmented-lagrangian-for-fast-contact-implicit-trajectory-optimization)  
    标签：评分：8.0/10、query:q3
-   evidence：使用分布鲁棒模型预测控制的交互式轨迹规划
+   evidence：用于操作的快速接触隐式轨迹优化
+5. [Efficient Multi-Robot Motion Planning with Precomputed Translation-Invariant Edge Bundles](/202605/12/2605.09801v1-efficient-multi-robot-motion-planning-with-precomputed-translation-invariant-edge-bundles)  
+   标签：评分：8.0/10、query:q1
+   evidence：多机器人系统的无碰撞动力学运动规划
+6. [Neural Distance-Guided Path Integral Control for Tractor-Trailer Navigation](/202605/12/2605.09939v1-neural-distance-guided-path-integral-control-for-tractor-trailer-navigation)  
+   标签：评分：8.0/10、query:q1
+   evidence：拖挂车导航的实时避障
 
 ### 速读区论文标签
-1. [Learning to Communicate Locally for Large-Scale Multi-Agent Pathfinding](/202605/11/2605.07637v1-learning-to-communicate-locally-for-large-scale-multi-agent-pathfinding)  
-   标签：评分：8.0/10、query:q4
-   evidence：用于多机器人轨迹规划的分散式多智能体路径搜索
-2. [Learned Lyapunov Shielding for Adaptive Control](/202605/11/2605.06934v1-learned-lyapunov-shielding-for-adaptive-control)  
-   标签：评分：7.0/10、query:q2
-   evidence：针对欧拉-拉格朗日系统的闭式安全滤波器
-3. [Learning Material-Aware Hamiltonian Risk Fields for Safe Navigation](/202605/11/2605.07038v1-learning-material-aware-hamiltonian-risk-fields-for-safe-navigation)  
-   标签：评分：7.0/10、query:q1
-   evidence：具备风险感知的避障安全导航
-4. [MORPH-U: Multi-Objective Resilient Motion Planning for V2X-Enabled Autonomous Driving in High-Uncertainty Environments via Simulation](/202605/11/2605.07370v1-morph-u-multi-objective-resilient-motion-planning-for-v2x-enabled-autonomous-driving-in-high-uncertainty-environments-via-simulation)  
-   标签：评分：7.0/10、query:q1
-   evidence：实时预算下的运动规划与重规划
-5. [Escaping the Diversity Trap in Robotic Manipulation via Anchor-Centric Adaptation](/202605/11/2605.07381v1-escaping-the-diversity-trap-in-robotic-manipulation-via-anchor-centric-adaptation)  
+1. [Visibility-Aware Mobile Grasping in Dynamic Environments](/202605/12/2605.02487v3-visibility-aware-mobile-grasping-in-dynamic-environments)  
+   标签：评分：8.0/10、query:q6
+   evidence：动态环境下的移动抓取与全身规划
+2. [ElasticFlow: One-Step Physics-Consistent Policy with Elastic Time Horizons for Language-Guided Manipulation](/202605/12/2605.08799v1-elasticflow-one-step-physics-consistent-policy-with-elastic-time-horizons-for-language-guided-manipulation)  
+   标签：评分：8.0/10、query:q6
+   evidence：语言引导操纵的物理一致性策略
+3. [Mismatch-Aware Adaptive Constraint Tightening for Bicycle-Model Trajectory Optimization](/202605/12/2605.09376v1-mismatch-aware-adaptive-constraint-tightening-for-bicycle-model-trajectory-optimization)  
+   标签：评分：8.0/10、query:q3
+   evidence：带有安全约束的轨迹优化
+4. [A cell-decomposition based path planner for 3D navigation in constrained workspaces](/202605/12/2605.10086v1-a-cell-decomposition-based-path-planner-for-3d-navigation-in-constrained-workspaces)  
+   标签：评分：8.0/10、query:q1
+   evidence：使用SOCP在受限工作空间中进行3D导航的路径规划器
+5. [BifrostUMI: Bridging Robot-Free Demonstrations and Humanoid Whole-Body Manipulation](/202605/12/2605.03452v1-bifrostumi-bridging-robot-free-demonstrations-and-humanoid-whole-body-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：机器人操作模型的自适应
-6. [BrickCraft: Visuomotor Skill Composition with Situated Manual Guidance for Long-Horizon Interlocking Brick Assembly](/202605/11/2605.07605v1-brickcraft-visuomotor-skill-composition-with-situated-manual-guidance-for-long-horizon-interlocking-brick-assembly)  
-   标签：评分：7.0/10、query:q6
-   evidence：用于长程机器人装配操作的视觉运动技能组合
-7. [Monitoring autonomous persistent surveillance missions using invariance](/202605/11/2605.06062v1-monitoring-autonomous-persistent-surveillance-missions-using-invariance)  
-   标签：评分：6.0/10、query:q5
-   evidence：自主机器人的运行时监控
-8. [Toward Visually Realistic Simulation: A Benchmark for Evaluating Robot Manipulation in Simulation](/202605/11/2605.06311v1-toward-visually-realistic-simulation-a-benchmark-for-evaluating-robot-manipulation-in-simulation)  
+   evidence：人形机器人全身操纵与轨迹预测
+6. [Hierarchical Prompting with Dual LLM Modules for Robotic Task and Motion Planning](/202605/12/2605.08330v1-hierarchical-prompting-with-dual-llm-modules-for-robotic-task-and-motion-planning)  
+   标签：评分：7.0/10、query:q4
+   evidence：机器人任务与运动规划框架
+7. [Trajectory-Consistent Flow Matching for Robust Visuomotor Policy Learning](/202605/12/2605.08511v1-trajectory-consistent-flow-matching-for-robust-visuomotor-policy-learning)  
+   标签：评分：7.0/10、query:q8
+   evidence：用于机器人操作中鲁棒视觉运动策略学习的轨迹一致流匹配
+8. [Online UAV Trajectory Planning Under QoS Constraints to Mobile Users in Urban Environments](/202605/12/2605.08536v1-online-uav-trajectory-planning-under-qos-constraints-to-mobile-users-in-urban-environments)  
+   标签：评分：7.0/10、query:q3
+   evidence：约束下的实时无人机轨迹规划
+9. [When to Trust Imagination: Adaptive Action Execution for World Action Models](/202605/12/2605.06222v2-when-to-trust-imagination-adaptive-action-execution-for-world-action-models)  
    标签：评分：6.0/10、query:q6
-   evidence：机器人操作评估基准
-9. [Temporal Attention for Adaptive Control of Euler-Lagrange Systems with Unobservable Memory](/202605/11/2605.06877v1-temporal-attention-for-adaptive-control-of-euler-lagrange-systems-with-unobservable-memory)  
-   标签：评分：6.0/10、query:q5
-   evidence：欧拉-拉格朗日系统的自适应控制
-10. [Towards Intelligent Low-Altitude Wireless Network Deployment: Differentiable Channel Knowledge Map Construction and Trajectory Design](/202605/11/2605.07163v1-towards-intelligent-low-altitude-wireless-network-deployment-differentiable-channel-knowledge-map-construction-and-trajectory-design)  
-   标签：评分：6.0/10、query:q3
-   evidence：可微轨迹优化框架
-11. [Model-Driven Policy Optimization in Differentiable Simulators via Stochastic Exploration](/202605/11/2605.07520v1-model-driven-policy-optimization-in-differentiable-simulators-via-stochastic-exploration)  
-   标签：评分：6.0/10、query:q3
-   evidence：通过随机探索进行的可微规划和轨迹优化
+   evidence：机器人操作的自适应动作执行
+10. [Rollback-Free Stable Brick Structures Generation](/202605/12/2605.06947v1-rollback-free-stable-brick-structures-generation)  
+   标签：评分：6.0/10、query:q1
+   evidence：在组装中优化碰撞规避
+11. [Alternating Target-Path Planning for Scalable Multi-Agent Coordination](/202605/12/2605.07744v1-alternating-target-path-planning-for-scalable-multi-agent-coordination)  
+   标签：评分：6.0/10、query:q1
+   evidence：多智能体协作的无碰撞路径搜索
 
 
 <div class="dpr-home-promo-card">
