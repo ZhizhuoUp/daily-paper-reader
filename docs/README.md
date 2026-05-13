@@ -6,73 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-05-12
-- 运行时间：2026-05-12 20:33:02 UTC
+- 最新运行日期：2026-05-13
+- 运行时间：2026-05-13 20:32:08 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选17篇前沿论文，重点攻克轨迹扩散模型提速与多智能体避障安全难题。
-推荐关注提速显著的 Muninn 轨迹扩散模型，以及基于安全集实现高效避障的去中心化 MPC 方案。
-建议普通读者从语言引导操控与动态环境抓取技术入手，了解 AI 如何更精准地介入复杂物理世界。
-- 详情：[/202605/12/README](/202605/12/README)
+今日聚焦 17 篇机器人前沿进展，重点突破了复杂接触轨迹优化与柔性连续体机器人的规划瓶颈。
+核心看点在于 IMPACT 算法实现的极速接触动力学求解，以及针对基座搭载式连续体机器人的高效路径规划方案。
+建议关注 ProcVLM 如何通过视觉语言模型为复杂操作任务提供更精准的进度奖励。
+- 详情：[/202605/13/README](/202605/13/README)
 
 ### 精读区论文标签
-1. [Muninn: Your Trajectory Diffusion Model But Faster](/202605/12/2605.09999v1-muninn-your-trajectory-diffusion-model-but-faster)  
-   标签：评分：9.0/10、query:q8
-   evidence：使用扩散模型的机器人运动实时轨迹优化
-2. [Decentralized Contingency MPC based on Safe Sets for Nonlinear Multi-agent Collision Avoidance](/202605/12/2605.10738v1-decentralized-contingency-mpc-based-on-safe-sets-for-nonlinear-multi-agent-collision-avoidance)  
+1. [IMPACT: An Implicit Active-Set Augmented Lagrangian for Fast Contact-Implicit Trajectory Optimization](/202605/13/2605.09127v2-impact-an-implicit-active-set-augmented-lagrangian-for-fast-contact-implicit-trajectory-optimization)  
    标签：评分：9.0/10、query:profile-1
-   evidence：具有非线性动力学的避障分布式MPC
-3. [A low-cost mockup to simulate robotic laser cutting in nuclear decommissioning](/202605/12/2605.08947v1-a-low-cost-mockup-to-simulate-robotic-laser-cutting-in-nuclear-decommissioning)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：用于六自由度机械臂反应式避障的受限任务空间自适应运动控制器
-4. [IMPACT: An Implicit Active-Set Augmented Lagrangian for Fast Contact-Implicit Trajectory Optimization](/202605/12/2605.09127v1-impact-an-implicit-active-set-augmented-lagrangian-for-fast-contact-implicit-trajectory-optimization)  
+   evidence：用于机器人操作的快速接触隐式轨迹优化
+2. [Sampling-Based Follow-the-Leader Motion Planning for Manipulator-Mounted Continuum Robots](/202605/13/2605.11618v1-sampling-based-follow-the-leader-motion-planning-for-manipulator-mounted-continuum-robots)  
+   标签：评分：9.0/10、query:q4
+   evidence：安装在机械臂上的连续体机器人在受限空间内的运动规划
+3. [PECMAN: Perception-enabled Collaborative Multi-Agent Navigation in Unknown Environments](/202605/13/2605.09344v1-pecman-perception-enabled-collaborative-multi-agent-navigation-in-unknown-environments)  
+   标签：评分：8.0/10、query:q1
+   evidence：未知环境中的实时重规划与避障
+4. [Safe Aerial 3D Path Planning for Autonomous UAVs using Magnetic Potential Fields](/202605/13/2605.10880v1-safe-aerial-3d-path-planning-for-autonomous-uavs-using-magnetic-potential-fields)  
+   标签：评分：8.0/10、query:q1
+   evidence：使用势场法进行实时3D避障路径规划
+5. [A practical guide to implementing zero-order-hold interplanetary trajectory legs](/202605/13/2605.11043v1-a-practical-guide-to-implementing-zero-order-hold-interplanetary-trajectory-legs)  
    标签：评分：8.0/10、query:q3
-   evidence：用于操作的快速接触隐式轨迹优化
-5. [Efficient Multi-Robot Motion Planning with Precomputed Translation-Invariant Edge Bundles](/202605/12/2605.09801v1-efficient-multi-robot-motion-planning-with-precomputed-translation-invariant-edge-bundles)  
-   标签：评分：8.0/10、query:q1
-   evidence：多机器人系统的无碰撞动力学运动规划
-6. [Neural Distance-Guided Path Integral Control for Tractor-Trailer Navigation](/202605/12/2605.09939v1-neural-distance-guided-path-integral-control-for-tractor-trailer-navigation)  
-   标签：评分：8.0/10、query:q1
-   evidence：拖挂车导航的实时避障
+   evidence：航天器轨迹优化与基准测试
+6. [Closing the Motion Execution Gap: From Semantic Motion Task Constraints to Kinematic Control](/202605/13/2605.12053v1-closing-the-motion-execution-gap-from-semantic-motion-task-constraints-to-kinematic-control)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：基于线性模型预测控制(lMPC)的运动执行与运动学约束
 
 ### 速读区论文标签
-1. [Visibility-Aware Mobile Grasping in Dynamic Environments](/202605/12/2605.02487v3-visibility-aware-mobile-grasping-in-dynamic-environments)  
+1. [Modular Lie Algebraic PDE Control of Multibody Flexible Manipulators](/202605/13/2605.06709v2-modular-lie-algebraic-pde-control-of-multibody-flexible-manipulators)  
    标签：评分：8.0/10、query:q6
-   evidence：动态环境下的移动抓取与全身规划
-2. [ElasticFlow: One-Step Physics-Consistent Policy with Elastic Time Horizons for Language-Guided Manipulation](/202605/12/2605.08799v1-elasticflow-one-step-physics-consistent-policy-with-elastic-time-horizons-for-language-guided-manipulation)  
+   evidence：串联柔性机械臂的自适应控制框架
+2. [ProcVLM: Learning Procedure-Grounded Progress Rewards for Robotic Manipulation](/202605/13/2605.08774v1-procvlm-learning-procedure-grounded-progress-rewards-for-robotic-manipulation)  
    标签：评分：8.0/10、query:q6
-   evidence：语言引导操纵的物理一致性策略
-3. [Mismatch-Aware Adaptive Constraint Tightening for Bicycle-Model Trajectory Optimization](/202605/12/2605.09376v1-mismatch-aware-adaptive-constraint-tightening-for-bicycle-model-trajectory-optimization)  
-   标签：评分：8.0/10、query:q3
-   evidence：带有安全约束的轨迹优化
-4. [A cell-decomposition based path planner for 3D navigation in constrained workspaces](/202605/12/2605.10086v1-a-cell-decomposition-based-path-planner-for-3d-navigation-in-constrained-workspaces)  
-   标签：评分：8.0/10、query:q1
-   evidence：使用SOCP在受限工作空间中进行3D导航的路径规划器
-5. [BifrostUMI: Bridging Robot-Free Demonstrations and Humanoid Whole-Body Manipulation](/202605/12/2605.03452v1-bifrostumi-bridging-robot-free-demonstrations-and-humanoid-whole-body-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：人形机器人全身操纵与轨迹预测
-6. [Hierarchical Prompting with Dual LLM Modules for Robotic Task and Motion Planning](/202605/12/2605.08330v1-hierarchical-prompting-with-dual-llm-modules-for-robotic-task-and-motion-planning)  
+   evidence：机器人操作的稠密奖励信号
+3. [Learning to Communicate Locally for Large-Scale Multi-Agent Pathfinding](/202605/13/2605.07637v2-learning-to-communicate-locally-for-large-scale-multi-agent-pathfinding)  
+   标签：评分：7.0/10、query:q1
+   evidence：多机器人轨迹规划中的多智能体路径搜索
+4. [Alternating Target-Path Planning for Scalable Multi-Agent Coordination](/202605/13/2605.07744v2-alternating-target-path-planning-for-scalable-multi-agent-coordination)  
+   标签：评分：7.0/10、query:q1
+   evidence：多智能体协作中的无碰撞路径规划与迭代优化
+5. [Terminal Matters: Kinodynamic Planning with a Terminal Cost and Learned Uncertainty in Belief State-Cost Space](/202605/13/2605.09046v1-terminal-matters-kinodynamic-planning-with-a-terminal-cost-and-learned-uncertainty-in-belief-state-cost-space)  
    标签：评分：7.0/10、query:q4
-   evidence：机器人任务与运动规划框架
-7. [Trajectory-Consistent Flow Matching for Robust Visuomotor Policy Learning](/202605/12/2605.08511v1-trajectory-consistent-flow-matching-for-robust-visuomotor-policy-learning)  
-   标签：评分：7.0/10、query:q8
-   evidence：用于机器人操作中鲁棒视觉运动策略学习的轨迹一致流匹配
-8. [Online UAV Trajectory Planning Under QoS Constraints to Mobile Users in Urban Environments](/202605/12/2605.08536v1-online-uav-trajectory-planning-under-qos-constraints-to-mobile-users-in-urban-environments)  
-   标签：评分：7.0/10、query:q3
-   evidence：约束下的实时无人机轨迹规划
-9. [When to Trust Imagination: Adaptive Action Execution for World Action Models](/202605/12/2605.06222v2-when-to-trust-imagination-adaptive-action-execution-for-world-action-models)  
-   标签：评分：6.0/10、query:q6
-   evidence：机器人操作的自适应动作执行
-10. [Rollback-Free Stable Brick Structures Generation](/202605/12/2605.06947v1-rollback-free-stable-brick-structures-generation)  
-   标签：评分：6.0/10、query:q1
-   evidence：在组装中优化碰撞规避
-11. [Alternating Target-Path Planning for Scalable Multi-Agent Coordination](/202605/12/2605.07744v1-alternating-target-path-planning-for-scalable-multi-agent-coordination)  
-   标签：评分：6.0/10、query:q1
-   evidence：多智能体协作的无碰撞路径搜索
+   evidence：带终端代价优化的动力学约束规划
+6. [Safe Exploration for Nonlinear Processes Using Online Gaussian Process Learning](/202605/13/2605.09772v1-safe-exploration-for-nonlinear-processes-using-online-gaussian-process-learning)  
+   标签：评分：7.0/10、query:q2
+   evidence：具有实时约束的非线性系统安全数据驱动控制
+7. [Geometric Pareto Control: Riemannian Gradient Flow of Energy Function via Lie Group Homotopy](/202605/13/2605.09824v1-geometric-pareto-control-riemannian-gradient-flow-of-energy-function-via-lie-group-homotopy)  
+   标签：评分：7.0/10、query:q2
+   evidence：信息物理系统的基于优化的控制
+8. [HeteroGenManip: Generalizable Manipulation For Heterogeneous Object Interactions](/202605/13/2605.10201v1-heterogenmanip-generalizable-manipulation-for-heterogeneous-object-interactions)  
+   标签：评分：7.0/10、query:q6
+   evidence：机器人操作的交互轨迹规划
+9. [Minimizing Worst-Case Weighted Latency for Multi-Robot Persistent Monitoring: Theory and RL-Based Solutions](/202605/13/2605.09633v1-minimizing-worst-case-weighted-latency-for-multi-robot-persistent-monitoring-theory-and-rl-based-solutions)  
+   标签：评分：6.0/10、query:q4
+   evidence：多机器人轨迹设计与泛函优化
+10. [Distributed Pose Graph Optimization via Continuous Riemannian Dynamics](/202605/13/2605.11210v1-distributed-pose-graph-optimization-via-continuous-riemannian-dynamics)  
+   标签：评分：6.0/10、query:q2
+   evidence：多机器人位姿图优化的优化框架
+11. [PIVOT: Bridging Planning and Execution in LLM Agents via Trajectory Refinement](/202605/13/2605.11225v1-pivot-bridging-planning-and-execution-in-llm-agents-via-trajectory-refinement)  
+   标签：评分：6.0/10、query:q3
+   evidence：通过环境交互为LLM智能体进行迭代轨迹细化
 
 
 <div class="dpr-home-promo-card">

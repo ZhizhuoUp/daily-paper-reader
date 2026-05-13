@@ -1,0 +1,849 @@
+Title: Sampling-Based Follow-the-Leader Motion Planning for Manipulator-Mounted Continuum Robots
+
+URL Source: https://arxiv.org/pdf/2605.11618v1
+
+Published Time: Wed, 13 May 2026 00:53:08 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# Sampling-Based Follow-the-Leader Motion Planning for Manipulator-Mounted Continuum Robots 
+
+Chengnan Shentu ∗, Nicholas Baldassini ∗, Oluwagbotemi D. Iseoluwa, Radian Gondokaryono, Jessica Burgner-Kahrs University of Toronto https://continuumroboticslab.github.io/sb-ftl-cr-planner/ Local Interpolation 
+
+(smooth trajectory for deployment) 
+
+Global Shape Search 
+
+(resolution complete) 
+
+Base Pose Alignment 
+
+(for exact tip tracking) 
+
+Offline Library 
+
+(from any forward 
+
+model) 
+
+validation in sim and real 
+
+timestep 
+
+rotation 
+
+about tip 
+
+axial 
+
+rotation 
+
+target 
+
+path 
+
+repeat for all 
+
+waypoints 
+
+translation 
+
+follow -the -
+
+leader 
+
+insertion 
+
+Fig. 1: Overview of our sampling-based follow-the-leader motion planning framework. Offline Library: shapes are precomputed from any forward model. Base Pose Alignment: for each candidate shape (blue), geometric transformations align the robot tip to the current waypoint (green dots) and shape along the target path (orange curve). Fully-actuated SE (3) base poses are shown as coordinate axes. Global Shape Search: the best-matching shape is selected for each waypoint, producing a sparse plan (red to blue gradient indicates progression). Local Interpolation: smooth interpolation between waypoints yields a dense trajectory suitable for deployment, validated in simulation and on hardware. 
+
+Abstract —Follow-the-leader (FTL) motion exploits the unique morphology of continuum robots (CRs) to navigate confined spaces by having the body retrace the path of the tip. While extensively studied, existing FTL methods typically assume a fixed base or a single degree-of-freedom insertion mechanism, limiting their applicability to practical systems in which CRs are mounted on robotic manipulators with fully actuated SE (3) base pose. This paper presents a sampling-based motion planner for FTL motion of manipulator-mounted CRs that jointly considers robot configuration and base pose. The key idea is to decouple global shape search from base pose determination by computing the base pose through a closed-form geometric construction, thereby avoiding iterative optimization during online planning. The approach supports general forward models and enables efficient planning by shifting the majority of computation offline. We establish theoretical guarantees including resolution complete shape search and converging tip tracking throughout waypoint traversal and interpolation. Experiments on 120 simulated paths over 3 test classes demonstrate 0% tip error and 1.9% mean shape deviation (w.r.t. robot length) at 100% success rate. We validate the practicality of our approach on a 6-DOF tendon-driven CR mounted on a serial manipulator. Code and visual-ization available at the project website. 
+
+∗ Indicates equal contribution. Correspondence to {c.shentu, nicholas.baldassini }@mail.utoronto.ca .
+
+I. I NTRODUCTION 
+
+Continuum robots (CRs) are flexible, high-DOF robots inspired by biological structures such as elephant trunks and octopus arms, with promising potential for navigating con-fined, tortuous spaces inaccessible to rigid-link robots [29]. Their unique capabilities have led to increasing deployment in minimally invasive surgery [5, 11], industrial inspection [33] and search-and-rescue operations [38]. A key motion primitive enabling these applications is follow-the-leader (FTL), where the robot body follows the path traced by its tip during inser-tion [23]. FTL motion minimizes lateral forces on surrounding tissue or structures, reducing trauma in surgical procedures and avoiding collisions in cluttered environments. FTL motion planning has been studied extensively for various continuum and soft robot architectures. Early work established the foundational concepts for snake-like robots [7]. Steerable needles [10] and vine robots [8] are designed to operate with FTL motion, achieving excellent results because they naturally extend during deployment. Similar principles have been applied to concentric tube robots (CTRs), where FTL is achieved through selection of suitable tube parameters and coordinated tube extension [15, 14, 16, 37]. For tendon-driven continuum robots (TDCRs), two main approaches have emerged. The first adds degrees of freedom 
+
+> arXiv:2605.11618v1 [cs.RO] 12 May 2026
+
+to the TDCR design itself through extensible segments [1], active stiffness modulation [27], magnetic actuation [21], or a combination such as the interlaced design with extensible segments and internal locking mechanism [19, 34]. While effective, these hardware-based solutions are difficult to gener-alize across applications as the additional mechanisms occupy valuable space that could otherwise accommodate payloads such as sensors, tools, or delivery channels. The second approach addresses the more general case by introducing degrees of freedom at the TDCR base and coordinating them with the CR’s configuration through dif-ferential [13], heuristic-based [22, 20], or optimization-based inverse kinematics [24, 12, 36]. However, these methods share common limitations. All rely on simplified kinematics such as the piece-wise constant curvature (PCC) model [18], which does not accurately capture the behavior of physical TDCRs. Additionally, most employ local solvers or iterative optimization, which can converge to suboptimal solutions in the high-dimensional, nonlinear configuration space of CRs and are sensitive to initialization. Such unpredictability can be a limitation for safety-critical applications where predictable planner behavior is important. These limitations are compounded by a confining assump-tion shared by nearly all existing methods: the robot base is either fixed in space or constrained to 1-DOF linear insertion. This does not reflect the growing class of practical deploy-ments where continuum robots are mounted on robotic manip-ulators with full 6-DOF base pose control. In surgical systems, flexible endoscopes have been integrated with robot arms for precise positioning [35, 3, 6]. In industrial inspection, snake-like robots have been mounted on serial manipulators [4], mobile platforms [36], and even aerial vehicles [25] to extend reach and dexterity. In this paper, we consider the FTL motion planning problem for CRs whose base pose is fully actuated in SE(3), as arises when a CR is mounted on a serial manipulator. Given a spatial path specified by ordered waypoints, the objective is to generate a continuous motion such that (i) the robot tip tracks the path during insertion, and (ii) the inserted portion of the robot body follows the path with minimal deviation. While a fully actuated base offers greater flexibility and expanded motion capability, it also introduces computational challenges by expanding the planning space by six additional dimensions. We address this problem with a sampling-based framework that decouples global shape search from local interpolation. The key enabler is a closed-form geometric construction that uniquely determines the 6-DOF base pose for any selected shape, guaranteeing exact tip placement without iterative opti-mization. This decoupling allows shape search to be performed via global search over a precomputed library—compatible with any forward model—while interpolation between waypoints exploits radial symmetry to ensure smooth transitions with a small number of forward model evaluations. To summarize our contribution, we present a FTL mo-tion planning framework for manipulator-mounted CRs with exact tip tracking by construction. The framework supports general forward models beyond PCC while enabling efficient online planning through user-adjustable clustering. We estab-lish formal guarantees including resolution completeness for shape search and asymptotic convergence for tip tracking, and validate the approach in simulation and on hardware. The implementation is open-sourced to support reproducibility. This is the first FTL method for continuum robots with a fully-actuated SE (3) base and formal planning guarantees. II. P ROBLEM FORMULATION 
+
+Following the standard FTL problem formulation, the de-sired path is given as an ordered set of 3D waypoints W =
+
+{w1, w2, . . . , wn}, wi ∈ R3. Unlike methods that assume specific path representations (e.g., constant-curvature arcs), our formulation accepts arbitrary waypoint sequences, whether user-defined, discretized from continuous curves, or generated by higher-level planners. The shape of a CR in configuration q
+
+is described by backbone points p(s) for arc length s ∈ [0 , S ],computed via a forward model (FM), where p(0) is the base and p(S) is the tip. In practice, we discretize this shape as P = [ p0, . . . , pD ]⊤ ∈ R(D+1) ×3, with p0 = p(0) and 
+
+pD = p(S).We consider a CR mounted to a 6-DOF base, representing practical systems where CRs are attached to serial manipu-lators. The CR configuration space is denoted Q ⊂ Rd, and the combined system configuration space is K = SE (3) × Q .Let f : Q → R(D+1) ×3 denote the FM function mapping a CR configuration to its discretized backbone points in the CR base frame. Given a base pose Tb ∈ SE (3) , the corresponding world-frame backbone points are given by Tb · f (q).An FTL motion plan is defined as a sequence of N
+
+configurations {(Tb, 1, q1), . . . , (Tb,N , qN )} ⊂ K that guides the robot through all waypoints in W. While there are n way-points, the full motion plan consists of N ≫ n configurations to ensure continuous interpolation between waypoints. At each configuration index k, the planner must jointly choose the CR shape parameters qk and the base pose Tb,k .As the robot progresses along the path, increasing portions of the CR backbone are considered “inserted”. We associate each waypoint wi with an insertion depth s ∈ [0 , S ], repre-senting the arc length along the backbone that should coincide with the path when the tip reaches wi.We define two properties that should hold throughout the trajectory:  
+
+> •
+
+Tip Tracking: The tip should be placed at waypoint wi
+
+when passing through it, and follow a smooth interpola-tion (e.g., linear) between consecutive waypoints.  
+
+> •
+
+Shape Following: The inserted portion of the robot should minimize deviation from the corresponding seg-ment of the path. A key distinction from classical FTL formulations is that the base pose Tb is not fixed. Instead, the base pose is free to vary throughout the motion and is derived jointly with the CR configuration. This additional freedom is essential for modeling CRs mounted on serial manipulators, but it fundamentally alters the FTL problem structure by removing the fixed reference frame typically assumed in prior work. As a concrete instantiation, this work describes the method for a 3-segment TDCR with configuration space parameterized by Clarke coordinates [17], giving q ∈ R6; the method is generalizable to any CR with any forward model. III. M ETHOD 
+
+As discussed in Section I, the high-dimensional configu-ration space K = SE (3) × Q and nonlinear CR FM make iterative optimization approaches prone to local minima and computationally expensive. Our method addresses this by decoupling the problem into global shape search and local interpolation, yielding three key benefits:  
+
+> •
+
+Model-agnostic: FM evaluations occur primarily offline, enabling use of complex kinetostatic models that would be impractical for online optimization.  
+
+> •
+
+Efficient: Online planning involves shape evaluation and closed-form geometric construction, with only small number of FM evaluations for interpolation.  
+
+> •
+
+Theoretically Guaranteed: The sampling-based formu-lation provides formal guarantees including resolution completeness (Section IV). The method proceeds as follows: offline library generation (Section III-A), online base pose alignment and shape search at each waypoint (Sections III-B–III-C), and interpolation between waypoints (Section III-D). 
+
+A. Shape Library 1) Library Generation: The shape library is constructed offline by sampling Nlib configurations uniformly from the CR configuration space Q. For each sampled configuration qi,we compute FM to obtain a discretized shape representation. Each shape is stored as a tuple S(i) = ( q(i), P(i)), where 
+
+P(i) = [ p(i)0 , . . . , p(i) 
+
+> D
+
+]⊤ ∈ R(D+1) ×3 contains D + 1 points along the backbone. D should be larger than n to meaningfully capture the CR shape. D remains as a fixed constant for all shapes. The complete library is L = {S(i)}Nlib  
+
+> i=1
+
+. The shape library approximates the CR’s reachable shape space. Since library lookup is much faster than forward model evaluation, this shifts the computational burden offline and enables effi-cient online planning. 
+
+2) Threshold Clustering: At each waypoint, we query L to find the shape minimizing deviation from the active path. The base case is linear search: evaluating all Nlib shapes guarantees finding the optimal shape within the library, but incurs O(Nlib )
+
+evaluations per waypoint. To reduce computation, we introduce clustering as an op-tional mechanism that trades accuracy for speed. Shapes are grouped based on pairwise similarity: 
+
+M (S(a), S (b)) = 
+
+> D
+
+X
+
+> j=0
+
+∥p(a) 
+
+> j
+
+− p(b) 
+
+> j
+
+∥ (1) Clusters are formed using a similarity threshold γ: iterating through ungrouped shapes, each becomes a cluster center and all shapes within distance γ are added to its clusters, forming local balls of bounded radius in shape space. The optimal γ depends on the specific CR and its shape distribution. In practice, we empirically choose γ by ana-lyzing k-nearest neighbor distances in the library, targeting approximately ⌊√Nlib ·1.5⌋ clusters as a suggested default for the speed-accuracy tradeoff; see Appendix A1 for an ablation study on the effect of cluster size. Setting γ = 0 recovers the linear search behavior. During online execution with clustering enabled, we first evaluate only cluster centers, then search exhaustively within the best-scoring cluster. This two-pass strategy reduces com-plexity from O(Nlib ) to O(√Nlib ), at the cost of potentially missing the globally optimal shape if it resides in a cluster whose center scores poorly. 
+
+B. Base Pose Alignment 
+
+At each waypoint wi, we query the shape library to find the best-matching shape for the active path Wi = {w1, . . . , wi}.For each candidate shape S = ( q, P), evaluation involves two steps: (1) align the shape to the path via a closed-form geometric construction that determines the base pose Tb, and (2) compute the shape deviation after alignment. The shape with the minimum deviation is selected. Since alignment and evaluation are independent across shapes, the process is easily parallelizable. To align the shape to the path, the following steps are performed: 
+
+1) Active Shape Subset: Since the robot is only partially inserted at waypoint wi, we first identify the active portion of the shape. Let |W i| = Pi−1 
+
+> j=1
+
+∥wj − wj+1 ∥ denote the arc length of the active path. We select the subset of shape points from shape tip pD whose arc length best matches |W i|:
+
+m∗ = arg min  
+
+> m
+
+|W i| − 
+
+> D−1
+
+X
+
+> j=m
+
+∥pj − pj+1 ∥ (2) The active shape subset is Pact = {pm∗ , . . . , pD }. Intuitively, we select the portion of the shape whose arc length best matches the inserted path length, ensuring meaningful shape-to-path comparison. 
+
+2) Base Pose Alignment: We compute the base pose Tb ∈
+
+SE (3) through three sequential transformations that align the shape to the path with exact tip placement (Fig. 2). 
+
+Transformation 1 (Translation): Translate the shape by 
+
+(wi − pD ) so the tip coincides exactly with waypoint wi. This ensures the tip-tracking property by construction. 
+
+Transformation 2 (Rotation about tip): Rotate the shape about wi to align the base-to-tip directions. Define unit vectors 
+
+v1 = ( wi − w1)/∥wi − w1∥ along the path and v2 = ( wi −
+
+pm∗ )/∥wi − pm∗ ∥ along the translated shape. The rotation axis is v = v2 × v1 and angle is θ = cos −1(v1 · v2). Since this rotation is about wi, tip placement is preserved. 
+
+Transformation 3 (Axial rotation): A rotational degree of freedom remains about the path axis v1. To resolve this, we select a third correspondence point wk ∈ W i that maximizes distance to the line through w1 and wi, with corresponding active 
+
+path 
+
+## .
+
+shape candidate 
+
+from library 
+
+T1: Translation T2: Rotation about Tip T3: Axial Rotation 
+
+<latexit sha1_base64="aWt5+OtemyB4n9ZmYK/Z9B60/o4=">AAAB83icbVDLSgMxFL2pr1pfVZduglVwVWZEqsuCG5cV7AM6Q8mkmTY0kxmSjFKG/oYbF4q49Wfc+Tdm2llo64HA4Zx7uScnSATXxnG+UWltfWNzq7xd2dnd2z+oHh51dJwqyto0FrHqBUQzwSVrG24E6yWKkSgQrBtMbnO/+8iU5rF8MNOE+REZSR5ySoyVPC8iZhyE2dNs4A6qNafuzIFXiVuQGhRoDapf3jCmacSkoYJo3XedxPgZUYZTwWYVL9UsIXRCRqxvqSQR0342zzzD51YZ4jBW9kmD5+rvjYxEWk+jwE7mGfWyl4v/ef3UhDd+xmWSGibp4lCYCmxinBeAh1wxasTUEkIVt1kxHRNFqLE1VWwJ7vKXV0nnsu426o37q1rzrKijDCdwChfgwjU04Q5a0AYKCTzDK7yhFL2gd/SxGC2hYucY/gB9/gAjZZGs</latexit> 
+
+w1
+
+<latexit sha1_base64="kA3SWmYcndxTIUqj86OqFYqJ1Qw=">AAAB9HicbVDLSgMxFL2pr1pfVZduglVwVWZEqsuCG5cV7APaoWTSTBuayYxJplKGfocbF4q49WPc+Tdm2llo64HA4Zx7uSfHjwXXxnG+UWFtfWNzq7hd2tnd2z8oHx61dJQoypo0EpHq+EQzwSVrGm4E68SKkdAXrO2PbzO/PWFK80g+mGnMvJAMJQ84JcZKXi8kZuQH6dOsz0v9csWpOnPgVeLmpAI5Gv3yV28Q0SRk0lBBtO66Tmy8lCjDqWCzUi/RLCZ0TIasa6kkIdNeOg89w+dWGeAgUvZJg+fq742UhFpPQ99OZiH1speJ/3ndxAQ3XsplnBgm6eJQkAhsIpw1gAdcMWrE1BJCFbdZMR0RRaixPWUluMtfXiWty6pbq9buryr1s7yOIpzAKVyAC9dQhztoQBMoPMIzvMIbmqAX9I4+FqMFlO8cwx+gzx+xbJH4</latexit> 
+
+wi
+
+<latexit sha1_base64="E7WV4+rwUPHO0GpgjP5qFeCcVjg=">AAAB9HicbVDLSgMxFL1TX7W+qi7dBKvgqsyIVJcFXbisYB/QDiWTZtrQTDImmUIZ+h1uXCji1o9x59+YaWehrQcCh3Pu5Z6cIOZMG9f9dgpr6xubW8Xt0s7u3v5B+fCopWWiCG0SyaXqBFhTzgRtGmY47cSK4ijgtB2MbzO/PaFKMykezTSmfoSHgoWMYGMlvxdhMwrCNJ7170r9csWtunOgVeLlpAI5Gv3yV28gSRJRYQjHWnc9NzZ+ipVhhNNZqZdoGmMyxkPatVTgiGo/nYeeoXOrDFAolX3CoLn6eyPFkdbTKLCTWUi97GXif143MeGNnzIRJ4YKsjgUJhwZibIG0IApSgyfWoKJYjYrIiOsMDG2p6wEb/nLq6R1WfVq1drDVaV+ltdRhBM4hQvw4BrqcA8NaAKBJ3iGV3hzJs6L8+58LEYLTr5zDH/gfP4AbnuRzA==</latexit> 
+
+pD
+
+<latexit sha1_base64="RSe/LvL0HdW9y5Gu2IvIoC3UzDE=">AAAB9HicbVBNTwIxFHyLX4hfqEcvjWjiiewagx5JvHjERJAENqRbutDQ7a7tWxKy4Xd48aAxXv0x3vw3doGDgpM0mcy8lzedIJHCoOt+O4W19Y3NreJ2aWd3b/+gfHjUMnGqGW+yWMa6HVDDpVC8iQIlbyea0yiQ/DEY3eb+45hrI2L1gJOE+xEdKBEKRtFKfjeiOAzCbDzteaVeueJW3RnIKvEWpAILNHrlr24/ZmnEFTJJjel4boJ+RjUKJvm01E0NTygb0QHvWKpoxI2fzUJPyblV+iSMtX0KyUz9vZHRyJhJFNjJPKRZ9nLxP6+TYnjjZ0IlKXLF5ofCVBKMSd4A6QvNGcqJJZRpYbMSNqSaMrQ95SV4y19eJa3Lqler1u6vKvWzRR1FOIFTuAAPrqEOd9CAJjB4gmd4hTdn7Lw4787HfLTgLHaO4Q+czx9azJG/</latexit> 
+
+v1
+
+<latexit sha1_base64="dRqQBwFbfs81NmFzohCS0mecDuQ=">AAAB9HicbVDLSgMxFL1TX7W+qi7dBKvgqswUqS4LblxWsA9oh5JJM21oJhmTTKEM/Q43LhRx68e482/MtLPQ1gOBwzn3ck9OEHOmjet+O4WNza3tneJuaW//4PCofHzS1jJRhLaI5FJ1A6wpZ4K2DDOcdmNFcRRw2gkmd5nfmVKlmRSPZhZTP8IjwUJGsLGS34+wGQdhOp0PaqVBueJW3QXQOvFyUoEczUH5qz+UJImoMIRjrXueGxs/xcowwum81E80jTGZ4BHtWSpwRLWfLkLP0aVVhiiUyj5h0EL9vZHiSOtZFNjJLKRe9TLxP6+XmPDWT5mIE0MFWR4KE46MRFkDaMgUJYbPLMFEMZsVkTFWmBjbU1aCt/rlddKuVb16tf5wXWlc5HUU4QzO4Qo8uIEG3EMTWkDgCZ7hFd6cqfPivDsfy9GCk++cwh84nz9cUZHA</latexit> 
+
+v2 <latexit sha1_base64="RSe/LvL0HdW9y5Gu2IvIoC3UzDE=">AAAB9HicbVBNTwIxFHyLX4hfqEcvjWjiiewagx5JvHjERJAENqRbutDQ7a7tWxKy4Xd48aAxXv0x3vw3doGDgpM0mcy8lzedIJHCoOt+O4W19Y3NreJ2aWd3b/+gfHjUMnGqGW+yWMa6HVDDpVC8iQIlbyea0yiQ/DEY3eb+45hrI2L1gJOE+xEdKBEKRtFKfjeiOAzCbDzteaVeueJW3RnIKvEWpAILNHrlr24/ZmnEFTJJjel4boJ+RjUKJvm01E0NTygb0QHvWKpoxI2fzUJPyblV+iSMtX0KyUz9vZHRyJhJFNjJPKRZ9nLxP6+TYnjjZ0IlKXLF5ofCVBKMSd4A6QvNGcqJJZRpYbMSNqSaMrQ95SV4y19eJa3Lqler1u6vKvWzRR1FOIFTuAAPrqEOd9CAJjB4gmd4hTdn7Lw4787HfLTgLHaO4Q+czx9azJG/</latexit> 
+
+v1
+
+<latexit sha1_base64="WHljvGtYTPVmRa1jmn5KP7CdZ4k=">AAAB83icbVDLSgMxFL2pr1pfVZduglVwVWZEqsuCG5cV+oLOUDJppg3NZIYkI5Shv+HGhSJu/Rl3/o2ZdhbaeiBwOOde7skJEsG1cZxvVNrY3NreKe9W9vYPDo+qxyddHaeKsg6NRaz6AdFMcMk6hhvB+oliJAoE6wXT+9zvPTGleSzbZpYwPyJjyUNOibGS50XETIIwa8+HwbBac+rOAniduAWpQYHWsPrljWKaRkwaKojWA9dJjJ8RZTgVbF7xUs0SQqdkzAaWShIx7WeLzHN8aZURDmNlnzR4of7eyEik9SwK7GSeUa96ufifN0hNeOdnXCapYZIuD4WpwCbGeQF4xBWjRswsIVRxmxXTCVGEGltTxZbgrn55nXSv626j3ni8qTUvijrKcAbncAUu3EITHqAFHaCQwDO8whtK0Qt6Rx/L0RIqdk7hD9DnDzg0kbo=</latexit> 
+
+Tb
+
+<latexit sha1_base64="X5BF1SANeBvO68XOcgqPm5idT/o=">AAAB+XicbVDLSsNAFL2pr1pfUZduBqsgLkoiUl0W3LisYB/QxjKZTtqhM0mYmRRKyJ+4caGIW//EnX/jpM1CWw8MHM65l3vm+DFnSjvOt1VaW9/Y3CpvV3Z29/YP7MOjtooSSWiLRDySXR8ryllIW5ppTruxpFj4nHb8yV3ud6ZUKhaFj3oWU0/gUcgCRrA20sC2+wLrsR+kcTZIxdNlNrCrTs2ZA60StyBVKNAc2F/9YUQSQUNNOFaq5zqx9lIsNSOcZpV+omiMyQSPaM/QEAuqvHSePEPnRhmiIJLmhRrN1d8bKRZKzYRvJvOcatnLxf+8XqKDWy9lYZxoGpLFoSDhSEcorwENmaRE85khmEhmsiIyxhITbcqqmBLc5S+vkvZVza3X6g/X1cZZUUcZTuAULsCFG2jAPTShBQSm8Ayv8Gal1ov1bn0sRktWsXMMf2B9/gDcBpO6</latexit> 
+
+pm⇤
+
+<latexit sha1_base64="espOf9dsulc2ZJ2GbjbLE7yxfPQ=">AAAB+XicbVDLSsNAFL2pr1pfUZduBqvgQkoiUl0W3Lis0Be0IUymk3boZBJmJoUS+iduXCji1j9x5984abPQ1gMDh3Pu5Z45QcKZ0o7zbZU2Nre2d8q7lb39g8Mj+/iko+JUEtomMY9lL8CKciZoWzPNaS+RFEcBp91g8pD73SmVisWipWcJ9SI8EixkBGsj+bY9iLAeB2HWmvtZcO3Mfbvq1JwF0DpxC1KFAk3f/hoMY5JGVGjCsVJ910m0l2GpGeF0XhmkiiaYTPCI9g0VOKLKyxbJ5+jSKEMUxtI8odFC/b2R4UipWRSYyTynWvVy8T+vn+rw3suYSFJNBVkeClOOdIzyGtCQSUo0nxmCiWQmKyJjLDHRpqyKKcFd/fI66dzU3Hqt/nRbbVwUdZThDM7hCly4gwY8QhPaQGAKz/AKb1ZmvVjv1sdytGQVO6fwB9bnD1z3k2c=</latexit> 
+
+Tb, 0
+
+<latexit sha1_base64="dHyOpUITmovjXDVIEXDhJsKFXdo=">AAAB+XicbVDLSsNAFL2pr1pfUZduBqvgQkoiUl0W3Lis0Be0IUymk3boZBJmJoUS+iduXCji1j9x5984abPQ1gMDh3Pu5Z45QcKZ0o7zbZU2Nre2d8q7lb39g8Mj+/iko+JUEtomMY9lL8CKciZoWzPNaS+RFEcBp91g8pD73SmVisWipWcJ9SI8EixkBGsj+bY9iLAeB2HWmvtZcO3Ofbvq1JwF0DpxC1KFAk3f/hoMY5JGVGjCsVJ910m0l2GpGeF0XhmkiiaYTPCI9g0VOKLKyxbJ5+jSKEMUxtI8odFC/b2R4UipWRSYyTynWvVy8T+vn+rw3suYSFJNBVkeClOOdIzyGtCQSUo0nxmCiWQmKyJjLDHRpqyKKcFd/fI66dzU3Hqt/nRbbVwUdZThDM7hCly4gwY8QhPaQGAKz/AKb1ZmvVjv1sdytGQVO6fwB9bnD158k2g=</latexit> 
+
+Tb, 1
+
+<latexit sha1_base64="dHyOpUITmovjXDVIEXDhJsKFXdo=">AAAB+XicbVDLSsNAFL2pr1pfUZduBqvgQkoiUl0W3Lis0Be0IUymk3boZBJmJoUS+iduXCji1j9x5984abPQ1gMDh3Pu5Z45QcKZ0o7zbZU2Nre2d8q7lb39g8Mj+/iko+JUEtomMY9lL8CKciZoWzPNaS+RFEcBp91g8pD73SmVisWipWcJ9SI8EixkBGsj+bY9iLAeB2HWmvtZcO3Ofbvq1JwF0DpxC1KFAk3f/hoMY5JGVGjCsVJ910m0l2GpGeF0XhmkiiaYTPCI9g0VOKLKyxbJ5+jSKEMUxtI8odFC/b2R4UipWRSYyTynWvVy8T+vn+rw3suYSFJNBVkeClOOdIzyGtCQSUo0nxmCiWQmKyJjLDHRpqyKKcFd/fI66dzU3Hqt/nRbbVwUdZThDM7hCly4gwY8QhPaQGAKz/AKb1ZmvVjv1sdytGQVO6fwB9bnD158k2g=</latexit> 
+
+Tb, 1
+
+<latexit sha1_base64="EKukjC0ZjifpG+uFdjt0mNsHK2U=">AAAB+XicbVBNS8NAFHypX7V+RT16WayCBylJkeqx4MVjhdYW2hA22027dLMJu5tCCfknXjwo4tV/4s1/47bNQVsHFoaZ93izEyScKe0431ZpY3Nre6e8W9nbPzg8so9PnlScSkI7JOax7AVYUc4E7WimOe0lkuIo4LQbTO7nfndKpWKxaOtZQr0IjwQLGcHaSL5tDyKsx0GYtXM/C67ruW9XnZqzAFonbkGqUKDl21+DYUzSiApNOFaq7zqJ9jIsNSOc5pVBqmiCyQSPaN9QgSOqvGyRPEeXRhmiMJbmCY0W6u+NDEdKzaLATM5zqlVvLv7n9VMd3nkZE0mqqSDLQ2HKkY7RvAY0ZJISzWeGYCKZyYrIGEtMtCmrYkpwV7+8Tp7qNbdRazzeVJsXRR1lOINzuAIXbqEJD9CCDhCYwjO8wpuVWS/Wu/WxHC1Zxc4p/IH1+QNgAZNp</latexit> 
+
+Tb, 2
+
+<latexit sha1_base64="EKukjC0ZjifpG+uFdjt0mNsHK2U=">AAAB+XicbVBNS8NAFHypX7V+RT16WayCBylJkeqx4MVjhdYW2hA22027dLMJu5tCCfknXjwo4tV/4s1/47bNQVsHFoaZ93izEyScKe0431ZpY3Nre6e8W9nbPzg8so9PnlScSkI7JOax7AVYUc4E7WimOe0lkuIo4LQbTO7nfndKpWKxaOtZQr0IjwQLGcHaSL5tDyKsx0GYtXM/C67ruW9XnZqzAFonbkGqUKDl21+DYUzSiApNOFaq7zqJ9jIsNSOc5pVBqmiCyQSPaN9QgSOqvGyRPEeXRhmiMJbmCY0W6u+NDEdKzaLATM5zqlVvLv7n9VMd3nkZE0mqqSDLQ2HKkY7RvAY0ZJISzWeGYCKZyYrIGEtMtCmrYkpwV7+8Tp7qNbdRazzeVJsXRR1lOINzuAIXbqEJD9CCDhCYwjO8wpuVWS/Wu/WxHC1Zxc4p/IH1+QNgAZNp</latexit> 
+
+Tb, 2
+
+<latexit sha1_base64="mxBylACHF6Zhtnw0agMznJVttZ4=">AAAB83icbVDLSgMxFL1TX7W+qi7dBKvgqsxIqS4LblxWsA/oDCWTZtrQTCYkGaEM/Q03LhRx68+482/MtLPQ1gOBwzn3ck9OKDnTxnW/ndLG5tb2Tnm3srd/cHhUPT7p6iRVhHZIwhPVD7GmnAnaMcxw2peK4jjktBdO73K/90SVZol4NDNJgxiPBYsYwcZKvh9jMwmjTM6H02G15tbdBdA68QpSgwLtYfXLHyUkjakwhGOtB54rTZBhZRjhdF7xU00lJlM8pgNLBY6pDrJF5jm6tMoIRYmyTxi0UH9vZDjWehaHdjLPqFe9XPzPG6Qmug0yJmRqqCDLQ1HKkUlQXgAaMUWJ4TNLMFHMZkVkghUmxtZUsSV4q19eJ93rutesNx8atdZFUUcZzuAcrsCDG2jBPbShAwQkPMMrvDmp8+K8Ox/L0ZJT7JzCHzifP3Cckd8=</latexit> 
+
+pk
+
+<latexit sha1_base64="i5UUjMCldDW322fWM8O4HYehKUQ=">AAAB83icbVDLSgMxFL1TX7W+qi7dBKvgqsyIVJcFNy4r2Ad0hpJJM21oJhOSjFKG/oYbF4q49Wfc+Tdm2llo64HA4Zx7uScnlJxp47rfTmltfWNzq7xd2dnd2z+oHh51dJIqQtsk4YnqhVhTzgRtG2Y47UlFcRxy2g0nt7nffaRKs0Q8mKmkQYxHgkWMYGMl34+xGYdR9jQbTAbVmlt350CrxCtIDQq0BtUvf5iQNKbCEI617nuuNEGGlWGE01nFTzWVmEzwiPYtFTimOsjmmWfo3CpDFCXKPmHQXP29keFY62kc2sk8o172cvE/r5+a6CbImJCpoYIsDkUpRyZBeQFoyBQlhk8twUQxmxWRMVaYGFtTxZbgLX95lXQu616j3ri/qjXPijrKcAKncAEeXEMT7qAFbSAg4Rle4c1JnRfn3flYjJacYucY/sD5/AF7TZHm</latexit> 
+
+wk
+
+<latexit sha1_base64="EGORLP68b2OmaUevtxT6KobFHuo=">AAAB7XicbVBNS8NAEJ3Ur1q/qh69LFbBU0lEqseCF48V7Ae0oWy2m3btJht2J0IJ/Q9ePCji1f/jzX/jts1BWx8MPN6bYWZekEhh0HW/ncLa+sbmVnG7tLO7t39QPjxqGZVqxptMSaU7ATVcipg3UaDknURzGgWSt4Px7cxvP3FthIofcJJwP6LDWISCUbRSq4cjjrRfrrhVdw6ySrycVCBHo1/+6g0USyMeI5PUmK7nJuhnVKNgkk9LvdTwhLIxHfKupTGNuPGz+bVTcm6VAQmVthUjmau/JzIaGTOJAtsZURyZZW8m/ud1Uwxv/EzESYo8ZotFYSoJKjJ7nQyE5gzlxBLKtLC3EjaimjK0AZVsCN7yy6ukdVn1atXa/VWlfpbHUYQTOIUL8OAa6nAHDWgCg0d4hld4c5Tz4rw7H4vWgpPPHMMfOJ8/noOPFQ==</latexit> 
+
+✓
+
+<latexit sha1_base64="TBDDYrxXubi9IskxcNuI65E85fM=">AAAB63icbVBNS8NAEJ3Ur1q/qh69LFbBU0mkVI8FLx4r2A9oQ9lsN83S3U3Y3Qgl9C948aCIV/+QN/+NmzYHbX0w8Hhvhpl5QcKZNq777ZQ2Nre2d8q7lb39g8Oj6vFJV8epIrRDYh6rfoA15UzSjmGG036iKBYBp71gepf7vSeqNIvlo5kl1Bd4IlnICDa5NEwiNqrW3Lq7AFonXkFqUKA9qn4NxzFJBZWGcKz1wHMT42dYGUY4nVeGqaYJJlM8oQNLJRZU+9ni1jm6tMoYhbGyJQ1aqL8nMiy0nonAdgpsIr3q5eJ/3iA14a2fMZmkhkqyXBSmHJkY5Y+jMVOUGD6zBBPF7K2IRFhhYmw8FRuCt/ryOule171mvfnQqLUuijjKcAbncAUe3EAL7qENHSAQwTO8wpsjnBfn3flYtpacYuYU/sD5/AEOFI4s</latexit> 
+
+ 
+
+<latexit sha1_base64="iFmYqWsnsW5crCsSl2tL7sAIOK0=">AAAB8nicbVBNS8NAEJ3Ur1q/qh69LFbBU0lEqseCF48V7AekoWy2m3bpJht2J0op/RlePCji1V/jzX/jts1BWx8MPN6bYWZemEph0HW/ncLa+sbmVnG7tLO7t39QPjxqGZVpxptMSaU7ITVcioQ3UaDknVRzGoeSt8PR7cxvP3JthEoecJzyIKaDRESCUbSS39ViMESqtXrqlStu1Z2DrBIvJxXI0eiVv7p9xbKYJ8gkNcb33BSDCdUomOTTUjczPKVsRAfctzShMTfBZH7ylJxbpU8ipW0lSObq74kJjY0Zx6HtjCkOzbI3E//z/Ayjm2AikjRDnrDFoiiTBBWZ/U/6QnOGcmwJZVrYWwkbUk0Z2pRKNgRv+eVV0rqserVq7f6qUj/L4yjCCZzCBXhwDXW4gwY0gYGCZ3iFNwedF+fd+Vi0Fpx85hj+wPn8Ab1HkXo=</latexit> 
+
+! <latexit sha1_base64="iFmYqWsnsW5crCsSl2tL7sAIOK0=">AAAB8nicbVBNS8NAEJ3Ur1q/qh69LFbBU0lEqseCF48V7AekoWy2m3bpJht2J0op/RlePCji1V/jzX/jts1BWx8MPN6bYWZemEph0HW/ncLa+sbmVnG7tLO7t39QPjxqGZVpxptMSaU7ITVcioQ3UaDknVRzGoeSt8PR7cxvP3JthEoecJzyIKaDRESCUbSS39ViMESqtXrqlStu1Z2DrBIvJxXI0eiVv7p9xbKYJ8gkNcb33BSDCdUomOTTUjczPKVsRAfctzShMTfBZH7ylJxbpU8ipW0lSObq74kJjY0Zx6HtjCkOzbI3E//z/Ayjm2AikjRDnrDFoiiTBBWZ/U/6QnOGcmwJZVrYWwkbUk0Z2pRKNgRv+eVV0rqserVq7f6qUj/L4yjCCZzCBXhwDXW4gwY0gYGCZ3iFNwedF+fd+Vi0Fpx85hj+wPn8Ab1HkXo=</latexit> 
+
+!Fig. 2: Geometric base pose alignment via three sequential transformations. The robot shape (blue) is aligned to the active path (orange) while guaranteeing exact tip placement at waypoint wi. T1: Translation by (wi − pD ) places the tip exactly at the waypoint. T2: Rotation about wi by angle θ aligns the tip-to-robot direction v2 with the path direction v1. T3: Axial rotation about the v1 axis by angle ϕ resolves the remaining degree of freedom using a third correspondence pair (wk, pk).Together, these transformations uniquely determine the 6-DOF base pose Tb with exact tip tracking by construction. shape point pk matched by arc length ratio. The rotation angle 
+
+ϕ is computed from the projections of (wk −w1) and (pk −w1)
+
+onto the plane orthogonal to v1. Since, this rotation is also about v1 passing through wi, tip placement is preserved. Together, Transformations 1–3 uniquely determine all six degrees of freedom of Tb while guaranteeing pD = wi by construction. Note that this construction requires at least three non-collinear active waypoints. For the first two waypoints (w1 and w2), the base pose can be trivially determined using a home configuration (e.g., straight) or by reusing the shape found at w3, depending on application requirements. 
+
+C. Shape Evaluation 
+
+After alignment, we compute the deviation between the transformed shape and the path using the symmetric Chamfer distance: 
+
+1
+
+|W i|
+
+X
+
+x∈W i
+
+min 
+
+y∈Pact 
+
+∥x − y∥ + 1
+
+|Pact |
+
+X
+
+y∈Pact 
+
+min 
+
+x∈W i
+
+∥y − x∥ (3) where Pact denotes active shape after alignment. We choose symmetric Chamfer distance as it is robust to differences in point density between the path and shape discretizations, and penalizes deviations bidirectionally. The shape minimizing the deviation cost is selected, and its associated Tb forms the complete configuration (q, Tb) ∈ K .This formulation can be viewed as nearest-neighbor search in a task-induced metric space: rather than measuring distance in configuration space as in classical sampling-based planners, we evaluate candidates by task performance (shape deviation) after analytically aligning the base pose. Our formulation readily accommodates flexible cost design. For instance, dif-ferent weights can be assigned to waypoints along the path, e.g., prioritizing recent waypoints as the robot progresses to emphasize accuracy near the tip. Additional terms such as base movement penalties, orientation change from the previous step, or collision constraints may also be incorporated to encourage smooth motion or address application-specific requirements. 
+
+D. Interpolation 
+
+At this stage, we have a sparse motion plan with one configuration (qi, Tib) at each waypoint wi. To execute on real hardware, this sparse plan must be converted into a continuous trajectory in both CR joint space and base pose space. How-ever, naive interpolation between consecutive configurations can result in large deviations from the FTL path, as the intermediate shapes may not align well with the path. The main challenge is that consecutive configurations may differ significantly in both joint state and base pose (Fig. 3), requiring large coordinated motions to maintain FTL path tracking. We address this in two steps: first, we exploit the radial symmetry of CRs to pre-align consecutive configura-tions, reducing orientation discontinuities; then, we interpolate smoothly in joint space while constructing base poses that guarantee exact tip placement throughout. 
+
+1) Exploiting Radial Symmetry: CRs exhibit radial symme-try about their backbone axis: rotating the robot about this axis produces a shape in a different bending plane without changing the shape itself. We exploit this to pre-align consecutive configurations before interpolation. Given the sparse plan {(qj , Tjb)}nj=1 , we rotate each con-figuration to maximize alignment with a common reference direction (e.g., the base x-axis of the first configuration, x1). The optimal rotation angle θj is computed in closed form by maximizing the dot product between the rotated x-axis and the reference direction: 
+
+θj = atan2  −x⊤
+
+1 yj , x⊤
+
+1 xj
+
+ (4) where xj and yj are the x and y axes of the base orientation 
+
+Tjb. Depending on the CR design, three types of radial symmetry determine how θj is applied: Radial Symmetry Pre -Alignment 
+
+without with  
+
+> <latexit sha1_base64="IknPWBoYoEWjZGtEQLStk1a3DlM=">AAAB9XicbVDLSsNAFL2pr1pfVZduBqvgqiQi1WXBjcsKfUGblsl00o6dTMLMRCmh/+HGhSJu/Rd3/o2TNAttPTBwOOde7pnjRZwpbdvfVmFtfWNzq7hd2tnd2z8oHx61VRhLQlsk5KHselhRzgRtaaY57UaS4sDjtONNb1O/80ilYqFo6llE3QCPBfMZwdpIg36A9cTzk+Z86A0ehuWKXbUzoFXi5KQCORrD8ld/FJI4oEITjpXqOXak3QRLzQin81I/VjTCZIrHtGeowAFVbpKlnqNzo4yQH0rzhEaZ+nsjwYFSs8Azk2lKteyl4n9eL9b+jZswEcWaCrI45Mcc6RClFaARk5RoPjMEE8lMVkQmWGKiTVElU4Kz/OVV0r6sOrVq7f6qUj/L6yjCCZzCBThwDXW4gwa0gICEZ3iFN+vJerHerY/FaMHKd47hD6zPH7ttkpY=</latexit>
+
+Tj
+
+b 
+
+> <latexit sha1_base64="LZNQuUzhVbI8UVnGMhpMX3inxkY=">AAAB+3icbVDLSsNAFL2pr1pfsS7dDFZBEEoiUl0W3Lis0Be0MUymk3Z08mBmIpaQX3HjQhG3/og7/8ZJm4W2Hhg4nHMv98zxYs6ksqxvo7Syura+Ud6sbG3v7O6Z+9WujBJBaIdEPBJ9D0vKWUg7iilO+7GgOPA47XkP17nfe6RCsihsq2lMnQCPQ+YzgpWWXLM6DLCaeH7azlzvLr0/szPXrFl1awa0TOyC1KBAyzW/hqOIJAENFeFYyoFtxcpJsVCMcJpVhomkMSYPeEwHmoY4oNJJZ9kzdKKVEfIjoV+o0Ez9vZHiQMpp4OnJPKlc9HLxP2+QKP/KSVkYJ4qGZH7ITzhSEcqLQCMmKFF8qgkmgumsiEywwETpuiq6BHvxy8uke163G/XG7UWteVzUUYZDOIJTsOESmnADLegAgSd4hld4MzLjxXg3PuajJaPYOYA/MD5/AOOVlEM=</latexit>
+
+Tj+1 
+
+b 
+
+> <latexit sha1_base64="0dy6MYdEIK99zPzT2aj5Ux/DgkM=">AAAB/3icbVC7TsMwFHXKq5RXAImFxaIgMVUJQoWxEgtjkfqS2hA5rtOa2k5kO0hVyMCvsDCAECu/wcbf4LQZoHAkS0fn3Kt7fIKYUaUd58sqLS2vrK6V1ysbm1vbO/buXkdFicSkjSMWyV6AFGFUkLammpFeLAniASPdYHKV+917IhWNREtPY+JxNBI0pBhpI/n2wYAjPQ7CtJX5wW16N4gl5STz7apTc2aAf4lbkCoo0PTtz8EwwgknQmOGlOq7Tqy9FElNMSNZZZAoEiM8QSPSN1QgTpSXzvJn8MQoQxhG0jyh4Uz9uZEirtSUB2YyT6sWvVz8z+snOrz0UiriRBOB54fChEEdwbwMOKSSYM2mhiAsqckK8RhJhLWprGJKcBe//Jd0zmpuvVa/Oa82jos6yuAQHIFT4IIL0ADXoAnaAIMH8ARewKv1aD1bb9b7fLRkFTv74Besj2/M8JaI</latexit>
+
+Tj0
+
+b 
+
+> <latexit sha1_base64="pP+qq2JX1jWkyvytAUVryXf8U64=">AAACAXicbVDLSsNAFJ3UV62vqBvBzWAVBKEkItVlwY3LCn1BE8NkOmnHTiZhZiKUEDf+ihsXirj1L9z5N07aLLT1wIXDOfdy7z1+zKhUlvVtlJaWV1bXyuuVjc2t7R1zd68jo0Rg0sYRi0TPR5IwyklbUcVILxYEhT4jXX98nfvdByIkjXhLTWLihmjIaUAxUlryzAMnRGrkB2kr8/y79P7MdmJBQ5J5ZtWqWVPARWIXpAoKND3zyxlEOAkJV5ghKfu2FSs3RUJRzEhWcRJJYoTHaEj6mnIUEumm0w8yeKKVAQwioYsrOFV/T6QolHIS+rozv1fOe7n4n9dPVHDlppTHiSIczxYFCYMqgnkccEAFwYpNNEFYUH0rxCMkEFY6tIoOwZ5/eZF0zmt2vVa/vag2jos4yuAQHIFTYINL0AA3oAnaAINH8AxewZvxZLwY78bHrLVkFDP74A+Mzx+xtpb4</latexit>
+
+Tj+1 0
+
+b 
+
+> <latexit sha1_base64="YqOjH7tMS4kIgWeuuqZAwKj5EnU=">AAAB83icbVDLSsNAFL3xWeur6tLNYBVclUSkuiy4cVnBPqAJZTKdtGMnkzAPpYT+hhsXirj1Z9z5N07aLLT1wMDhnHu5Z06Ycqa06347K6tr6xubpa3y9s7u3n7l4LCtEiMJbZGEJ7IbYkU5E7Slmea0m0qK45DTTji+yf3OI5WKJeJeT1IaxHgoWMQI1lby/RjrURhlT9P+Q79SdWvuDGiZeAWpQoFmv/LlDxJiYio04VipnuemOsiw1IxwOi37RtEUkzEe0p6lAsdUBdks8xSdWWWAokTaJzSaqb83MhwrNYlDO5lnVIteLv7n9YyOroOMidRoKsj8UGQ40gnKC0ADJinRfGIJJpLZrIiMsMRE25rKtgRv8cvLpH1R8+q1+t1ltXFa1FGCYziBc/DgChpwC01oAYEUnuEV3hzjvDjvzsd8dMUpdo7gD5zPH3nJkeU=</latexit>
+
+wj 
+
+> <latexit sha1_base64="YYL14kIA77u91PLTSZ20mGP8suk=">AAAB+XicbVDLSsNAFL3xWesr6tLNYBUEoSQi1WXBjcsK9gFtKJPppB07mYSZSaWE/IkbF4q49U/c+TdO2iy09cDA4Zx7uWeOH3OmtON8Wyura+sbm6Wt8vbO7t6+fXDYUlEiCW2SiEey42NFORO0qZnmtBNLikOf07Y/vs399oRKxSLxoKcx9UI8FCxgBGsj9W27F2I98oP0Keunjxdu1rcrTtWZAS0TtyAVKNDo21+9QUSSkApNOFaq6zqx9lIsNSOcZuVeomiMyRgPaddQgUOqvHSWPENnRhmgIJLmCY1m6u+NFIdKTUPfTOY51aKXi/953UQHN17KRJxoKsj8UJBwpCOU14AGTFKi+dQQTCQzWREZYYmJNmWVTQnu4peXSeuy6taqtfurSv20qKMEx3AC5+DCNdThDhrQBAITeIZXeLNS68V6tz7moytWsXMEf2B9/gCfL5OS</latexit>
+
+wj+1  
+
+> <latexit sha1_base64="YqOjH7tMS4kIgWeuuqZAwKj5EnU=">AAAB83icbVDLSsNAFL3xWeur6tLNYBVclUSkuiy4cVnBPqAJZTKdtGMnkzAPpYT+hhsXirj1Z9z5N07aLLT1wMDhnHu5Z06Ycqa06347K6tr6xubpa3y9s7u3n7l4LCtEiMJbZGEJ7IbYkU5E7Slmea0m0qK45DTTji+yf3OI5WKJeJeT1IaxHgoWMQI1lby/RjrURhlT9P+Q79SdWvuDGiZeAWpQoFmv/LlDxJiYio04VipnuemOsiw1IxwOi37RtEUkzEe0p6lAsdUBdks8xSdWWWAokTaJzSaqb83MhwrNYlDO5lnVIteLv7n9YyOroOMidRoKsj8UGQ40gnKC0ADJinRfGIJJpLZrIiMsMRE25rKtgRv8cvLpH1R8+q1+t1ltXFa1FGCYziBc/DgChpwC01oAYEUnuEV3hzjvDjvzsd8dMUpdo7gD5zPH3nJkeU=</latexit>
+
+wj 
+
+> <latexit sha1_base64="YYL14kIA77u91PLTSZ20mGP8suk=">AAAB+XicbVDLSsNAFL3xWesr6tLNYBUEoSQi1WXBjcsK9gFtKJPppB07mYSZSaWE/IkbF4q49U/c+TdO2iy09cDA4Zx7uWeOH3OmtON8Wyura+sbm6Wt8vbO7t6+fXDYUlEiCW2SiEey42NFORO0qZnmtBNLikOf07Y/vs399oRKxSLxoKcx9UI8FCxgBGsj9W27F2I98oP0Keunjxdu1rcrTtWZAS0TtyAVKNDo21+9QUSSkApNOFaq6zqx9lIsNSOcZuVeomiMyRgPaddQgUOqvHSWPENnRhmgIJLmCY1m6u+NFIdKTUPfTOY51aKXi/953UQHN17KRJxoKsj8UJBwpCOU14AGTFKi+dQQTCQzWREZYYmJNmWVTQnu4peXSeuy6taqtfurSv20qKMEx3AC5+DCNdThDhrQBAITeIZXeLNS68V6tz7moytWsXMEf2B9/gCfL5OS</latexit>
+
+wj+1 Fig. 3: Pre-alignment via radial symmetry. Fanned frames show interpolated configurations between waypoints wj (red shape) and wj+1 (blue shape). Left: without alignment, dif-fering bending planes cause large base rotations during inter-polation. Right: pre-aligning reduces orientation discontinuity while preserving shape, resulting in better shape following. 
+
+1. Continuous: For CRs with fully symmetric actuation (e.g., PCC), θj is applied directly. 
+
+2. Discrete: For TDCRs with k tendons per segment, θj is snapped to the nearest 360 ◦/k increment. 
+
+3. Data-driven: When analytical symmetry properties are unknown, we identify radially symmetric shapes empirically. Using the same threshold-based clustering method from Sec-tion III-A, we cluster shapes that have been rotated to align their tips to a common plane. Shapes within the same cluster are considered radially symmetric variants, allowing substitution with a similar shape with a more favorable base orientation, denoted (q′
+
+j , Tj′
+
+b ).
+
+2) Local Interpolation Between Waypoints: Between way-points wj and wj+1 , we generate h intermediate configurations to ensure smooth motion for practical deployment. The key idea is to define a smooth tip trajectory first, then compute the base pose that places the tip exactly on this trajectory. We linearly interpolate the tip position and use SLERP [30] for tip orientation, both obtained from the sparse plan, yielding a smooth desired tip pose kTtip at each interpolation step k ∈{0, . . . , h } with α = k/h :
+
+kw = (1 − α)wj + αwj+1 (5) 
+
+kRtip = SLERP (Rj′
+
+tip , R(j+1) ′
+
+tip , α ) (6) Simultaneously, we linearly interpolate the CR joint state (after pre-alignment via radial symmetry): 
+
+kq′ = (1 − α)q′
+
+j + αq′
+
+j+1 (7) Evaluating f (kq′) gives the tip pose Ttip (kq′) in the CR’s local frame. To place the tip exactly at the desired pose kTtip ,we construct the base pose as: 
+
+kTb = kTtip · Ttip (kq′)−1 (8) This construction guarantees exact tip tracking at every inter-polation step. Each step requires one FM evaluation, and with 
+
+h steps between each of n − 1 waypoint pairs, the complete motion plan consists of N = ( n − 1) · h + 1 configurations with (n − 1) · h total FM evaluations—a fixed, predictable cost independent of library size. IV. T HEORETICAL GUARANTEES 
+
+We analyze the theoretical properties of our motion planner, establishing resolution completeness and characterizing tip-tracking optimality. We present the analysis for the base case of linear search over the shape library. Section IV-D discusses the speed-accuracy tradeoff when using clustered search. 
+
+A. Assumptions 
+
+We require the following mild conditions: 
+
+A1 The CR configuration space Q is compact. 
+
+A2 C1 Forward Model: f : Q → S is continuously differen-tiable on Q, where S is the space of robot shapes. 
+
+A3 Smooth Feasibility: For a feasible path W, there exists a continuous function q∗ : [0 , 1] → Q such that the corresponding shapes achieve bounded shape deviation at each insertion depth. A1 holds for all practical robots with bounded joint limits. A2 is satisfied by standard CR models: PCC, Cosserat rod, FEM, and neural networks with smooth activations [28]. A2 further implies a deterministic forward model. A3 formalizes the existence of a smooth FTL motion and is standard in sampling-based planning. 
+
+B. Resolution Completeness 
+
+A motion planning algorithm is resolution complete if, for a given discretization level, it is guaranteed to find a valid plan when one exists and terminate in finite time [2]. In our framework, the discretization level corresponds to the discrete resolution library size Nlib , not the continuous configuration space. The key insight is that if a feasible configuration q∗
+
+exists, a sufficiently large library will contain a nearby config-uration; Lipschitz continuity of shape deviation then ensures this neighbor achieves comparable performance, yielding a valid plan. We formalize this below. 
+
+Lemma 4.1 (Coverage Probability): Let LN =
+
+{q1, . . . , qN } be i.i.d. uniform samples from compact 
+
+Q. For any ϵC > 0 and δ > 0, there exists N0 such that for 
+
+N ≥ N0:
+
+P[LN is an ϵC -cover of Q] ≥ 1 − δ (9) Intuitively, uniform sampling eventually places points densely throughout Q, ensuring every configuration has a nearby sample. See Appendix B for the full proof. 
+
+Lemma 4.2 (Lipschitz Continuity of Shape Deviation): Un-der A1–A2, the shape deviation E(S, Wi) after optimal base pose alignment is Lipschitz continuous in the configuration: 
+
+|E(q1, Wi) − E(q2, Wi)| ≤ LE ∥q1 − q2∥ (10) for some constant LE < ∞.
+
+Proof. Under A1–A2, the forward model f is continuously differentiable on compact Q, so ∇f is bounded and f is Lipschitz by the mean value theorem. The base pose con-struction (Transformations 1–3) depends continuously on the shape points, and shape deviation (3) is continuous in the transformed shape. The composition of Lipschitz functions is Lipschitz. See Appendix C for the full proof. □
+
+Theorem 4.3 (Resolution Completeness): Under A1–A3, for any δ > 0, there exists library size N0 such that for Nlib ≥ N0:
+
+P[valid plan found | feasible plan exists ] ≥ 1 − δ (11) 
+
+Proof. By A3, at each waypoint wi there exists q∗(i) ∈Q achieving shape deviation below some threshold ϵ∗. By Lemma 4.1, for Nlib ≥ N0, with probability at least 1 − δ,there exists ˆqi ∈ L Nlib satisfying ∥q∗(i) − ˆqi∥ < ϵ C . By Lemma 4.2: 
+
+E(ˆ qi, Wi) ≤ E(q∗(i), Wi) + LE ϵC < ϵ ∗ + LE ϵC (12) The planner selects the configuration minimizing E(·, Wi),achieving deviation at most ϵ∗ + LE ϵC . As Nlib → ∞ , ϵC →
+
+0, so the achieved deviation approaches ϵ∗. □
+
+C. Tip-Tracking Convergence 
+
+A central property of base pose alignment (Transformations 1–3) is that exact tip placement is guaranteed by geometric construction, independently of the selected shape and without iterative optimization: 
+
+Theorem 4.4 (Exact Tip Tracking By Construction): For any selected configuration q ∈ Q :1) At each waypoint wi, the tip position satisfies ∥pD −
+
+wi∥ = 0 .2) At each interpolation step k between waypoints wj and 
+
+wj+1 , the tip position satisfies p(k) 
+
+> D
+
+= (1 −α)wj +αwj+1 
+
+exactly, where α = k/h .
+
+Proof. Property (1): Transformation 1 translates the shape by (wi − pD ), placing the tip at wi. Transformations 2–3 rotate about wi, preserving this constraint. Property (2): The interpolated base pose is constructed as kTtip · Ttip (kq)−1
+
+where kTtip has position component kw = (1 −α)wj +αwj+1 ,ensuring the tip matches the interpolated waypoint. □
+
+While tip error is exactly zero at interpolation steps, hard-ware execution requires continuous joint motion between them. During this inter-step motion, the tip may deviate from the linear FTL path. We show this deviation is bounded and vanishes with finer interpolation: 
+
+Theorem 4.5 (Asymptotic Tip-Tracking Convergence): Be-tween consecutive interpolation steps, the tip deviation from the linearly-interpolated FTL path satisfies: 
+
+max  
+
+> β∈[0 ,1]
+
+∥ptip (β) − pf tl (β)∥ ≤ Ch2 ∆2 
+
+> max
+
+(13) where h is the number of interpolation steps, ∆max bounds the configuration change between waypoints, and C depends on FM smoothness. Consequently, as h → ∞ , the supremum tip error over the entire trajectory vanishes. 
+
+Proof. The tip error is zero at both endpoints of each inter-step interval (Theorem 4.4). Define the error e(β) = ptip (β) −
+
+pf tl (β). Since e(0) = e(1) = 0 and e is smooth (by A1–A2 ′), the maximum deviation satisfies max β ∥e(β)∥ ≤  
+
+> 18
+
+max β ∥e′′ (β)∥ (up to dimensional constants). Since ∥e′′ (β)∥
+
+scales as (∆ max /h )2, the O(1 /h 2) bound follows. See Ap-pendix D for the full derivation. □
+
+D. Computational Tradeoff with Clustering 
+
+The theoretical guarantees established above require lin-ear search over the full shape library L, incurring O(Nlib )
+
+shape evaluations per waypoint. The clustered variant (Sec-tion III-A2) reduces this to approximately 2√Nlib evaluations, but sacrifices resolution completeness: if the optimal config-uration resides in a cluster whose center scores poorly, that cluster will not be explored. This presents a user-adjustable tradeoff: linear search retains full guarantees, while clustering enables faster planning at the cost of potential suboptimality. Crucially, tip-tracking guarantees (Theorems 4.4–4.5) remain valid regardless, as they depend only on base pose alignment. In practice, we observe minimal increase in shape deviation with significant reduction in computation time (Section V), suggesting clustering is a viable choice for most applications. V. E VALUATION 
+
+We evaluate our method in three settings of increasing fidelity: (1) comparison against an optimization-based baseline using a PCC kinematic model, (2) simulation with a system-identified pseudo-rigid-body model in MuJoCo, and (3) hard-ware demonstration on a physical tendon-driven CR mounted on a 7-DOF manipulator. Together, these experiments validate our method’s accuracy, efficiency, and practical applicability. 
+
+A. Metrics 
+
+We evaluate performance using three metrics:  
+
+> •
+
+Tip deviation : distance between the CR tip and the target waypoint, normalized by robot length (%)  
+
+> •
+
+Shape deviation : symmetric Chamfer distance (Eqn. 3) between the inserted robot shape and the active path, normalized by robot length (%)  
+
+> •
+
+Compute time : wall-clock time to generate a complete motion plan (seconds) 
+
+B. PCC Model: Comparison with Optimization Baseline 1) Setup: We compare our method against an optimization-based FTL baseline using a piece-wise constant curvature (PCC) kinematic model. The baseline minimizes shape devia-tion using SciPy ’s L-BFGS-B solver [32], initialized with the solution from the previous waypoint or the zero configuration at the first waypoint. This sequential optimization approach aligns with prior FTL methods [24, 13]. For our method, the shape library contains Nlib = 20 , 000 
+
+configurations uniformly sampled from Q, chosen empirically to balance speed and accuracy. The CR has 3 segments of unit length each (total length 3).(Section V-C3 evaluates the effect of library size). We evaluate both the linear search variant and the clustered variant ( γ = 2 .5), with continuous radial symmetry for pre-alignment. All experiments were run on a 13th Gen Intel Core i7-13700F with 32GB memory. TABLE I: Evaluation results across 120 paths with PCC. Our method outperforms the optimization-based baseline with exact tip tracking. The clustered variant maintains competitive shape deviation with significantly reduced computation time. Tip and shape deviation are reported as percentages of the total robot length (3 unit lengths).                                          
+
+> Tip Deviation (%) ↓Shape Deviation (%) ↓Compute Time (s) ↓
+> Test Class Optimization Linear Clustered Optimization Linear Clustered Optimization Linear Clustered C Curves 1.24 0.0 0.0 1.74 1.25 1.61 41.3 36.4 1.81
+> S Curves 1.21 0.0 0.0 2.36 1.94 2.09 39.3 46.7 2.35
+> Robot Curves 0.62 0.0 0.0 1.77 1.71 2.03 43.4 46.9 2.32
+
+2) Test Paths: We evaluate on 120 paths across three curve classes (40 per class):  
+
+> •
+
+C Curves : half circles with start at origin and endpoint sampled from [0 .5, 1.5] × [−0.75 , 0.25] × [1 , 2] , with bending plane uniformly sampled from [0 , 2π] 
+
+> •
+
+S Curves : planar cubic B´ ezier curves with start at origin and endpoint sampled from [−2.25 , −1.25] ×[−0.5, 0.5] ×{1.5}, with control points forming an S shape  
+
+> •
+
+Robot Curves : 3D paths generated by FM on configura-tions sampled from a bounded subset of Q, representing scenarios where the goal shape is known-feasible (e.g., retraction from a current configuration); they test plan-ning quality rather than shape generalization. Each path has n = 10 waypoints with h = 10 interpolation steps between consecutive waypoints. 
+
+3) FTL Performance: Table I summarizes the results. Our method achieves 0% tip deviation across all test classes, confirming the exact tip tracking guarantee (Theorem 4.4). For shape deviation, the linear search variant outperforms the optimization baseline on all curve classes, confirming the hypothesis that sampling-based methods are better suited for FTL planning since they avoid local minima. Notably, the clustered variant reduces computation time by over an order of magnitude while sacrificing minimal shape accuracy. 
+
+C. MuJoCo Simulation: Pseudo-Rigid-Body Model 1) Setup: We evaluate our method using a custom imple-mentation of a pseudo-rigid-body (PRB) model in MuJoCo [31], where the CR is modeled by a series of 30 rigid links connected by elastic universal joints. System parameters such as joint stiffness are identified from a physical 3-segment tendon-driven CR to capture realistic deformation behavior, including segment coupling effects not modeled by PCC. The simulated CR is mounted on a 7-DOF manipulator (Franka TABLE II: Evaluation results across 120 paths with MuJoCo simulation using a system-identified PRB model. Our method achieves exact tip tracking and reasonable shape deviation despite increased model complexity. Tip and shape deviation are reported as percentages of the total robot length.                  
+
+> Tip Dev. (%) ↓Shape Dev. (%) ↓Time (s) ↓
+> Test Class Clustered Clustered Clustered C Curves 0.0 2.46 2.07 S Curves 0.0 3.17 2.69 Robot Curves 0.0 2.43 2.85
+
+Robotics) with a constant offset transformation Toffset ac-counting for the actuation unit and hardware mount. For each planned base pose Tb, the manipulator end-effector pose is 
+
+Tee = Tb · T−1
+
+> offset
+
+, which is converted to joint-level commands for the Franka robot using an inverse kinematics solver [9]. We test the clustered variant with shape library size of 
+
+Nlib = 20 , 000 and γ = 2 .5. We use the same three curve classes (C, S, Robot) with 40 paths per class, randomly initialized with the same distributions as in V-B2. 
+
+2) Results: Table II summarizes the results. The method achieves 0% tip deviation across all test classes. Shape devia-tion is slightly higher than the PCC experiments, reflecting the increased complexity of the PRB model with segment coupling and only three-fold discrete radial symmetry for pre-alignment. These results demonstrate that our method scales effectively to more realistic CR models: given any forward model, the planner generates motion plans with guaranteed tip tracking and competitive shape following. 
+
+Fig. 4: Tradeoff between library size, accuracy, and compu-tation time. As Nlib increases, shape deviation (solid lines) decreases with diminishing returns, while computation time (dashed lines) grows linearly for linear search. Clustering (light colors) maintains computation time with small accuracy loss. Results shown for both PCC (blue) and PRB (orange). 
+
+3) Effect of Shape Library Size: Fig. 4 illustrates the effect of the shape library size Nlib on shape-following accuracy and computation time for both PCC and PRB models. As 
+
+Nlib increases, shape deviation decreases with diminishing returns: rapid improvement is observed for small to moderate library sizes, followed by saturation as the library becomes sufficiently dense. This behavior is consistent with the reso-lution completeness analysis in Theorem 4.3, which predicts improved approximation of feasible shapes with increasing library resolution. The computation time grows linearly with 
+
+Nlib for the linear variant. In contrast, the clustered variant maintains nearly constant computation time across library sizes while achieving comparable shape deviation, confirm-ing the effectiveness of the two-pass search strategy (Sec-tion IV-D). The gap between PCC and PRB curves reflects the increased model complexity, but both exhibit the same quali-tative trends. For time-critical applications, clustering provides an effective mechanism to maintain this accuracy with over an order of magnitude reduction in online computation. 
+
+D. Hardware Demonstration 1) Setup: We demonstrate our method on a physical setup consisting of a 3-segment tendon-driven CR mounted on a 7-DOF manipulator (Franka Robotics). The CR has 3 tendons per segment with parallel tendon routing. Motion plans are generated using the MuJoCo PRB model from Section V-C. 
+
+2) Execution: The joint-level motion plan is post-processed using toppra [26] for time-optimal path parameterization, reducing jerk while ensuring synchronized execution between the CR and manipulator. The resulting trajectories are sent to servo motors with built-in PID controllers (Dynamixel XL430-W250-T) for tendon actuation, and a joint-impedance con-troller for the serial manipulator. We executed representative paths from each of the three curve classes. 
+
+3) Results: Fig. 5 shows the hardware execution for C, S, and robot curve paths. The robot successfully tracks all paths, with the manipulator and CR moving in coordination throughout the trajectory. We measured tip tracking error using an optical tracker (Lyra, NDI, Canada), with a single marker attached to the CR tip and a four-marker rigid body defining the base frame relative to the manipulator base. Across the three paths, normalized by the CR length ( 187 .5 mm), the C-shape achieved a mean error of 5.5% (max 8.0% ), the S-shape 
+
+9.1% mean (max 20 .6% ), and the robot-curve shape 8.3% 
+
+mean (max 20 .9% ), with visible deviations between planned and executed shapes. In simulation, the planner achieves zero tip error by con-struction, since waypoints are matched exactly against the same kinematic model used for execution. The hardware error therefore reflects the gap between this model and the physical system rather than a limitation of the planner itself. Unmodelled effects such as tendon stretch, friction, and hys-teresis cause the physical robot to bend less than predicted, and because our pipeline executes plans open-loop from the system-identified model, these discrepancies accumulate with-out correction. The resulting hardware metrics are effectively a noisy version of the simulation results, with the noise attributable to system-specific factors (modeling fidelity, con-troller performance) that would not transfer across platforms. We therefore report these tip errors as a reference point for Hardware MuJoCo 
+
+> C Curve
+> S Curve
+> Robot Curve
+
+Fig. 5: Simulated (left) and hardware (right) evaluation on three path classes. The setup consists of a 3-segment tendon-driven CR mounted on a 7-DOF manipulator. Hardware im-ages overlay two frames: solid (mid-trajectory) and semi-transparent (final configuration), illustrating the coordinated base motion during FTL execution. See supplementary video for full execution sequences. the specific hardware realization rather than as an evaluation of planner quality. The simulation experiments in Sections V-B– V-C isolate planner performance, while the hardware demon-stration validates that our method produces smooth, executable trajectories that achieve qualitatively correct FTL motion on a physical manipulator-mounted CR system. Closing this gap is orthogonal to the planning framework and can be approached from several directions: improving model fidelity through richer parametrizations of tendon-driven dynamics, more thorough system identification, gener-ating the shape library directly from hardware-recorded shapes rather than from a model (which would absorb unmodelled effects into the library itself), or adding closed-loop shape control during execution. See the supplementary video for full execution sequences. VI. C ONCLUSION 
+
+This work introduced a sampling-based motion plan-ning framework for follow-the-leader motion of manipulator-mounted continuum robots with full 6-DOF base pose control. By decoupling global shape search from local interpolation, the approach achieves exact tip tracking by design while sup-porting general forward models that would be impractical for iterative optimization. This decoupled structure also enables formal guarantees that optimization-based approaches cannot provide: resolution completeness from sampling-based search, exact tip tracking from geometric base pose construction, and asymptotic tip-tracking convergence from interpolation. User-adjustable clustering further provides a principled tradeoff between computation time and shape accuracy. A. Limitations and Future Directions 
+
+The current work assumes the forward model is indepen-dent of base pose and external loading, whereas gravity can induce pose-dependent shape changes; pose-dependent shape prediction or active gravity compensation could address this. The per-step nature of shape search precludes trajectory-wide guarantees on shape-following quality; jointly optimizing across waypoints would provide stronger guarantees, though at the cost of substantially expanding the planning space. The uniform sampling strategy for library generation does not guar-antee uniform coverage in shape space; importance sampling or adaptive refinement targeting shape space coverage could improve library quality for complex CRs without increasing li-brary size. Finally, closed-loop shape control during execution, combined with more accurate forward models, would improve hardware execution fidelity. More broadly, this work shows that FTL motion for manipulator-mounted CRs can be addressed without iterative optimization by decoupling shape search from base pose construction. We believe this opens the door to scalable FTL planning for increasingly complex CR systems, including hybrid rigid–continuum platforms. ACKNOWLEDGMENTS 
+
+We acknowledge the support of the Natural Sciences and Engineering Research Council of Canada (NSERC), [funding reference number RGPIN-2025-04343]. This research was also supported by the Canada Foundation for Innovation (CFI) through the John R. Evans Leaders Fund (JELF) [project number 40110]. REFERENCES 
+
+[1] Ernar Amanov, Thien-Dang Nguyen, and Jessica Burgner-Kahrs. Tendon-driven continuum robots with extensible sections—a model-based evaluation of path-following motions. The International Journal of Robotics Research , 40(1):7–23, 2021. [2] Jerome Barraquand and Jean-Claude Latombe. Robot motion planning: A distributed representation approach. 
+
+The International Journal of Robotics Research , 10(6): 628–649, 1991. [3] Pierre Berthet-Rayne, Gauthier Gras, Konrad Leibrandt, Piyamate Wisanuvej, Andreas Schmitz, Carlo A Seneci, and Guang-Zhong Yang. The i2 snake robotic platform for endoscopic surgery. Annals of Biomedical Engineer-ing , 46(10):1663–1675, 2018. [4] Rob Buckingham and Andrew Graham. Nuclear snake-arm robots. Industrial Robot , 39(1):6–11, 2012. [5] Jessica Burgner-Kahrs, D. Caleb Rucker, and Howie Choset. Continuum robots for medical applications: A survey. IEEE Transactions on Robotics , 31(6):1261– 1280, 2015. [6] Jian Chen, Mingcong Chen, Qingxiang Zhao, Shuai Wang, Yihe Wang, Ying Xiao, Jian Hu, Danny Tat Ming Chan, Kam Tong Leo Yeung, David Yuen Chung Chan, et al. Design and visual servoing control of a hybrid dual-segment flexible neurosurgical robot for intraventricular biopsy. In IEEE International Conference on Robotics and Automation , pages 5906–5912. IEEE, 2024. [7] Howie Choset and Wade Henning. A follow-the-leader approach to serpentine robot motion planning. Journal of Aerospace Engineering , 12(2):65–73, 1999. [8] Margaret M. Coad, Laura H. Blumenschein, Sadie Cut-ler, Javier A. Reyna Zepeda, Nicholas D. Naclerio, Haitham El-Hussieny, Usman Mehmood, Jee-Hwan Ryu, Elliot W. Hawkes, and Allison M. Okamura. Vine robots. 
+
+IEEE Robotics and Automation Magazine , 27(3):120– 132, 2020. [9] Peter Corke and Jesse Haviland. Not your grandmother’s toolbox–the robotics toolbox reinvented for python. In 
+
+IEEE International Conference on Robotics and Automa-tion , pages 11357–11363. IEEE, 2021. [10] Noah J Cowan, Ken Goldberg, Gregory S Chirikjian, Gabor Fichtinger, Ron Alterovitz, Kyle B Reed, Vinutha Kallem, Wooram Park, Sarthak Misra, and Allison M Okamura. Robotic needle steering: Design, modeling, planning, and image guidance. In Surgical Robotics: Sys-tems Applications and Visions , pages 557–582. Springer, 2010. [11] Pierre E Dupont, Nabil Simaan, Howie Choset, and Caleb Rucker. Continuum robots for medical interventions. 
+
+Proceedings of the IEEE , 110(7):847–870, 2022. [12] GuoHua Gao, Pengyu Wang, and Hao Wang. Follow-the-leader motion strategy for multi-section continuum robots based on differential evolution algorithm. Industrial Robot , 48(4):589–601, 2021. [13] Yuanqian Gao, Kiyoshi Takagi, Takahisa Kato, Naoyuki Shono, and Nobuhiko Hata. Continuum robot with follow-the-leader motion for endoscopic third ventricu-lostomy and tumor biopsy. IEEE Transactions on Biomedical Engineering , 67(2):379–390, 2020. [14] Arnau Garriga-Casanovas and Ferdinando Rodriguez y Baena. Complete follow-the-leader kinematics using concentric tube robots. The International Journal of Robotics Research , 37(1):197–222, 2018. [15] Hunter B. Gilbert, Joseph Neimat, and Robert J. Webster. Concentric tube robots as steerable needles: Achieving follow-the-leader deployment. IEEE Transactions on Robotics , 31(2):246–258, 2015. [16] Cedric Girerd, Andrey V. Kudryavtsev, Patrick Rougeot, Pierre Renaud, Kanty Rabenorosoa, and Brahim Tamadazte. Slam-based follow-the-leader deployment of concentric tube robots. IEEE Robotics and Automation Letters , 5(2):548–555, 2020. [17] Reinhard M. Grassmann and Jessica Burgner-Kahrs. Clarke coordinates are generalized improved state parametrization for continuum robots. IEEE Robotics and Automation Letters , 10(10):10362–10369, 2025. [18] Bryan A Jones and Ian D Walker. Kinematics for multisection continuum robots. IEEE Transactions on Robotics , 22(1):43–55, 2006. [19] Byungjeon Kang, Risto Kojcev, and Edoardo Sinibaldi. The first interlaced continuum robot, devised to intrinsi-cally follow the leader. PloS One , 11(2):e0150278, 2016. [20] Congjun Ma, Quan Xiao, Liangcheng Liu, Xingxing You, and Songyi Dian. Geometric iterative approach for efficient inverse kinematics and planning of con-tinuum robots with a floating base under environment constraints. arXiv preprint arXiv:2503.14848 , 2025. [21] Liyang Mao, Yang Peng, Chenyao Tian, Xingjian Shen, Feihao Wang, Hao Zhang, Xianghe Meng, and Hui Xie. Magnetic steering continuum robot for transluminal procedures with programmable shape and functionalities. 
+
+Nature Communications , 15, 2024. [22] Abdelkhalick Mohammad, Matteo Russo, Yihua Fang, Xin Dong, Dragos Axinte, and James Kell. An efficient follow-the-leader strategy for continuum robot navigation and coiling. IEEE Robotics and Automation Letters , 6 (4):7493–7500, 2021. [23] Maria Neumann and Jessica Burgner-Kahrs. Considera-tions for follow-the-leader motion of extensible tendon-driven continuum robots. In IEEE International Confer-ence on Robotics and Automation , pages 917–923, 2016. [24] David Palmer, Salvador Cobos-Guzman, and Dragos Axinte. Real-time method for tip following navigation of continuum snake arm robots. Robotics and Autonomous Systems , 62(10):1478–1485, 2014. [25] Rui Peng, Yu Wang, Minghao Lu, and Peng Lu. Adexterous and compliant aerial continuum manipulator for cluttered and constrained environments. Nature Communications , 16(1):889, 2025. [26] Hung Pham and Quang-Cuong Pham. A new approach to time-optimal path parameterization based on reachability analysis. IEEE Transactions on Robotics , 34(3):645–659, 2018. [27] Chen Qian, Tangyou Liu, and Liao Wu. Jammingsnake: A follow-the-leader continuum robot with variable stiff-ness based on fiber jamming. IEEE/ASME Transactions on Mechatronics , 30(4):3100–3107, 2025. [28] Priyanka Rao, Quentin Peyron, Sven Lilge, and Jessica Burgner-Kahrs. How to model tendon-driven continuum robots and benchmark modelling performance. Frontiers in Robotics and AI , 7 - 2020, 2021. ISSN 2296-9144. [29] Graham Robinson and J. Bruce C. Davies. Continuum robots-a state of the art. In IEEE iInternational Con-ference on Robotics and Automation , volume 4, pages 2849–2854, 1999. [30] Ken Shoemake. Animating rotation with quaternion curves. In Proceedings of the 12th annual conference on Computer graphics and interactive techniques , pages 245–254, 1985. [31] Emanuel Todorov, Tom Erez, and Yuval Tassa. Mujoco: A physics engine for model-based control. In 2012 IEEE/RSJ International Conference on Intelligent Robots and Systems , pages 5026–5033, 2012. [32] Pauli Virtanen, Ralf Gommers, Travis E. Oliphant, Matt Haberland, Tyler Reddy, David Cournapeau, Evgeni Burovski, Pearu Peterson, Warren Weckesser, Jonathan Bright, St´ efan J. van der Walt, Matthew Brett, Joshua Wilson, K. Jarrod Millman, Nikolay Mayorov, Andrew R. J. Nelson, Eric Jones, Robert Kern, Eric Larson, C J Carey, ˙Ilhan Polat, Yu Feng, Eric W. Moore, Jake VanderPlas, Denis Laxalde, Josef Perktold, Robert Cimrman, Ian Henriksen, E. A. Quintero, Charles R. Harris, Anne M. Archibald, Antˆ onio H. Ribeiro, Fabian Pedregosa, Paul van Mulbregt, and SciPy 1.0 Contribu-tors. SciPy 1.0: Fundamental Algorithms for Scientific Computing in Python. Nature Methods , 17:261–272, 2020. [33] Mingfeng Wang, Xin Dong, Weiming Ba, Abdelkhalick Mohammad, Dragos A. Axinte, and Andy Norton. De-sign, modelling and validation of a novel extra slender continuum robot for in-situ inspection and repair in aeroengine. Robotics and Computer-Integrated Manu-facturing , 67, 2019. [34] Peiyi Wang, Sheng Guo, Fuqun Zhao, Xiangyang Wang, and Majun Song. Follow-the-leader deployment of the interlaced continuum robot based on the unpowered lock mechanism. In Intelligent Robotics and Applications: 14th International Conference , page 448–459. Springer-Verlag, 2021. ISBN 978-3-030-89133-6. [35] Paul Wilkening, Farshid Alambeigi, Ryan J. Murphy, Russell H. Taylor, and Mehran Armand. Development and experimental evaluation of concurrent control of a robotic arm and continuum manipulator for osteolytic lesion treatment. IEEE Robotics and Automation Letters ,2(3):1625–1631, 2017. [36] Quan Xiao, Congjun Ma, Xuke Zhong, Yuqi Zhu, Xingx-ing You, and Songyi Dian. Design, modeling and motion planning of a mobile continuum robot for in-situ inspection and maintenance in gas-insulated switchgear. 
+
+Robotics and Computer-Integrated Manufacturing , 99: 103205, 2026. [37] Yunti Xu, Connor Watson, Jui-Te Lin, John T Hwang, and Tania K Morimoto. Shape control of concentric tube robots via approximate follow-the-leader motion. IEEE Robotics and Automation Letters , 9(8):7198–7205, 2024. [38] Yu Yamauchi, Yuichi Ambe, Hikaru Nagano, Masashi Konyo, Yoshiaki Bando, Eisuke Ito, Solvi Arnold, Kim-itoshi Yamazaki, Katsutoshi Itoyama, Takayuki Okatani, et al. Development of a continuum robot enhanced with distributed sensors for search and rescue. Robomech Journal , 9(1):8, 2022. APPENDIX 
+
+In the Appendix, we first present ablation studies validating key design decisions (Section A), followed by full proofs for Lemma 4.1 (Section B), Lemma 4.2 (Section C), and Theorem 4.5 (Section D). 
+
+A. Ablation Studies 
+
+We present additional ablation studies to validate key design decisions of our framework. These are included in the ap-pendix due to space constraints. All experiments use only the base Chamfer distance (Eqn. 3) as the shape deviation metric. Tests are conducted on 45 paths (15 per class) initialized as in Section V-B2. 
+
+1) Effect of Clustering: We evaluate the effect of clustering on shape-following accuracy and computation time. In this evaluation we use a 3-segment CR with PCC forward model and a library of Nlib = 20 ,000 shapes. To isolate the impact of shape search from interpolation effects, we measure shape deviation on the sparse plan only . This is necessary because local interpolation introduces path-dependent variation: a sub-optimal sparse plan can occasionally yield better interpolated trajectories. Fig. A1 shows sparse plan shape deviation and computation time as a function of average cluster size, which is controlled by the user-adjustable clustering threshold γ. A cluster size of 1 corresponds to γ = 0 , recovering linear search. As cluster size increases, shape deviation initially grows as expected: 
+
+Fig. A1: Effect of clustering on sparse plan shape deviation (top) and computation time (bottom) as a function of average cluster size. Smaller clusters approach linear search (lowest deviation, highest time); larger clusters reduce computation but increase deviation until very large clusters partially recover accuracy. Shaded regions indicate ±1 standard deviation. larger clusters increase the likelihood that the globally optimal shape resides in an unexplored cluster. At very large cluster sizes, deviation partially recovers as the library collapses into a small number of clusters, each spanning a substantial portion of the shape space. Computation time decreases rapidly with increasing cluster size but plateaus beyond moderate sizes. These results confirm that γ provides an effective mechanism for trading accuracy against computation time based on appli-cation requirements. 
+
+2) Effect of Library Size on Sparse Plan: The main paper (Fig. 4) reports overall deviation including interpolation, re-flecting practical performance. Here, we measure sparse plan deviation only to isolate the effect of library size on shape search quality. Fig. A2 shows shape deviation and computation time as a function of Nlib . Without interpolation noise, the trends are clearer: shape deviation decreases with diminishing returns as Nlib increases. Computation time for linear search grows linearly ( O(Nlib )), while the clustered variant follows approx-imately O(√Nlib ) growth with a modest accuracy tradeoff. The PRB model consistently exhibits higher shape deviation than PCC, reflecting its richer and more complex shape space. Both models exhibit the same qualitative trends, confirming the method’s model-agnostic behavior. 
+
+Fig. A2: Effect of library size on sparse plan shape deviation and computation time. Without interpolation variance, trends are clearer: deviation decreases with diminishing returns, lin-ear search time grows as O(Nlib ), and clustered search time grows as O(√Nlib ). PRB model shows higher deviation than PCC due to increased shape space complexity. TABLE A.I: Effect of radial symmetry pre-alignment on overall shape deviation (%). All variants use the same sparse plan; differences arise solely from interpolation quality.                                         
+
+> Shape Deviation (%) ↓
+> Test Class without Pre-alignment with Discrete (3-Fold) Symmetry with Continuous (Full) Symmetry C Curves 3.34 ±1.80 2.24 ±0.76 2.10 ±0.69 S Curves 3.08 ±0.37 2.26 ±0.29 2.19 ±0.47 Robot Curves 2.24 ±0.19 2.04 ±0.32 1.85 ±0.23 Overall 2.89 ±1.11 2.18 ±0.52 2.05 ±0.52
+
+3) Effect of Radial Symmetry Pre-Alignment: We evaluate the effect of radial symmetry pre-alignment on overall shape deviation (including interpolation), comparing three configu-rations: no pre-alignment, discrete 3-fold symmetry (matching common tendon-driven CR designs), and continuous (full) symmetry. All three variants share the same sparse plan. All tests are conducted with a 3-segment CR with PCC forward model and a library of Nlib = 20 ,000 shapes. Table A.I summarizes the results. Pre-alignment consis-tently improves shape deviation compared to no alignment, confirming that reducing base orientation differences between consecutive waypoints leads to smoother and more accurate interpolation. Full symmetry yields a modest further improve-ment over 3-fold, as it allows exact alignment to the reference direction rather than snapping to the nearest 120 ◦ increment. The improvement from no alignment to 3-fold is substantially larger than from 3-fold to full, suggesting that even coarse symmetry exploitation captures the majority of the benefit. These results validate the use of radial symmetry as a pre-processing step for interpolation and suggest that for CRs with discrete tendon arrangements, discrete symmetry provides a practical approximation to full symmetry with minimal performance loss. In summary, the ablation studies confirm that: (i) clustering provides a smooth tradeoff between speed and accuracy, (ii) library size follows diminishing returns consistent with reso-lution completeness, and (iii) radial symmetry pre-alignment significantly improves interpolation quality with even discrete symmetry capturing most of the benefit. 
+
+B. Proof of Lemma 4.1 (Coverage Probability) 
+
+Proof. Let N (Q, ϵ C ) denote the ϵC -covering number of Q,i.e., the minimum number of balls of radius ϵC needed to cover Q. For compact Q ⊂ Rd:
+
+M := N (Q, ϵ C ) ≤
+
+ diam (Q)
+
+ϵC
+
++ 1 
+
+d
+
+(A1) Let {c1, . . . , c M } be the centers of a minimal ϵC -cover, and define Bj = B(cj , ϵ C ) ∩ Q . Each Bj has volume at least 
+
+Vmin = cdϵdC where cd is a dimension-dependent constant. For uniform sampling over Q, the probability that a single sample falls in Bj is: 
+
+pj = Vol (Bj )
+
+Vol (Q) ≥ pmin := cdϵdC
+
+Vol (Q) (A2) The probability that none of N i.i.d. samples falls in Bj is 
+
+(1 − pj )N ≤ (1 − pmin )N . By the union bound: 
+
+P[∃j : Bj ∩ L N = ∅] ≤ M (1 − pmin )N (A3) For this probability to be at most δ, we require: 
+
+M (1 − pmin )N ≤ δ (A4) Using ln(1 − x) ≤ − x for x ∈ (0 , 1) :
+
+N ≥ ln( M/δ )
+
+pmin 
+
+= Vol (Q)
+
+cdϵdC
+
+ln 
+
+ Mδ
+
+
+
+(A5) Setting N0 = ⌈ Vol (Q)
+
+> cdϵdC
+
+ln( Mδ )⌉ completes the proof. □
+
+C. Expanded Proof of Lemma 4.2 (Lipschitz Continuity of Shape Deviation) 
+
+Proof. We show that each component of the pipeline q 7 →
+
+E(q, Wi) is Lipschitz continuous. 
+
+Step 1: Forward model. By A1–A2, the forward model f :
+
+Q → R(D+1) ×3 is continuously differentiable on the compact domain Q. Therefore, the gradient ∇f is continuous on Q
+
+and bounded by compactness, yielding Lipschitz continuity with constant Lf = sup q∈Q ∥∇ f (q)∥.
+
+Step 2: Base pose construction. We show each transfor-mation is Lipschitz in the shape points:  
+
+> •
+
+T1 (Translation): The translation vector (wi − pD ) is linear in pD , hence Lipschitz with constant 1.  
+
+> •
+
+T2 (Rotation about tip): The rotation aligns direction v2
+
+to v1 by rotating about axis v = v2 × v1 by angle θ =cos −1(v1 · v2). We show each component is Lipschitz: 
+
+– Unit vector v2: v2 = ( wi − pm∗ )/∥wi − pm∗ ∥.The normalization x 7 → x/∥x∥ has gradient (I −
+
+ˆxˆx⊤)/∥x∥, which is bounded by 1/∥x∥. Thus nor-malization is Lipschitz with constant 1/δ on the set {x : ∥x∥ ≥ δ}. Since p′ 
+
+> m∗
+
+is the base of the active shape (after T1 translation) and wi is the tip waypoint, their distance equals the arc length of the active path, which is strictly positive. Hence δ > 0
+
+exists depending on path geometry. 
+
+– Rotation angle θ: θ = cos −1(v1 · v2). The dot product v1 · v2 is Lipschitz in v2 with constant 
+
+∥v1∥ = 1 . The function cos −1 : [ −1, 1] → [0 , π ]
+
+has derivative −1/√1 − x2, which is bounded on 
+
+[−1 + ϵ, 1 − ϵ] for any ϵ > 0. This composition is Lipschitz except when v1 and v2 are exactly collinear, which does not occur for generic paths and shapes. 
+
+– Rotation axis v: v = v2 × v1. The cross product is bilinear, hence Lipschitz in v2 with constant ∥v1∥ =1. Note that when θ → 0 or θ → π, ∥v∥ → 0, but the rotation itself becomes trivial (identity or π-rotation about any perpendicular axis), so the resulting pose varies continuously. 
+
+– Rotation matrix: Given axis v and angle θ, the Rodrigues formula gives R = I + sin θ[v]× + (1 −
+
+cos θ)[ v]2
+
+> ×
+
+. This is smooth (hence Lipschitz) in both 
+
+θ and v away from degeneracies. Composing these, T2 is Lipschitz in the shape points on the set of non-degenerate configurations.  
+
+> •
+
+T3 (Axial rotation): The rotation resolves the remaining degree of freedom by aligning a third correspondence point. We show each component is Lipschitz: 
+
+– Path axis a: a = ( wi − w1)/∥wi − w1∥ is fixed by the path geometry (independent of shape). 
+
+– Third correspondence point pk: The shape point pk
+
+is selected by arc length ratio, which is a continuous (linear interpolation) operation on the shape points. Hence pk is Lipschitz in the shape. 
+
+– Projection onto orthogonal plane: The projection 
+
+u 7 → u − (u · a)a is linear, hence Lipschitz with constant 1. 
+
+– Rotation angle ϕ: Let uw = ( wk −w1)−(( wk −w1)·
+
+a)a and up = ( pk − w1) − (( pk − w1) · a)a be the projected vectors. The angle ϕ is computed via atan2 
+
+from these projections. This is Lipschitz whenever both projected vectors have non-zero magnitude, which holds when wk is not collinear with w1 and 
+
+wi. By construction, wk is chosen to maximize distance to the line through w1 and wi, ensuring non-collinearity for any path with at least three non-collinear waypoints. 
+
+– Rotation matrix: As in T2, the Rodrigues formula yields a rotation matrix that is smooth in ϕ and the fixed axis a.Composing these, T3 is Lipschitz in the shape points for paths with at least three non-collinear waypoints. 
+
+Step 3: Shape deviation. The Chamfer distance (3) involves nearest-neighbor queries: 
+
+E = 1
+
+|W i|
+
+X
+
+> x∈W i
+
+min 
+
+> y∈Pact
+
+∥x − y∥ + 1
+
+|Pact |
+
+X
+
+> y∈Pact
+
+min 
+
+> x∈W i
+
+∥y − x∥
+
+(A6) The function y 7 → min x∈W i ∥y−x∥ is Lipschitz with constant 1 (distance to a fixed set). Summation and averaging preserve Lipschitz continuity. 
+
+Step 4: Composition. The composition of Lipschitz func-tions is Lipschitz. Therefore, E(q, Wi) is Lipschitz in q with constant LE = Lf · LT · 1, where LT depends on the path geometry and is finite for all non-degenerate paths. The Lipschitz continuity of the base pose construction holds under the following non-degeneracy conditions: (i) the active shape has non-zero arc length, (ii) the path contains at least three non-collinear waypoints, and (iii) the shape direction 
+
+v2 is not exactly collinear with the path direction v1. These conditions are satisfied for all practical paths and generic shape library configurations. □
+
+D. Proof of Theorem 4.5 (Asymptotic Tip-Tracking Conver-gence 
+
+) Proof. Consider the interval between interpolation steps k
+
+and k + 1 , parameterized by β ∈ [0 , 1] . Let:  
+
+> •
+
+q(β) = (1 − β) kq + β k+1 q be the linearly interpolated configuration  
+
+> •
+
+ptip (β) be the actual tip position after applying FM and base transformation  
+
+> •
+
+pf tl (β) = (1 −β) kw+β k+1 w be the interpolated desired tip trajectory 
+
+Step 1: Boundary conditions. By Theorem 4.4: 
+
+ptip (0) = kw = pf tl (0) (A7) 
+
+ptip (1) = k+1 w = pf tl (1) (A8) 
+
+Step 2: Smoothness. Since FM is continuously differentiable (A2) on compact Q (A1), ∇f is bounded and f is Lipschitz. The base pose construction is continuous in the shape. There-fore ptip (β) is a smooth function of β.
+
+Step 3: Taylor expansion. Define the error e(β) = ptip (β) −
+
+pf tl (β). We have e(0) = e(1) = 0. For smooth scalar functions with homogeneous boundary conditions on [0 , 1] ,the maximum deviation satisfies max |g| ≤ 18 max |g′′ |. Ap-plying this component-wise to e(β) ∈ R3 and bounding each 
+
+|e′′  
+
+> i
+
+(β)| ≤ ∥ e′′ (β)∥ yields: 
+
+max  
+
+> β∈[0 ,1]
+
+∥e(β)∥ ≤ √38 max  
+
+> β
+
+∥e′′ (β)∥ (A9) The √3 factor is absorbed into the constant C in the final bound. 
+
+Step 4: Bounding the second derivative. The second derivative e′′ (β) depends on:  
+
+> •
+
+The Hessian of FM with respect to configuration  
+
+> •
+
+The rate of change of base pose with respect to shape Both are bounded by constants depending on FM smoothness. The configuration change per interpolation step is ∥k+1 q −
+
+> k
+
+q∥ ≤ ∆max /h where ∆max = max j ∥qj+1 −qj ∥ bounds the change between waypoints. Since e′′ scales with the square of configuration velocity: 
+
+∥e′′ (β)∥ ≤ C′
+
+ ∆max 
+
+h
+
+2
+
+(A10) 
+
+Step 5: Final bound. Combining: 
+
+max  
+
+> β
+
+∥e(β)∥ ≤ √3C′
+
+8 · ∆2
+
+> max
+
+h2 = Ch2 ∆2 
+
+> max
+
+(A11) where C = √3C′/8 absorbs the constants. □
