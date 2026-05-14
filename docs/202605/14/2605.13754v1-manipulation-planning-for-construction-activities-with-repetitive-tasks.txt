@@ -1,0 +1,472 @@
+Title: Manipulation Planning for Construction Activities with Repetitive Tasks
+
+URL Source: https://arxiv.org/pdf/2605.13754v1
+
+Published Time: Thu, 14 May 2026 01:44:03 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Manipulation Planning for Construction Activities with Repetitive Tasks 
+
+Wangyi Liu 1, Dasharadhan Mahalingam 1, Fanru Gao 2, Ci-Jyun Liang 2, and Nilanjan Chakraborty 1
+
+Abstract — In this paper, we study the problem of manip-ulation skill acquisition for performing construction activities consisting of repetitive tasks (e.g., building a wall or installing ceiling tiles). Our approach involves setting up a simulated construction activity in a Virtual Reality (VR) environment, where the user can provide demonstrations of the object manipulation skills needed to perform the construction activity. We then exploit the screw geometry of motion to approximate the demonstrated motion as a sequence of constant screw motions. For performing the construction activity, we generate the sequence of manipulation task instances and then compute the joint space motion plan corresponding to each instance using Screw Linear Interpolation (ScLERP) and Resolved Motion Rate Control (RMRC). We evaluate our framework by executing two representative construction tasks: constructing brick walls and installing multiple ceiling tiles. Each task is performed using only a single demonstration, a pick-and-place action for the bricks, and a single ceiling tile installation. Our experiments with a 7-DoF robot in both simulation and hardware demonstrate that the approach generalizes robustly to arbitrarily long construction activities that involve repetitive motions and demand precision, even when provided with just one demonstration. For instance, we can construct walls of ar-bitrary layout and length by leveraging a single demonstration of placing one brick on top of another. 
+
+Video — https://youtu.be/SEwtaH--NZg 
+
+I. I NTRODUCTION 
+
+In the construction domain, there is a strong need for robotic systems capable of executing repetitive tasks char-acterized by precision, stringent geometric constraints, and extended temporal horizons. Examples include bricklaying, ceiling tile installation, beam alignment, and component assembly. These tasks are inherently challenging because they impose strict kinematic constraints on the robot’s end-effector trajectory and demand repeatable, high-accuracy execution over long sequences of actions. Consider the case of bricklaying: each brick must be positioned with its bottom face parallel to the ground and precisely aligned with respect to the previously placed bricks, ensuring structural integrity and layout conformity. Similarly, ceiling tile installation re-quires continuous adjustment of the tile’s pose, i.e., position and orientation, relative to the ceiling frame during insertion. These activities can be abstracted as sequences of repeated, parameterized motion primitives; a single pick-and-place operation for a brick, or the insertion of a single ceiling tile. Consequently, if a robotic system can successfully parame-terize and execute one instance of such a primitive, and is provided with a specification of the wall layout or ceiling        
+
+> 1Department of Mechanical Engineering, Stony Brook Univer-sity, NY, USA.
+
+{wangyi.liu, dasharadhan.mahalingam, nilanjan.chakraborty }@stonybrook.edu. 
+
+> 2Department of Civil Engineering, Stony Brook University, NY, USA.
+
+{fanru.gao, ci-jyun.liang }@stonybrook.edu. 
+
+Fig. 1: Construction of a three-layer wall with a total of nine bricks in a simulation environment. The bricks are stacked in a pile initially (solid red bricks on the left). The generated task instances show the goal poses of the bricks for constructing a wall, visualized as translucent bricks on the right. 
+
+grid, it should, in principle, be capable of autonomously generating and executing the full sequence required to com-plete the entire construction task. Furthermore, the spatial extent of the task, e.g., wall length, grid size, or layout topology, may be arbitrarily large. In this work, we formalize and investigate the problem of generalizing from a single demonstration of a base task to the execution of repetitive construction activities of arbitrary length, using bricklaying and ceiling tile installation as representative exemplars .We formulate the construction problem within the paradigm of programming by demonstration (PbD) [1], as-suming that task demonstrations are provided in a Virtual Reality (VR) environment. Multiple modalities exist for acquiring demonstrations for robotic learning, including tele-operation, kinesthetic teaching, VR-based demonstrations, demonstrations by skilled human workers, and even video-based demonstrations. Teleoperation typically requires spe-cialized hardware and operator training, while kinesthetic demonstrations are difficult to apply in construction contexts due to the complexity of setting up realistic physical scenar-ios with heavy or fixed building materials. Human worker demonstrations are expensive and time-consuming to collect at scale, as they require training personnel to act as reliable data sources. Video demonstrations, although easy to capture, do not provide object trajectories directly in SE (3) , the Lie group of rigid body transformations, which are essential for precise reproduction. In contrast, VR-based demonstrations present a compelling alternative: they are cost-effective to collect, require only a VR headset and controllers, and directly yield object trajectories as continuous curves in 
+
+SE (3) . These trajectories naturally encode the geometric and kinematic constraints that govern the task, which we model as one-parameter subgroups of SE (3) , or equivalently, as constant-pitch screw motions [2]. This representation captures the essential invariants (or constraints) of the motion and enables generalization across task instances. 
+
+> arXiv:2605.13754v1 [cs.RO] 13 May 2026
+
+Contributions : We present a framework that enables a generalization of arbitrary-length construction tasks from a single step-level demonstration. Rather than requiring a full demonstration of the entire wall-building or ceiling-tiling process, our approach only needs a single instance of the elemental task, e.g., placing one brick or installing one tile, captured in a VR environment. The object trajectory in SE (3) is then segmented into constant screw motions, and the underlying kinematic constraints are extracted and parameterized. For new task instances with arbitrary lay-outs or lengths, these parameterized screw motions are instantiated relative to the new object poses, and motion plans are generated using ScLERP [3] and Resolved Motion Rate Control (RMRC) [4], which ensures that we obtain a joint space path that preserves the demonstrated task space constraints. This enables the robot to autonomously replicate the demonstrated step across an arbitrary number of repeti-tions, effectively constructing entire walls or completing full ceiling installations. Our approach thus provides a highly data-efficient solution for scaling single-step demonstrations to arbitrarily long and spatially varied construction tasks. II. R ELATED WORK 
+
+Robotics has been increasingly adopted in the construction domain to automate labor-intensive and repetitive tasks. Early work by [5] introduced one of the first masonry robot prototypes, focusing on the design of human–robot collaborative masonry systems. In the construction industry, Construction Robotics developed the SAM system [6], which automates large-scale, on-site bricklaying and significantly reduces manual workload while increasing productivity. However, such systems are typically designed for a single type of construction task (e.g., wall building). To enable automation across diverse construction tasks, researchers have explored learning-based methods such as Learning from Demonstration (LfD) [7] and reinforcement learning (RL) [8]. LfD uses human-provided demonstrations to train robots to perform new skills. For instance, [9], [10] have employed LfD to teach robots to install ceiling tiles in pre-assembled grids and to perform steel beam assembly. RL approaches, on the other hand, learn task policies by optimizing a reward function and have been applied to multi-robot construction [11], earth-moving [12], and pick-and-place tasks [13]. While promising, both LfD and RL ap-proaches generally require a large number of demonstrations or rollouts to achieve robust performance, which limits their scalability in real-world construction scenarios [14]. Motion Primitive based approaches [15] have also been used to learn tasks through demonstrations. While GMM [16] based approaches require multiple demonstrations to learn tasks, DMP [17] based approaches learn from a single task. A major drawback for such approaches is that it is not clear if a single choice of hyper-parameters can be transferred across a wide variety of tasks. Moreover tuning these parameters becomes even harder when the end user is not a subject expert. Screw Primitive based approaches such as [18] have been proposed for learning tasks. But they restrict themselves to tasks with only pure rotation or pure translation motion. 
+
+This motivates the development of approaches that can generalize from a single step-level demonstration by learning a parameterized skill representation that can be reused across arbitrarily many task repetitions, which is the central focus of our work. 
+
+A critical aspect of LfD-based construction automation is the method of demonstration acquisition. Existing forms of demonstrations include video demonstrations, force-based demonstrations, and trajectory demonstrations [9]. These can be collected using two primary approaches: (i) physical guidance , in which a human manually moves the robot (or its end-effector) to perform the task while its joint trajectories are recorded, and (ii) visual guidance , which uses motion capture systems or cameras to record a human expert’s motion and infer object or end-effector trajectories [19]. Recent advances in VR have provided a compelling al-ternative for demonstration acquisition [20]–[22]. Compared to traditional approaches, VR offers a safe, low-cost, and repeatable means of capturing demonstrations [23]. VR al-lows a first-person view of task execution and enables real-time interaction with objects in a simulated environment [24]. When used for robot learning, VR has been shown to reduce the number of policy-learning steps [25] and to generate high-quality demonstrations for training deep neural networks [26]. Recent work has applied VR to teach robots to perform tasks such as window installation [27] and to analyze collaborative human–robot construction scenarios involving drones and robotic arms [28]. VR based demonstration ac-quisition is thus emerging as an important tool for advancing autonomous construction [29]–[31]. The approach proposed in [2] uses kinesthetic demonstra-tions to solve the problem of motion generation for complex manipulation tasks. Building on this idea, we demonstrate that activities composed of repetitive, constraint-rich manipu-lation tasks can be parameterized and executed robustly using demonstrations collected in a VR environment. 
+
+To the best of our knowledge, this is the first work that combines VR-based demonstration with screw-theoretic motion representation to enable step-level generalization and scalable execution of arbitrarily long construction activities. 
+
+III. M ATHEMATICAL PRELIMINARIES 
+
+In this section, we present a brief review of the mathe-matical background required to understand this work. 
+
+Screw Displacement: The Chasles-Mozzi theorem states that the general Euclidean displacement/motion of a rigid body from the origin I to T = (R, p) ∈ SE (3) can be expressed as a rotation θ about a fixed axis S, called the screw axis , and a translation d along that axis. Pl¨ ucker coordinates can be used to represent the screw axis by ω
+
+and m, where ω ∈ R3 is a unit vector that represents the direction of the screw axis, m = r × ω, and r ∈ R3
+
+is an arbitrary point on the screw axis. Thus, the screw parameters are defined as ω, m, h, θ , where h is the pitch of the screw and θ is its magnitude. In general, for pure rotation and general screw motion, h is finite, while for pure translation, h = ∞. If R̸ = I, then by using the standard procedure to obtain the rotation axis and magnitude from Fig. 2: S CHEMATIC SKETCH OF MOTION ESTIMATION FOR BUILDING A WALL : Left - The collected demonstrations D in VR which consists of a sequence of SE (3) poses which are represented with blue markers. Center - Segmenting the demonstration D as a sequence of constant screw motions, {D1, E1, . . . , Eu}, the “Key Segments” (GP 1 and GP 2) are determined based on the region-of-interest centered at the initial and final object poses, O1 and O2 respectively. Right - Given new initial and final object poses, O′          
+
+> 1and
+> O′
+> 2, the “Guiding Poses” GP ′
+> 1and GP ′
+> 2are determined by transforming GP 1and GP 2with respect to the new object poses.
+
+the rotation matrix R, we can determine ω and θ. The pitch is given by h = ωT υ and m = υ − hω, where 
+
+υ = (I − eˆωθ ) ˆ ω + θωω T −1 p. If R = I, then the motion is pure translation, where h = ∞ and m = 0 by definition. We can obtain θ and ω from θ = || p|| and ω = p/|| p|| . A
+
+constant screw motion is a motion where the parameters 
+
+ω, m, and h stay constant throughout the motion .Given the screw parameters ω, m, h , the screw displace-ment for a motion of magnitude θ can be obtained using the matrix exponential, T = ebξθ . Here, bξ ∈ se (3) and ξ ∈ R6
+
+are the unit twist and unit twist coordinates associated with the motion. They are defined as, 
+
+bξ =
+
+bω m + hω
+
+0 0
+
+
+
+, ξ =
+
+m + hωω
+
+
+
+for h̸ = ∞ (1) 
+
+bξ =
+
+I ω
+
+0 0
+
+
+
+, ξ =
+
+ω
+
+0
+
+
+
+for h = ∞ (2) While the matrix exponential maps elements of se (3) to 
+
+SE (3) , the matrix logarithm maps elements of SE (3) to 
+
+se (3) . Please refer to [32] for more details. 
+
+ebξθ = T, log T = bξθ (3) 
+
+Screw Linear Interpolation (ScLERP): To perform a one degree-of-freedom smooth screw motion between two object poses in SE (3) , ScLERP can be used. ScLERP generates a geodesic motion between two given poses Gi, Gf ∈ SE (3) .ScLERP can be performed using, 
+
+Gτ = ebξτ θ Gi (4) where, bξθ = log( Gf G−1 
+
+> i
+
+) is the twist that results in the screw displacement form Gi to Gf and τ ∈ [0 , 1] is the linear interpolation factor. 
+
+Task Instance: Objects affecting the generation of motion plans for manipulation tasks are defined as task-related objects and the set O = {O1, O2, . . . , Ou} containing the 
+
+SE (3) poses of all the task-related objects is defined as a task instance. 
+
+Demonstration: A demonstration of a manipulation task is a sequence of SE (3) poses D = ⟨D1, D2, . . . , Dv ⟩ that defines the motion of the manipulated object. 
+
+SEW Angle: The Shoulder-Elbow-Wrist (SEW) angle ψ ∈
+
+R, parametrizes the null space of redundant manipulators [33]. For a common 7-DoF manipulator, the elbow posture is not fully determined by the end-effector pose. It has one extra degree of freedom, making it kinematically redundant which can be exploited to avoid obstacles or joint limits. IV. P ROBLEM STATEMENT 
+
+Consider that we are given a single demonstration D
+
+of an object manipulation skill that is required to perform a repetitive task in a construction activity along with the corresponding task instance O. The problem that we are trying to solve can be stated as: Given a demonstration 
+
+D of a manipulation skill and its corresponding task instance O, determine the sequence of task instances 
+
+⟨O 1, O2, . . . , Ok⟩ and the joint space motion plan M =
+
+⟨Θ1, Θ2, . . . , Θl⟩ required to transfer the manipulation skill to the new task instances for successfully completing an activity . For the construction activity in our work, D
+
+defines the motion that the object goes through during a single task instance of the entire activity, and O = {O1, O2}
+
+consists of the initial pose O1 and the final pose O2 of the objects. Coincidentally, O1 = D1 and O2 = Dv .The above problem can be solved by splitting it up into the following three sub-problems: 
+
+Constraint Extraction : Given a demonstration D, we need to extract the essential task constraints, i.e., the constraints that characterize the task and should be satisfied for success-ful execution. 
+
+Determination of Task Instances : For a arbitrary long construction activity, we also need to determine the sequence of task instances which specify the order and pose at which the objects are placed. Additionally, we might need other parameters that define the specification of what to construct. Take the wall building task like an example, we assume that we are given a pose B ∈ SE (3) denoting the starting pose of the wall and the specification of the wall in terms of straight, curved or corner along with the number of bricks in each layer ( β), number of layers ( α), and the horizontal offset between adjacent layers ( δ). Since the length (ℓ), breadth (b),and width (h) of the brick are known, using this information, we can determine the sequence of task instances that need to be executed to complete the entire construction activity. 
+
+Motion Estimation : After computing the sequence of task instances, we now have to determine the joint space motion plan that can successfully perform the entire construction activity while satisfying the extracted motion constraints. V. S OLUTION APPROACH 
+
+Demonstration Acquisition: We collect demonstrations of manipulation tasks in a VR environment. The VR environ-ment was built in Unreal Engine 4 (UE4) [34] and allows the user to interact with objects in the VR environment by means of a VR headset. We used the Meta Quest 2 [35] headset in our work. Two environments are set up (See Figure 3): the first one contains two bricks, one that the user can pick up and manipulate and the other is placed at another location denoting the start of the wall. The user can provide ademonstration by picking up the movable brick and placing it next to the first brick. The second environment contains a flat cuboid to represent the ceiling tile, and a square frame denote the ceiling frame where the ceiling should be installed to. The user provides a demonstration by grasping the tile using the handheld controllers, reorients it, and seats the tile within the frame. The motion of the brick and tile that are being manipulated is recorded and used as the demonstration. This demonstration implicitly captures the constraints required to finish a single task in a construction activity without collision. 
+
+Extraction of Task Constraints: From the provided demon-stration, we then extract the task constraints as a sequence of constant screw motion constraints. Following the approach proposed in [2], we are able to extract the motion invariants and determine the object motion for a new task instance. The recorded demonstration D is segmented as a sequence of constant screw segments and the constraints associated with the task are extracted as the sequence of guiding poses 
+
+⟨G1, G2, . . . ⟩ as shown in Figure 2. For more details please refer to [2]. These constraints are independent of the choice of coordinate frame and allow us to successfully transfer the extracted constraints to a new task instance. 
+
+Generation of Task Instances: In this work, the entire construction activity consists of multiple repetitive tasks. We generate the task instances to perform the construction activity by following deterministic patterns such as lines, curves or polylines once the location of the construction activity is known. Consider that the dimension of the construction objects (brick/ceiling tile) along its length, breadth and width are 
+
+ℓ, b, and h respectively. Let ϵℓ, ϵb and ϵh be the spacing required between adjacent objects in the same layer along 
+
+x and y direction and adjacent layers respectively. Given the starting pose of the construction activity, B, depending on the deterministic format of construction layout, we can also determine the goal poses of different task instances as, 
+
+
+
+T1,1,1 = B, i = 1 , j = 1 , k = 1 
+
+T1,1,k = T1,1,k −1 Z(h + ϵh) X ∆x(i, δ x)
+
+Y ∆y (i, δ y ) R(θ), k > 1
+
+Ti, 1,k = Ti−1,1,k Y(b + ϵb)R(θ), i > 1
+
+T1,j,k = T1,j −1,k X(ℓ + ϵl)R(θ), j > 1
+
+(5) Where X(t), Y(t) and Z(t) are SE (3) transformations that represent translation along the vectors 1 0 0T,
+
+0 1 0T and 0 0 1T respectively by a magnitude of t meters. Here, i, j denote the index of the object along 
+
+x, y direction respectively and k denotes which layer the object is. Most of the construction tasks are performed along the plane parallel to the ground. Moreover, we assume the construction objects have uniform shape, with top and bottom faces parallel to ground as well. Thus, the orientation R(θ)
+
+is a SE (3) transformation that represents pure rotation about the axis 0 0 1T by the magnitude θ.
+
+X(t) =  I,
+
+h t
+
+> 00
+
+i , Y(t) =  I,
+
+h 0
+
+> t
+> 0
+
+i , Z(t) =  I,
+
+h 00
+
+> t
+
+i 
+
+(6) 
+
+R(θ) = 
+
+
+
+cos θ − sin θ 0 0sin θ cos θ 0 00 0 1 00 0 0 1
+
+ (7) Here, ∆( x, y ) is a real valued function which determines the offset between objects in adjacent layers and for most cases, is defined as, 
+
+∆( x, y ) = 
+
+(
+
+y, if x is even 
+
+0, otherwise (8) 
+
+Task Instances for Different Construction Activities: For wall construction task, it is generally assumed that it is only one layer thick in the y direction. So, the task instances generated for wall-building type of work is restricted to 
+
+x (horizontal ) and z (vertical ) directions, in our definition, 
+
+j = 1 .The curvature of the wall is determined by θ. For a straight wall, θ = 0 . Setting δ = 0 results in the layers being aligned. By modifying equation (5) for the case i ≥ 1, k > 2 we can also determine the goal pose of the objects for a corner wall, 
+
+Ti,k = Ti−1,k X(∆( i+1 , ℓ ′ +ϵℓ)) Y(∆( i, ℓ ′ +ϵℓ)) R(θ) (9) with θ = 90 ◦ at the corner and θ = 0 ◦ everywhere else. Here 
+
+ℓ′ = ( ℓ + b)/2. So the wall extends along the x direction before the corner, and continues along the y direction after the corner. For the ceiling tile installation task, we assume that there is only one layer, restricting this task to only x and y directions. The poses of all ceiling tiles are given by, 
+
+(
+
+Ti, 1 = Ti−1,1Y(b + ϵb) along x direction 
+
+T1,j = T1,j −1X(ℓ + ϵl) along y direction (10) Equations (5) - (10) determine the goal pose of the objects given the indices i, j and k.Using Ti,j,k , we can now determine the sequence of the task instances. Each task instance Ok consists of the initial pose and the final pose of the brick. Since we assume that the bricks are stacked initial at a known location and the goal pose can be determined using Ti,j , we can easily determine the sequence of task instances, ⟨O 1, O2, . . . , Ok⟩.
+
+Rationale for Deterministic Generation of Task Instances: 
+
+The rationale behind using the deterministic approach for generating new task instances comes from the fact that construction activities are typically assembly tasks where multiple objects with the same geometry are arranged in a pre-determined fashion based on a high-level schematic. For example consider the activity of constructing a wall, the wall is built by arranging multiple bricks of the same geometry as given by the floor-plan. In general, the object geometry and high-level schematics are always available for construction activities and hence, exploiting such structure in these tasks makes sense as it simplifies the problem of generating new task instances for a construction activity. 
+
+Motion Generation: Once the sequence of task instances have been determined, we can transfer the constant screw constraints that were extracted from the demonstration by following approach proposed in [2]. This defines the motion of each object in terms of a sequence of SE (3) poses, 
+
+GP = ⟨G1, G2, . . . ⟩ where each pair of consecutive poses, 
+
+Gi and Gi+1 define a constant screw constraint. We can then use Screw Linear Interpolation (ScLERP) combined with Jacobian pseudo-inverse to compute a motion plan in the joint space [3]. This ensures that the generated motion plan satisfies the extracted constant screw constraints. A schematic sketch describing the solution approach is shown in Figure 2. 
+
+Motion Planning by Exploiting Self-Motion: For a d-DoF manipulator, at any given configuration q ∈ Rd, the spatial Jacobian Js(q) ∈ R6×d relates its end-effector spatial velocity Vs = vs ωs
+
+T ∈ R6 to its joint velocities, 
+
+˙q ∈ Rd Using the Jacobian pseudoinverse, the joint velocity to track a desired end-effector velocity can be computed as, 
+
+˙q = J† 
+
+> s
+
+Vs where, J† 
+
+> s
+
+= JT
+
+> s
+
+ JsJT 
+
+> s
+
+)−1. (11) However, Equation (11) when applied to a redundant ma-nipulator, for example a 7-DoF manipulator, does not control the elbow motion. Additionally, we can also exploit the self-motion of redundant manipulators which is parametrized by the SEW angle [33], [36] to avoid hitting joint limits. In order to control the motion of the elbow, we make use of the SEW Jacobian Jψ which relates rate of change of the SEW parameter ( ˙ψ) and manipulator joint velocities, ˙ψ = Jψ ˙q.By augmenting the task space velocity Vs with the rate of change of the SEW parameter as shown in [33], we can control the motion of the elbow using the augmented Jacobian, Ja.
+
+˙q = J†
+
+> a
+
+
+
+vs
+
+ωs
+
+˙ψ
+
+ , Ja =
+
+Js
+
+Jψ
+
+
+
+(12) We propose a motion planner with two modes incorporat-ing task space constraints and null space motion as follows: 
+
+Mode 1: ˙qScLERP = J†
+
+> s
+
+vs
+
+ωs
+
+
+
+(13) 
+
+Mode 2: ˙qSEW = J†
+
+> a
+
+06×1
+
+˙ψ
+
+
+
+(14) In Mode 1, task space constraints are incorporated using ScLERP combined with Jacobian pseudo-inverse method. In Mode 2, we move in the null space by introducing non zero 
+
+˙ψ in the task space velocity and setting the spatial velocity to be zero which causes only the SEW angle to change, thereby “swinging” the manipulator’s elbow. We choose the sign of 
+
+˙ψ to help us move within the joint position limits. These two modes allow us to plan for motion which satisfies task space constraints while avoiding joint position limits. The planner works in Mode 1 under normal conditions and switches to Mode 2 only when close to the joint position limits. We introduce two joint space bounds with margins defined by two parameters εin , ε out , and the lower/upper joint limit ℓi, u i of each joint qj , where 0 < εout < εin < 
+
+> 12
+
+min i(ui − ℓi) which determine the mode of operation of the planner. 
+
+Inner bound: ℓi + εin ≤ qj ≤ ui − εin , (15) 
+
+Outer bound: ℓi + εout ≤ qj ≤ ui − εout . (16) 
+
+Algorithm 1: ScLERP-SEW Motion Planner  
+
+> 1
+
+Input q[0] , Gd, ε in , ε out  
+
+> 2
+
+while GoalN otReached do  
+
+> 3
+
+Gc = getFK (q[i])  
+
+> 4
+
+bξθ = log( G−1 
+
+> d
+
+Gc) 
+
+> 5
+
+˙q ← κJ†
+
+> s
+
+ξθ 
+
+> 6
+
+q[i + 1] ← q[i] + δt ˙q 
+
+> 7
+
+if q[i + 1] ReachedJointLimit then  
+
+> 8
+
+ψd ← calculateSEWChange (q[i], ε in , ε out ) 
+
+> 9
+
+if ψd > 0 then  
+
+> 10
+
+ψc = getSEWAngle (q[i])  
+
+> 11
+
+while ψc̸ = ψd do  
+
+> 12
+
+˙q ← λJ†
+
+> a
+
+ 0
+
+ψd − ψc
+
+ 
+
+> 13
+
+q[i + 1] ← q[i] + δt ˙q 
+
+> 14
+
+ψc = getSEWAngle (q[i])  
+
+> 15
+
+i = i + 1  
+
+> 16
+
+else  
+
+> 17
+
+return M otionP lanF ailed  
+
+> 18
+
+else  
+
+> 19
+
+i = i + 1 
+
+Algorithm 1, describes the steps involved in determin-ing the sequence of joint configurations ⟨q[0] , q[1] , ... ⟩ that would move the manipulator to the desired task-space goal 
+
+Gd ∈ SE (3) while satisfying the constant screw constraints on the end-effector motion to successfully perform the task. The variable δt ∈ R represents the time-step. When no joint limits are hit, the planner uses ScLERP combined with Jacobian pseudoinverse to determine the sequence of joint configurations. When a joint hits its upper bound, it determines how much it can move in the null-space to bring the joints within the inner bound. The function 
+
+calculateSEWChange() determines the change in the SEW angle ψ that is required to bring all the joints within the inner bound. If while moving one joint away from the limit, other joints move out of the inner bound and hit the Fig. 3: D EMONSTRATION ACQUISITION AND CONSTRUCTION TASK EXECUTION : The first and second row correspond to wall construction and ceiling tile installation experiments respectively. The left part shows the process of demonstration collection in VR, the right part shows the corresponding experiments in simulation. The following experiments are shown: curved wall construction, corner wall construction, long wall construction and ceiling tile installation. 
+
+outer bound, then it returns the maximum change in SEW angle ψ that moves the joint position qi away from the upper bound such that all joints that are close to the upper bound are away from the upper bound by the same distance. If no such motion is possible (such situation arises when two or more joints are at the limits) then it returns 0. The parameters 
+
+κ, λ ∈ R+ are time scaling parameters that determine how fast the manipulator moves. We use this planner to determine the joint space path to go between each consecutive pose in the sequence of guiding poses GP while satisfying the constant screw constraint. VI. EXPERIMENTAL RESULTS In this section, we provide both the simulation and real-world experimental results for construction tasks of arbitrary length. The simulation experiments were carried out in PyBullet [37]. For all experiments, we use the 7-DoF Franka Emika Panda research robot. We evaluated our approach in simulation across 112 construction activities, and further validated it in real world with 6 construction activities. Here, each activity consisted of either building a wall with multiple bricks or installing multiple ceiling tiles. First, to answer the question that if a single demonstration is enough for construction tasks with various layouts, we start with a typical construction task, i.e., wall construc-tion, involving multiple pick-and-place sub-tasks. To further evaluate the effectiveness of our method in handling tasks with different kind of constraints, we consider the ceiling-tile installation task, which requires more precise coordination of position and orientation to install the tile. To show that our approach can be extended to arbitrarily long construction activities, we use a movable manipulator that is mounted on a gantry to construct a long wall consisting of a total of 36 bricks across 3 layers in simulation. Please note that we do not plan for the motion of the robot base and are currently just placing it in a neighborhood of the task instance at random to introduce more variation in the task instances. The key takeaway from this experiment, is that the extracted constraints are invariant to the pose of the robot base or the task-related objects and as long as it is physically feasible for the robot to execute the required motion, the planner can plan for the joint space motion which satisfies the extracted constraints allowing us to perform arbitrarily long construction activities. Moreover, given a high level schematic in the form of a floor plan, we can determine the entire sequence of task instances necessary to perform the entire construction activity showing that our framework can be applied to construction activities of arbitrary length. For all construction activities, demonstrations were col-lected in VR. The left half of Figure 3 shows the VR environment setup that was used to collect the demonstra-tions. In the wall construction activity, the size of brick is: 
+
+0.0508 × 0.0508 × 0.1016 (meters). In the ceiling-tile instal-lation activity, the tile size is 0.302 × 0.302 × 0.014 (meters). Further, we used the following choice of parameters, εin is 
+
+0.2 and εout is 0.01 for the planner. To define whether the experiment is success, for each brick-laying trial, the average position error of bricks should be below 0.0075 m and the orientation error should below 
+
+2◦ (Yaw angle) with respect to the goal pose. For ceiling tile installation, if the ceiling tile is successfully inserted through the ceiling frame without collision and placed such that it is stably supported on the frame, then it is a success. For more details about the hardware setup and the con-ducted experiments, please refer to the following video 
+
+https://youtu.be/SEwtaH--NZg .
+
+A. Simulation Experiments 
+
+Fixed-Base Experiments: In this part, we evaluate our methods across two construction activities which contain repetitive sub-tasks: (i) brick wall construction. (ii) ceiling tile installation. For task (i) we consider building a wall with 5 different layouts by arranging bricks one by one: (1) A straight wall parallel to the x-axis, (2) A wall identical to the previous experiment but rotated 30 ◦ with respect to the x-axis, (3) A straight wall parallel to the y-axis, (4) A 120 ◦ circular wall, (5) A corner wall. All walls consist of 3 layers of bricks with a total of 12 bricks. For task (ii) 2 ceiling tiles were installed in a 1 × 2 ceiling frame. 
+
+Moving-Base Experiments: In this part, by assuming the manipulator can move freely in xy -plane, we increase the scale of the experiments to two longer activities: (i) a 3-layer long wall aligned with y-axis, consisting of 36 bricks, (ii) a 
+
+2 × 2 ceiling tile installation task. a bFig. 4: R EAL WORLD EXPERIMENTS : The first row shows our wall construction experiments with different layouts: three kinds of straight wall, curved wall and corner wall. The second row shows the process of a 1 × 2 ceiling tile installation 
+
+TABLE I: Comparison between our proposed method and baseline conducted in simulation                                                                                                   
+
+> Demonstration Wall Construction Ceiling Tile Installation Layout 1 Layout 2 Layout 3 Layout 4 Layout 5 Position 1 Position 2 Position 3 Position 4 Ours Baseline Ours Baseline Ours Baseline Ours Baseline Ours Baseline Ours Baseline Ours Baseline Ours Baseline Ours Baseline Demo 1 15 015 15 9912 12 18 15 ✓✗✓✗✓✗✓✗
+> Demo 2 15 15 15 12 15 15 12 12 21 18 ✓✗✓✗✓✗✓✗
+> Demo 3 15 12 12 12 15 912 11 18 18 ✓✗✗✗✓✗✓✗
+> Demo 4 15 15 15 12 21 18 12 12 21 18 ✓✗✓✗✓✗✓✗
+
+For the long wall construction experiment, the manipulator moves along y-axis after placing 3 bricks. For the ceiling tile installation task, the manipulator moves after completing each tile installation. In both the arbitrary long construction tasks, each manipulator base movement changes the relative pose between the manipulator and the new task instances, this setting allows us to evaluate whether the motion planner can robustly handle variations in relative pose. The right half of Figure 3 shows few of the experiments conducted in simulation. 
+
+Baseline Comparison: To access the ability of the proposed SEW-ScLERP based motion planner, we conducted a com-parison with the approach proposed in [2] as the baseline. The comparison was conducted in simulation with the fixed-base setting. The results of the conducted experiments for the wall building with the 5 layouts and ceiling tile installation are summarized in Table I. For the wall construction task, the table lists the number of bricks that were successfully placed before the planner hit the joint limits. For the ceiling tile task, it shows if the execution succeeded or failed. We can clearly see that the proposed approach performs better than the baseline across all construction activities. For the wall construction activity, the proposed approach achieves a higher cumulative number for successful bricks placed ( 303 vs. 260 ). For the ceiling tile installation task, the proposed approach succeeded in 15 of the 16 trials whereas the baseline failed across all the trials. 
+
+B. Real-World Experiments 
+
+To further validate our proposed approach, we conducted real world experiments in a lab environment using a fixed base manipulator. We performed the wall construction activ-ity with the 5 different layouts and the ceiling tile installation activity. Figure 4 shows the different real world experiments that were conducted. For the wall construction all the layouts consisted of 3 layers with a total of 12 bricks each. For the ceiling tile installation, we had a 2 × 1 ceiling tile framing setup right above the robot and the robot inserts two tiles one by one into each frame. All of the conducted trials were successful showing that the proposed framework of using VR to acquire manipulation skills for performing construction activities is robust when dealing with long activities which consist of complex motion constraints. VII. C ONCLUSION AND FUTURE WORK 
+
+In this paper, we presented a novel framework for automat-ing arbitrarily long construction activities by generalizing from a single step-level demonstration collected in a VR environment. Our approach segments the recorded object trajectory in SE (3) into constant screw motions, extracts the underlying kinematic constraints, and reuses these parameter-ized motion primitives to generate motion plans for new task instances. We demonstrated the effectiveness of this frame-work on a few representative construction activities, showing that it can scale from a single elemental demonstration to the completion of arbitrarily long, layout-dependent construction activities. This contribution represents a significant step toward data-efficient automation of repetitive, constraint-rich tasks in construction robotics. REFERENCES [1] A. G. Billard, S. Calinon, and R. Dillmann, “Learning from humans,” 
+
+Springer Handbook of Robotics , pp. 1995–2014, 2016. [Online]. Available: https://doi.org/10.1007/978-3-319-32552-1 74 [2] D. Mahalingam and N. Chakraborty, “Human-guided planning for complex manipulation tasks using the screw geometry of motion,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) , 2023, pp. 7851–7857. [3] A. Sarker, A. Sinha, and N. Chakraborty, “On screw linear interpola-tion for point-to-point path planning,” in 2020 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2020, pp. 9480– 9487. [4] D. E. Whitney, “Resolved motion rate control of manipulators and human prostheses,” IEEE Transactions on Man-Machine Systems ,vol. 10, no. 2, pp. 47–53, 1969. [5] G. Pritschow, J. Kurz, T. Fessele, and F. Scheurer, “Robotic on-site construction of masonry,” in ISARC proceedings of the 15th International Symposium on Automation and Robotics in Construction : Automation and robotics–todays reality in construction : bauma 98 , W. Poppy and T. Bock, Eds. Munich, Germany: International Association for Automation and Robotics in Construction (IAARC), April 1998, pp. 55–64. [6] C. Robotics, “Sam,” https://www.construction-robotics.com/sam-2/, accessed: September 2025. [7] B. D. Argall, S. Chernova, M. Veloso, and B. Browning, “A survey of robot learning from demonstration,” Robotics and Autonomous Systems , vol. 57, no. 5, pp. 469–483, 2009. [Online]. Available: https: //www.sciencedirect.com/science/article/pii/S0921889008001772 [8] A. Y. Ng and S. J. Russell, “Algorithms for inverse reinforcement learning,” in Proceedings of the Seventeenth International Conference on Machine Learning , ser. ICML ’00. San Francisco, CA, USA: Morgan Kaufmann Publishers Inc., 2000, p. 663–670. [9] C.-J. Liang, V. Kamat, and C. Menassa, “Teaching robots to perform construction tasks via learning from demonstration,” in Proceedings of the 36th International Symposium on Automation and Robotics in Construction (ISARC) , M. Al-Hussein, Ed. Banff, Canada: International Association for Automation and Robotics in Construction (IAARC), May 2019, pp. 1305–1311. [10] C.-J. Liang, S.-C. Kang, and M.-H. Lee, “Ras: a robotic assembly sys-tem for steel structure erection and assembly,” International Journal of Intelligent Robotics and Applications , vol. 1, 12 2017. [11] K. Duan and Z. Zou, “Enhancing construction robot collaboration via multiagent reinforcement learning,” Journal of Intelligent Construction , vol. 3, no. 2, p. 9180089, 2025. [Online]. Available: https://www.sciopen.com/article/10.26599/JIC.2025.9180089 [12] Q. Ha, L. Yen, and C. Balaguer, “Robotic autonomous systems for earthmoving in military applications,” Automation in Construction ,vol. 107, p. 102934, 2019. [Online]. Available: https://www. sciencedirect.com/science/article/pii/S0926580518309932 [13] K. Duan and Z. Zou, “Learning from demonstrations: An intuitive vr environment for imitation learning of construction robots,” arXiv preprint arXiv:2305.14584 , 2023. [14] V. Chandramouli, H. Yu, and C.-J. Liang, “Construction robot skill learning for fragile object installation with low-effort demonstration and sample-efficient hierarchical reinforcement learning models,” in 
+
+4th Workshop on Future of Construction at the International Confer-ence on Robotics and Automation (ICRA 2025) , 2025. [15] N. B. Gutierrez and W. J. Beksi, “Movement primitives in robotics: A comprehensive survey,” arXiv preprint arXiv:2601.02379 , 2025. [16] S. Calinon, D. Bruno, and D. G. Caldwell, “A task-parameterized probabilistic model with minimal intervention control,” in 2014 IEEE International Conference on Robotics and Automation (ICRA) , 2014, pp. 3339–3344. [17] A. J. Ijspeert, J. Nakanishi, H. Hoffmann, P. Pastor, and S. Schaal, “Dynamical movement primitives: Learning attractor models for motor behaviors,” Neural Comput. , vol. 25, no. 2, pp. 328–373, Feb. 2013. [Online]. Available: http://dx.doi.org/10.1162/NECO a 00393 [18] A. Bahety, P. Mandikal, B. Abbatematteo, and R. Mart´ ın-Mart´ ın, “Screwmimic: Bimanual imitation from human videos with screw space projection,” in Robotics: Science and Systems (RSS), 2024 , 2024. [19] A. D. Sosa-Ceron, H. G. Gonzalez-Hernandez, and J. A. Reyes-Avenda˜ no, “Learning from demonstrations in human–robot collaborative scenarios: A survey,” Robotics , vol. 11, no. 6, 2022. [Online]. Available: https://www.mdpi.com/2218-6581/11/6/126 [20] F. Stramandinoli, K. G. Lore, J. R. Peters, P. C. O’Neill, B. M. Nair, R. Varma, J. C. Ryde, J. T. Miller, and K. K. Reddy, “Robot learning from human demonstration in virtual reality,” in Proceedings of the 1st international workshop on virtual, augmented, and mixed reality for HRI (VAM-HRI) , 2018. [21] T. Zhang, Z. McCarthy, O. Jow, D. Lee, X. Chen, K. Goldberg, and P. Abbeel, “Deep imitation learning for complex manipulation tasks from virtual reality teleoperation,” in 2018 IEEE international conference on robotics and automation (ICRA) . Ieee, 2018, pp. 5628– 5635. [22] S. P. Arunachalam, I. G¨ uzey, S. Chintala, and L. Pinto, “Holo-dex: Teaching dexterity with immersive mixed reality,” arXiv preprint arXiv:2210.06463 , 2022. [23] I. Ngui, C. McBeth, G. He, A. C. Santos, L. Soares, M. Morales, and N. M. Amato, “Extended reality system for robotic learning from human demonstration,” in 2025 IEEE Conference on Virtual Reality and 3D User Interfaces Abstracts and Workshops (VRW) , 2025, pp. 1304–1305. [24] J. de Heuvel, N. Corral, L. Bruckschen, and M. Bennewitz, “Learn-ing personalized human-aware robot navigation using virtual reality demonstrations from a user study,” in 2022 31st IEEE International Conference on Robot and Human Interactive Communication (RO-MAN) . IEEE, 2022, pp. 898–905. [25] D. Kawakami, R. Ishikawa, M. Roxas, Y. Sato, and T. Oishi, “Learning 6dof grasping using reward-consistent demonstration,” arXiv preprint arXiv:2103.12321 , 2021. [26] A. Jackson, B. D. Northcutt, and G. Sukthankar, “The benefits of im-mersive demonstrations for teaching robots,” in 2019 14th ACM/IEEE International Conference on Human-Robot Interaction (HRI) . IEEE, 2019, pp. 326–334. [27] L. Huang, W. Cai, and Z. Zou, “Virtual reality-based expert demon-strations for training construction robots via imitation learning,” in 
+
+Canadian Society of Civil Engineering Annual Conference . Springer, 2022, pp. 55–68. [28] N. Pereira da Silva, S. Eloy, and R. Resende, “Robotic construction analysis: simulation with virtual reality,” Heliyon , vol. 8, no. 10, p. e11039, 2022. [Online]. Available: https://www.sciencedirect.com/ science/article/pii/S2405844022023271 [29] L. Huang and Z. Zou, “Deep reinforcement learning-based construc-tion robots collaboration for sequential tasks,” in Proceedings of the 1st Future of Construction Workshop at the International Conference on Robotics and Automation (ICRA 2022) , Philadelphia, PA, USA, May 2022, pp. 48–51. [30] R. Li and Z. Zou, “Enhancing construction robot learning for collaborative and long-horizon tasks using generative adversarial imitation learning,” Advanced Engineering Informatics , vol. 58, p. 102140, 2023. [Online]. Available: https://www.sciencedirect.com/ science/article/pii/S1474034623002689 [31] X. Wang, C.-J. Liang, C. Menassa, and V. Kamat, “Interactive and immersive process-level digital twin for collaborative human-robot construction work,” Journal of Computing in Civil Engineering ,vol. 35, 11 2021. [32] K. M. Lynch and F. C. Park, Modern robotics . Cambridge University Press, 2017. [33] H. Seraji, “Configuration control of redundant manipulators: theory and implementation,” IEEE Transactions on Robotics and Automation ,vol. 5, no. 4, pp. 472–490, 1989. [34] E. Games, “Unreal engine,” https://www.unrealengine.com/, accessed: April 2025. [35] Meta, “Quest,” https://www.meta.com/quest/, accessed: April 2025. [36] J. Burdick and H. Seraji, “Characterization and control of self-motions in redundant manipulators,” in Proceedings of the NASA Conference on Space Telerobotics, Volume 2 , 1989. [37] E. Coumans and Y. Bai, “Pybullet, a python module for physics simulation for games, robotics and machine learning,” 2016.
