@@ -6,67 +6,55 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-05-15
-- 运行时间：2026-05-15 20:28:41 UTC
+- 最新运行日期：2026-05-16
+- 运行时间：2026-05-16 20:30:26 UTC
 - 运行状态：成功
-- 本次总论文数：15
-- 精读区：4
-- 速读区：11
+- 本次总论文数：11
+- 精读区：3
+- 速读区：8
 
 ### 今日简报（AI）
-今日深度解析 15 篇前沿论文，聚焦动态环境下机器人运动规划的鲁棒性与集成化设计。
-重点关注 DynoJEPP 的预测规划一体化框架，以及通过信念空间不确定性建模提升动力学规划的终端精度。
-推荐进一步探索条件流匹配在轨迹覆盖中的潜力，以优化复杂障碍物场景下的反应式控制。
-- 详情：[/202605/15/README](/202605/15/README)
+今日精选 11 篇前沿成果，重点聚焦多智能体路径规划的扩展性与机器人主动故障恢复技术。
+核心突破在于利用薛定谔桥优化大规模协同路径，以及通过代理任务图让机器人具备预判并修复操作失败的能力。
+建议优先研读两篇 8.0 分佳作，掌握多机协同与鲁棒操控的最新算法范式。
+- 详情：[/202605/16/README](/202605/16/README)
 
 ### 精读区论文标签
-1. [Terminal Matters: Kinodynamic Planning with a Terminal Cost and Learned Uncertainty in Belief State-Cost Space](/202605/15/2605.09046v2-terminal-matters-kinodynamic-planning-with-a-terminal-cost-and-learned-uncertainty-in-belief-state-cost-space)  
-   标签：评分：8.0/10、query:q4
-   evidence：机器人任务的动力学约束规划
-2. [DynoJEPP: Joint Estimation, Prediction and Planning in Dynamic Environments](/202605/15/2605.12897v1-dynojepp-joint-estimation-prediction-and-planning-in-dynamic-environments)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：动态环境下规划的联合优化，强调实时性
-3. [Motion Planning for Autonomous Vehicles using Optimization over Graphs of Convex Sets](/202605/15/2605.14199v1-motion-planning-for-autonomous-vehicles-using-optimization-over-graphs-of-convex-sets)  
-   标签：评分：8.0/10、query:q3
-   evidence：基于凸集图优化的无碰撞轨迹生成
-4. [PI-SONet: A Physics-Informed Symplectic Operator Network for Real-Time Optimal Control of Multi-Agent Systems](/202605/15/2605.14332v1-pi-sonet-a-physics-informed-symplectic-operator-network-for-real-time-optimal-control-of-multi-agent-systems)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：高维系统的实时最优控制
+1. [Optimal and Scalable MAPF via Multi-Marginal Optimal Transport and Schrödinger Bridges](/202605/16/2605.10917v1-optimal-and-scalable-mapf-via-multi-marginal-optimal-transport-and-schrdinger-bridges)  
+   标签：评分：8.0/10、query:q1
+   evidence：具有时空不重叠约束的多智能体路径搜索
+2. [From Reaction to Anticipation: Proactive Failure Recovery through Agentic Task Graph for Robotic Manipulation](/202605/16/2605.11951v1-from-reaction-to-anticipation-proactive-failure-recovery-through-agentic-task-graph-for-robotic-manipulation)  
+   标签：评分：8.0/10、query:q6
+   evidence：机器人操作与主动故障恢复规划
+3. [Towards Robotic Dexterous Hand Intelligence: A Survey](/202605/16/2605.13925v1-towards-robotic-dexterous-hand-intelligence-a-survey)  
+   标签：评分：8.0/10、query:q6
+   evidence：针对接触密集型操作的机器人灵巧手综述
 
 ### 速读区论文标签
-1. [Ergodic Trajectory Design by Learned Pushforward Maps: Provable Coverage via Conditional Flow Matching](/202605/15/2605.13063v1-ergodic-trajectory-design-by-learned-pushforward-maps-provable-coverage-via-conditional-flow-matching)  
-   标签：评分：7.0/10、query:q3
-   evidence：具有加速度限制和禁飞区的遍历轨迹设计
-2. [Reactive Planning based Control for Mobile Robots in Obstacle-Cluttered Environments](/202605/15/2605.14232v1-reactive-planning-based-control-for-mobile-robots-in-obstacle-cluttered-environments)  
-   标签：评分：7.0/10、query:q4
-   evidence：障碍物密集环境下移动机器人的反应式规划控制
-3. [Learning Cross-Coupled and Regime Dependent Dynamics for Aerial Manipulation](/202605/15/2605.14805v1-learning-cross-coupled-and-regime-dependent-dynamics-for-aerial-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：空中操作与构型改变的动力学
-4. [CaMeRL: Collision-Aware and Memory-Enhanced Reinforcement Learning for UAV Navigation in Multi-Scale Obstacle Environments](/202605/15/2605.14810v1-camerl-collision-aware-and-memory-enhanced-reinforcement-learning-for-uav-navigation-in-multi-scale-obstacle-environments)  
+1. [COSMIC: Concurrent Optimization of Structure, Material, and Integrated Control for robotic systems](/202605/16/2605.12654v1-cosmic-concurrent-optimization-of-structure-material-and-integrated-control-for-robotic-systems)  
+   标签：评分：7.0/10、query:q2
+   evidence：机器人系统的集成控制优化
+2. [Asymptotically Optimal Ergodic Coverage on Generalized Motion Fields](/202605/16/2605.13442v1-asymptotically-optimal-ergodic-coverage-on-generalized-motion-fields)  
    标签：评分：7.0/10、query:q1
-   evidence：用于导航的碰撞感知强化学习
-5. [Behavioral Data-Driven Optimal Trajectory Generation for Rotary Cranes](/202605/15/2605.14944v1-behavioral-data-driven-optimal-trajectory-generation-for-rotary-cranes)  
-   标签：评分：7.0/10、query:q3
-   evidence：旋转起重机的最优轨迹生成
-6. [HarmoWAM: Harmonizing Generalizable and Precise Manipulation via Adaptive World Action Models](/202605/15/2605.10942v1-harmowam-harmonizing-generalizable-and-precise-manipulation-via-adaptive-world-action-models)  
+   evidence：极端环境下自主机器人探索的路径规划
+3. [Uncertainty-Aware 3D Position Refinement for Multi-UAV Systems](/202605/16/2605.13500v1-uncertainty-aware-3d-position-refinement-for-multi-uav-systems)  
+   标签：评分：7.0/10、query:q5
+   evidence：用于导航和避障的实时3D定位
+4. [A Prototyping Framework for Distributed Control of Multi-Robot Systems](/202605/16/2605.15049v1-a-prototyping-framework-for-distributed-control-of-multi-robot-systems)  
+   标签：评分：7.0/10、query:q2
+   evidence：多机器人控制的分布式优化算法
+5. [Zero-Shot Sim-to-Real Robot Learning: A Dexterous Manipulation Study on Reactive Catching](/202605/16/2605.09789v1-zero-shot-sim-to-real-robot-learning-a-dexterous-manipulation-study-on-reactive-catching)  
    标签：评分：6.0/10、query:q6
-   evidence：用于机器人控制的世界动作模型
-7. [DexTwist: Dexterous Hand Retargeting for Twist Motion via Mixed Reality-based Teleoperation](/202605/15/2605.12182v1-dextwist-dexterous-hand-retargeting-for-twist-motion-via-mixed-reality-based-teleoperation)  
+   evidence：灵巧操作与反应式抓取
+6. [StereoPolicy: Improving Robotic Manipulation Policies via Stereo Perception](/202605/16/2605.09989v1-stereopolicy-improving-robotic-manipulation-policies-via-stereo-perception)  
    标签：评分：6.0/10、query:q6
-   evidence：接触密集型旋转操作的灵巧手重定向
-8. [SafeManip: A Property-Driven Benchmark for Temporal Safety Evaluation in Robotic Manipulation](/202605/15/2605.12386v1-safemanip-a-property-driven-benchmark-for-temporal-safety-evaluation-in-robotic-manipulation)  
-   标签：评分：6.0/10、query:q6
-   evidence：机器人操作中的安全性评估与时序约束
-9. [AttenA+: Rectifying Action Inequality in Robotic Foundation Models](/202605/15/2605.13548v1-attena-rectifying-action-inequality-in-robotic-foundation-models)  
-   标签：评分：6.0/10、query:q6
-   evidence：机器人操作轨迹与动作优化
-10. [RoboEvolve: Co-Evolving Planner-Simulator for Robotic Manipulation with Limited Data](/202605/15/2605.13775v1-roboevolve-co-evolving-planner-simulator-for-robotic-manipulation-with-limited-data)  
-   标签：评分：6.0/10、query:q6
-   evidence：机器人操作的规划器-模拟器
-11. [Safety-Constrained Reinforcement Learning with Post-Training Reachability Verification for Robot Navigation](/202605/15/2605.14174v1-safety-constrained-reinforcement-learning-with-post-training-reachability-verification-for-robot-navigation)  
-   标签：评分：6.0/10、query:q1
-   evidence：机器人导航的安全约束优化
+   evidence：复杂场景下机器人操作的视觉运动策略
+7. [RIO: Flexible Real-Time Robot I/O for Cross-Embodiment Robot Learning](/202605/16/2605.11564v1-rio-flexible-real-time-robot-io-for-cross-embodiment-robot-learning)  
+   标签：评分：6.0/10、query:q5
+   evidence：实时机器人I/O与控制框架
+8. [Chrono-Gymnasium: An Open-Source, Gymnasium-Compatible Distributed Simulation Framework](/202605/16/2605.14911v1-chrono-gymnasium-an-open-source-gymnasium-compatible-distributed-simulation-framework)  
+   标签：评分：6.0/10、query:q4
+   evidence：用于机器人和全局优化的仿真框架
 
 
 <div class="dpr-home-promo-card">
