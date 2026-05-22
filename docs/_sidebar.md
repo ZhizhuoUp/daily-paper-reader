@@ -1,6 +1,9 @@
 * <a class="dpr-sidebar-root-link" href="#/">首页</a>
 * <a class="dpr-sidebar-root-link dpr-sidebar-noactive-link" href="javascript:void(0)" data-dpr-hash="#/tutorial/README">使用教程</a>
 * Daily Papers
+  * 2026-05-22 <!--dpr-date:20260522-->
+    * 精读区
+      * <a class="dpr-sidebar-item-link dpr-sidebar-item-structured" href="#/202605/22/2605.15999v1-constrained-mpc-based-motion-planning-for-morphing-quadrotors-in-ultra-narrow-passages-under-limited-perception" data-sidebar-item="{&quot;title&quot;: &quot;Constrained MPC-Based Motion Planning for Morphing Quadrotors in Ultra-Narrow Passages under Limited Perception&quot;, &quot;link&quot;: &quot;https://arxiv.org/abs/2605.15999v1-constrained-mpc-based-motion-planning-for-morphing-quadrotors-in-ultra-narrow-passages-under-limited-perception&quot;, &quot;score&quot;: &quot;8.0&quot;, &quot;tags&quot;: [{&quot;kind&quot;: &quot;query&quot;, &quot;label&quot;: &quot;profile-1&quot;}], &quot;evidence&quot;: &quot;用于避障和轨迹规划的非线性MPC&quot;}">Constrained MPC-Based Motion Planning for Morphing Quadrotors in Ultra-Narrow Passages under Limited Perception</a>
   * 2026-05-18 <!--dpr-date:20260518-->
     * 精读区
       * <a class="dpr-sidebar-item-link dpr-sidebar-item-structured" href="#/202605/18/2605.15713v1-learning-dynamic-pick-and-place-for-a-legged-manipulator" data-sidebar-item="{&quot;title&quot;: &quot;Learning Dynamic Pick-and-Place for a Legged Manipulator&quot;, &quot;link&quot;: &quot;https://arxiv.org/abs/2605.15713v1-learning-dynamic-pick-and-place-for-a-legged-manipulator&quot;, &quot;score&quot;: &quot;9.0&quot;, &quot;tags&quot;: [{&quot;kind&quot;: &quot;query&quot;, &quot;label&quot;: &quot;q6&quot;}], &quot;evidence&quot;: &quot;足式机械臂的动态取放任务&quot;}">Learning Dynamic Pick-and-Place for a Legged Manipulator</a>
