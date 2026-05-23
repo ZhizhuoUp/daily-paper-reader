@@ -6,23 +6,19 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-05-22
-- 运行时间：2026-05-22 21:29:02 UTC
+- 最新运行日期：2026-05-23
+- 运行时间：2026-05-23 20:20:11 UTC
 - 运行状态：成功
-- 本次总论文数：1
-- 精读区：1
+- 本次总论文数：0
+- 精读区：0
 - 速读区：0
 
 ### 今日简报（AI）
-- 今日共生成 1 篇推荐（精读 1 篇，速读 0 篇）
-- 精读：《Constrained MPC-Based Motion Planning for Morphing Quadrotors in Ultra-Narrow Passages under Limited Perception》（8.0/10）
-- 这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。
-- 详情：[/202605/22/README](/202605/22/README)
+> 今日无新推荐，系统未产出可展示论文。
+- 详情：[/202605/23/README](/202605/23/README)
 
 ### 精读区论文标签
-1. [Constrained MPC-Based Motion Planning for Morphing Quadrotors in Ultra-Narrow Passages under Limited Perception](/202605/22/2605.15999v1-constrained-mpc-based-motion-planning-for-morphing-quadrotors-in-ultra-narrow-passages-under-limited-perception)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：用于避障和轨迹规划的非线性MPC
+- 本次无精读推荐。
 
 ### 速读区论文标签
 - 本次无速读推荐。
