@@ -6,73 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-09
-- 运行时间：2026-07-09 20:50:11 UTC
+- 最新运行日期：2026-07-10
+- 运行时间：2026-07-10 21:07:15 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日聚焦 17 篇机器人与控制领域前沿，深度解析月球着陆优化与职业级乒乓球发球技术。
-核心突破在于通过在线建模与凸规划提升航天任务精度，并利用复杂运动规划赋予机械臂专业级竞技能力。
-推荐关注物理驱动世界模型与扩散模型在动态操控中的最新融合趋势。
-- 详情：[/202607/09/README](/202607/09/README)
+今日深度复盘 17 篇机器人前沿进展，聚焦机械臂控制优化与无监督技能挖掘。
+重点推荐 SkillPlug 的少样本适配方案及控制感知型轨迹规划，两者均获 9.0 高分评价。
+建议优先研读高分精读论文，掌握轻量化 VLA 模型与安全导航算法在复杂动态环境下的最新应用。
+- 详情：[/202607/10/README](/202607/10/README)
 
 ### 精读区论文标签
-1. [Online Modeling and Sequential Convex Programming for Lunar Landing Trajectory Optimization](/202607/09/2607.02750v1-online-modeling-and-sequential-convex-programming-for-lunar-landing-trajectory-optimization)  
+1. [Dynamic Evaluation of Classical and Control-Aware Optimal Trajectory Planning in Robot Manipulators](/202607/10/2607.05544v2-dynamic-evaluation-of-classical-and-control-aware-optimal-trajectory-planning-in-robot-manipulators)  
    标签：评分：9.0/10、query:profile-1
-   evidence：用于月球着陆轨迹优化的实时序列凸规划
-2. [Ace! Motion Planning of Professional-Level Table Tennis Serves with a Robot Arm](/202607/09/2607.06989v1-ace-motion-planning-of-professional-level-table-tennis-serves-with-a-robot-arm)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：机械臂运动规划与多目标优化
-3. [From Real-Time Planning to Reliable Execution:Scalable Coordination for Heterogeneous Multi-Robot Fleets in Industrial Environments](/202607/09/2607.00591v2-from-real-time-planning-to-reliable-executionscalable-coordination-for-heterogeneous-multi-robot-fleets-in-industrial-environments)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：异构机器人集群的实时路径规划与协调
-4. [Continuous-Time Gaussian Belief Trees for Motion Planning](/202607/09/2607.02884v1-continuous-time-gaussian-belief-trees-for-motion-planning)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：具有安全认证的连续时间系统采样运动规划
-5. [Hope for the Best, Prepare for the Worst: Occlusion-Aware Contingency Planning for Autonomous Vehicles](/202607/09/2607.03155v1-hope-for-the-best-prepare-for-the-worst-occlusion-aware-contingency-planning-for-autonomous-vehicles)  
+   evidence：侧重实时性的机械臂优化轨迹规划
+2. [SkillPlug: Unsupervised Skill Mining for Few-Shot Adaptation in Robotic Manipulation](/202607/10/2607.08354v1-skillplug-unsupervised-skill-mining-for-few-shot-adaptation-in-robotic-manipulation)  
+   标签：评分：9.0/10、query:q6
+   evidence：机器人操纵任务的无监督技能挖掘
+3. [Occluding the Solution Space: Planner-Agnostic Adversarial Attacks on Tolerance-Aware Manipulation](/202607/10/2607.03758v1-occluding-the-solution-space-planner-agnostic-adversarial-attacks-on-tolerance-aware-manipulation)  
+   标签：评分：8.0/10、query:q4
+   evidence：针对机器人操作运动规划的对抗性攻击
+4. [Clustering-Embedded Model Predictive Path Integral Control: Avoiding Averaging-Induced Failure and Enabling Efficient Cluster Selection for Dynamic Obstacles](/202607/10/2607.06499v1-clustering-embedded-model-predictive-path-integral-control-avoiding-averaging-induced-failure-and-enabling-efficient-cluster-selection-for-dynamic-obstacles)  
    标签：评分：8.0/10、query:q1
-   evidence：保证避障的遮挡感知轨迹规划框架
-6. [Anytime Plug-and-Play Control with Contract-Based Distributed MPC](/202607/09/2607.04215v1-anytime-plug-and-play-control-with-contract-based-distributed-mpc)  
+   evidence：使用MPPI在拥挤环境中进行避障
+5. [Safe Reinforcement Learning using Ideas from Model Predictive Control](/202607/10/2607.07252v1-safe-reinforcement-learning-using-ideas-from-model-predictive-control)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：结合DRL与MPC实现具有硬约束的机器人安全控制
+6. [HumAIN: Human-Aware Implicit Social Robot Navigation](/202607/10/2607.07357v1-humain-human-aware-implicit-social-robot-navigation)  
    标签：评分：8.0/10、query:q1
-   evidence：分布式MPC保证多智能体场景下的避障
+   evidence：避障轨迹规划与实时部署
 
 ### 速读区论文标签
-1. [Context-Triggered Robust MPC for Temporal Logic Specifications](/202607/09/2607.01515v1-context-triggered-robust-mpc-for-temporal-logic-specifications)  
-   标签：评分：8.0/10、query:q2
-   evidence：鲁棒模型预测控制 (MPC) 与底层控制综合
-2. [PhysMani: Physics-principled 3D World Model for Dynamic Object Manipulation](/202607/09/2607.01938v1-physmani-physics-principled-3d-world-model-for-dynamic-object-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：动态物体操作与在线优化
-3. [Function-Space Diffusion for Motion Planning](/202607/09/2607.02977v1-function-space-diffusion-for-motion-planning)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：复杂环境下基于扩散模型的运动规划器
-4. [Anticipatory Reinforcement Learning for Trajectory Tracking](/202607/09/2607.03132v1-anticipatory-reinforcement-learning-for-trajectory-tracking)  
+1. [Input-Constrained Spatiotemporal Tubes for Safe Navigation of Unknown Euler-Lagrange Systems in Dynamic Environments](/202607/10/2607.08189v1-input-constrained-spatiotemporal-tubes-for-safe-navigation-of-unknown-euler-lagrange-systems-in-dynamic-environments)  
    标签：评分：8.0/10、query:q5
-   evidence：用于实时轨迹跟踪控制的前瞻性强化学习
-5. [Geometric Reduced-Attitude Tracking Under a Time-Varying Conic Constraint via Smooth Reference-Shaping](/202607/09/2607.00793v1-geometric-reduced-attitude-tracking-under-a-time-varying-conic-constraint-via-smooth-reference-shaping)  
+   evidence：用于安全导航的实时控制框架
+2. [FabriVLA: A Lightweight Vision-Language-Action Model for Precise Multi-Task Manipulation](/202607/10/2607.08575v1-fabrivla-a-lightweight-vision-language-action-model-for-precise-multi-task-manipulation)  
+   标签：评分：8.0/10、query:q6
+   evidence：多任务操作与联合优化
+3. [Asynchronous Sensitivity-Based Distributed NMPC](/202607/10/2607.03412v1-asynchronous-sensitivity-based-distributed-nmpc)  
    标签：评分：7.0/10、query:q2
-   evidence：具有随时间变化的锥形约束和参考修形的几何跟踪律
-6. [Influence of Radial Basis Activation Functions on Intelligent Controller for Robotic Manipulators](/202607/09/2607.02167v1-influence-of-radial-basis-activation-functions-on-intelligent-controller-for-robotic-manipulators)  
-   标签：评分：7.0/10、query:q2
-   evidence：机器人操作臂轨迹跟踪的智能控制框架
-7. [Reference-Governed Distributed Safe Gradient Flow for Safe Optimal Output Agreement of Multi-Agent Systems](/202607/09/2607.02192v1-reference-governed-distributed-safe-gradient-flow-for-safe-optimal-output-agreement-of-multi-agent-systems)  
-   标签：评分：7.0/10、query:q2
-   evidence：多智能体系统的安全反馈优化与控制屏障函数
-8. [EVA-Client: A Unified Data Collection, Inference, and Deployment Framework for Embodied Policies on Real Robots](/202607/09/2607.02646v1-eva-client-a-unified-data-collection-inference-and-deployment-framework-for-embodied-policies-on-real-robots)  
+   evidence：非线性系统的分布式模型预测控制
+4. [Handover-Aware Trajectory Planning for Cellular-Connected UAVs under STL Specifications and URLLC Constraints](/202607/10/2607.03781v1-handover-aware-trajectory-planning-for-cellular-connected-uavs-under-stl-specifications-and-urllc-constraints)  
+   标签：评分：7.0/10、query:q3
+   evidence：时序逻辑和通信约束下的轨迹规划
+5. [ObjRetarget: An Object-Aware Motion Retargeting Framework with Anthropomorphic Arm Constraints and Polyhedral Hand Modeling](/202607/10/2607.03828v1-objretarget-an-object-aware-motion-retargeting-framework-with-anthropomorphic-arm-constraints-and-polyhedral-hand-modeling)  
    标签：评分：7.0/10、query:q6
-   evidence：真实机器人操作策略的部署与评估框架
-9. [Learning from Demonstration via Spatiotemporal Tubes for Unknown Euler-Lagrange Systems](/202607/09/2607.00534v1-learning-from-demonstration-via-spatiotemporal-tubes-for-unknown-euler-lagrange-systems)  
-   标签：评分：6.0/10、query:q4
-   evidence：欧拉-拉格朗日系统的运动学习与控制
-10. [CoFL-S: Spatially Queryable Sector Flow Fields for Local Language-Conditioned Navigation](/202607/09/2607.02222v1-cofl-s-spatially-queryable-sector-flow-fields-for-local-language-conditioned-navigation)  
-   标签：评分：6.0/10、query:q4
-   evidence：为导航生成连续轨迹
-11. [Adaptive Linear Quadratic Control of Unknown Linear Time-Varying Systems via Policy Gradient Methods](/202607/09/2607.03251v1-adaptive-linear-quadratic-control-of-unknown-linear-time-varying-systems-via-policy-gradient-methods)  
+   evidence：拟人化机械臂轨迹约束与机器人灵巧操作
+6. [Approximate Dynamic Optimization via Deep Neural Operators](/202607/10/2607.03861v1-approximate-dynamic-optimization-via-deep-neural-operators)  
+   标签：评分：7.0/10、query:q3
+   evidence：用于轨迹剖面的非线性动态优化
+7. [ACE: Agentic Control for Embodied Manipulation via Zero-shot Workflow Reasoning](/202607/10/2607.04162v1-ace-agentic-control-for-embodied-manipulation-via-zero-shot-workflow-reasoning)  
+   标签：评分：7.0/10、query:q6
+   evidence：具身操作的智能体控制
+8. [Scenario-based Data-Enabled Predictive Control: Robustification via the Scenario Approach](/202607/10/2607.04165v1-scenario-based-data-enabled-predictive-control-robustification-via-the-scenario-approach)  
+   标签：评分：7.0/10、query:q2
+   evidence：具有约束满足概率保证的数据驱动预测控制
+9. [Actuator Reality Shaping for Zero-Shot Sim-to-Real Robot Learning](/202607/10/2607.02205v1-actuator-reality-shaping-for-zero-shot-sim-to-real-robot-learning)  
+   标签：评分：6.0/10、query:q5
+   evidence：实时机器人控制的闭环行为塑造
+10. [Sparse State Feedback Control for Industrial Applications](/202607/10/2607.03159v1-sparse-state-feedback-control-for-industrial-applications)  
    标签：评分：6.0/10、query:q2
-   evidence：未知线性时变系统的在线策略优化
+   evidence：基于优化的状态反馈控制器方法
+11. [Beyond Point-Attached Semantics: Object-Centric Semantic Fields for Generalizable Manipulation](/202607/10/2607.03163v1-beyond-point-attached-semantics-object-centric-semantic-fields-for-generalizable-manipulation)  
+   标签：评分：6.0/10、query:q6
+   evidence：机器人操作的以物体为中心的语义场
 
 
 <div class="dpr-home-promo-card">
