@@ -6,64 +6,64 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-11
-- 运行时间：2026-07-11 21:05:11 UTC
+- 最新运行日期：2026-07-12
+- 运行时间：2026-07-12 21:01:44 UTC
 - 运行状态：成功
 - 本次总论文数：14
 - 精读区：3
 - 速读区：11
 
 ### 今日简报（AI）
-今日聚焦机器人感知与操控，深度解析了利用预训练视觉模型实现非结构化环境避障及几何感知操控的新突破。
-重点推荐基于碰撞时间（TTC）的动态避障方案与几何感知运动潜空间研究，两者在提升机器人复杂环境适应性上表现卓越。
-建议关注视觉大模型在具身智能中的落地应用，以及跨形态机器人统一动作空间的演进趋势。
-- 详情：[/202607/11/README](/202607/11/README)
+今日聚焦具身智能前沿，深度解析了轻量化机器人控制与实时手部重定向等 14 篇最新成果。
+核心推荐 XS-VLA 提出的空间蒸馏轻量化方案，以及 Smooth Operator 实现的高效运动重定向算法。
+建议关注具身智能部署效率与灵巧手操作的开发者优先研读这两篇 8.0 分的精选论文。
+- 详情：[/202607/12/README](/202607/12/README)
 
 ### 精读区论文标签
-1. [Time-to-Collision Based Dynamic Obstacle Avoidance Using Pretrained Vision Models for Robots in Unstructured Environments](/202607/11/2607.07885v1-time-to-collision-based-dynamic-obstacle-avoidance-using-pretrained-vision-models-for-robots-in-unstructured-environments)  
-   标签：评分：9.0/10、query:q1
-   evidence：非结构化环境下机器人的动态避障
-2. [Geometry-Aware Motion Latents for Learning Robust Manipulation Policies](/202607/11/2607.04714v1-geometry-aware-motion-latents-for-learning-robust-manipulation-policies)  
+1. [XS-VLA: Coupling Coarse-grained Spatial Distillation with Latent Flow Matching for Lightweight Robotic Control](/202607/12/2607.04171v1-xs-vla-coupling-coarse-grained-spatial-distillation-with-latent-flow-matching-for-lightweight-robotic-control)  
    标签：评分：8.0/10、query:q6
-   evidence：利用几何感知运动潜变量学习鲁棒的操作策略
-3. [SPECTRA: Context-Conditioned Spectral Movement Primitives for Robot Skill Generalization](/202607/11/2607.06978v1-spectra-context-conditioned-spectral-movement-primitives-for-robot-skill-generalization)  
-   标签：评分：8.0/10、query:q6
-   evidence：机器人操作的模仿学习与技能泛化
+   evidence：高效且具有空间感知的机器人操作
+2. [Smooth Operator: A Real-Time Sampling-Based Algorithm for Kinematic Hand Retargeting](/202607/12/2607.07491v1-smooth-operator-a-real-time-sampling-based-algorithm-for-kinematic-hand-retargeting)  
+   标签：评分：8.0/10、query:q8
+   evidence：基于采样的实时运动学重定向算法
+3. [APIVOT: Adaptive Planning with Interleaved Vision-Language Thoughts](/202607/12/2607.08024v1-apivot-adaptive-planning-with-interleaved-vision-language-thoughts)  
+   标签：评分：8.0/10、query:q4
+   evidence：具有碰撞约束的长程机器人规划
 
 ### 速读区论文标签
-1. [Optimality-Informed Neural Networks for Lunar Landing Trajectory Optimization](/202607/11/2607.02741v1-optimality-informed-neural-networks-for-lunar-landing-trajectory-optimization)  
-   标签：评分：7.0/10、query:q3
-   evidence：基于神经网络的月球着陆轨迹优化
-2. [Current as Touch: Proprioceptive Contact Feedback for Compliant Dexterous Manipulation](/202607/11/2607.03529v1-current-as-touch-proprioceptive-contact-feedback-for-compliant-dexterous-manipulation)  
+1. [HALO-WA: Hybrid-Attention Latent-Guided Online Reinforcement Learning for World-Action Models](/202607/12/2607.04265v1-halo-wa-hybrid-attention-latent-guided-online-reinforcement-learning-for-world-action-models)  
    标签：评分：7.0/10、query:q6
-   evidence：灵巧操作的本体感受反馈
-3. [Cross-Embodiment Robot Manipulation via a Unified Hand Action Space](/202607/11/2607.03570v1-cross-embodiment-robot-manipulation-via-a-unified-hand-action-space)  
+   evidence：机器人操作的在线强化学习
+2. [CCFM: Collision-Constrained Flow Matching for Safety-Critical Scenario Generation](/202607/12/2607.04451v1-ccfm-collision-constrained-flow-matching-for-safety-critical-scenario-generation)  
+   标签：评分：7.0/10、query:q1
+   evidence：具有硬物理约束的碰撞约束流匹配
+3. [HUGS: Guiding Unified Dexterous Grasp Synthesis Across Modes and Scales via Learned Human Priors](/202607/12/2607.04554v1-hugs-guiding-unified-dexterous-grasp-synthesis-across-modes-and-scales-via-learned-human-priors)  
    标签：评分：7.0/10、query:q6
-   evidence：跨实体的灵巧操作
-4. [DSWAM: A Dual-System World Action Foundation Model for Fine-Grained Robot Manipulation](/202607/11/2607.04927v1-dswam-a-dual-system-world-action-foundation-model-for-fine-grained-robot-manipulation)  
+   evidence：灵巧抓取合成与力封闭优化
+4. [Closing the Reality Gap: Zero-Shot Sim-to-Real Deployment for Dexterous Force-Based Grasping and Manipulation](/202607/12/2607.04940v1-closing-the-reality-gap-zero-shot-sim-to-real-deployment-for-dexterous-force-based-grasping-and-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：细粒度机器人操作与动作学习
-5. [GaP: A Graph-as-Policy Multi-Agent Self-Learning Harness For Variational Automation Tasks](/202607/11/2607.05369v1-gap-a-graph-as-policy-multi-agent-self-learning-harness-for-variational-automation-tasks)  
-   标签：评分：7.0/10、query:q4
-   evidence：工业机器人的任务与运动规划 (TAMP)
-6. [Cortex: A Bidirectionally Aligned Embodied Agent Framework for Long-horizon Manipulation](/202607/11/2607.05377v1-cortex-a-bidirectionally-aligned-embodied-agent-framework-for-long-horizon-manipulation)  
+   evidence：灵巧手操作与机器人控制策略
+5. [InternVLA-A1.5: Unifying Understanding, Latent Foresight, and Action for Compositional Generalization](/202607/12/2607.04988v1-internvla-a15-unifying-understanding-latent-foresight-and-action-for-compositional-generalization)  
    标签：评分：7.0/10、query:q6
-   evidence：用于长程操作的具身智能体框架
-7. [AnchorVLA: Bridging Discrete Decisions and Continuous Trajectories for Vision-Language-Action Planning](/202607/11/2607.03182v1-anchorvla-bridging-discrete-decisions-and-continuous-trajectories-for-vision-language-action-planning)  
-   标签：评分：6.0/10、query:q3
-   evidence：视觉-语言-动作规划中的连续轨迹生成
-8. [GDPR-Aware Trajectory Sharing for ISAC-Assisted Robot Navigation: A Case Study on FID-Constrained Collision Prediction](/202607/11/2607.03254v1-gdpr-aware-trajectory-sharing-for-isac-assisted-robot-navigation-a-case-study-on-fid-constrained-collision-prediction)  
-   标签：评分：6.0/10、query:q1
-   evidence：机器人避障的轨迹共享方案
-9. [Direct Data Driven Natural Gradient Descent for Control](/202607/11/2607.03393v1-direct-data-driven-natural-gradient-descent-for-control)  
-   标签：评分：6.0/10、query:q2
-   evidence：数据驱动的自然梯度下降控制
-10. [ADP: Adversarial Dynamics Priors for Physically Grounded Humanoid Locomotion](/202607/11/2607.03454v1-adp-adversarial-dynamics-priors-for-physically-grounded-humanoid-locomotion)  
-   标签：评分：6.0/10、query:q3
-   evidence：用于类人足式运动参考数据集的轨迹优化
-11. [CoRE-VLA: Towards Scalable and Robust Vision-Language-Action Modeling via Conditional Routing of Experts](/202607/11/2607.03693v1-core-vla-towards-scalable-and-robust-vision-language-action-modeling-via-conditional-routing-of-experts)  
+   evidence：机器人操作和动作生成的统一模型
+6. [DexTele: A Dual-Arm Dexterous Teleoperation System Based on Motion Retargeting and Adaptive Force Control](/202607/12/2607.05883v1-dextele-a-dual-arm-dexterous-teleoperation-system-based-on-motion-retargeting-and-adaptive-force-control)  
+   标签：评分：7.0/10、query:q6
+   evidence：双臂灵巧遥操作与运动重定向
+7. [SoftVTBench: A Safety-Aware Visuo-Tactile Benchmark for Physically Constrained Robotic Manipulation of Deformable Objects](/202607/12/2607.04234v1-softvtbench-a-safety-aware-visuo-tactile-benchmark-for-physically-constrained-robotic-manipulation-of-deformable-objects)  
    标签：评分：6.0/10、query:q6
-   evidence：通用机器人操作的VLA模型
+   evidence：变形物体机器人操作的安全感知基准
+8. [RoboDojo: A Unified Sim-and-Real Benchmark for Comprehensive Evaluation of Generalist Robot Manipulation Policies](/202607/12/2607.04434v1-robodojo-a-unified-sim-and-real-benchmark-for-comprehensive-evaluation-of-generalist-robot-manipulation-policies)  
+   标签：评分：6.0/10、query:q6
+   evidence：通用机器人操作策略的基准测试
+9. [RoboDojo: A Unified Sim-and-Real Benchmark for Comprehensive Evaluation of Generalist Robot Manipulation Policies](/202607/12/2607.04434v2-robodojo-a-unified-sim-and-real-benchmark-for-comprehensive-evaluation-of-generalist-robot-manipulation-policies)  
+   标签：评分：6.0/10、query:q6
+   evidence：通用机器人操作策略基准
+10. [RoboDojo: A Unified Sim-and-Real Benchmark for Comprehensive Evaluation of Generalist Robot Manipulation Policies](/202607/12/2607.04434v3-robodojo-a-unified-sim-and-real-benchmark-for-comprehensive-evaluation-of-generalist-robot-manipulation-policies)  
+   标签：评分：6.0/10、query:q6
+   evidence：通用机器人操作策略的评估
+11. [Graph Sparse Sampling: Breaking the Curse of the Horizon in Continuous MDP Planning](/202607/12/2607.05359v1-graph-sparse-sampling-breaking-the-curse-of-the-horizon-in-continuous-mdp-planning)  
+   标签：评分：6.0/10、query:q4
+   evidence：连续域自主系统的在线规划算法
 
 
 <div class="dpr-home-promo-card">
