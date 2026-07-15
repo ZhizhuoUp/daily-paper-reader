@@ -6,73 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-14
-- 运行时间：2026-07-14 21:24:46 UTC
+- 最新运行日期：2026-07-15
+- 运行时间：2026-07-15 21:00:28 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 17 篇前沿论文，深度聚焦机器人安全导航与触觉感知大模型。
-重点关注结合社会力模型与扩散驱动的 MPC 算法，其在复杂人群环境下的避障与安全控制表现卓越。
-建议关注触觉基础模型 TouchWorld 及物理增强的实时导航技术，探索多模态感知在灵巧操作中的应用。
-- 详情：[/202607/14/README](/202607/14/README)
+今日精选17篇前沿论文，重点攻克空间机器人无推进剂姿态控制与高一致性机器人操作难题。
+满分论文提出利用机械臂实现航天器姿态调整，SegDiff则通过分段轨迹扩散显著提升了操作的自适应性。
+建议关注扩散模型与不确定性感知技术在提升机器人复杂环境鲁棒性方面的跨领域应用。
+- 详情：[/202607/15/README](/202607/15/README)
 
 ### 精读区论文标签
-1. [Navigating the Crowd: Non-linear MPC with Social Forces Dynamics for Human-Aware Robot Navigation](/202607/14/2607.10374v1-navigating-the-crowd-non-linear-mpc-with-social-forces-dynamics-for-human-aware-robot-navigation)  
-   标签：评分：9.0/10、query:q2
-   evidence：用于机器人导航避障的非线性模型预测控制
-2. [D-SafeMPC: Diffusion-Driven Safe Model Predictive Control with Discrete-Time Control Barrier Functions](/202607/14/2607.10842v1-d-safempc-diffusion-driven-safe-model-predictive-control-with-discrete-time-control-barrier-functions)  
+1. [More than a Manipulator: Planning Propellant-Free Attitude Maneuvers for Free-Floating Spacecraft](/202607/15/2607.12130v1-more-than-a-manipulator-planning-propellant-free-attitude-maneuvers-for-free-floating-spacecraft)  
+   标签：评分：10.0/10、query:profile-1
+   evidence：具有避障功能的空间机械臂轨迹优化
+2. [SegDiff: Segmented Trajectory Diffusion for Consistent and Adaptive Robot Manipulation](/202607/15/2607.11027v1-segdiff-segmented-trajectory-diffusion-for-consistent-and-adaptive-robot-manipulation)  
    标签：评分：9.0/10、query:profile-1
-   evidence：基于扩散驱动的安全模型预测控制及控制屏障函数，用于机器人规划
-3. [CR-Solver: GPU-Accelerated Kinematics Solver for Tendon-driven Continuum Robots](/202607/14/2607.11340v1-cr-solver-gpu-accelerated-kinematics-solver-for-tendon-driven-continuum-robots)  
+   evidence：用于实时机器人操作的分段轨迹扩散
+3. [Exact Solutions to a Class of Constrained Optimal Control Problems via Lossless Convexification for Digital Control](/202607/15/2607.12109v1-exact-solutions-to-a-class-of-constrained-optimal-control-problems-via-lossless-convexification-for-digital-control)  
+   标签：评分：9.0/10、query:q7
+   evidence：航空航天应用的受限最优控制
+4. [Model-Based Diffusion Optimal Control for Multi-Robot Motion Planning](/202607/15/2607.12423v1-model-based-diffusion-optimal-control-for-multi-robot-motion-planning)  
+   标签：评分：9.0/10、query:q3
+   evidence：基于模型的扩散最优控制用于无碰撞轨迹生成
+5. [Globalized Constrained Stein Variational Inference for Diverse Feasible Robot Motion Planning](/202607/15/2607.12732v1-globalized-constrained-stein-variational-inference-for-diverse-feasible-robot-motion-planning)  
    标签：评分：9.0/10、query:profile-1
-   evidence：基于优化的连续体机器人运动生成和轨迹规划求解器
-4. [Trajectory Planning and Certification for 3-DOF Robot Manipulators Using Real Quantifier Elimination Based on Comprehensive Gröbner Systems](/202607/14/2607.11657v1-trajectory-planning-and-certification-for-3-dof-robot-manipulators-using-real-quantifier-elimination-based-on-comprehensive-grbner-systems)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：使用Gröbner系统为3自由度机械臂进行高效轨迹规划
-5. [TACTIC: Tactile and Vision Conditioned Contact-Centric Control for Whole-Arm Manipulation](/202607/14/2607.09218v2-tactic-tactile-and-vision-conditioned-contact-centric-control-for-whole-arm-manipulation)  
+   evidence：使用序列二次规划处理包含避障和关节限制的约束运动规划
+6. [Dynamically Feasible Planning and Control in Complex Environments: a Scalable Systematic Approach](/202607/15/2607.12178v1-dynamically-feasible-planning-and-control-in-complex-environments-a-scalable-systematic-approach)  
    标签：评分：8.0/10、query:profile-1
-   evidence：全臂操作的收缩时界控制器
-6. [Task-Adaptive Design of Modular Aerial Manipulators Under Airflow Exposure Constraints](/202607/14/2607.09548v1-task-adaptive-design-of-modular-aerial-manipulators-under-airflow-exposure-constraints)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：空中机械臂的优化设计与约束处理
+   evidence：低在线计算开销的安全参考跟踪
 
 ### 速读区论文标签
-1. [TouchWorld: A Predictive and Reactive Tactile Foundation Model for Dexterous Manipulation](/202607/14/2607.07287v2-touchworld-a-predictive-and-reactive-tactile-foundation-model-for-dexterous-manipulation)  
+1. [TAC-LOCO: Unified Whole-Body Control for Quadrupedal TACtile-Informed LOCO-Manipulation](/202607/15/2607.10132v1-tac-loco-unified-whole-body-control-for-quadrupedal-tactile-informed-loco-manipulation)  
    标签：评分：8.0/10、query:q6
-   evidence：用于灵巧操作的预测性和反应式触觉基础模型
-2. [From Non-Rigid to Rigid: Safe Acquisition of Rigid Communication Graphs under Limited Sensing](/202607/14/2607.10170v1-from-non-rigid-to-rigid-safe-acquisition-of-rigid-communication-graphs-under-limited-sensing)  
-   标签：评分：8.0/10、query:q2
-   evidence：基于分布式二次优化的多机器人系统避障控制器
-3. [PIER-Flow: Physics-Informed Efficient Rectified Flow for Real-Time Mobile Robot Navigation](/202607/14/2607.10288v1-pier-flow-physics-informed-efficient-rectified-flow-for-real-time-mobile-robot-navigation)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：实时导航，蒸馏MPC以实现避障
-4. [Real-Time Rulebook-Aware Nonlinear MPC for Autonomous Driving with Priority-Biased Tiered Slacks](/202607/14/2607.10975v1-real-time-rulebook-aware-nonlinear-mpc-for-autonomous-driving-with-priority-biased-tiered-slacks)  
-   标签：评分：8.0/10、query:q2
-   evidence：用于运动规划的实时非线性模型预测控制
-5. [EvoPlan: Evolutionary Neuro-Symbolic Robot Planning with Spatio-Temporal Guarantees](/202607/14/2607.06724v1-evoplan-evolutionary-neuro-symbolic-robot-planning-with-spatio-temporal-guarantees)  
-   标签：评分：7.0/10、query:q4
-   evidence：具有时空安全保证的神经符号机器人规划
-6. [Multi-Agent Robotic Control with Onboard Vision-Language Models](/202607/14/2607.07403v1-multi-agent-robotic-control-with-onboard-vision-language-models)  
-   标签：评分：7.0/10、query:q6
-   evidence：在工业任务中控制多用途自主移动机械臂
-7. [Learning-enabled Parameter Synthesis for Nonlinear Systems from Signal Temporal Logic](/202607/14/2607.08899v1-learning-enabled-parameter-synthesis-for-nonlinear-systems-from-signal-temporal-logic)  
-   标签：评分：7.0/10、query:q2
-   evidence：具有STL约束的非线性系统基于梯度的优化
-8. [Shortcut Trajectory Planning for Efficient Offline Reinforcement Learning](/202607/14/2607.09336v1-shortcut-trajectory-planning-for-efficient-offline-reinforcement-learning)  
-   标签：评分：7.0/10、query:q3
-   evidence：离线强化学习的高效轨迹生成器
-9. [SEAM: Smooth Execution of Action-Chunked Motion for Vision-Language-Action Policies](/202607/14/2607.04609v1-seam-smooth-execution-of-action-chunked-motion-for-vision-language-action-policies)  
-   标签：评分：6.0/10、query:q4
-   evidence：机器人策略中动作块运动的平滑执行
-10. [UniLM-Nav: A Unified Framework for Zero-Shot Last-Mile Navigation](/202607/14/2607.06537v2-unilm-nav-a-unified-framework-for-zero-shot-last-mile-navigation)  
+   evidence：四足机器人运动操作的统一全身控制
+2. [SUREFlow: State-space Uncertainty-aware REsidual Flow Matching for Robust Robot Manipulation](/202607/15/2607.10504v1-sureflow-state-space-uncertainty-aware-residual-flow-matching-for-robust-robot-manipulation)  
+   标签：评分：8.0/10、query:q6
+   evidence：基于残差流匹配的鲁棒机器人操作
+3. [AutoPath: Learning Transferable Goal-Conditioned Stochastic Path Prior for Safe Navigation Without Human Demonstrations](/202607/15/2607.11739v1-autopath-learning-transferable-goal-conditioned-stochastic-path-prior-for-safe-navigation-without-human-demonstrations)  
+   标签：评分：8.0/10、query:q1
+   evidence：用于无碰撞和动态可行运动的实时导航
+4. [A Minimalist Retargeting-Guided Reinforcement Learning Recipe for Dexterous Manipulation](/202607/15/2607.11874v1-a-minimalist-retargeting-guided-reinforcement-learning-recipe-for-dexterous-manipulation)  
+   标签：评分：8.0/10、query:q6
+   evidence：基于人类演示的灵巧操作强化学习流水线
+5. [SPECTRA: Context-Conditioned Spectral Movement Primitives for Robot Skill Generalization](/202607/15/2607.06978v2-spectra-context-conditioned-spectral-movement-primitives-for-robot-skill-generalization)  
+   标签：评分：7.0/10、query:q8
+   evidence：操作任务的轨迹生成与执行调节
+6. [Smooth Operator: A Real-Time Sampling-Based Algorithm for Kinematic Hand Retargeting](/202607/15/2607.07491v2-smooth-operator-a-real-time-sampling-based-algorithm-for-kinematic-hand-retargeting)  
+   标签：评分：7.0/10、query:q5
+   evidence：用于运动学重定向的实时采样控制
+7. [Diffusion for Long-Horizon Multi-Robot Path Planning in Human-Shared Environments](/202607/15/2607.09911v1-diffusion-for-long-horizon-multi-robot-path-planning-in-human-shared-environments)  
+   标签：评分：7.0/10、query:q1
+   evidence：实时多机器人路径规划与避障
+8. [SEAMLiS: Visibility-Aware Safety for Perception-Limited Multi-Robot Exploration](/202607/15/2607.09959v1-seamlis-visibility-aware-safety-for-perception-limited-multi-robot-exploration)  
+   标签：评分：7.0/10、query:q1
+   evidence：多机器人避障的安全框架
+9. [A Continual Learning Framework for Adaptive Control of Modular Soft Robots](/202607/15/2607.06740v1-a-continual-learning-framework-for-adaptive-control-of-modular-soft-robots)  
    标签：评分：6.0/10、query:q6
-   evidence：移动操作与底座姿态推理
-11. [PriGo: Test-Time Primitive Guidance to Diffusion and Flow Policies for Adaptive Robotic Manipulation](/202607/14/2607.07076v1-prigo-test-time-primitive-guidance-to-diffusion-and-flow-policies-for-adaptive-robotic-manipulation)  
+   evidence：软体机器人操作的自适应控制
+10. [TouchWorld: A Predictive and Reactive Tactile Foundation Model for Dexterous Manipulation](/202607/15/2607.07287v1-touchworld-a-predictive-and-reactive-tactile-foundation-model-for-dexterous-manipulation)  
    标签：评分：6.0/10、query:q6
-   evidence：基于基元引导的自适应机器人操纵
+   evidence：灵巧操作与反应式触觉反馈
+11. [AnyDexRT: Calibration-Free Dexterous Hand Retargeting with Few-Shot Human Guidance](/202607/15/2607.08341v1-anydexrt-calibration-free-dexterous-hand-retargeting-with-few-shot-human-guidance)  
+   标签：评分：6.0/10、query:q6
+   evidence：灵巧机器人手重定向与遥操作
 
 
 <div class="dpr-home-promo-card">

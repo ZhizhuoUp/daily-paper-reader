@@ -1,0 +1,518 @@
+Title: More than a Manipulator: Planning Propellant-Free Attitude Maneuvers for Free-Floating Spacecraft
+
+URL Source: https://arxiv.org/pdf/2607.12130v1
+
+Published Time: Wed, 15 Jul 2026 11:58:02 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# More than a Manipulator: Planning Propellant-Free Attitude Maneuvers for Free-Floating Spacecraft 
+
+Harsh G. Bhundiya 1, Avi Soval 2, and Keenan Albee 3
+
+Abstract — Spacecraft attitude control is traditionally achieved using momentum exchange devices or propellant-consuming thrusters. Meanwhile, a growing number of missions require robotic manipulators, which are typically treated as disturbance sources to be rejected rather than as actuators for spacecraft reorientation. This work investigates the use of manipulator motions for propellant-free attitude control by formulating a trajectory optimization problem with critical joint and collision avoidance constraints. Using an interior point solver for the resulting nonlinear program, complex slew and detumble trajectories are demonstrated for a range of spacecraft-manipulator systems with varying kinematic complexity and mass properties. The achievable control authority is compared directly with that of reaction wheel arrays via momentum and torque envelopes, demonstrating the potential for manipulators to serve as redundant or even primary attitude control systems. This work provides a framework for using manipulators as multipurpose attitude control actuators, with particularly promising applications in in-space assembly and manufacturing when grasping payloads with high relative mass fractions. 
+
+I. I NTRODUCTION 
+
+Attitude control is essential for spacecraft operations but frequently relies on propellant-consuming thrusters for reori-entation and momentum desaturation. Propellant-free attitude control is an enabler of long-duration missions and can pro-vide a backup means of control when conventional actuators degrade or fail. Common methods include momentum ex-change devices such as reaction wheels and control moment gyroscopes [1], and the exploitation of passive environmental disturbances including magnetic fields, atmospheric drag, and solar radiation pressure [2]. Internal mass reconfiguration, or the movement of masses relative to the spacecraft, presents an alternative attitude control approach with the potential for large control torques and low power consumption. Prior works have investigated large-angle slew maneuvers and detumbling through trans-lation of internal masses [3], [4], as well as combining internal mass motion with other actuators and environmental disturbances for attitude control of solar sails and variable-geometry spacecraft [5], [6].  
+
+> *This work was supported by the University of Southern California.
+> 1Department of Astronautical Engineering, University of Southern Cali-fornia, Los Angeles, CA 90089
+
+bhundiya@usc.edu  
+
+> 2Department of Aerospace and Mechanical Engineering, University of Southern California, Los Angeles, CA 90089
+
+soval@usc.edu  
+
+> 3Departments of Astronautical, Aerospace and Mechanical, and Electrical and Computer Engineering, University of Southern California, Los Angeles, CA 90089
+
+kalbee@usc.edu 
+
+Fig. 1. Robotic manipulator on NASA’s Fly Foundational Robots mission ( top ); a propellant-free slew maneuver of 75 ◦ using solely manipulator motions ( bottom ). 
+
+Robotic space manipulators, increasingly required for servicing, assembly, and debris-removal missions (Fig. 1), constitute another form of internal mass reconfiguration. Manipulator motions induce reactions of the base spacecraft through conservation of angular momentum; consequently, much of the existing literature has focused on minimizing the induced attitude disturbances during manipulation tasks. Early techniques understood how to minimize base attitude disturbances directly from the equations of motion via dis-turbance maps [7], [8], and recent techniques have used offline trajectory optimization to compute joint trajectories that minimize the final base reorientation [9]. Rather than treating manipulator-induced attitude motions as disturbances to be rejected, the same dynamic coupling can be exploited for spacecraft attitude control. This capa-bility would allow robotic manipulators to serve as multi-purpose systems, potentially reducing reliance on dedicated attitude actuators and enabling continued maneuvering after actuator saturation or failure. However, generating manipula-tor motions that achieve desired attitude maneuvers remains challenging due to the nonlinear coupled dynamics, high-dimensional search space, and stringent collision constraints. In this paper, we focus on planning collision-free ma-nipulator motions for attitude maneuvers of free-floating spacecraft-manipulator systems. Our specific contributions include: arXiv:2607.12130v1 [cs.RO] 13 Jul 2026 • A versatile optimal control problem (OCP) formulation with joint and collision avoidance constraints for atti-tude maneuvers using manipulator motions.  
+
+> •
+
+Application of this OCP to slew and detumble maneu-vers for a set of representative spacecraft-manipulator systems with up to 7 degrees of freedom.  
+
+> •
+
+Comparison of manipulator motions to conventional momentum exchange devices in terms of attitude con-trol authority and power consumption metrics. The paper is organized as follows: Sec. II surveys prior related work, Sec. III formulates the OCP, and Sec. IV demonstrates propellant-free attitude maneuvers for example configurations. Sec. V then compares the attitude control authority from manipulator motions to traditional momentum exchange devices, and Sec. VI concludes the paper. II. R ELATED WORK 
+
+A. In-Flight Attitude Control via Internal Motions 
+
+Many animals rely on internal motions for in-flight attitude control. Classic examples include falling cats and geckos which reorient during free fall to land on their feet through coordinated body and tail motions [10], as well as flying snakes which use body undulation to generate aerodynamic forces and glide longer distances [11]. Astronauts also rou-tinely reorient in microgravity through body motions [12]. Inspired by these examples, many prior works have em-ployed inertial appendages to achieve in-flight attitude con-trol on robotic systems. Early efforts focused on tailed robots such as Tailbot and RHex, where body reorientation was achieved through analytical models and feedback control laws that exploited angular momentum exchange between the tail and body [13], [14]. Subsequent work has extended these ideas to reaction-wheel-equipped robots, where model-based controllers regulate wheel angular momentum to stabilize at-titude during locomotion tasks [15]. Chu et al. [16] combined a tail and reaction wheel on a single platform and formulated the reorientation problem as a constrained quadratic program to achieve underactuated attitude control. For systems with higher-dimensional appendages, direct model-based planning becomes increasingly challenging. Consequently, several works have employed learning-based approaches to discover coordinated inertial motions. Rudin et al. [17] trained reinforcement learning (RL) policies that use the legs of a quadruped as inertial appendages to perform cat-like aerial reorientation and landing in reduced-gravity environments. RL frameworks have also been investigated for combined locomotion, jumping, and in-flight attitude control in planetary exploration scenarios [18]. These works demonstrate that coordinated motions of internal appendages can provide substantial attitude authority even in highly non-linear and underactuated systems, but without hard constraint enforcement. The present work shares the same underlying principle of attitude control through internal mass motions, but consid-ers free-floating spacecraft manipulators. Unlike terrestrial robotic applications that rely on learned policies or spe-cialized feedback controllers, we formulate a constrained trajectory optimization problem that directly plans collision-free manipulator motions for spacecraft slew and detumble maneuvers, and explore comparisons against more traditional momentum exchange attitude control techniques. 
+
+B. Dynamics and Motion Planning of Free-Floating Space Manipulators 
+
+The dynamics of free-floating spacecraft with robotic ma-nipulators have been extensively studied since the pioneering work of Dubowsky et al. [19]. A central characteristic of these systems is the dynamic coupling between manipulator motion and spacecraft attitude, whereby joint motions induce reactions on the base through conservation of linear and an-gular momentum. As a result, much of the early literature fo-cused on understanding and mitigating manipulator-induced base disturbances during manipulation tasks. Representative examples include the virtual manipulator formulation of Vafa and Dubowsky [20] for small cyclic manipulator motions, the identification of dynamic singularities unique to free-floating systems by Papadopoulos and Dubowsky [21], and disturbance-minimization strategies based on enhanced dis-turbance maps and null-space concepts [7], [8]. Motion planning for free-floating manipulators remains particularly challenging due to the nonlinear dynamics, high-dimensional search space, and need for collision avoidance. Nakamura et al. [22] used a bidirectional approach to plan local base regulation trajectories about a reference point for a 6-DOF manipulator by exploiting the nonholonomic nature of the equations of motion. Tortopidis et al. [23] formulated the problem as a two-point boundary value problem and employed spline-based trajectory optimization for base disturbance-minimizing trajectories of planar free-floating systems. More recently, Crain et al. [9] applied pseudospectral optimal control methods to compute minimal disturbance trajectories for a planar spacecraft-manipulator system and experimentally validated the resulting motions. However, such approaches have primarily considered low-dimensional systems and end-effector motion objectives, with limited consideration of joint constraints, collision avoidance, and the ability to perform complex base attitude control maneuvers. Motivated by these limitations, this work uses the manip-ulator itself as an attitude control actuator and formulates a trajectory optimization problem that computes collision-free attitude maneuvers for general spacecraft-manipulator systems. In addition, the achievable attitude control authority is compared directly with conventional momentum exchange devices, providing insight into when manipulators may serve as redundant or primary attitude control actuators. III. P ROBLEM FORMULATION 
+
+A. System Dynamics 
+
+The dynamics of a free-floating spacecraft with an attached manipulator may be derived via the Newton-Euler or Euler-Lagrange formulations, as outlined in Refs. [7]-[9]. Here, we briefly present the equations of motion to aid the optimal control problem formulation of Sec. III-B. m i,Iiq4
+
+> rCM
+
+m 0,I0
+
+R0
+
+{N}
+
+q1q2q3
+
+{B}Fig. 2. 4-degree-of-freedom (DOF) manipulator arm on a free-floating spacecraft with defined parameters. 
+
+As depicted in Fig. 2, we consider a spacecraft-manipulator system of n rigid bodies and j revolute joints with angles q as specified using Denavit-Hartenberg (DH) parameters [24]. The linear and angular momenta of the combined system are [7] 
+
+P =
+
+> n
+
+X
+
+> i=0
+
+mi ˙Ri = M ˙RCM , (1) 
+
+H = ˜Iω + ˜H. (2) Here, ˜I(q, ˙q) represents the configuration-dependent inertia matrix of the combined system and ˜H(q, ˙q) represents the instantaneous angular momentum from the manipulator motion relative to the base spacecraft: 
+
+˜I =
+
+> n
+
+X
+
+> i=0
+
+Ii −
+
+> n
+
+X
+
+> i=1
+
+mi[ri − rCM ]×[ri]×, (3) 
+
+˜H =
+
+> n
+
+X
+
+> i=1
+
+Iiωi/B +
+
+> n
+
+X
+
+> i=1
+
+mi[ri − rCM ]×r′
+
+> i
+
+. (4) In Eqs. (1)-(4), mi is the mass of body i; M = Pni=0 mi is the total system mass; Ri and RCM are the inertial positions of body i and the system center of mass, respectively; ri and 
+
+rCM = Pni=0 miri/M are the position vectors from the body frame origin to the center of mass of body i and the system center of mass, respectively; Ii is the inertia tensor of body i about its center of mass; ω is the angular velocity of the body frame {B} relative to the inertial frame {N }; ωi/B 
+
+is the angular velocity of link i relative to the body frame; 
+
+r′ 
+
+> i
+
+is the velocity of the center of mass of body i relative to the body frame; and [·]× denotes the skew-symmetric matrix corresponding to the cross product. In this paper, we consider a free-floating environment with zero external forces and moments, resulting in conservation of linear and angular momentum. The equations of motion are thus obtained by differentiating Eqs. (1)-(2) via the transport theorem and equating to zero, i.e., 
+
+˙P = M ¨RCM = 0 , (5) 
+
+˙H = dH
+
+dt + [ ω]×H = 0 . (6) Equation (5) implies that the system center of mass does not accelerate in the inertial frame, and Eq. (6) governs the attitude dynamics of the combined spacecraft-manipulator system. It can be shown that Eq. (6) contains nonintegrable velocity constraints, creating nonholonomic dynamics that enable the base attitude to be modified by path-dependent joint trajectories [22]. 
+
+B. Optimal Control Problem 
+
+To solve for the manipulator motions that result in the desired attitude maneuver of the base spacecraft, we formu-late an optimal control problem (OCP) that seeks to reach a commanded state while satisfying constraints on the system dynamics, joint angle limits, and self-collision avoidance. The OCP has 13 + 2 j states: the system state x contains the position r0 ∈ R3, orientation parameterized by the unit quaternion qBN ∈ R4, linear velocity ˙r0 ∈ R3, angular velocity ω ∈ R3, as well as the joint angles and velocities 
+
+q, ˙q ∈ Rj . The control inputs are the joint accelerations 
+
+¨q ∈ Rj , i.e, 
+
+x = r qBN ˙r ω q ˙q⊤ ∈ R13+2 j ,
+
+u = ¨ q ∈ Rj . (7) The objective is to determine joint acceleration profiles that drive the terminal state towards a desired configuration. To this end, the state stage cost tracks the difference between the desired states [·]d and current states [·]k with the error 
+
+ek =
+
+
+
+rd − rk
+
+evk 
+
+wd − wk
+
+˙rd − ˙rk
+
+qd − qk
+
+˙qd − ˙qk
+
+
+
+∈ R12+2 j , (8) where evk = vec 
+
+
+
+q−1 
+
+> BN,d
+
+⊗ qBN,k 
+
+
+
+is the vector part of the error quaternion between qBN,d and qBN,k . This three-parameter attitude error avoids the quaternion sign ambigu-ity, provides a smooth attitude error metric, and is locally equivalent to logarithmic-map and geodesic-angle error rep-resentations on SO (3) for small attitude errors [25]. The discretized cost function over a horizon N is then 
+
+J = 
+
+> N−1
+
+X
+
+> k=0
+
+u⊤ 
+
+> k
+
+R u k + e⊤ 
+
+> N
+
+Qe N (9) where a quadratic stage cost penalizes control effort, with a terminal penalty on state error. The weight matrices are parametrized by [wu, w r , w evf , w ˙r , w ω , w q , w ˙q ]:
+
+R = wuIj , (10) 
+
+Q = diag  wr I3, w evf I3, w ˙r I3, w ω I3, w q Ij , w ˙q Ij
+
+. (11) The key constraints on the state and control inputs relate to the joint limits and collision avoidance. In particular, for each joint i, angle and velocity limits are enforced over the horizon 
+
+k ∈ [0 , N ] and accelerations are bounded over k ∈ [0 , N −1] :
+
+qi, min ≤ qi,k ≤ qi, max , (12) 
+
+| ˙qi,k | ≤ ˙qi, max , (13) 
+
+|ui,k | ≤ ui, max . (14) To prevent self-collisions and collisions between the ma-nipulator and the base spacecraft, additional geometric con-straints are incorporated. The rigid links that comprise the manipulator are modeled as zero-thickness line segments, and the distance function dist( ·) is computed using Euclidean distances, which can be inflated to a desired minimum clearance. To avoid spacecraft-manipulator collision, each link La, except the first which is attached to the base, must maintain a minimum clearance dmin from a sphere of radius 
+
+Rbody circumscribing the base. Additionally, non-adjacent links must satisfy a minimum separation distance to prevent self-collisions: 
+
+dist( La, B) ≥ Rbody + dmin , a ≥ 2, (15) 
+
+dist( La, Lb) ≥ dmin , b ≥ a + 2 . (16) Adjacent links are excluded from the self-collision check of Eq. 16 when they share a joint and implicitly avoid collision from DH parameter selection. Thus, the discrete OCP solved at each iteration is 
+
+min   
+
+> {X,U}
+
+J(X, U )
+
+s.t. x0 = xgiven 0 ,
+
+xk+1 = ΦRK4 (xk, uk, ∆t), k ∈ [0 , N −1] ,
+
+|ui,k | ≤ ui, max , k ∈ [0 , N −1] ,qi, min ≤ qi,k ≤ qi, max , k ∈ [0 , N ],
+
+| ˙qi,k | ≤ ˙qi, max , k ∈ [0 , N ],
+
+dist( La, B) ≥ Rbody + dmin , a ≥ 2, k ∈ [0 , N ],
+
+dist( La, Lb) ≥ dmin , b ≥ a+2 , k ∈ [0 , N ].
+
+where ΦRK4 denotes one step of the fourth-order Runge– Kutta integrator applied to the equations of motion of Sec. III-A and X ∈ R (13+2 j)×(N +1) , U ∈ R j×N represent the combined set of {xk+1 , uk} decision variables. This formulation is used for all subsequent trajectory com-putations. The resulting nonlinear program (NLP) is solved using IPOPT [26], an interior-point optimizer that exploits the structure of the NLP through Hessian information via automatic differentiation [27]. IV. P ROPELLANT -F REE 
+
+SLEW AND DETUMBLE MANEUVERS 
+
+Using the OCP of Sec. III, we now demonstrate propellant-free attitude maneuvers of the base spacecraft using manip-ulator motions. Two fundamental maneuvers are considered: (i) a slew with zero angular velocity at the initial and final states, and (ii) a detumble that reduces an initially nonzero angular velocity. Slew maneuvers are routinely required in spacecraft operations to reorient payloads or align antennas for communication, and detumble maneuvers are often re-quired following deployment, actuator failures, or emergency scenarios that result in undesired rotational motion. To compute manipulator motions for these maneuvers, we encode the desired final states in the OCP and accordingly adjust the terminal cost weights. For slew maneuvers, the goal is to achieve a desired final orientation qBN,d of the (a) (b) (c) 
+
+q1q2q3 q4q5q1 q2q3 q4q1 q2q6q7
+
+> Fig. 3. Spacecraft-manipulator systems with increasing degrees of freedom: (a) 2-DOF manipulator, (b) 4-DOF manipulator represen-tative of the xLink robotic arm system [28], 7-DOF manipulator representative of the Candarm2 [29].
+
+base with no residual angular or joint velocity. In contrast, detumble maneuvers specify only an initial angular velocity 
+
+ω0, and the OCP terminal cost seeks to minimize the final angular velocity ωf and joint velocities ˙q. Neither case specifies final joint angles, ensuring the manipulator can move freely to satisfy the desired maneuver. Using this methodology, we compute attitude maneuvers for the free-floating spacecraft-manipulator systems depicted in Fig. 3. Here the base spacecraft is modeled as a uniform cube of mass m0 and sidelength s, and the manipulators consist of rigid links of mass mi defined by the DH pa-rameters of Table I. The three systems correspond to (i) a small spacecraft with a single-link manipulator, (ii) a small spacecraft with a manipulator representative of the xLink robotic arm system [28], and (iii) an ISS-scale spacecraft with a manipulator representative of the Canadarm2 [29]. For each system, we compute an example slew maneuver of θ = 20 ◦ about the axis ˆn ≈ [0 .74 , 0.02 , 0.68] from a zero initial orientation, and an example detumble maneuver from the initial angular velocity ω0 = [0 , 0, −20] deg /s. A constant initial guess with the state held at x0 and controls set to zero is used to initialize each solve. Fig. 4 and Fig. 5 plot the resulting base attitude and joint trajectories computed with a collision clearance of dmin = 0 .01 m and maneuver time of tf = 30 s (i.e., N = 600 , ∆t = 0 .05 ). Table II lists the corresponding solve times 1.The slew maneuvers of Fig. 4 demonstrate successful attitude reconfiguration with manipulator motions that avoid collisions and satisfy joint constraints. Due to the smaller mass fraction of the 7-DOF manipulator relative to the spacecraft ( ηm = P mi/m 0 ≈ 3.75 e − 3) compared to the 2-DOF and 4-DOF manipulators ( ηm ≈ 8.3e − 2), the 7-DOF manipulator induces relatively smaller torques on the base spacecraft and requires qualitatively larger motions to achieve the same slew maneuver. At the same time, the 
+
+> 1Computed on an Intel Core i9-13900H CPU with 64 GB RAM.
+
+TABLE I. Mass properties, DH parameters, and joint constraints for the spacecraft-manipulator systems of Fig. 3.                                                                                                                                
+
+> Spacecraft Links DH Parameters Joint Constraints
+> m0simi
+> Pmiaiαid0iθ0iqi, min qi, max ˙qi, max ui, max
+> [kg] [m] [kg] [kg] [m] [deg] [m] [deg] [deg] [deg] [deg/s] [deg/s 2](a) 300 0.51025 0−90 00−∞ +∞17 .211 .5
+> 225 1.000−90 −90 +90
+> (b) 300 0.5
+> 1725 090 0.25 −180 −∞ +∞
+> 17 .211 .5
+> 260.25 0090 −90 +90
+> 360.25 000−50 +50
+> 460.25 000−35 +35
+> (c) 400 ,000 2.0
+> 101,500 0000−180 +180 17 .211 .5
+> 260 090 0.635 0−180 +180
+> 370 0−90 0.756 045 +150
+> 4620 6.85 000−45 +45
+> 5620 6.85 00.756 030 +150
+> 670 090 0.635 0−180 +180
+> 760 0−90 00−180 +180
+
+increased degrees of freedom enable a smoother base attitude trajectory without any overshoot. The detumble maneuvers of Fig. 5 demonstrate up to a 40% decrease in angular velocity solely from manipulator motions. For each spacecraft-manipulator system, the termi-nal state exhibits a fully extended manipulator to maximize the inertia about the spin axis. This configuration helps decrease the kinetic energy-like terminal cost of Eq. 9, essentially aligning the spin axis with the maximum principal inertia axis of the system. To further demonstrate the breadth of attitude maneuvers feasible with the OCP, we compute manipulator motions for a range of slew maneuvers parametrized by the axis-angle representation θ = θ ˆn. For each slew, we classify whether the maneuver is successful by verifying that the norm of the terminal attitude error satisfies || evf || 2 ≤ 1e − 3. Fig. 6 plots the results for a total of 225 successful maneuvers with the 2-DOF manipulator over a range of slew angles 
+
+θ ∈ [10 ◦, 90 ◦], slew axes ˆn sampled via a spherical Fibonacci mapping [30], and a maneuver time of tf = 120 s . We find the OCP achieves successful slew maneuvers of up to 90 ◦ about a large range of slew axes within the unit sphere. Experimentally, longer maneuver times and larger manipulator mass fractions correspond to larger achievable slew angles; however, a formal reachability analysis [31] beyond the scope of this work is required to determine the attitude reachability within SO (3) for arbitrary spacecraft-manipulator system configurations. Together, the results of Figs. 4-6 demonstrate the versatil-ity of the OCP in computing manipulator motions for both slew and detumble trajectories for various real-world space manipulator configurations. While the increasing solve times of Table II highlight the challenges of high-dimensional, non-linear, constrained search spaces, our methodology achieves successful trajectories even with a simple initialization. Promising future directions to improve solve speed and quality are discussed in Section VI. V. C OMPARISON WITH 
+
+MOMENTUM EXCHANGE DEVICES 
+
+The trajectories of Sec. IV demonstrate attitude control through manipulator motions, such that the manipulator ef-
+
+TABLE II. Solve times for the maneuvers of Figs. 4-5.         
+
+> 2-DOF 4-DOF 7-DOF Slew 249 s 361 s 1318 s Detumble 279 s 835 s 2059 s
+
+fectively behaves as a momentum exchange device due to the conservation of angular momentum (Eq. 2). In this section, we make this analogy more explicit through comparisons with conventional momentum exchange devices. While a stationary manipulator cannot store angular mo-mentum in the same manner as spinning reaction wheels or control moment gyroscopes, instantaneous manipulator motion induces angular momentum as described by ˜H(q, ˙q)
+
+in Eq. 2. Hence, for given joint angles, velocities, and accelerations, we may define the angular momentum and torque associated with manipulator motion as 
+
+Harm = ˜H =
+
+> n
+
+X
+
+> i=1
+
+Iiωi/B +
+
+> n
+
+X
+
+> i=1
+
+mi[ri − rCM ]×r′
+
+> i
+
+, (17) 
+
+Tarm = ˜H′ =
+
+> n
+
+X
+
+> i=1
+
+Iiω′ 
+
+> i/B
+
++
+
+> n
+
+X
+
+> i=1
+
+mi[ri − rCM ]×r′′  
+
+> i
+
+, (18) where all quantities are expressed in body-frame coordinates and (·)′, (·)′′ denote body-frame time derivatives. Although Eqs. 17–18 do not include the gyroscopic terms present in the full equations of motion, they enable a direct compari-son with angular momentum and torque envelopes used to characterize momentum exchange devices [32]. For instance, Fig. 7 plots the convex hull of sampled angular momentum and torque values for the 4-DOF ma-nipulator subject to the joint constraints of Table I. Overlaid are the momentum and torque envelopes of a representative four-wheel reaction wheel (RW) array sized for a small spacecraft with mass properties matching those of Table I. Each wheel is assumed to provide a maximum angular momentum storage of HRW = 1 Nms and control torque of TRW = 0 .1 Nm , consistent with commercially available small-spacecraft reaction wheels [33]. The comparison shows that the manipulator provides attitude control authority in all directions similar to the RW array, although the enve-lope is flatter along the z-axis because the manipulator is Base Attitude 
+
+> θi [deg] qi [deg]
+
+Time, t [s] 
+
+Joint Angles 
+
+> 30 20 10 0-10 60 80 40 20 0
+
+θx (roll) 
+
+θy (pitch) 
+
+θz (yaw) 
+
+q 1q2      
+
+> 010 20 30 010 20 30
+
+Base Attitude 
+
+> θi [deg] qi [deg]
+
+Time, t [s] 
+
+Joint Angles 
+
+> 30 20 10 0-10 -50 50 -100 -150 0
+
+θx (roll) 
+
+θy (pitch) 
+
+θz (yaw) 
+
+q 1q2      
+
+> 010 20 30 010 20 30
+
+Base Attitude 
+
+> θi [deg] qi [deg]
+
+Time, t [s] 
+
+Joint Angles 
+
+> 30 20 10 0-10 -100 100 -200 0
+
+θx (roll) 
+
+θy (pitch) 
+
+θz (yaw) 
+
+q1q2      
+
+> 010 20 30 010 20 30
+
+q3q4q3q4q5q6q7
+
+tf = 30 s tf = 30 s 
+
+tf = 30 s Fig. 4. Propellant-free slew maneuvers of θ = 20 ◦ for the spacecraft-manipulator systems of Fig. 3. Manipulator motions avoid collision and satisfy the imposed joint constraints. Base Angular Velocity 
+
+> ωi [deg/s] qi [deg]
+
+Time, t [s] 
+
+Joint Angles 
+
+q1q 2      
+
+> 010 20 30 010 20 30 10 040 60 20 0-20
+
+ωx
+
+ωz
+
+> 80
+
+ωy|| ω|| 2-20 -10 20 
+
+Base Angular Velocity 
+
+> ωi [deg/s] q i [deg]
+
+Time, t [s] 
+
+Joint Angles 
+
+q1q2      
+
+> 010 20 30 010 20 30 10 0
+
+ωx
+
+ωz
+
+ωy|| ω|| 2-20 -10 20 
+
+Base Angular Velocity 
+
+> ωi [deg/s] q i [deg]
+
+Time, t [s] 
+
+Joint Angles 
+
+q1q2      
+
+> 010 20 30 010 20 30 10 0
+
+ωx
+
+ωz
+
+ωy|| ω|| 2-20 -10 20 
+
+tf = 30 s tf = 30 s 
+
+tf = 30 s 
+
+ωf
+
+q3q4q3q4q5q6q7
+
+> -50 50 -100 0100 -100 100 -200 0
+
+Fig. 5. Propellant-free detumble maneuvers from ω0 = [0 , 0, −20] deg /s for the spacecraft-manipulator systems of Fig. 3. θn x [deg]     
+
+> θn y[deg]
+> θn z [deg]
+> θ= 90 o
+> tf= 120 s
+> Success (225)
+
+Fig. 6. Successful slew maneuvers of θ ∈ [10 ◦, 90 ◦] with the 2-DOF manipulator about a range of slew axes ˆn = [ nx, n y , n z ].
+
+mounted on that face and generates smaller torques about that axis. Nonetheless, the manipulator achieves a maximum angular momentum and torque of approximately Harm ≈
+
+2.7 Nms and Tarm ≈ 2.2 Nm , exceeding the representative RW specifications. These results highlight the substantial instantaneous control authority available through manipulator motions, particularly when the manipulator is fully extended. Furthermore, the envelope comparison of Fig. 7 may be useful for sizing manipulators to achieve attitude control authority comparable to a desired set of momentum exchange devices. Power consumption presents another useful comparison metric. While the electrical power depends on the specific actuator voltage, current draw, and drive electronics, a lower-bound estimate may be obtained from the mechanical power required for manipulator motion, 
+
+Parm ≈ 1
+
+η
+
+> j
+
+X
+
+> i=1
+
+τi ˙qi, (19) where τi and ˙qi are the joint torques and velocities, and η
+
+represents an overall actuator efficiency. Fig. 8 plots Eq. 19 for a 20 ◦ slew maneuver with the 4-DOF manipulator using an assumed efficiency of η =0.1, together with the steady-state power consumption of a representative reaction wheel, PRW = 5 W [33]. This value corresponds to nominal operation rather than an active attitude maneuver, and thus represents a lower bound on the power required to perform the same slew using reaction wheels. The manipulator trajectory achieves a peak power consumption of approximately Parm ≈ 1.2 W . Although Eq. 19 neglects additional electrical losses, this comparison suggests that manipulator-based attitude maneuvers may require less power than conventional momentum exchange devices. The reduction is attributable to the relatively low angular velocities of the manipulator links compared to the high spin speeds of reaction wheels required for attitude maneuvers. T RW            
+
+> Instantaneous Torque Envelope
+> Tarm Tx[Nm]
+> Ty[Nm]
+> Tz [Nm]
+> HRW Harm Hx[Nms]
+> Hy[Nms]
+> H z [Nms]
+> Instantaneous Ang. Momentum Envelope
+
+Fig. 7. Instantaneous angular momentum and torque envelopes of the 4-DOF manipulator compared with a representative reaction wheel array ( HRW = 1 Nms , TRW = 0 .1 Nm ). Parm      
+
+> PRW Time, t[s] 010 20 30 420Power,  P [W]
+
+Fig. 8. Power consumption for a slew maneuver with the 4-DOF manipulator compared with the steady-state power consumption of a representative reaction wheel ( PRW = 5 W ). 
+
+VI. C ONCLUSION 
+
+This paper has presented a numerical trajectory opti-mization framework for propellant-free attitude control of free-floating spacecraft via manipulator motions. An opti-mal control problem with joint constraints and collision avoidance was formulated and solved with an interior point method to demonstrate slew and detumble maneuvers for a range of spacecraft-manipulator systems. A comparison with conventional momentum exchange devices also highlighted the potential for larger control torques and lower power consumption with manipulator-based attitude control. While numerical trajectory optimization has been demon-strated as a viable tool for spacecraft attitude planning using manipulator motions, challenges remain. In particular, the inclusion of self-collision constraints further segments an already non-convex search space, making long-horizon slew and detumble maneuvers increasingly sensitive to initializa-tions and local minima. Future work will investigate in-formed warm-starting strategies, including geometric attitude interpolations and joint-aware trajectory initializations, to im-prove both solution quality and computational efficiency for potential real-time use. Learned policies that exploit offline maneuver discovery may also provide a promising approach for planning attitude maneuvers online for constrained, high-DOF spacecraft-manipulator systems. Additional space-environment and mission-specific con-siderations must also be addressed. For instance, manipulator motions would alter the spacecraft’s thermal environment and expose actuators to radiation conditions not encountered by internally-mounted momentum exchange devices. Moreover, attitude maneuvers may be limited by the structural loads on the manipulator and by the pointing requirements of payloads and sensors which introduce additional constraints in the planning framework. Finally, investigating manipulator-based attitude control with larger end effector masses presents an interesting op-portunity to expand the range of feasible attitude maneuvers, particularly for in-space assembly and manufacturing appli-cations involving large payload mass fractions. REFERENCES [1] F. A. Leve, B. J. Hamilton, and M. A. Peck, Spacecraft Momentum Control Systems . Cham: Springer International Publishing, 2015. [2] J. A. Atchison and M. A. Peck, “Length Scaling in Spacecraft Dynamics,” Journal of Guidance, Control, and Dynamics , vol. 34, no. 1, pp. 231–246, 2011. [3] T. Kane and M. Scher, “A Method of Active Attitude Control Based on Energy Considerations,” Journal of Spacecraft and Rockets , vol. 6, no. 5, pp. 633–636, 1969. [4] T. L. Edwards and M. H. Kaplan, “Automatic Spacecraft Detumbling by Internal Mass Motion,” AIAA Journal , vol. 12, no. 4, pp. 496–502, 1974. [5] B. Wie, “Solar Sail Attitude Control and Dynamics, Part Two,” Journal of Guidance, Control, and Dynamics , vol. 27, no. 4, pp. 536–544, 2004. [6] K. Watanabe, H. Kobayashi, Y. Amaki, T. Chujo, and S. Matunaga, “Attitude Control and On-Orbit Performance Evaluation of Spacecraft with Variable Shape Function,” Advances in Space Research , vol. 72, no. 6, pp. 2313–2323, 2023. [7] S. Dubowsky and M. A. Torres, “Path Planning for Space Manipulators to Minimize Spacecraft Attitude Disturbances,” in Proceedings of IEEE International Conference on Robotics and Automation , vol. 3, pp. 2522–2528, Citeseer, 1991. [8] M. A. Torres and S. Dubowsky, “Minimizing Spacecraft Attitude Disturbances in Space Manipulator Systems,” Journal of Guidance, Control, and Dynamics , vol. 15, no. 4, pp. 1010–1017, 1992. [9] A. Crain and S. Ulrich, “Experimental Validation of Pseudospectral-Based Optimal Trajectory Planning for Free-Floating Robots,” Journal of Guidance, Control, and Dynamics , vol. 42, no. 8, pp. 1726–1742, 2019. [10] T. R. Kane and M. Scher, “A Dynamical Explanation of the Falling Cat Phenomenon,” International Journal of Solids and Structures , vol. 5, no. 7, pp. 663–670, 1969. [11] I. J. Yeaton, S. D. Ross, G. A. Baumgardner, and J. J. Socha, “Un-dulation Enables Gliding in Flying Snakes,” Nature physics , vol. 16, no. 9, pp. 974–982, 2020. [12] C. Passerello and R. Huston, “Human Attitude Control,” Journal of Biomechanics , vol. 4, pp. 95–102, Mar. 1971. [13] E. Chang-Siu, T. Libby, M. Tomizuka, and R. J. Full, “A Lizard-Inspired Active Tail Enables Rapid Maneuvers and Dynamic Sta-bilization in a Terrestrial Robot,” in 2011 IEEE/RSJ International Conference on Intelligent Robots and Systems , pp. 1887–1894, IEEE, 2011. [14] T. Libby, A. M. Johnson, E. Chang-Siu, R. J. Full, and D. E. Koditschek, “Comparative Design, Scaling, and Control of Ap-pendages for Inertial Reorientation,” IEEE Transactions on Robotics ,vol. 32, no. 6, pp. 1380–1398, 2016. [15] C.-Y. Lee, S. Yang, B. Bokser, and Z. Manchester, “Enhanced Balance for Legged Robots Using Reaction Wheels,” in 2023 IEEE Interna-tional Conference on Robotics and Automation (ICRA) , pp. 9980– 9987, IEEE, 2023. [16] X. Chu, S. Wang, R. Ng, C. Y. Fan, J. An, and K. S. Au, “Combining Tail and Reaction Wheel for Underactuated Spatial Reorientation in Robot Falling with Quadratic Programming,” IEEE Robotics and Automation Letters , vol. 8, no. 11, pp. 7783–7790, 2023. [17] N. Rudin, H. Kolvenbach, V. Tsounis, and M. Hutter, “Cat-Like Jumping and Landing of Legged Robots in Low Gravity using Deep Reinforcement Learning,” IEEE Transactions on Robotics , vol. 38, no. 1, pp. 317–328, 2022. [18] J. A. Olsen and K. Alexis, “Towards Low-Gravity Planetary Explo-ration Using Reinforcement Learning for Walking, Jumping, and in-Flight Attitude Control,” 2026. [19] S. Dubowsky and E. Papadopoulos, “The Kinematics, Dynamics, and Control of Free-Flying and Free-Floating Space Robotic Systems,” 
+
+IEEE Transactions on Robotics and Automation , 1993. [20] Z. Vafa and S. Dubowsky, “On the Dynamics of Manipulators in Space Using the Virtual Manipulator Approach,” Proceedings. 1987 IEEE International Conference on Robotics and Automation , vol. 4, pp. 579– 585, 1987. [21] E. Papadopoulos and S. Dubowsky, “Dynamic Singularities in Free-Floating Space Manipulators,” Journal of Dynamic Systems, Measure-ment and Control , vol. 115, no. 1, pp. 44–52, 1993. [22] Y. Nakamura and R. Mukherjee, “Nonholonomic path planning of space robots via bi-directional approach,” in Proceedings., IEEE International Conference on Robotics and Automation , pp. 1764–1769, IEEE, 1990. [23] I. Tortopidis and E. Papadopoulos, “On Point-to-Point Motion Plan-ning for Underactuated Space Manipulator Systems,” Robotics and Autonomous Systems , vol. 55, pp. 122–131, Feb. 2007. [24] K. M. Lynch and F. C. Park, Modern Robotics . Cambridge University Press, 2017. [25] J. Sol´ a, “Quaternion Kinematics for the Error-State KAlman Filter.” arXiv:1711.02508, 2017. [26] A. W¨ achter and L. T. Biegler, “On the Implementation of an Interior-Point Filter Line-Search Algorithm for Large-Scale Nonlinear Pro-gramming,” Mathematical Programming , vol. 106, no. 1, pp. 25–57, 2006. [27] J. A. E. Andersson, J. Gillis, G. Horn, J. B. Rawlings, and M. Diehl, “CasADi – A Software Framework for Nonlinear Optimization and Optimal Control,” Mathematical Programming Computation , vol. 11, no. 1, pp. 1–36, 2019. [28] Motiv Space Systems, “xLink Space-Rated Modular Robotic Arm System,” 2026. [29] S. B. Nokleby, “Singularity Analysis of the Canadarm2,” Mechanism and Machine Theory , vol. 42, no. 4, pp. 442–454, 2007. [30] B. Keinert, M. Innmann, M. S¨ anger, and M. Stamminger, “Spherical Fibonacci Mapping,” ACM Transactions on Graphics (TOG) , vol. 34, no. 6, pp. 1–7, 2015. [31] S. Bansal, M. Chen, S. Herbert, and C. J. Tomlin, “Hamilton-Jacobi Reachability: A Brief Overview and Recent Advances,” in 2017 IEEE 56th Annual Conference on Decision and Control , pp. 2242–2253, IEEE, 2017. [32] F. L. Markley, R. G. Reynolds, F. X. Liu, and K. L. Lebsock, “Maxi-mum Torque and Momentum Envelopes for Reaction Wheel Arrays,” 
+
+Journal of Guidance, Control, and Dynamics , vol. 33, pp. 1606–1614, Sept. 2010. [33] Rocket Lab Corporation, “Reaction Wheels,” 2026.
