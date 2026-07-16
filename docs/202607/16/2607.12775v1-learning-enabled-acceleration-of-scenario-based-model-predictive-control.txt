@@ -1,0 +1,648 @@
+Title: Learning-enabled Acceleration of Scenario-based Model Predictive Control
+
+URL Source: https://arxiv.org/pdf/2607.12775v1
+
+Published Time: Wed, 15 Jul 2026 11:58:25 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Learning-enabled Acceleration of Scenario-based Model Predictive Control 
+
+Trinh Tran, Binh Nguyen, Truong X. Nghiem 
+
+Abstract —Scenario-based model predictive control (SBMPC) is a variant of model predictive control (MPC) that explicitly ac-counts for uncertainty by optimizing control actions over multiple predicted scenarios. However, its computational complexity in-creases rapidly with the number of scenarios and prediction hori-zon, limiting is applicability to real-time planning and control. This paper presents a learning-accelerated Alternating Direction Method of Multipliers (ADMM) algorithm for efficiently solving SBMPC problems by leveraging parallel computing and Moreau envelope learning, while maintaining high solution accuracy. We reformulate the SBMPC problems into consensus forms that can be decomposed via ADMM, separating the scenario-dependent dynamics from non-anticipativity constraints and enabling par-allel updates across scenarios and time steps. Building on this decomposition, we utilize existing learning-to-optimize schemes, which leverages Moreau envelope learning of the cost function to accelerate the primal update in ADMM, thereby reducing computation time. The proposed framework is evaluated on a microgrid energy management problem subject to load and renewable generation uncertainties. Comparisons with IPOPT and MadNLP, popular and modern nonlinear programming solvers, demonstrate substantial computational speedups while maintaining reliable closed-loop control performance. 
+
+I. I NTRODUCTION 
+
+Model Predictive Control (MPC) is a standard framework for constrained optimal control because it computes feedback actions by repeatedly solving a finite-horizon optimal con-trol problem [1]. In many applications, however, the future evolution of the system is affected by uncertain disturbances. These disturbances enter the predicted dynamics, constraints, and costs, and therefore must be accounted for when the controller plans actions over the horizon. This issue is es-pecially important in applications such as microgrid energy management, where load demand and renewable generation fluctuate over time and directly affect the economic and operational performance of the closed-loop system [2]. Robust and stochastic MPC provide two common ways to handle uncertainty in finite-horizon control. Robust MPC optimizes against worst-case uncertainty realizations, of-ten through min-max formulations, and can provide strong constraint-satisfaction guarantees [3]. These guarantees may come at the cost of conservative and economically inefficient control actions. Stochastic MPC instead models uncertainty probabilistically and typically enforces constraints in expec-tation or through chance constraints [4]. This probabilistic 
+
+This material is based upon work supported by the U.S. National Science Foundation under Grants No. 2449927 and No. 2514584. All authors are with Department of Electrical and Computer Engineering, University of Central Florida, Orlando, FL 32816, USA. Emails: {tr586225, thanhbinh.nguyen, truong.nghiem }@ucf.edu 
+
+treatment can reduce conservatism, but the resulting finite-horizon chance-constrained problems are generally nonconvex stochastic programs whose exact solution is computationally difficult in real time [5]. Scenario-based MPC (SBMPC) offers a tractable alternative by replacing the stochastic optimal control problem with a deterministic program constructed from sampled disturbance trajectories [6], [7]. The scenario approach can represent general disturbance distributions as long as representative samples can be generated. However, the sampled problem grows quickly with both the prediction horizon and the number of scenarios. For linear systems with convex costs and con-straints, the resulting scenario programs can be solved using interior-point [8], active-set [9], first-order [10], or Alternating Direction Method of Multipliers (ADMM) [11] methods. Among these approaches, ADMM is attractive because it can exploit the separable scenario structure by duplicating variables and enforcing non-anticipativity through consensus constraints [11]. Nevertheless, the repeated primal updates in ADMM may dominate the online computation, since they must be solved across all scenarios at every ADMM iteration and every MPC sampling time. Learning-to-optimize (L2O) has emerged as a promising tool for reducing the cost of repeated optimization in real-time decision-making [12]. For example, Baker [13] learned warm-start points for AC optimal power flow to improve convergence speed. Misra et al. [14] learned a small collection of active constraint sets for large-scale parametric optimization, thereby reducing online computation while preserving constraint sat-isfaction. Our previous work developed the Learning-Enabled ADMM Framework (LEAF), which accelerates ADMM by learning the Moreau envelope associated with the primal update [15]. The Moreau envelope provides a smooth repre-sentation of a possibly nonsmooth objective while preserving its minimizers, and its gradient can be used to recover the corresponding proximal update. These properties make LEAF well suited for accelerating the repeated local minimizations that arise in ADMM-based SBMPC. In this paper, we develop a learning-accelerated ADMM method for solving SBMPC problems with disturbance sce-narios. The key idea is to first reformulate the SBMPC problem in a consensus form that separates the scenario-dependent dynamics from the non-anticipativity constraints. This reformulation decomposes the ADMM primal step into local subproblems indexed by both scenario and prediction time, enabling parallel computation over the scenario-time grid. We then apply LEAF to approximate these local primal arXiv:2607.12775v1 [math.OC] 14 Jul 2026 updates through learned Moreau-envelope models, replacing repeated optimization solves with neural network evaluations and gradient computations. Together, the scenario-time decom-position and the learned primal update substantially reduce the computational burden of solving SBMPC problems online. The main contributions of this paper are as follows. (i) We formulate a consensus ADMM decomposition for SBMPC that decouples scenario-dependent dynamics and non-anticipativity constraints. The resulting primal up-dates are separable across scenarios and prediction time steps, which enables parallel computation over the full scenario-time grid. (ii) We integrate the Moreau-envelope learning framework LEAF into the decomposed ADMM algorithm to accel-erate the local primal update subproblems. The learned update can be reused across scenarios with the same local cost structure, avoiding scenario-specific retraining while reducing the dominant per-iteration computation. (iii) We evaluate the proposed learning-accelerated SBMPC method on a microgrid energy management problem with uncertain load demand and renewable generation. Numer-ical results show substantial speedups over IPOPT and MadNLP [16] while maintaining high solution quality and meaningful closed-loop control performance. The remainder of this paper is organized as follows. Sec-tion II formulates the scenario MPC problem, and Section III presents the proposed learning-accelerated ADMM method. Section IV reports the numerical results, and Section Vconcludes the paper. II. P ROBLEM FORMULATION 
+
+We consider a discrete-time linear system 
+
+xt+1 = Ax t + Bu t + dt, (1) where xt ∈ Rn denotes the system state vector, ut ∈ Rm is the control input vector, dt ∈ Rn represents an unmeasured disturbance vector with a possibly unknown distribution Dd,and A ∈ Rn×n, B ∈ Rn×m are the system matrices. To account for disturbance in a tractable way, the possible future disturbance is approximated by a finite set of scenarios 
+
+s = 1 , ..., S . Each scenario s captures a realization of the uncertain model parameters and disturbance sequence over the prediction horizon. We use xs,k and us,k to denote the state and input predicted k steps ahead under scenario s at time 
+
+t. Consider the following scenario MPC problem, where the disturbance is sampled from its distribution Dd to generate S
+
+scenarios of the disturbance sequence {ds,t +k}N −1 
+
+> k=0
+
+for s =1, . . . , S :
+
+minimize J(x, u) = 1
+
+S
+
+> S
+
+X 
+
+> s=1
+> N−1
+
+X
+
+> k=0
+
+ck(xs,k , u s,k ) + cN (xs,N )
+
+!
+
+(2a) s.t. xs,k +1 = Ax s,k + Bu s,k + ds,t +k, (2b) 
+
+xs, 0 = xt, ∀s = 1 , · · · , S, (2c) 
+
+(xs,k , u s,k ) ∈ X × U , (2d) 
+
+∀k = 0 , · · · , N − 1, s = 1 , · · · , S, P u = 0 , (2e) where xt is the current state, N is the prediction horizon, 
+
+xs = ( xs, 1, . . . , x s,N ) ∈ RN n , us = ( us, 0, . . . , u s,N −1) ∈
+
+RN m , ck(·, ·) and cN (·) are stage and terminal cost functions, 
+
+X and U are the state, input constraint sets. If the matrix 
+
+P =
+
+
+
+IN m −IN m 0 0 . . . 00 IN m −IN m 0 . . . 0
+
+. . . 
+
+0 0 . . . 0 IN m −IN m 
+
+ ,then the non-anticipativity constraint (2e) enforces that u1,k =
+
+u2,k = · · · = uS,k for k = 0 , . . . , N − 1, i.e., the control input is scenario-independent. If 
+
+P =
+
+
+
+P0 −P0 0 0 . . . 00 P0 −P0 0 . . . 0
+
+. . . 
+
+0 0 . . . 0 P0 −P0
+
+ ,where P0 = Inu 0 . . . 0, then the constraint (2e) enforces that u1,0 = u2,0 = · · · = uS, 0, i.e., the control input at the first step is scenario-independent. 
+
+Assumption 1: (i) The system state is fully measurable at each time step t. (ii) The control input constraint set U is bounded and convex. (iii) The state constraint set X is convex. (iv) Convexity holds for the stage ck and terminal cN costs. The dynamics constraint for each scenario s can be rewritten as xs = MAxs + MB us + M0xt + ds, or equivalently 
+
+MG
+
+xs
+
+us
+
+
+
+= −M0xt − ds, (3) where ds = (ds,t , . . . , d s,t +N −1) ∈ RN n , MG =MA − IN n MB
+
+ ∈ RN n ×(N n +N m ), with MA ∈ RN n ×N n ,
+
+MB ∈ RN n ×N m , and M0 ∈ RN n ×n defined as follows: 
+
+MA =
+
+
+
+0
+
+A 0
+
+. . . . . .
+
+A 0
+
+ , MB = I N ⊗ B, M0 =
+
+
+
+A
+
+0
+
+...
+
+0
+
+ .
+
+Therefore, under Assumption 1, Cs is the convex set 
+
+Cs =
+
+(xs, us) MG
+
+xs
+
+us
+
+
+
+= −M0xt − ds,
+
+(xs, us) ∈ X N × U N
+
+
+
+parameterized by xt and ds.Although the scenario-based formulation (2) provides a deterministic approximation for the model predictive control problem under stochastic dynamics, solving it incurs signifi-cant computational overhead. This is because the size of the problem grows quickly with the number of scenarios, the prediction horizon, and the dimensions of the system. Another important difficulty comes from the coupling constraint (3), (2e), in which the decision variables in each scenario are cou-pled across time. As a result, at each scenario we have to solve a full trajectory optimization. This motivates a decomposition approach that splits across both scenarios and prediction steps, so that the resulting subproblems can be solved in parallel. III. L EARNING -ACCLERATED ADMM FOR SBMPC 
+
+A. ADMM algorithm for scenario-based MPC 
+
+Assume that all scenarios share the same stage and terminal cost functions, while the disturbance realizations differ across scenarios. We remove 1 
+
+> S
+
+from the objective function for simplicity, and rewrite (2) in consensus form as 
+
+minimize 
+
+> S
+
+X
+
+> s=1
+> N
+
+X
+
+> k=0
+
+ck(xs,k , u s,k )
+
+!
+
++
+
+> S
+
+X
+
+> s=1
+
+ICs (ys, vs)+ IP (p1, . . . , pS ) (4a) s.t. xs = ys, s = 1 , . . . , S , (4b) 
+
+us = ps, s = 1 , . . . , S , (4c) 
+
+vs = ps, s = 1 , . . . , S , (4d) where ys ∈ RN n , vs ∈ RN m , and ps ∈ RN m are auxiliary variables, P = {p : P p = 0 }, p = ( p1, . . . , pS ), ps ∈ RN m ,and ICs (ys, vs) denotes the indicator function, which equals 0 if (ys, vs) ∈ C , and +∞ otherwise. Similarly, IP (·) denotes the indicator function for the set P.For the Lagrange multipliers λy,s associated with xs −ys =0, λv,s associated with vs − ps = 0 , and λp,s associated with 
+
+us −ps = 0 , and for a penalty parameter ρ > 0, the augmented Lagrangian is 
+
+Lρ(x, u, y, v, p, λ y , λ v , λ p) = 
+
+> S
+
+X
+
+> s=1
+> N
+
+X
+
+> k=0
+
+fk(xs,k , u s,k )+
+
+> S
+
+X
+
+> s=1
+
+ICs (ys, vs) + IP (p1, . . . , pS )+
+
+> S
+
+X
+
+> s=1
+
+ λ⊤
+
+> y,s
+
+(xs − ys) + λ⊤
+
+> v,s
+
+(vs − ps) + λ⊤
+
+> p,s
+
+(us − ps)
+
++ ρ
+
+2
+
+> S
+
+X
+
+> s=1
+
+ ∥xs − ys∥22 + ∥vs − ps∥22 + ∥us − ps∥22
+
+ .
+
+The ADMM iterates for the scenario MPC problem (4) are 
+
+(xi+1  
+
+> s,k
+
+, u i+1  
+
+> s,k
+
+) = arg min  
+
+> xs,k ,u s,k
+
+n
+
+ck(xs,k , u s,k )+ ρ
+
+2 ∥xs,k − yis,k + ρ−1λiy,s,k ∥2
+
++ ρ
+
+2 ∥us,k − pis,k + ρ−1λip,s,k ∥2o
+
+,s = 1 , . . . , S ; k = 0 , . . . , N − 1, (5a) 
+
+(yi+1  
+
+> s
+
+, vi+1  
+
+> s
+
+) = Π Cs
+
+ xi+1  
+
+> s
+
++ λiy,s 
+
+pis −λiv,s 
+
+ 
+
+, s = 1 , . . . , S , (5b) 
+
+pi+1 = Π P
+
+ 12
+
+ ui+1 +vi+1 + 12ρ
+
+ λip + λiv
+
+
+
+, (5c) 
+
+λi+1 = λi + ρ
+
+
+
+xi+1 
+
+vi+1 
+
+ui+1 
+
+ −
+
+
+
+yi+1 
+
+pi+1 
+
+pi+1 
+
+ , (5d) where λ = [ λ⊤ 
+
+> y
+
+, λ ⊤ 
+
+> v
+
+, λ ⊤ 
+
+> p
+
+]⊤ is the lumped Lagrange multiplier vector, ΠCs (·) and ΠP (·) are the Euclidean projection opera-tors onto sets Cs and P, respectively. These subproblems (5a) are separable in s and k and can be solved in parallel across scenarios and time steps. However, their computational cost can still be significant when the number of scenarios or the prediction horizon becomes large. 
+
+B. Moreau Envelope Learning for ADMM 
+
+In this part, we apply the the Learning-Enabled ADMM Framework (LEAF) developed in our previous work [15] to accelerate the primal update step. Rather than directly solving the optimization problem in (5a), LEAF leverages the Moreau envelope to provide a smooth, learnable approximation of the primal step. The primal update can be equivalently written as the prox-imal operator of the local objective function as 
+
+zi+1  
+
+> s,k
+
+= prox ρ−1ck (wis,k ), k = 0 , . . . , N − 1, s = 1 , . . . , S 
+
+where zi+1  
+
+> s,k
+
+= [xi+1  
+
+> s,k
+
+, u i+1  
+
+> s,k
+
+]⊤, wis,k = [yis,k , p is,k ]⊤ −
+
+ρ−1[λiy,s,k , λ ip,s,k ]⊤, the proximal operator is for ck with penalty parameter ρ. For more details on proximal operators and their role in convex optimization, we refer readers to [17]. The corresponding Moreau envelope [18] of ck with param-eter ρ−1 is defined as 
+
+Mρ−1ck (wis,k ) = min 
+
+n
+
+ck(zs,k ) + ρ
+
+2 zs,k − wis,k 
+
+> 22
+
+o
+
+.
+
+The proximal operator and the Moreau envelope satisfy the following relationship prox ρ−1f (w) = w − ρ−1∇Mρ−1f (w). (6) Eventually, the primal update can be equivalently written as 
+
+zi+1  
+
+> s,k
+
+= wis,k − ρ−1∇Mρ−1ck (wis,k ).
+
+The Moreau envelope (ME) preserves the convexity of ck
+
+while providing a differentiable approximation, even when ck
+
+is nonsmooth. Therefore, instead of learning the solution of the nonsmooth optimization problem (5a) directly, our learning-based method approximates the gradient of the Moreau enve-lope and uses it to recover the primal update. For any observed input wis,k , we train a neural network model Nθ,k with weights θk to approximate the Moreau enve-lope Mρ−1ck (wis,k ). Equivalently, the neural network outputs 
+
+ˆMθ,k (wis,k ) = Nθ,k (wis,k ), and from that we can obtain its gradient ∇ ˆMθ,k (wis,k ) according to (6). Since the ME is con-vex, we use an ICNN [19] so that the learned approximation preserves this convexity structure. The gradient of the learned envelope is then used to reconstruct a primal update as follows 
+
+ˆzi+1  
+
+> s,k
+
+= wis,k − ρ−1∇ ˆMθ,k (wis,k ),
+
+where ˆzi+1  
+
+> s,k
+
+= [ˆ xi+1  
+
+> s,k
+
+, ˆui+1  
+
+> s,k
+
+]⊤ with ˆxi+1  
+
+> s,k
+
+and ˆui+1  
+
+> s,k
+
+are the approximated primal variables. Thus, the expensive solution of the local unconstrained optimization problem in (5a) is replaced by a forward evaluation of the neural network and a gradient computation. Once trained, the learned update can be reused across ADMM iterations and across scenario-time blocks that share the same local cost structure. The above training goal could be realized by minimizing the following loss function for the neural network Nθ,k in a supervised-learning manner: 
+
+L = min 
+
+> θk
+> nD
+
+X
+
+> j=1
+
+ ˆMθ,k (wj ) − Mρ−1ck (wj ) 22
+
++ α ∇ ˆMθ,k (wj ) − ∇ Mρ−1ck (wj ) 22
+
++ β max 
+
+
+
+0, ˆMθ,k (wj ) − ck(wj )
+
+ 22
+
+
+
+,
+
+(7) where α > 0 and β > 0 are weighting coefficients, nD is the number of supervised training samples, and j indexes each training sample. The last term penalizes violations of the Moreau-envelope property Mλf (x) ≤ f (x) for all x, by enforcing ˆMθ,k (wj ) ≤ ck(wj ) on the training samples. The scenario index s does not appear explicitly in (7) because the network is trained on local inputs wj drawn from the collection of inputs wis,k across scenarios, time steps, and ADMM iterations. After collection, each wj is treated as one sample for the learning map associated with ck.IV. E XPERIMENTAL RESULTS 
+
+In this section, we evaluate the proposed method on the optimal control task of energy management in microgrids. 
+
+A. System description 
+
+We consider the optimal energy management of a microgrid with renewable energy integration and battery energy storage system (BESS) [20]. The system consists of controllable loads, uncontrollable loads, a BESS, a renewable generator, and a utility-grid connection. The objective is to schedule the BESS charging/discharging power to maximize the average profit. The uncertainty in the grid arises from fluctuations in renewable energy generation and load demand. We formulate the operation problem for the microgrid over the planning horizon N with time step ∆t. We represent this uncertainty by a finite scenario set S = {1, . . . , S }. For each scenario s ∈ S ,the net uncontrollable power disturbance at step k is 
+
+ds,k = P us,k − P Rs,k , (8) where P us,k ≥ 0 is the uncontrollable load and P Rs,k ≥ 0 is the renewable generation. A positive ds,k means uncontrollable demand exceeds renewable supply. The state is the BESS state of charge (SOC) xs,k = qs,k , and the control is the scenario-independent schedule 
+
+uk = [ P ck , P Bk ]⊤,where P ck is the controllable load and P Bk is the BESS charg-ing/discharging power. A positive P Bk represents discharging and a negative value represents charging. The SOC dynamics for scenario s are 
+
+qs,k +1 = qs,k − ∆tb P Bk , (9) The schedule is scenario-independent because decisions must be made before the uncertainty is realized (non-anticipativity). Note that the disturbance ds,k does not appear in (9). Instead, it enters through the power balance P ck + P us,k = Ds,k + P Bk +
+
+P Rs,k , which gives the net power drawn from the utility grid: 
+
+Ds,k = P ck + ds,k − P Bk . (10) The stage cost for scenario s at step k is the sum of an energy cost, a peak-demand cost, and a discomfort cost: 
+
+ck(qs,k , u k, d s,k ) = pk∆t
+
+
+
+Ds,k + 1 − μ
+
+2√μ |P Bk |
+
+
+
++ pp max( Ds,k , 0) + η g (P ck ),(11) where pk is the electricity price, μ ∈ (0 , 1] is the round-trip efficiency of the BESS, pp ≥ 0 weights the peak-demand charge, and η ≥ 0 weights the discomfort penalty. The term  
+
+> 1−μ
+> 2√μ
+
+|P Bk | accounts for the energy lost due to BESS cycling. The convex discomfort function g(·) penalizes consumption below the preferred level γ:
+
+g(P ) = 
+
+
+
++∞, P ≤ 0, 
+
+> γP
+
+− 1, 0 < P < γ, 
+
+0, P ≥ γ. 
+
+The scenario MPC problem for energy management is 
+
+minimize 1
+
+S
+
+> S
+
+X 
+
+> s=1
+> N−1
+
+X
+
+> k=0
+
+ck(qs,k , u k, d s,k ) (12a) s.t. qs,k +1 = qs,k − ∆tb P Bk , (12b) 
+
+qs, 0 = qt, s = 1 , . . . , S, (12c) 
+
+Bmin ≤ P Bk ≤ Bmax , k = 0 , . . . , N − 1, (12d) 
+
+Qmin ≤ qs,k ≤ Qmax , (12e) 
+
+QN ≤ qs,N , s = 1 , . . . , S, (12f) 
+
+P u = 0 , (12g) where Bmax > 0 is the maximum discharge power, Bmin < 0
+
+is the maximum charge power, Qmin and Qmax are the SOC limits, and QN is the minimum terminal SOC reserve. The non-anticipativity constraint (12g) enforces a scenario-independent schedule, following the structure of (2e). In order to apply the proposed framework for the formula-tion (12), we need to reformulate it to fit the general scenario MPC. The stage cost (11) depends explicitly on the disturbance 
+
+ds,k through Ds,k , whereas the general scenario MPC (2) requires the stage cost ck(·, ·) to depend only on the state and control. This mismatch arises because the SOC dynamics (9) are disturbance-free, i.e., the disturbance does not enter the state trajectory and therefore cannot be captured by the state alone. We augment the state with the disturbance ds,k , thereby moving it from the stage cost into the dynamics. Let define the augmented state ˜xs,k = [ qs,k , d s,k ]⊤, the augmented dynamics then take the linear form 
+
+˜xs,k +1 =
+
+1 00 0
+
+| {z }
+
+> ˜A
+
+˜xs,k +
+
+0 − ∆tb
+
+0 0
+
+| {z }
+
+> ˜B
+
+uk +
+
+ 0
+
+ds,k +1 
+
+| {z }
+
+> ˜ds,k
+
+.The exogenous term ˜ds,k = [0 , d s,k +1 ]⊤ is the disturbance that enters the augmented dynamics at step k, corresponding to ds,t +k in the general formulation (2b). With the augmented state, the stage cost (11) depends on 
+
+˜xs,k and us,k only: 
+
+ck(˜ xs,k , u s,k ) = pk∆t
+
+
+
+P ck + ds,k − P Bk + 1 − μ
+
+2√μ |P Bk |
+
+
+
++ pp max  P ck + ds,k − P Bk , 0 + η g (P ck ),(13) where ds,k = [˜ xs,k ]2 is read from the second component of the augmented state. This matches the form ck(xs,k , u s,k ) required by (2). The augmented initial condition is 
+
+˜xs, 0 = [ qt, d s, 0]⊤, (14) where qt is the current SOC (scenario-independent) and ds, 0 is the initial disturbance realization for scenario s. The scenario-dependent component ds, 0 can be viewed as arising from the exogenous injection ˜ds, −1 = [0 , d s, 0]⊤ applied to the common base state ˜xt = [ qt, 0] ⊤ before the first horizon step. This is the scenario-dependent initial condition xs, 0 allowed in (2). In summary, the energy management scenario MPC (12) with the augmented state is an instance of the general scenario MPC (2) under the identification A = ˜A, B = ˜B, ds,t +k =˜ds,k , x s, 0 = ˜ xs, 0, xs,k = ˜ xs,k , cost function (13), the input constraint (12d), the state constraints (12e)–(12f) and the non-anticipativity constraint (12g). 
+
+B. Experiment setting 
+
+The problem parameters are set based on [20] as: ∆t =0.25 h , pk = $0 .1/kWh , pp = $19 .19 /kW , η = $10 , qs, 0 =0.5, Bmin = −700 kW , Bmax = 700 kW , b = 500 kWh ,
+
+μ = 0 .8, Qmin = 0 .2, Qmax = 0 .8, and γ = 50 kW . We perform a 10-step closed-loop MPC simulation with horizon 
+
+N ∈ { 48 , 96 } and scenario S ∈ { 10 , 100 }.Table I summarizes the training and architecture hyperpa-rameters used for the ICNN model. To test the performance of the learning-accelerated method (LA-SBMPC) proposed in Section III and compare it against the IPOPT and MadNLP [16] solvers, we implement all algorithms in Julia on an Apple M4 Pro chip with 24 GB of RAM. TABLE I: Training configuration and architecture parameters. 
+
+Setting Value Setting Value Optimizer AdamW Train/test instances 8000 / 2000 Learning rate 10 −3 Hidden layers 16 × 16 
+
+Epochs 5000 Activation Softplus 
+
+C. Scenario construction and sampling 
+
+Recall that the uncertainties in (12) are the uncontrollable load P u and photovoltaic (PV) renewable generation P R.Following the scenario MPC formulation in (2), each scenario must provide one realization of these uncertain signals over the prediction horizon. We use the 24-hour real-data from [20], sampled every ∆t = 0 .25 h, and repeat the profile over 7 days with additive Gaussian perturbations of standard deviation 1
+
+kW to construct the forecasting data. This produces a scenario set with L = 7 × 96 time steps. For each signal type ζ ∈ {u, R }, a Gaussian process (GP) model [21] is fitted using time as the input, a constant mean function, and a periodic kernel with a 24-hour period. The fitted GP provides the predictive mean μζk and standard deviation σζk for each time index k = 1 , . . . , L . For each fixed time index k, the scenario values are sampled independently and identically from the GP predictive distribution, 
+
+˜P ζs,k 
+
+> i.i.d.
+
+∼ N
+
+
+
+μζk, (σζk)2
+
+, s = 1 , . . . , S. 
+
+The final scenario values are projected onto the nonnegative range 
+
+P ζs,k = max {0, ˜P ζs,k },to enforce nonnegative load and generation values. At each MPC sampling time t, we randomly select S
+
+trajectories from this scenario set and extract the prediction window from t to t + N − 1. Thus, the load and PV used by the MPC at a given start time t are 
+
+Put = P ui, t :t+N −1, PRt = P Ri, t :t+N −1,
+
+where i denotes the randomly selected scenario indices. Therefore, the length of each scenario window is determined by the MPC horizon N . The selected load ( Put ) and PV windows ( PRt ) determine the disturbance realization in the power balance constraint (10). D. Results 
+
+Table II compares the average per-step closed-loop solving time under different numbers of scenarios and prediction horizons. In the smallest setting with S = 10 , N = 48 , the proposed LA-SBMPC requires only 42 ms, which is about 4.8 × faster than IPOPT and 5.4 × faster than MadNLP. When the prediction horizon is increased to N = 96 while keeping 
+
+S = 10 , LA-SBMPC maintains its advantage, requiring 92 ms and achieving speedups of 4.8 × and 7.8 × over IPOPT and MadNLP, respectively. As the number of scenarios scales up to S = 100 , the computational benefits of LA-SBMPC become even more significant. Across the S = 100 settings, LA-SBMPC achieves speedups ranging from 5.3 × to 8.5 ×
+
+against IPOPT, and a massive 17 × to 20.5 × against MadNLP, with a maximum average per-step solve time of just 548 ms. These results suggest that LA-SBMPC scales well as the number of scenarios and the prediction horizon increase. Moreover, Fig. 1 provides a per-step view of the closed-loop solving time, showing results consistent with Table II. Specifically, LA-SBMPC achieves a clear runtime advantage in the larger settings. As the number of scenarios and the prediction horizon increase, the baseline solvers (IPOPT and MadNLP) require substantially more time at each MPC step, whereas LA-SBMPC grows more moderately. Figs. 2 and 3 evaluate the accuracy of the proposed LA-SBMPC against the IPOPT baseline. As illustrated in Fig. 2, the optimality gap remains exceptionally small, consistently staying below 0.01 % across all closed-loop MPC steps, con-firming that LA-SBMPC consistently achieves near-optimal solutions. This high degree of accuracy is further corrobo-rated by Fig. 3, which demonstrates virtually indistinguishable closed-loop total costs between the two methods. This tight optimality gap is maintained across varying scenario counts and prediction horizons, proving that the learned updates preserve strict solution quality even as problem complexity scales. In summary, these results prove that LA-SBMPC is robust and converges to an optimal solution. Fig. 4 illustrates the closed-loop performance of the micro-grid over a 24-hour period under the LA-SBMPC schedule. The figure includes: (a) the grid power exchange, (b) the BESS charging/discharging power, (c) the controllable load, (d) the BESS state of charge, (e) the uncontrollable load, and (f) the renewable generation. The resulting trajectories are physically reasonable and capture the main operating characteristics of the microgrid. In particular, the BESS charges or discharges in response to variations in load and renewable generation, while the SOC remains within its prescribed bounds. The controllable load is also adjusted according to system con-ditions, and the grid exchange reflects the balance between demand, renewable supply, and battery operation. These results demonstrate that the proposed method can produce meaningful closed-loop control actions for microgrid energy management over a period of time. TABLE II: Average per-step closed-loop solving time (mil-liseconds) comparison. 
+
+Scenario IPOPT MadNLP LA-SBMPC S = 10, N = 48 202 226 42 S = 100, N = 48 1879 6046 355 S = 10, N = 96 439 713 92 S = 100, N = 96 4632 11216 548 
+
+Fig. 1: Per-step closed-loop solving time comparison. V. C ONCLUSION 
+
+In this paper, we accelerated the solution of computationally demanding scenario-based MPC problems by developing a learing-based ADMM framework. By reformulating the sce-nario optimal control problem into a consensus form, we decoupled the coupling constraints and decomposed the prob-lem via ADMM. To overcome the latency of repeated primal updates within this structure, we integrated a ICNN model to approximate the Moreau envelope of the local cost functions, that reduced the per-iteration computational overhead while strictly preserving the convexity of the problem. The efficacy of this approach was demonstrated on a microgrid energy scheduling problem subject to load and renewable generation uncertainties. Our empirical results show that the proposed algorithm achieves runtime speedups compared to popular nonlinear programming solvers. Future work will focus on learning warm-start solutions, adapting to varying problem sizes, and considering closed-loop stability guarantees. REFERENCES [1] C. E. Garcia, D. M. Prett, and M. Morari, “Model predictive control: Theory and practice—a survey,” Automatica , vol. 25, no. 3, pp. 335–348, 1989. [2] Z. Zhao, J. Xu, J. Guo, Q. Ni, B. Chen, and L. L. Lai, “Robust energy management for multi-microgrids based on distributed dynamic tube model predictive control,” IEEE Transactions on Smart Grid , vol. 15, no. 1, pp. 203–217, 2023. [3] A. Bemporad and M. Morari, “Robust model predictive control: A survey,” in Robustness in identification and control , A. Garulli and A. Tesi, Eds. London: Springer London, 1999, pp. 207–226. [4] A. Mesbah, “Stochastic model predictive control: An overview and perspectives for future research,” IEEE Control Systems Magazine ,vol. 36, no. 6, pp. 30–44, 2016. [5] A. Shapiro, D. Dentcheva, and A. Ruszczy´ nski, Lectures on Stochastic Programming . Society for Industrial and Applied Mathematics, 2009. [6] F. Micheli and J. Lygeros, “Scenario-based stochastic mpc for systems with uncertain dynamics,” in 2022 European Control Conference (ECC) .IEEE, 2022, pp. 833–838. Fig. 2: Optimality gap of LA-SBMPC over the 10-step MPC simulation. 
+
+Fig. 3: Closed-loop total cost comparison under varying sce-nario and horizon settings. 
+
+[7] G. Schildbach, L. Fagiano, C. Frei, and M. Morari, “The scenario approach for stochastic model predictive control with bounds on closed-loop constraint violations,” Automatica , vol. 50, no. 12, pp. 3009–3018, 2014. [8] X. Zhang, L. Ferranti, and T. Keviczky, “An improved primal-dual interior point solver for model predictive control,” in 2017 IEEE 56th Annual Conference on Decision and Control (CDC) . IEEE, 2017, pp. 1126–1131. [9] G. Stomberg, A. Engelmann, and T. Faulwasser, “A distributed active set method for model predictive control,” IFAC-PapersOnLine , vol. 54, no. 3, pp. 263–268, 2021, 16th IFAC Symposium on Advanced Control of Chemical Processes ADCHEM 2021. [10] Z. Li, B. Yang, J. Li, J. Yan, and Y. Mol, “Linear model predictive control under continuous path constraints via parallelized primal-dual hybrid gradient algorithm,” in 2023 62nd IEEE Conference on Decision and Control (CDC) . IEEE, 2023, pp. 159–164. [11] J. Kang, A. U. Raghunathan, and S. Di Cairano, “Decomposition via admm for scenario-based model predictive control,” in 2015 American Control Conference (ACC) . IEEE, 2015, pp. 1246–1251. [12] T. Chen, X. Chen, W. Chen, H. Heaton, J. Liu, Z. Wang, and W. Yin, “Learning to optimize: A primer and a benchmark,” Journal of Machine Learning Research , vol. 23, no. 189, pp. 1–59, 2022. [13] K. Baker, “Learning warm-start points for ac optimal power flow,” in 
+
+2019 IEEE 29th International Workshop on Machine Learning for Signal Processing (MLSP) . IEEE, 2019, pp. 1–6. [14] S. Misra, L. Roald, and Y. Ng, “Learning for constrained optimization: Identifying optimal active constraint sets,” INFORMS Journal on Com-puting , vol. 34, no. 1, pp. 463–480, 2022. [15] B. Nguyen, T. Tran, and T. X. Nghiem, “Leaf: A learning-enabled admm framework for accelerated convex optimization,” 2026. [Online]. Available: https://arxiv.org/abs/2606.08993 [16] S. Shin, C. Coffrin, K. Sundar, and V. M. Zavala, “Graph-based model-ing and decomposition of energy infrastructures,” IFAC-PapersOnLine ,vol. 54, no. 3, pp. 693–698, 2021. [17] N. Parikh and S. Boyd, “Proximal algorithms,” Foundations and Trends in Optimization , vol. 1, no. 3, p. 127–239, 2014. 
+
+Fig. 4: Closed-loop 24-hour operation of the microgrid sched-uled by LA-SBMPC for S = 10 .
+
+[18] H. H. Bauschke and P. L. Combettes, Convex analysis and monotone operator theory in Hilbert spaces , 2nd ed. Springer Cham, 2020. [19] B. Amos, L. Xu, and J. Z. Kolter, “Input convex neural networks,” in 
+
+International conference on machine learning . PMLR, 2017, pp. 146– 155. [20] C. Cortes-Aguirre, Y.-A. Chen, A. Ghosh, J. Kleissl, and A. Khurram, “Economic MPC with an Online Reference Trajectory for Battery Scheduling Considering Demand Charge Management,” IEEE Trans-actions on Smart Grid , pp. 1–1, 2025. [21] C. K. Williams and C. E. Rasmussen, Gaussian processes for machine learning . MIT press Cambridge, MA, 2006, vol. 2, no. 3. [22] S. Boyd, N. Parikh, E. Chu, B. Peleato, and J. Eckstein, “Distributed optimization and statistical learning via the alternating direction method of multipliers,” Foundations and Trends® in Machine learning , vol. 3, no. 1, pp. 1–122, 2011.

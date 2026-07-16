@@ -1,0 +1,373 @@
+Title: Unifying Decision-Making and Trajectory-Planning in Unsignalized Intersections Using Time-Varying Potential Fields
+
+URL Source: https://arxiv.org/pdf/2607.13626v1
+
+Published Time: Thu, 16 Jul 2026 01:09:20 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+> © 2026 IEEE. Personal use of this material is permitted. Permission from IEEE must be obtained for all other uses, in any current or future media, including reprinting/republishing this material for advertising or promotional purposes, creating new collective works, for resale or redistribution to servers or lists, or reuse of any copyrighted component of this work in other works. This is the author’s accepted manuscript of a paper accepted for the 34th Mediterranean Conference on Control and Automation (MED 2026), Ancona, Italy, June 24–26, 2026.
+
+# Unifying Decision-Making and Trajectory-Planning in Unsignalized Intersections Using Time-Varying Potential Fields ⋆
+
+David Costa †, Francesco Cerrito ‡, Massimo Canale † and Carlo Novara †
+
+Abstract — This paper presents a novel framework for inte-grated Decision-Making (DM) and Trajectory Planning (TP) for automated vehicles at unsignalized intersections. The approach leverages a Finite Horizon Optimal Control Problem (FHOCP) that employs Time-Varying Artificial Potential Fields (TV-APF). By utilizing short-horizon motion prediction and a dedicated conflict-zone occupancy coefficient, the framework suitably ac-counts for potential collisions within the FHOCP. The proposed method effectively unifies DM and TP, ensuring the generation of a feasible and safe reference trajectory. Simulation results in multi-vehicle traffic scenarios demonstrate the effectiveness of the approach. 
+
+I. I NTRODUCTION 
+
+Unsignalized intersections are among the most demanding scenarios for autonomous vehicles [1], [2]. In the absence of traffic signals, vehicles must rely on local priority rules and real-time observations of surrounding traffic to decide when and how to proceed through the conflict zone. Mul-tiple vehicles with unknown intentions may approach the intersection simultaneously from different directions, and the variety of possible entry–exit branch combinations creates a combinatorial space of interactions that challenges both safety and efficiency. These factors place a serious demand on the Trajectory Planning (TP) and Decision-Making (DM) capability of autonomous driving systems. Existing solutions can be broadly categorized into two groups: infrastructure-based coordination methods and ego-centric approaches. In centralized coordination or infrastructure-based meth-ods, a roadside controller or intersection manager assigns crossing orders and time slots to approaching vehicles [3], [4]. Reservation-based schemes and cooperative schedul-ing algorithms can, in principle, guarantee collision-free traversal and maximize intersection throughput. However, these approaches often require full vehicle-to-infrastructure communication and assume that all vehicles are connected and compliant, limiting their applicability in mixed-traffic environments where human-driven vehicles coexist with au-tonomous ones, or when the infrastructure is degraded or unavailable. On the other hand, a range of ego-based planning meth-ods has also been investigated. Game-theoretic formulations model strategic interactions among multiple vehicles, captur-ing the coupled decision processes inherent to unsignalized intersections [5], but they often require computationally expensive equilibrium calculations that are challenging for            
+
+> ⋆This work is part of the project Piano Nazionale di Ripresa e Resilienza (PNRR)- Next Generation Europe, which has received funding from the Italian Ministry of University and Research – DM 117/2023.
+> †Dipartimento di Elettronica eTelecomunicazioni, Politecnico di Torino, 10129, Turin, Italy
+
+david.costa@polito.it ,
+
+massimo.canale@polito.it , carlo.novara@polito.it  
+
+> ‡Dipartimento di Automatica e Informatica, Politecnico di Torino, 10129, Turin, Italy
+
+francesco.cerrito@polito.it 
+
+real time usage. Reinforcement or deep learning methods can, in principle, learn flexible intersection navigation poli-cies directly from simulation or data [6], [7], [8], yet they typically require extensive training, may lack formal safety guarantees, and remain predominantly focused on high-level behavioral decisions rather than integrated TP [1]. Optimization-based approaches (c.f. [9]), including Model Predictive Control (MPC) and Finite-Horizon Optimal Con-trol Problem (FHOCP), explicitly encode vehicle dynamics, safety constraints, and comfort objectives, making them attractive for real-time TP in interactive driving scenarios. In this setting, Artificial Potential Fields (APFs), see e.g. [10], in which obstacles are modeled using repulsive fields and goals using attractive fields, offer a computationally lightweight solution, as they can be embedded directly into a planning objective. Recent work has incorporated APFs as reward-shaping signals within sampling-based MPC at unsignalized intersections [11], but in such approaches the APF is used as an auxiliary component rather than the core DM and TP mechanism. Across such ego-based approaches, DM and TP are usually realized through staged or hierarchical architectures. In such a context, a high-level module implemented, for example, as a finite-state machine, a rule-based logic, or a learned policy, typically selects a behavioral mode or maneuver class. Then, a downstream planner or controller generates a feasible trajectory consistent with that choice [12], [13]. Although this modular decomposition simplifies the overall system design, it may introduce potential inconsistencies, since transition between discrete modes may result in infeasibility for the planner under the current dynamic constraints, and rigid mode boundaries can prevent behavior adaptation as the traffic situation evolves. These issues are especially pro-nounced at unsignalized intersections, where the appropriate behavior depends on the continuously changing positions and velocities of multiple interacting vehicles and cannot always be captured by a finite set of predefined modes. Although each of the approaches described above ad-dresses important aspects of the intersection navigation prob-lem, the integration of DM and TP into a single optimization problem, without relying on discrete behavioral switching, remains largely an open challenge [1]. This paper proposes a unified framework in which both DM and TP are obtained by solving a suitable FHOCP. The method builds on the Time-Varying Artificial Potential Field (TV-APF) previously introduced in [14] for highway and country-road scenarios and extends it to unsignalized intersections. In particular, in [14], the FHOCP is the core part of a hierarchical control architecture that, based on the prediction of the behavior of the different traffic actors described by TV-APFs, decides which maneuver is the most arXiv:2607.13626v1 [eess.SY] 15 Jul 2026 appropriate to perform a specific driving task, e.g., to cross an intersection. This is obtained through the computation of a safe collision free trajectory and the corresponding control action in terms of acceleration and steer, see [14] for details. Specifically, our contribution consists in defining an intersection-oriented TV-APF whose amplitude is modulated by a predicted conflict-zone occupancy signal obtained from short-horizon motion predictions of surrounding vehicles. The resulting potential field is continuously differentiable and is incorporated directly into the cost function of the FHOCP. As a result, behaviors such as yielding, stopping, decelerating, or crossing the intersection naturally emerge from a single optimization problem, without requiring dis-crete decision logic or mode switching. Simulation tests are performed using the hierarchical control architecture in [14], where a global planner provides areference path and intersection metadata, a local planner solves the TV-APF-based FHOCP for each replanning step, and a motion controller tracks the resulting trajectory. 
+
+Notation: The set of integers over a specific interval [a, b ]
+
+is denoted as: N[a,b ] = {i ∈ N | a ≤ i ≤ b}.The standard FHOCP notation is used to denote predictions. The predicted value x at time instant k + ℓ, computed using information available at the current time instant k, is denoted by x(k + ℓ|k).II. P ROBLEM FORMULATION 
+
+We focus on the DM and TP problem for an automated vehicle approaching an unsignalized intersection. The in-tersection topology and the tactical decision of the AV, e.g., the reference path associated with the navigation goal, are assumed to be known a priori. The core problem is to compute an ego reference trajectory that ensures safe maneuvering through the conflict zone. In practical terms, the planner must decide whether to stop and wait for other vehicles to pass, or whether the conflict zone will be free in time to allow a safe crossing. At unsignalized intersections, right-of-way (and thus DM) is not enforced by an external infrastructure (e.g., traffic lights or a centralized coordination). Instead, vehicles rely on local priority rules (e.g., yield-to-the-right) and on real-time observations of other road users. Multiple surrounding vehicles (hereafter named actors ) with partially unknown intentions may approach the same conflict zone, and different combinations of entry and exit branches yield many possible crossing configurations. This combinatorial growth makes purely rule-based DM difficult to scale while maintain-ing both safety and efficiency. Incorporating DM within a suitable optimization problem mitigates both issues by allowing the solver itself to trade off among the different behavioral (and thus behavior-related trajectories) alterna-tives in a single shot. In this work, we employ PFs within an optimization-based trajectory planner to obtain a unified DM/TP formulation for unsignalized intersections. Building on the TV-APF framework introduced in [14], we define an intersection-specific TV-APF whose amplitude is modulated by a predicted conflict-zone occupancy signal. The resulting potential can be included directly in the objective function of the planner’s FHOCP. III. P RELIMINARIES 
+
+Since this paper builds upon the unified DM and TP framework introduced in our previous work [14], its main elements are briefly summarized here to keep the paper self-contained. We refer to [14] for a detailed description of such a framework. The DM/TP problem is formulated as a FHOCP that is solved periodically every TP seconds. In this context, APF and TV-APF are used over a prediction horizon of NP
+
+steps to generate a safe trajectory corresponding to the most appropriate maneuver to be performed, e.g., lane keeping, yielding/following, overtaking. To construct the FHOCP cost for a generic planning step k, the following information is assumed to be available:  
+
+> •
+
+a global smooth reference path Π ∈ C 2 connecting the centerline of the roads used by the ego vehicle to reach its goal;  
+
+> •
+
+road attributes (e.g., number of lanes, lane width, and speed limits);  
+
+> •
+
+the matrix Ξ, containing the ordered predictions of all no surrounding actors within a suitable perception range. For a generic actor j ∈ N[1 ,n o], its prediction is denoted by Ξj (k + ℓ|k) and contains the estimated position pj (k + ℓ|k) and velocity vj (k + ℓ|k) at each step ℓ ∈ N[0 ,N P −1] .Two reference frames are adopted to simplify the formulation and solution of the FHOCP:  
+
+> •
+
+Global Cartesian frame : used to represent the environ-ment and road geometry in (X, Y ) coordinates.  
+
+> •
+
+Local Frenet frame : defined with respect to the reference path Π, where the vehicle position is represented by the curvilinear abscissa s and the lateral offset d. This representation simplifies the computation of distances from lanes and actors. Vehicle motion over the horizon is predicted through a standard kinematic model as in [14], that can be described by discrete-time dynamic model 
+
+χ(k + 1) = f (χ(k), u (k)) , (1) where χ represents the vehicle state, i.e., position, ori-entation, velocity, and u is the control input vector, i.e., longitudinal acceleration and steering rate. The optimization problem is therefore solved with respect to the predicted state sequence χ and input sequence U . The optimized ego state sequence is obtained as 
+
+χ∗ = arg min  
+
+> U,χ
+
+J (U, χ, Ξ) (2) subject to the vehicle dynamics (1), admissible state, input, and input-rate bounds, safety constraints, and terminal con-ditions. The cost J in (2) is defined as 
+
+J (U, χ, Ξ) =  
+
+> NP−1
+
+X
+
+> ℓ=0
+
+(Kv Wv + KbWb+ (3) 
+
+KlWl + KcWc + KoO) ,O(χ, Ξ, ℓ ) = 
+
+> no
+
+X
+
+> j=1
+
+Wo,j (χ(k + ℓ|k), Ξj (k + ℓ|k)) .
+
+(4) Fig. 1: Four-way intersection showing the ego vehicle, the intersection center P int c , the road branches and correspond-ing angles γ1 (in green) and γ2 (in blue). The conflict zone is highlighted in red. where each weighted objective term penalizes undesirable states and control actions. In particular:  
+
+> •
+
+Wv (χ), weighted by Kv , penalizes deviations from the desired speed profile;  
+
+> •
+
+Wb(χ), weighted by Kb, enforces lane boundary con-straints;  
+
+> •
+
+Wl(χ), weighted by Kl, promotes occupation of the rightmost free lane;  
+
+> •
+
+Wc(χ, U ), weighted by Kc, penalizes high lateral ac-celeration;  
+
+> •
+
+O(χ, Ξ, ℓ ), weighted by Ko, accounts for obstacle avoidance; Wo,j is the TV-APF contribution induced by actor j and is evaluated from the predicted ego state and the predicted actor state at step ℓ.Unlike hierarchical approaches, where DM and TP are treated as separate layers, the proposed framework integrates both processes within a single optimization problem. Within this framework, the objective of this paper is to properly shape a dedicated TV-APF to efficiently handle intersection interactions. The proposed approach does not modify the overall planner structure; instead, it extends the existing formulation by introducing an additional term in (3) to account for intersection management within the same optimization problem. To effectively handle intersections, the FHOCP needs some additional a-priori information describing the road crossing. In particular, we assume the following data to be avail-able: (a) the position of the intersection center in global coordinates, P int  
+
+> c
+
+= [ xint  
+
+> c
+
+, y int  
+
+> c
+
+]⊤ (Fig. 1), together with its corresponding longitudinal Frenet coordinate sint along the ego reference path Π; (b) a description of the intersection branches; and (c) the selected exit branch for the ego vehicle. IV. I NTERSECTION -A WARE ACTOR SELECTION AND 
+
+OCCUPANCY ESTIMATION 
+
+To define and activate the intersection TV-APF consis-tently, two prior steps are required: (i) selecting only the traffic actors that can influence the ego vehicle behavior at the intersection and (ii) predicting their motion in a neighborhood of the conflict zone. 
+
+A. Selection of interacting actors at an intersection 
+
+Only a subset of the surrounding vehicles is relevant for the intersection interaction: (i) vehicles that have priority over the ego vehicle (the ego must yield), and (ii) vehicles 
+
+Fig. 2: Two-vehicle interaction patterns at an unsignalized intersection (ego vehicle in red, actor in blue): (left) ego vehicle must yield to the right; (center) ego vehicle has priority, but trajectories intersect; (right) ego vehicle has priority and trajectories do not interfere. that do not have priority but may still intersect the ego ve-hicle’s intended path and thus become dangerous if they fail to stop. All other actors are ignored to reduce computational load and to avoid overly conservative behavior. Let an intersection be composed of nb road branches and assume, without loss of generality, that turning restrictions are not enforced (i.e., all exits are admissible). Starting from the ego vehicle incoming direction and moving coun-terclockwise, the available exit branches are ordered and assigned increasing indices ( i ∈ N[1 ,n b]) (Fig. 1). The same indexing convention is used to interpret the intended exits of surrounding vehicles. We associate each branch i with an orientation angle γi ∈ [0 , 2π), measured counterclockwise around the intersection center as shown in Fig. 1. Then, for each surrounding vehicle j, we assume that its intended exit branch can either be inferred from turn-signal detection or communicated by V2X/V2V, and indexed as bout  
+
+> j
+
+. Instead, the intended exit of the ego vehicle is denoted by bout ego .Although intersections admit many combinations of incom-ing/outgoing branches, two-vehicle configurations fall into three practical categories (Fig. 2): 1) the ego vehicle must yield to an actor approaching from its right-hand side; 2) the ego vehicle has priority, but the other actor trajec-tory intersects its intended path (risk if the other actor fails to stop); 3) the ego vehicle has priority, and the other actor trajec-tory does not interfere with it. The selection criterion is to target the first two categories only. For compactness, we describe the selection through actor sets. Let A be the set of perceived vehicles for the intersection considered. The selected set Asel is built as 
+
+Asel = AROW ∪ A X, (5) where AROW contains right-of-way actors and AX contains potentially interfering actors. Such sets are defined in the following. 
+
+a) Right-of-way actors (yield-to-the-right): Given the exit branch of the ego vehicle e = bout ego , we define a right-of-way angular threshold 
+
+ρe = γe + γe−1
+
+2 . (6) Let αj be the polar angle of vehicle j measured around the intersection center (Fig. 3). Vehicles with αj < ρe
+
+are classified as right-of-way vehicles, meaning that the Fig. 3: Right-of-way selection using the angular threshold 
+
+ρe with e = 2 : actors (blue) within the right-side sector are selected; actors outside the sector are ignored for right-of-way purposes. 
+
+Fig. 4: Potentially interfering actor selection using the in-tended exit branch index: actors (blue) with bout  
+
+> j
+
+≤ bout ego may cross/overlap the ego vehicle path (red) and are selected; higher-index exits are ignored for this criterion. ego should yield to them for the considered maneuver. In practice, equality cases αj ≈ ρe can be treated conservatively as yielding conditions, and angles should be compared after a consistent wrap to [0 , 2π). More explicitly, the actor angle is computed as 
+
+αj = wrap 2π
+
+
+
+atan2( yj − yint  
+
+> c
+
+, x j − xint  
+
+> c
+
+)
+
+
+
+. (7) where wrap 2π (·) maps angles to [0 , 2π). The right-of-way actor set is then 
+
+AROW = j ∈ A : αj ≤ ρe . (8) 
+
+b) Potentially interfering vehicles (path-crossing risk): 
+
+Vehicles not classified as right-of-way actors may still inter-sect the ego vehicle path depending on their intended exit (Fig. 4). We mark vehicle j as a potential interferer if 
+
+bout  
+
+> j
+
+≤ bout ego , (9) that is, the case in which another actor may cross the ego vehicle trajectory, even though the ego vehicle has the right of way. To avoid considering already-resolved conflicts, stationary vehicles that have yielded to the ego vehicle and are waiting at the stop line (e.g. ∥vj ∥ < v ε) are excluded from the set of potentially interfering vehicles. We can then define the set AX as 
+
+AX =
+
+n
+
+j ∈ A : αj > ρ e, b out  
+
+> j
+
+≤ bout ego , ∥vj ∥ ≥ vε
+
+o
+
+. (10) 
+
+B. Short-horizon prediction and signed distance to the con-flict zone 
+
+Based on the current speed vj of the selected actors Asel ,their positions are predicted over a short horizon to assess 
+
+Fig. 5: Shape of the per-actor intersection occupancy coeffi-cient oint ,j as a function of signed distance to the intersection center. whether they will occupy the intersection area concurrently with the ego vehicle. In this context, we approximate the actor distance to the center of the intersection using the Euclidean distance. Assuming a constant-velocity model over the horizon HP = NP Ts, the predicted position of actor j
+
+in global coordinates pj = ( xj , y j )⊤ at step k + 1 is 
+
+pj (k + 1) = pj (k) + Ts vj , k ∈ N[1 ,N P −1] . (11) We define a signed distance (negative while approaching, positive while leaving) for each actor j from the intersection center P int  
+
+> c
+
+as: 
+
+dint ,j (k) = sign 
+
+
+
+v⊤
+
+> j
+
+ pj (0) − P int 
+
+> c
+
+
+
+pj (k) − P int  
+
+> c2
+
+. (12) Since predictions are updated at each re-planning cycle TP ,such a simple model is sufficient to capture the principal effect needed for occupancy estimation, reducing the com-putational burden. 
+
+C. Intersection occupancy coefficient 
+
+To map predicted distances (12) into a smooth measure of intersection occupancy, at every time instance k, each actor j is assigned an occupancy coefficient oint ,j (k) ∈ [0 , 1] 
+
+computed using a generalized Gaussian function (Fig. 5): 
+
+oint ,j (k) = exp 
+
+
+
+− dint ,j (k) − dshift 
+
+γocc  
+
+> cocc
+
+
+
+, (13a) 
+
+dspread = dpre + dpost 
+
+2 , dshift = dpre − dpost 
+
+2 , (13b) 
+
+γocc = dspread 
+
+(| ln( εocc )|)1/c occ 
+
+. (13c) where cocc > 0 (typically an even integer) shapes the decay, while the parameters dpre and dpost determine, respectively, how far before and after the intersection center an actor should still influence the conflict zone. Finally, εocc is a small value defining the tail magnitude at the spread distance. Note that, if dpre ̸ = dpost , the resulting metric oint,j is slightly asymmetric and its peak is shifted with respect to the intersection center. This can be used to anticipate the conflict zone depending on the conventions chosen for signed distances. In the end, we can define a safe global occupancy metric as the maximum over all selected actors 
+
+o∗
+
+> int
+
+(k) = max  
+
+> j
+
+oint ,j (k). (14) Fig. 6: Top view of the intersection TV-APF Wint (k) for a specific time instant k when the intersection is fully occupied This time-dependent coefficient o∗
+
+> int
+
+(k) is used to scale the intersection potential over the prediction horizon: when any relevant actor is predicted to be close to the intersection, the coefficient grows and strengthens the repulsive barrier; as the conflict zone clears, the coefficient decreases smoothly, ensuring an efficient optimization problem. V. I NTERSECTION TV-APF FORMULATION 
+
+We model intersection interactions as TV-APF [14], con-sistently with the framework introduced in Section III. The amplitude of the field is driven by the predicted occupancy coefficient (14). From the optimizer perspective, the inter-section rule is encoded as a smooth, differentiable penalty that increases near the conflict zone when other vehicles are predicted to occupy it. This design allows behavioral choices, e.g., slowing down vs. proceeding vs. stopping, to emerge from a unified optimization process, avoiding discrete decision switches and maintaining a smooth cost. Considering (s, d ) as the position of the ego vehicle in Frenet coordinates, the intersection TV-APF Wint at prediction step 
+
+k (Fig. 6) is defined as a two-dimensional Gaussian function: 
+
+Wint (k) = Kint o∗
+
+> int
+
+(k) exp − s − sint 
+
+γint ,s 
+
+> cint
+
+− dγint ,d 
+
+> cint
+
+!
+
+,
+
+(15) Where Kint determines the strenght of the overall field, cint 
+
+controls the field shape, instead the decay rates γint ,s and 
+
+γint ,d are selected from the desired spreads σint ,s , σint ,d and tail values εint ,s , εint ,d according to: 
+
+γint ,i = σint ,i 
+
+(| ln ( εint ,i /K int )|)1/c int 
+
+, i ∈ { s, d }. (16) The occupancy scaling o∗
+
+> int
+
+(k) makes the potential time-varying : when the intersection is predicted to be occupied, the repulsive field strengthens and acts as a virtual barrier; when the conflict zone becomes free, the potential fades out smoothly. The formulation of the intersection field defined in (15), well suits within the FHOCP cost formulation in (3). VI. S IMULATION RESULTS 
+
+In this section, we report two simulation tests to il-lustrate the effectiveness of the proposed unified DM-TP formulation for unsignalized intersections 1. The simulation             
+
+> 1Avideo for the bird’s eye view of the scenarios is available at https://youtu.be/nYBbVTMabuU
+
+TABLE I: LTP (FHOCP) parameters            
+
+> Parameter Unit Value Prediction horizon HPs35 Sample time Tss0.5 Planner period TPs5
+
+TABLE II: Vehicles kinematic limits                   
+
+> Parameter Unit Minimum Maximum Speed m/s012.5 Longitudinal acc. m/s2-0.9 0.9 Jerk m/s3-0.9 0.9 Yaw rate deg /s-4.44 4.44 Steering angle deg -24.5 24.5
+
+study is carried out in MATLAB/Simulink, exploiting the hierarchical control architecture introduced in [14] using (2) as Local Trajectory Planner (LTP) (with parameters detailed in Table I) and employing as motion controller a MPC strategy. Traffic scenarios are generated with Automated Driving Toolbox [15], while the FHOCP is implemented in CasADi [16] and solved with Ipopt [17]. For simulation, we consider all roads with a lane width of 4 m and a maximum speed limitation of 12 .5 m/s; in addition, both the ego vehicle and actors are subject to the kinematic limits in Table II. We recall that each actor at intersections and its motion prediction over the horizon HP is encoded with the oint (14) coefficient and generates the barrier field Wint (15) within the LTP FHOCP. At each planning cycle TP , updated data on the positions and velocities of the actors are used to refine their prediction and the corresponding occupancy signal oint .The simulation test consists of two different intersections that are joined together by a straight road, which is not described here. 
+
+A) Left Turn Using Traffic Gap We first consider the three-way irregular intersection in Fig. 7 A, in which the ego vehicle must make a left turn on a secondary road. Traffic is placed on the main road with a variable gap between the actors. The ego vehicle must turn to the left as soon as it is safe to do so (i.e., when a sufficiently large gap in the traffic appears). Due to the effect of Wint , the ego vehicle speed vego progressively slows down from its reference of 
+
+10 m/s to 0 m/s, as shown in Fig. 8. Finally, at t = 60 s, the updated prediction ensures a sufficient gap, and the ego vehicle promptly accelerates until its reference speed of 11 
+
+m/s. 
+
+B) Congested Intersection At time t = 125 s, the ego vehicle reaches the four-way unsignalized intersection in Fig. 7 B. This time, the ego vehicle must yield to three vehicles coming from the right (in cyan, purple, and blue) and has precedence over two vehicles coming from the other two branches (in orange and yellow). According to the rules in Section IV, even if the ego vehicle has precedence over the orange and yellow actors, they are considered 
+
+potential interferers until they are close to stopping. The resulting behavior, generated by the FHOCP, is to decelerate progressively. As soon as the updated data show that the three actors on the right have passed and that the other two actors are approaching a full stop, at time t = 140 s, the ego vehicle resumes its speed tracking to the reference speed of 
+
+11 .5 m/s, successfully crossing the intersection without risk. Fig. 7: Simulation snapshots of two unsignalized-intersection scenarios: (A) The ego vehicle (dark blue) performs a left turn by exploiting an available traffic gap. (B) The ego vehi-cle crosses a congested four-way intersection while handling interacting traffic according to right-of-way rules. The arrow indicates the ego intended maneuver. For the surrounding actors, trajectories are shown with the same color as the corresponding vehicle; dotted trajectories indicate vehicles that stop to yield to the ego and then proceed only after the ego has left the conflict zone A
+
+# B
+
+t (s)
+
+0 50 100 150 
+
+> vego (m/s)
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10 
+
+12 
+
+Fig. 8: Time evolution of the ego speed in the simulated scenario. The speed profile highlights the behavior modu-lation emerging from the FHOCP for scenarios A and B. Specifically, it shows (A) a stop-and-go behavior at the first intersection to exploit a safe traffic gap, followed by (B) a second speed reduction at the four-way intersection to account for right-of-way interactions. VII. C ONCLUSION 
+
+This paper presented a unified DM and TP framework for automated vehicles at unsignalized intersections based on a FHOCP augmented with an intersection-oriented TV-APF. The proposed formulation combines intersection-aware actor selection, short-horizon occupancy estimation, and a smooth conflict-zone potential to encode right-of-way interactions directly within the FHOCP cost. In this way, behaviors such as slowing down, yielding, stopping, and proceeding through the intersection emerge from a single optimization problem, without requiring discrete decision switching. The reported simulations show that the proposed approach is capable of effectively handling different types of intersection and traffic conditions while keeping the ego vehicle safe. REFERENCES [1] M. Al-Sharman, L. Edes, B. Sun, V. Jayakumar, H. Tahir, M. A. Daoud, B. J. Emran, D. Rayside, and W. Melek, “Autonomous driving at unsignalized intersections: A review of decision-making challenges and reinforcement learning-based solutions,” IEEE Transactions on Automation Science and Engineering , vol. 23, pp. 1434–1461, 2026. [2] S. Chen, X. Hu, J. Zhao, R. Wang, and M. Qiao, “A review of decision-making and planning for autonomous vehicles in intersection environments,” World Electric Vehicle Journal , vol. 15, no. 3, p. 99, 2024. [3] J. Rios-Torres and A. A. Malikopoulos, “A survey on the coordination of connected and automated vehicles at intersections and merging at highway on-ramps,” IEEE Transactions on Intelligent Transportation Systems , vol. 18, no. 5, pp. 1066–1077, 2017. [4] R. Zhao, Y. Li, F. Gao, Z. Gao, and T. Zhang, “Multi-agent con-strained policy optimization for conflict-free management of connected autonomous vehicles at unsignalized intersections,” IEEE Transactions on Intelligent Transportation Systems , vol. 25, no. 6, pp. 5374–5388, 2024. [5] R. Tian, N. Li, I. Kolmanovsky, Y. Yildiz, and A. R. Girard, “Game-theoretic modeling of traffic in unsignalized intersection network for autonomous vehicle control verification and validation,” IEEE Transactions on Intelligent Transportation Systems , vol. 23, no. 3, pp. 2211–2226, 2022. [6] S. Li, K. Peng, F. Hui, Z. Li, C. Wei, and W. Wang, “A decision-making approach for complex unsignalized intersection by deep re-inforcement learning,” IEEE Transactions on Vehicular Technology ,vol. 73, no. 11, pp. 16 134–16 147, 2024. [7] X. Chen, B. Xu, M. Hu, Y. Bian, Y. Li, and X. Xu, “Safe efficient pol-icy optimization algorithm for unsignalized intersection navigation,” 
+
+IEEE/CAA Journal of Automatica Sinica , vol. 11, no. 9, pp. 2011– 2026, 2024. [8] X. Tang, G. Zhong, S. Li, K. Yang, K. Shu, D. Cao, and X. Lin, “Uncertainty-aware decision-making for autonomous driving at uncon-trolled intersections,” IEEE Transactions on Intelligent Transportation Systems , vol. 24, no. 9, pp. 9725–9735, 2023. [9] X.-F. Wang, W.-H. Chen, J. Jiang, and Y. Yan, “High-level decision-making for autonomous overtaking: An mpc-based switching control approach,” IET Intelligent Transport Systems , vol. 18, no. 7, pp. 1259– 1271, 2024. [10] O. Khatib, “Real-time obstacle avoidance for manipulators and mobile robots,” The International Journal of Robotics Research , vol. 5, no. 1, pp. 90–98, 1986. [11] X. Zhang, Z. Wu, H. Hu, J. Yang, and P. Wang, “Integrating driving-aware world model with MPC for autonomous driving at unsignalized T-intersections,” IEEE Transactions on Intelligent Transportation Sys-tems , vol. 26, no. 12, pp. 22 219–22 231, 2025. [12] Y. Jeong and K. Yi, “Target vehicle motion prediction-based motion planning framework for autonomous driving in uncontrolled inter-sections,” IEEE Transactions on Intelligent Transportation Systems ,vol. 22, no. 1, pp. 168–177, 2021. [13] G. Raja, K. Raja, M. R. Kanagarathinam, J. Needhidevan, and P. Va-sudevan, “Advanced decision making and motion planning framework for autonomous navigation in unsignalized intersections,” IEEE Ac-cess , vol. 12, pp. 158 657–158 668, 2024. [14] D. Costa, F. Cerrito, M. Canale, and C. Novara, “Unifying decision making and trajectory planning in automated driving through time-varying potential fields,” 2026. [Online]. Available: https://arxiv.org/abs/2603.13136 [15] The MathWorks, Inc., “Automated Driving Toolbox,” https: //www.mathworks.com/products/automated-driving.html, 2026, accessed: 2026-03-12. [16] J. A. E. Andersson, J. Gillis, G. Horn, J. B. Rawlings, and M. Diehl, “CasADi: A software framework for nonlinear optimization and opti-mal control,” Mathematical Programming Computation , vol. 11, no. 1, pp. 1–36, 2019. [17] A. W¨ achter and L. T. Biegler, “On the implementation of an interior-point filter line-search algorithm for large-scale nonlinear program-ming,” Mathematical Programming , vol. 106, no. 1, pp. 25–57, 2006.
