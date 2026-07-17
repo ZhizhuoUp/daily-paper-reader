@@ -1,0 +1,273 @@
+Title: Catch, Throw, Repeat: Planning for Human-Robot Partner Juggling
+
+URL Source: https://arxiv.org/pdf/2607.15129v1
+
+Published Time: Fri, 17 Jul 2026 01:22:16 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Catch, Throw, Repeat: Planning for Human–Robot Partner Juggling 
+
+Jonathan Rainer Lippert 1, Kai Ploeger 1, Abir Chowdhury 2,Hermann M¨ uller 2, Jan Peters 1,3,4,5 , and Alap Kshirsagar 1, 6 
+
+Abstract — Dynamic object exchange between humans and robots remains a challenging problem due to uncertainty in perception, timing, and contact-rich interaction. Human–robot juggling represents a particularly demanding instance of this problem, requiring precise real-time coordination, predictive motion planning with feedback control, and robustness to variability in human motion. Enabling such skills is of interest for advancing physical human–robot interaction and shared autonomy. We present a real-time planning and control archi-tecture for human–robot partner juggling that enables a robot to reliably catch and throw balls in synchronized multi-ball patterns with a human partner. The system integrates predictive ball tracking, adaptive online trajectory optimization using a multiple-shooting formulation, and a state-machine-based coordination logic to enable synchronized multi-ball human– robot partner juggling. In a user study with 8 participants of varying juggling skill from beginner to expert, we demon-strate that our system can achieve three-ball cascades shared between the robot and the human. All participants exceeded previously reported best-case results within a 10 minute test session, with one participant extending the previous record for shared three-ball cascade juggling fivefold to 20 consecutive robot catches, and another participant achieving a 100% success rate with 40 consecutive catches in a single-ball catch-and-return setting. Video documentation can be found at 
+
+https://kai-ploeger.com/partner-juggling 
+
+I. I NTRODUCTION 
+
+Physical interaction between humans and robots often remains limited to static or quasi-static object exchange, such as scripted handovers. In contrast, dynamic object exchange requires robots to operate under tight timing constraints while responding to uncertainty in perception, motion, and contact, often in close proximity to a human partner. Dy-namic manipulation is a key component of human dexterity and motor skill, routinely exploited in everyday tasks and skilled activities such as sports. Enabling robots to safely and autonomously execute dynamic manipulation could increase efficiency [1], extend operational reach [2], and expand interaction capabilities [3]. However, robust dynamic manip-ulation in unstructured, human–robot collaborative settings remains an open research problem. Partner juggling exemplifies this class of problems. Suc-cessful juggling requires ongoing prediction of object mo-tion, rapid adaptation of planned trajectories, and precise feedback control, all while coordinating actions between           
+
+> Corresponding author: kai@robot-learning.de
+> 1Technical University of Darmstadt, 2Justus-Liebig University Gießen,
+> 3German Research Center for AI (DFKI), 4Robotics Institute Germany
+> 5Hessian.AI. 6Indian Institute of Technology Delhi - Abu Dhabi. This work was supported by the Deutsche Forschungsgemeinschaft (German Research Foundation, DFG) under Germany’s Excellence Strategy (EXC 3066/1 “The Adaptive Mind”, Project No. 533717223).
+> Fig. 1. Human–robot partner juggling in a shared three-ball cascade. The robot and a human participant continuously exchange balls by alternately catching and throwing them, forming a synchronized 3-ball juggling pattern.
+
+agents. These demands make partner juggling a challenging and scalable benchmark. Task difficulty can be increased by varying the number of objects, and exchange patterns, while preserving the same underlying interaction structure. In this work, we consider partner juggling tasks in which a human and a robot continuously exchange one or more balls by throwing and catching them, using one hand each, as shown in Fig. 1. While our approach builds directly on recent work in trajectory planning for toss juggling [4], [5], adapting to real-world human-robot partner juggling introduces several additional challenges. In contrast to settings where all hands and throws are controlled by a single agent, the robot must adapt catch and throw timing online rather than following a predefined schedule, and continuously replan trajectories in response to changing observations. To address these challenges, we make the following contributions. First, we extend trajectory planning for toss juggling from simu-lation to a real robotic platform operating in a human– robot collaborative setting. Second, we introduce a real-time planning and control architecture that combines predictive ball tracking, adaptive online trajectory optimization, and an explicit coordination logic for interactive catch-and-throw decisions. Finally, we demonstrate the resulting system in a user study with participants of varying juggling skill, achiev-ing sustained human–robot partner juggling and performance exceeding previously reported results. arXiv:2607.15129v1 [cs.RO] 16 Jul 2026 II. R ELATED WORK 
+
+Robotic juggling and related dynamic manipulation tasks have long served as testbeds for studying accurate perception, predictive modeling, and precise control under fast object manipulation [6]–[9]. Prior work spans a wide range of juggling paradigms and related subskills. In this overview, we will focus on those involving active throwing and catching of objects rather than batting [10], [11] or rolling [12], [13]. 
+
+A. Tracking and Prediction 
+
+Outside of exact self throws, accurate prediction of a flying object’s trajectory is essential for catching. Prior work has employed external camera systems [14]–[16], motion capture systems [17], [18], and onboard cameras [19], [20]. Common prediction methods include least-squares regression [21], [22], gravity-informed fitting [23], Kalman filtering vari-ants [14], [18], [24], and learning-based end-to-end neural network approaches [20]. 
+
+B. Catching 
+
+Robotic catching has been studied using fixed-base ma-nipulators [15], [21], [22] as well as mobile platforms [17], [23], [25], with end-effector choices ranging from nets [26] and simple unactuated funnels [7], [8], [27] to fingered hands [18], [28], [29], and hybrid designs [22]. Catch con-figurations are often determined by intersecting the predicted trajectory with a predefined plane [21], [22], or by optimizing the catch point within the reachable workspace [18]. Enforc-ing partial or full velocity matching [5], [24], [30] can avoid high-impact catches bouncing out of the end-effector and relaxes the problem of timing grasp execution, but that is not always necessary [8], [15], [21]. While individual catches have been achieved reliably, extending these approaches to dynamic multi-ball scenarios and interactive human–robot settings remains challenging. 
+
+C. Throwing 
+
+Throwing enables robots to extend their manipulable workspace. Most end-effector choices for throwing can be classified as either passive funnel-shaped grippers [10], [31], [32] or actuated hands or grippers [2], [33], [34], with exceptions utilizing dynamic closure mechanisms [3]. Mul-tiple planning paradigms have been proposed for throwing objects. Most rely on kinematic models [5], [35], [36], while [37] employ inverse dynamics to constrain peak power consumption, and [33] derive basis functions for throwing motions from a kinetic chain model of the manipulator to maximize achievable end-effector velocity. Alternatively, a frequent approach is to define a movement primitive and tune it by hand [7], [21], [22]. Removing the human feedback from the loop, learning based approaches were used to tune throwing policies through trial and error, while sim2real transfer approaches are popular in reinforcement learning, precise throwing policies are always at least partially trained on the real robot [2], [6], [8], [26], [38]. Despite this diversity of approaches, most prior work on robotic throwing assumes visually open-loop execution once the release motion is initiated. 
+
+D. Full Toss Juggling Systems 
+
+Toss juggling consists of precise throwing and reliable catching. However, beyond solving these subskills in iso-lation, integrating them into continuous movements that satisfy a desired juggling pattern presents additional chal-lenges including tight time constraints and inter-object col-lisions. Prior work on toss juggling has primarily focused on single-agent scenarios, starting with mechanical juggling automatons bouncing balls off the floor [10], [39]. Task-specific setups with two actuators per end-effector enabled demonstrations of a two-ball fountain [7], [31] and five-ball cascade [27], each in a planar context. Juggling with more anthropomorphic robot arms was explored using either funnel-shaped end-effectors [8], [16] or fingered hands [21], [40], achieving two-ball fountains and three-ball cascades. To the best of our knowledge, human–robot partner juggling has only been investigated by Kober et al. [22], who demon-strated short sequences of shared three-ball cascades with skilled human partners. Taken together, existing approaches address key subskills and single-agent juggling scenarios, but leave open the problem of robust human–robot partner juggling. III. M ETHOD 
+
+We approach the task of human-robot partner juggling by cascading a ball tracking and prediction pipeline, and a flexible trajectory planner capable of real-time online replanning, using a state machine based coordination logic .
+
+A. Ball Tracking and Prediction 
+
+Ball positions are observed using an OptiTrack marker-based motion capture system, treating each ball as an identi-cal point marker. At each time step, position measurements are associated with individual ball tracks using a Hungarian assignment over Mahalanobis distances. Each ball is tracked by an independent Kalman filter whose dynamics switch between two motion models depending on the estimated interaction phase. During the carry phase , when a ball is held by either the human or the robot, we use a random-walk position model, 
+
+pk+1 = pk + wpk ,
+
+vk+1 = 0, wpk ∼ N  0, Qp
+
+> carry
+
+ ,
+
+with high process noise. During the flight phase , when the ball is airborne, we employ a ballistic constant-acceleration model with gravity g as the known constant acceleration, 
+
+pk+1 = pk + vk∆t + 12 g∆t2 + wpk ,
+
+vk+1 = vk + g∆t + wvk,
+
+wpk ∼ N
+
+
+
+0, Qp
+
+> flight
+
+
+
+,
+
+wvk ∼ N
+
+
+
+0, Qv
+
+> flight
+
+
+
+.
+
+A ball is considered to be in the carry phase when it lies within a fixed neighborhood of the robot end-effector or within a bounding region around the human partner, and in the flight phase otherwise. The Kalman filter state estimates are used to maintain consistent ball identities and to determine the current interaction phase via the geometric heuristic. During the flight phase , forward predictions required for catch planning are obtained by extrapolating a gravity-informed linear least-squares fit 
+
+( ˆp0, ˆv0) = arg min 
+
+> p0,v0
+> N
+
+# ∑
+
+> i=1
+
+pi −
+
+
+
+p0 + v0τi + 12 g τ2
+
+> i
+
+ 22 ,
+
+ˆp(τ) = ˆp0 + ˆv0τ + 12 g τ2.
+
+over the most recent measurements pi of the current flight phase, expressed as a function of elapsed flight time τi =
+
+ti − t0 and extrapolated forward using the predicted trajec-tory ˆ p(τ).
+
+B. Adaptive Joint Trajectory Planning 
+
+Our trajectory planning formulation builds on prior kine-matic joint-space optimization approaches for robotic toss juggling [4], [5], retaining the high-level structure while replacing most constraints. Joint trajectories are generated by solving the constrained optimization problem min  
+
+> q(t)
+> ZTt=0
+
+∥ ¨q(t)∥2 + λ ∥...
+
+q(t)∥2 dt 
+
+s.t. h(x(t), ˙x(t), ¨x(t)) = 0,
+
+c(x(t), ˙x(t), ¨x(t)) ≤ 0,
+
+(1) which penalizes joint accelerations ¨q(t) and jerks ... 
+
+q(t),balanced by the scalar weight λ , to promote smooth motion, while task-specific equality constraints h and inequality constraints c shape the resulting end-effector motion x(t)
+
+through the forward kinematic mapping x(t) = fkin (q(t)) . All planned trajectories start at the current joint state, move to a predicted catch pose, execute a throwing motion, and follow through to recover to a safe configuration. During the vacant phase —while approaching the catch—the entire trajectory is continuously replanned at up to approximately 20 Hz using the latest available ball predictions. The subsequent 
+
+carry phase up to release is executed open-loop to ensure consistent release conditions, while the post-release follow-through and recovery may be canceled if a new incoming ball is detected. In the following, we detail the individual constraints shaping this motion. To catch a ball, we intercept the predicted ball trajectory at a fixed horizontal catching plane by matching the end-effector position x(tTD ) to the predicted touchdown loca-tion ˜ b(tTD ) with the end-effector at rest at the catch pose 
+
+x(tTD ) = ˜b(tTD ),
+
+˙x(tTD ) = 0,
+
+¨x(tTD ) = 0.
+
+(2) We found this formulation to be more robust to slight timing uncertainties than velocity-matching constraints. To throw aball, the end-effector position and velocity at release uniquely determine the subsequent ball flight, yet many release states can result in the same desired target. To avoid overconstrain-ing the optimization problem, we therefore constrain only the desired target position b∗ 
+
+> TD +1
+
+and flight time Tflight using a parabolic ballistic model 
+
+b∗ 
+
+> TD +1
+
+= x(tTO ) + ˙x(tTO )Tflight + 12 gT 2flight , (3) α 
+
+> behx
+> Fig. 2. Post-release constraint geometry. The end-effector motion is restricted such that the predicted ball trajectory remains within the green cone-shaped region originating at the end-effector frame origin, preventing unintended contact with the ball after takeoff. During the carry phase, the ball rests at the frame origin.
+
+allowing the optimizer to select a dynamically feasible release state. To ensure a clean release at tTO , we require the end-effector acceleration to match gravitational acceler-ation at the release instant and constrain the predicted ball trajectory to lie within a conical region defined by the hand geometry, as illustrated in Figure 2, for a short duration ε
+
+after release, ¨x(tTO ) = g,
+
+∠ b(t) − x(t), eh
+
+ < α, ∀t ∈ (tTO , tTO + ε]. (4) During the carry phase , between catch and throw release, we enforce a hand-tuned minimum normal acceleration a⊥
+
+> min
+
+along the cone axis eh,
+
+(¨x(t) − g) · eh > a⊥
+
+> min
+
+, ∀t ∈ [tTD ,tTO ),
+
+so that the ball remains seated inside the end-effector throughout the carry phase. Together, these constraints ensure smooth, dynamically feasible execution of catch, throw, and release motions. 
+
+C. State-machine-based Coordination Logic 
+
+To manage catching and throwing actions across multiple balls, we employ a discrete decision mechanism based on independent finite-state machines, one for each ball. Simple geometric heuristics applied to the continuous ball position and velocity estimates obtained from Kalman filtering are used to cycle through the interaction phases Held by Human ,
+
+Flight to Robot , Held by Robot , and Flight to Human , or Fell to Ground if a ball is dropped. These state labels are used to select the appropriate dynamics model for ball tracking and to choose the ball that has been labeled as Flight to Robot the longest to condition trajectory planning, provided its predicted touchdown location lies within a predefined reachable workspace of the robot, illustrated in Figure 3. If no such ball exists, the robot remains idle and waits for a feasible incoming throw. During the carry phase, replanning is suppressed to ensure consistent release conditions, while the post-release recovery phase may be canceled if a new incoming ball is detected, resulting in smooth transition into the next catch movement. This decision policy is independent of the total number of balls and therefore scales naturally to multi-ball juggling patterns. Fig. 3. RViz screenshot of the simulated robot catching a ball within its reachable workspace in the horizontal catching plane. Touchdown locations are predicted from a least-squares fit to recent ball measurements. 
+
+IV. E XPERIMENTS 
+
+To evaluate the proposed approach, we conduct exper-iments using a 160 V dual-encoder Barrett WAM robotic manipulator, configured with four degrees of freedom corre-sponding to the shoulder and elbow joints and mounted in an orientation that results in anthropomorphic arm kinematics, as shown in Fig. 1. The cable-driven, backdrivable actua-tion enables accurate torque control and is well suited for dynamic catching and throwing motions. Joint-level control runs at 500 Hz and uses a PD controller with low uniform gains Kp = 150 and Kd = 10 for compliance, augmented with feedforward inverse dynamics compensation to enable re-sponsive dynamic motion. A 170 mm diameter funnel-shaped end-effector with half opening angle α = 27 ◦ guides balls during catching. We use Russian-style juggling balls (Norwik Classic) as they provide significant damping during contact. The balls are wrapped in infrared retro-reflective tape and tracked using an OptiTrack motion capture system with eight cameras operating at 125 Hz. All perception, planning, and control components run on a Linux workstation with a low-latency kernel (Intel i9-13900K, Ubuntu 22.04), connected to the robot via a CAN interface. The same ROS-based interface is used for both real-world experiments and simulation, with an alternate backend based on MuJoCo [41]. 
+
+A. Human–Robot Trials 
+
+For the human–robot evaluation, we recruited 8 jugglers, with self-reported skill levels ranging from novice three-ball cascades to proficient eight-ball fountain patterns. Each of them was able to juggle a three-ball cascade for at least one minute on their first attempt. Most participants had prior experience with partner juggling, primarily in the form of club passing. Because clubs are typically caught with a pronated hand at approximately shoulder height, whereas balls are caught with a supinated hand around elbow height, we expect limited transfer of club-passing skills to the ball-passing task studied here. None of the participants had previously attempted partner juggling with a robot.                                            
+
+> TABLE I SUCCESS RATES AND MIN -MAX ACROSS 8PARTICIPANTS .
+> #Balls Success (%) Max streak #Attempts #Throws
+> 187.2 (72.5–100.0) 40 (6–40) 320 320 284.3 (75.0–92.0) 35 (8–35) 80 430 375.1 (63.3–80.3) 20 (5–20) 320 966 TABLE II HUMAN THROW METRICS ±STD ACROSS 8PARTICIPANTS .
+> Setting Period (s) TD-Variability (m) Height (m)
+> 1 ball (averaged) —0.184 1.96 ±0.15 2 ball (averaged) 1.95 ±0.2 0.199 2.02 ±0.19 3 ball (averaged) 1.22 ±0.10 0.240 2.13 ±0.18 1 ball (pooled) —0.197 1.98 ±0.29 2 ball (pooled) 1.95 ±0.39 0.211 2.04 ±0.31 3 ball (pooled) 1.19 ±0.35 0.246 2.16 ±0.30
+
+All participants followed the same experimental proce-dure . After completing a brief questionnaire on their jug-gling experience, participants were given five minutes to familiarize themselves with the provided juggling balls by performing any form of solo juggling of their choice. They were then introduced to partner juggling by attempting ten three-ball shared cascades with the experimenter as the partner. The task subsequently proceeded with one-, two-, and three-ball trials with the robot. For each condition, we fixed the number of attempts per participant to 50, 20, and 50, and discarded the first ten to reduce warm-up and learning effects. The two-ball setting used fewer, since our focus was the one- and three-ball patterns. Across all 8 participants, this gives the 320, 80, and 320 scored attempts in Table I. As key metrics of quantitative results , we observe the cycle success rate and the length of success streaks across conditions, summarized in Table I. A successful cycle is defined as a ball starting in the human hand and returning to the human hand, representing one successful catch by each partner. Any drop, including cases where the human throw missed the robot’s reachable workspace, counts as a failure for the human–robot team. Figure 4 shows the spatial distribution of observed catch locations together with estimated success rates across one-, two-, and three-ball conditions. Successful catches span most of the robot’s reachable workspace, indicating substantial spatial robust-ness despite the lack of end-effector orientation control (4-DoF robot arm). During the ten minutes allocated to the three-ball human–robot condition, all 8 participants exceeded the previously reported best-case result for the 3-ball setting of four robot catches [22], with one participant achieving streaks of up to 20 consecutive successful cycles. Another participant achieved a 100% success rate in the single-ball condition, completing 40 consecutive catch–throw cycles without a drop. As timing constraints tighten with increasing ball count, success rates decrease and success streaks shorten, accompanied by increased variability in human throws, as reflected in the throw metrics summarized in Table II. The transition from two to three balls results in a pronounced increase in difficulty, consistent with the well-known increase in difficulty between these patterns in human juggling. Fig. 4. Top-down view of random subsamples of measured catch locations and estimated success rates. Successful regions cover most of the regions targeted by human throws, except for the rear workspace ( x < 0.3 m), where the arm kinematics (4-DoF) require excessive end-effector tilt. Human partners stand outside the reachable workspace, in front of and to the left of the robot (positive x and y). 
+
+Extended validation runs include uninterrupted streaks of up to 28 successful cycles in the three-ball condition and 70 consecutive catch–throw cycles in the single-ball condi-tion, with the latter ending due to a human throw missing the robot’s reachable workspace, demonstrating substantial additional performance headroom beyond the structured par-ticipant study. 
+
+B. Simulation Ablations for Mechanism Isolation 
+
+We use a simulation to explicitly ablate failure mecha-nisms by systematically varying throw frequency and en-abling or disabling inter-ball collisions, both of which cannot be controlled independently in real-world human–robot part-ner juggling. The complete perception, planning, and control stack used in real-world experiments is reused unchanged, with a MuJoCo-based backend replacing robot dynamics, ball dynamics, and sensing. Ball tracking is performed using the same tracking pipeline as on the real system, with simu-lated position observations corrupted by zero-mean Gaussian noise with diagonal covariance diag (0.002 2, 0.002 2, 0.004 2)
+
+to approximate OptiTrack measurement uncertainty. Simu-lated control runs at 500 Hz, matching the real system, while simulated OptiTrack sensing is slightly reduced from 125 Hz to 100 Hz for ease of implementation. In simulation, the human partner is replaced by a scripted partner model. Partner throws are modeled by directly ini-tializing ball states at takeoff. For each throw, a target touchdown location is sampled uniformly from the robot’s reachable workspace, as shown in Figure 6. The ball is then launched along an exact ballistic trajectory that reaches the sampled target with a fixed flight time shared by both partner and robot throws, i.e., partner and robot throws reach the same apex height. Partner throws are initialized from the robot’s nominal throw target location. Partner throws are open-loop and do not react to the robot. Throw frequency is defined as the average number of balls thrown toward the robot per second. Timing variability is introduced by adding zero-mean Gaussian noise with 
+
+σ 2 
+
+> t
+
+= 0.05 2 s to the time interval between successive throws, clipped to three standard deviations via resampling. For each frequency setting, 500 throws are simulated. We evaluate per-formance across throw frequencies corresponding to partner juggling scenarios with one to four balls. Figure 5 shows the robot-side success rate per throw as a function of throw frequency, together with the corresponding expected success streak length. Each data point is obtained from a single long simulation run comprising 500 throws at a fixed mean frequency, without temporal smoothing. Across both conditions, success rates decrease as throw frequency increases, reflecting the increasing difficulty of coordinating catch and throw actions under tighter timing constraints. Dis-abling ball–ball collisions consistently improves success rates across low- and intermediate-frequency regimes. Around the pronounced dip at 0 .5 Hz, robot and partner throw simulta-neously, causing opposing ballistic trajectories to cross the workspace center at the same time where their separation is minimal. This condition is well known to increase inter-ball collision probability in juggling. At higher frequencies corresponding to four-ball juggling regimes, success rates decrease sharply in both conditions and the performance gap between collision-enabled and collision-disabled simulations narrows due to lower overall success rates leading to fewer opportunities for collisions. 0.2 0.4 0.6 0.8 1.0 1.2 1.4        
+
+> Frequency [Hz]
+> 1%
+> 2%
+> 5%
+> 10%
+> 20%
+> 50%
+> 80%
+> 90%
+> 95%
+> 98%
+> 99%
+> Success Rate per Throw
+> 1 Ball 2 Ball 3 Ball 4 Ball
+> Ball-ball collisions disabled
+> Ball-ball collisions enabled
+> 1
+> 4
+> 9
+> 19
+> 49
+> 99
+> 199
+> Expected Streak Length
+> Fig. 5. Robot-side success rate per throw and expected success streak length as a function of throw frequency in simulation. Disabling ball–ball collisions yields higher success rates at low and intermediate frequencies, while reduced success in the 4-ball regime limits opportunities for collisions. 0.0 0.8
+> -0.8
+> 0.0 Off
+> 0.0 0.8
+> On
+> Success Rate
+> 100%
+> 0%
+
+Ball-Ball Collisions   
+
+> X Position [m] X Position [m]
+> Y Position [m] Fig. 6. Top-down view of planned partner target touchdown locations and estimated robot-side success rates in simulation with and without ball– ball collisions, pooled over three-ball juggling frequencies. With collisions enabled, reduced success is observed near the center of the reachable workspace, coinciding with the robot’s typical throw release region.
+
+Spatial success distributions in simulation, summarized in Fig. 6, are stable across throw frequencies within the three-ball regime, excluding areas shadowed by the robot body. Each dot denotes a planned partner target touchdown location, indicating where an incoming throw is aimed. With ball–ball collisions disabled, success rates remain uniformly high across most of the reachable workspace. Enabling collisions does not lead to a uniform global reduction in per-formance. Instead, most additional failures become strongly localized near the center of the workspace, where inbound and outbound ball trajectories overlap most frequently. Both simulation conditions exhibit similar behavior toward the rear of the reachable workspace. Here, reduced success persists due to the increased end-effector tilt required by the 4-DoF arm, as observed in real-world experiments, but this effect is significantly less pronounced in simulation. Taken together, these simulation results isolate two domi-nant contributors to failure: increasing timing pressure with higher throw frequencies, and localized interference due to inter-ball collisions near the robot’s throw release region. V. F AILURE MODES AND LIMITATIONS 
+
+Human–robot partner juggling is dominated by tight in-teraction loops between inbound and outbound motions of both partners, which makes attribution of individual failures inherently difficult. Small deviations in throw timing, release location, or catch execution by either partner can propagate rapidly, leading to large downstream errors within one or two juggling cycles, making it challenging to determine whether a failure originates from the human, the robot, or their interaction. The simulation results presented in the previous section enable isolating such tightly coupled effects, which cannot be disentangled reliably from real-world trials alone. 
+
+Timing pressure constitutes a fundamental challenge of partner juggling, as observed in both real-world and simu-lated experiments. As ball count increases, throw frequency rises and the temporal slack between successive interac-tions decreases, reducing the available vacant phases for approaching and catching the next inbound ball. Under these conditions, even small execution delays or tracking errors affect the entire motion, rather than being absorbed within a single phase. The resulting limitation of the present system is that successful operation requires a vacant phase exceeding a minimum duration τmin between successive interactions. When this condition is violated, the robot can no longer robustly complete the approach and catch motion before the next interaction becomes imminent. Even when the vacant phase remains marginally above this threshold, a soft perfor-mance limit is encountered. Shortened execution windows reduce robustness to tracking and execution delays, leading to increased residual end-effector motion at touchdown. Although the reference trajectories enforce zero end-effector velocity and acceleration at the planned catch time, limited temporal slack causes the robot to effectively snatch the ball from flight, which is inherently less reliable than intercepting a ball that has settled at a stable catch location. Operat-ing substantially below this threshold would require more complex strategies, such as highly variable catch heights combined with active grasping, or multiplex throws in which multiple balls are caught before being released jointly in a single coordinated throwing motion. Such maneuvers are occasionally employed by human jugglers, but lie far outside the capabilities of the current system. 
+
+Kinematic and hardware constraints further shape the observed failure modes. Using a four-degree-of-freedom arm configuration requires increased end-effector tilt to reach tar-get locations near the boundaries of the reachable workspace. This tilt reduces the effective catch funnel orientation, lead-ing to higher rates of bounce-offs in low-x regions in our setup. While the Barrett WAM can be configured to 7 seven degrees of freedom with an actuated wrist, this introduces ad-ditional moving mass and dynamic coupling. The increased mass reduces achievable release velocity, while whipping effects in the wrist degrade throw precision. 
+
+Inter-ball collisions constitute a second fundamental chal-lenge of partner juggling and the dominant failure mode observed in our experiments across two- and three-ball con-ditions. The current system does not explicitly reason about already inbound or outbound balls during throw planning, nor does it coordinate intended carry or release locations with the partner. While collision avoidance could in principle be addressed by planning around predicted ball trajectories, even under Gaussian state estimates such as those pro-vided by Kalman filtering, the collision probability between two balls does not admit a closed-form solution, making principled online optimization difficult. As the number of balls in flight increases, the available free space for safe outbound trajectories rapidly diminishes. Without explicit spatial coordination, the airspace becomes effectively satu-rated, limiting scalability beyond two to three balls. These observations highlight that partner juggling cannot be treated as a simple repetition of independent catch–throw cycles. In contrast, human partners typically reduce collision risk by establishing spatial conventions for where to throw from and where to throw to, either implicitly through interaction or explicitly through prior agreement. Addressing inter-ball collisions therefore requires explicit coordination of throw locations, either through predefined conventions or through online modeling of partner behavior and intent. Importantly, several aspects of the system do not constitute primary limiting factors. Single-ball catching and throwing are reliable across most of the reachable workspace, and the replanning architecture operates effectively at real-time rates. Moreover, simulated and real-world experiments ex-hibit qualitatively consistent failure patterns, indicating that the dominant limitations arise from interaction dynamics and physical constraints, rather than from deficiencies in the underlying planning or control architecture. Finally, while the present system relies on a motion-capture setup, which restricts experiments to controlled laboratory environments, the proposed planning and coordination approach is not tied to this sensing modality and could be combined with RGB or RGB-D perception in future work. VI. C ONCLUSIONS 
+
+We presented a real-time planning and control system that enables sustained human–robot partner juggling in the real world. In a user study with participants of varying skill, the robot reliably achieved shared one-, two-, and three-ball juggling patterns, substantially exceeding previously reported results for human–robot partner juggling. The approach combines predictive ball tracking, adaptive online trajectory optimization, and a state-machine-based coordination logic, allowing robust performance under human variability and tight timing constraints. Experimental and simulation results indicate that per-formance is currently constrained by timing pressure and inter-ball collisions, which become increasingly relevant at higher ball counts. Incorporating coordination-aware and multi-object-aware planning therefore represents a promising direction for extending partner juggling to denser and more flexible interaction patterns. ACKNOWLEDGEMENTS The authors used Claude (Anthropic) for language editing and proofreading only (grammar and sentence structure). All technical content is the authors’ own, and the authors take full responsibility for the final text. REFERENCES [1] H. Ha and S. Song, “Flingbot: The unreasonable effectiveness of dynamic manipulation for cloth unfolding,” in CoRL , 2022. [2] A. Zeng, S. Song, J. Lee, A. Rodriguez, and T. Funkhouser, “Tossing-Bot: Learning to throw arbitrary objects with residual physics,” IEEE TRO , 2020. [3] M. Mason and K. Lynch, “Dynamic manipulation,” in IEEE/RSJ IROS ,1993. [4] K. Ploeger and J. Peters, “Controlling the cascade: Kinematic planning for N-ball toss juggling,” in IEEE/RSJ IROS , 2022. [5] M. G. Andreu, K. Ploeger, and J. Peters, “Beyond the cascade: Juggling vanilla siteswap patterns,” in IEEE/RSJ IROS , 2024. [6] E. W. Aboaf, C. G. Atkeson, and D. J. Reinkensmeyer, “Task-level robot learning,” in IEEE ICRA , 1988. [7] T. Sakaguchi, Y. Masutani, and F. Miyazaki, “A study on juggling tasks,” in IEEE/RSJ IROS , 1991. [8] K. Ploeger, M. Lutter, and J. Peters, “High acceleration reinforcement learning for real-world juggling with binary rewards,” in CoRL , 2020. [9] Y. Liu, B. Da Costa, and A. Billard, “Learning to throw-flip,” in 
+
+IEEE/RSJ IROS , 2025. [10] S. Schaal and C. G. Atkeson, “Open loop stable control strategies for robot juggling,” in IEEE ICRA , 1993. [11] A. A. Rizzi and D. E. Koditschek, “Further progress in robot juggling: Solvable mirror laws,” in IEEE ICRA , 1994. [12] K. Tanaka, M. Hamaya, D. Joshi, F. von Drigalski, R. Yonetani, T. Matsubara, and Y. Ijiri, “Learning robotic contact juggling,” in 
+
+IEEE/RSJ IROS , 2021. [13] J. Z. Woodruff and K. M. Lynch, “Robotic contact juggling,” IEEE TRO , 2023. [14] A. Namiki and N. Itoi, “Ball catching in kendama game by estimating grasp conditions based on a high-speed vision system and tactile sensors,” in IEEE-RAS Humanoids , 2014. [15] B. B¨ auml, T. Wimb¨ ock, and G. Hirzinger, “Kinematically optimal catching a flying ball with a hand-arm-system,” in IEEE/RSJ IROS ,2010. [16] M. Riley and C. G. Atkeson, “Robot catching: Towards engaging human-humanoid interaction,” Autonomous Robots , 2002. [17] K. Dong, K. Pereida, F. Shkurti, and A. P. Schoellig, “Catch the ball: Accurate high-speed motions for mobile manipulators via inverse dynamics learning,” in IEEE/RSJ IROS , 2020. [18] S. Kim, A. Shukla, and A. Billard, “Catching objects in flight,” IEEE TRO , 2014. [19] V. Lippiello, F. Ruggiero, and B. Siciliano, “3D monocular robotic ball catching,” Robotics and Autonomous Systems , 2013. [20] Y. Zhang, T. Liang, Z. Chen, Y. Ze, and H. Xu, “Catch it! learning to catch in flight with mobile dexterous hands,” in IEEE ICRA , 2025. [21] T. Kizaki and A. Namiki, “Two ball juggling with high-speed hand-arm and high-speed vision system,” in IEEE ICRA , 2012. [22] J. Kober, M. Glisson, and M. Mistry, “Playing catch and juggling with a humanoid robot,” in IEEE-RAS Humanoids , 2012. [23] A. Schakkal, G. Bellegarda, and A. Ijspeert, “Dynamic object catching with quadruped robot front legs,” in IEEE/RSJ IROS , 2024. [24] S. S. M. Salehian, M. Khoramshahi, and A. Billard, “A dynamical system approach for softly catching a flying object: Theory and experiment,” IEEE TRO , 2016. [25] Y. You, T. Liu, X. Liang, Z. Xu, M. Zhou, Z. Li, and S. Zhang, “Run and catch: Dynamic object-catching of quadrupedal robots,” in 
+
+IEEE/RSJ IROS , 2023. [26] J. Kober, K. Muelling, and J. Peters, “Learning throwing and catching skills,” in IEEE/RSJ IROS , 2012. [27] P. Burget and P. Mezera, “A visual-feedback juggler with servo drives,” in IEEE AMC , 2010. [28] N. Furukawa, A. Namiki, S. Taku, and M. Ishikawa, “Dynamic regrasping using a high-speed multifingered hand and a high-speed vision system,” in IEEE ICRA , 2006. [29] B. B¨ auml, O. Birbach, T. Wimb¨ ock, U. Frese, A. Dietrich, and G. Hirzinger, “Catching flying balls with a mobile humanoid: System overview and design considerations,” in IEEE-RAS Humanoids , 2011. [30] N. Uchiyama, S. Sano, and K. Ryuman, “Control of a robotic manipulator for catching a falling raw egg to achieve human-robot soft physical interaction,” in IEEE RO-MAN , 2012. [31] T. Sakaguchi, M. Fujita, H. Watanabe, and F. Miyazaki, “Motion planning and control for a robot performer,” in IEEE ICRA , 1993. [32] J. Kober and J. Peters, “Learning elementary movements jointly with a higher level task,” in IEEE/RSJ IROS , 2011. [33] T. Senoo, A. Namiki, and M. Ishikawa, “High-speed throwing motion based on kinetic chain approach,” in IEEE/RSJ IROS , 2008. [34] H. Kasaei and M. Kasaei, “Throwing objects into a moving basket while avoiding obstacles,” in IEEE ICRA , 2023. [35] J.-S. Hu, M.-C. Chien, Y.-J. Chang, S.-H. Su, and C.-Y. Kai, “A ball-throwing robot with visual feedback,” in IEEE/RSJ IROS , 2010. [36] H. Chen, B. Zhang, and T. Fuhlbrigge, “Robot throwing trajectory planning for solid waste handling,” in IEEE CYBER , 2019. [37] F. Lombai and G. Szederkenyi, “Throwing motion generation using nonlinear optimization on a 6-degree-of-freedom robot manipulator,” in IEEE International Conference on Mechatronics , 2009. [38] A. Ghadirzadeh, A. Maki, D. Kragic, and M. Bj¨ orkman, “Deep predictive policy training using reinforcement learning,” in IEEE/RSJ IROS , 2017. [39] C. E. Shannon, “Scientific aspects of juggling,” Claude E. Shannon: Collected Papers , 1993. [40] T. Oka, N. Komura, and A. Namiki, “Ball juggling robot system controlled by high-speed vision,” in IEEE CBS , 2017. [41] E. Todorov, T. Erez, and Y. Tassa, “MuJoCo: A physics engine for model-based control,” in IEEE/RSJ IROS , Oct. 2012.
