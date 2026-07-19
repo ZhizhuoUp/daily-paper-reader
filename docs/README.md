@@ -6,67 +6,55 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-18
-- 运行时间：2026-07-18 19:59:33 UTC
+- 最新运行日期：2026-07-19
+- 运行时间：2026-07-19 20:25:35 UTC
 - 运行状态：成功
-- 本次总论文数：15
-- 精读区：4
-- 速读区：11
+- 本次总论文数：11
+- 精读区：1
+- 速读区：10
 
 ### 今日简报（AI）
-今日聚焦机器人实时控制与开放世界移动操作，深度解析 15 篇涵盖具身智能与物理仿真的前沿成果。
-重点推荐 Jetson-PI 的异步推理实时控制方案，以及具备探索与沟通能力的开放世界移动操作智能体。
-建议关注如何利用异步推理优化端侧部署，并探索具身智能在复杂物理环境下的鲁棒执行策略。
-- 详情：[/202607/18/README](/202607/18/README)
+今日聚焦四足机器人进化，深度解析了结合触觉感知的全身协同控制与野外敏捷运动技术。
+重点关注 TAC-LOCO 实现的触觉引导移动操作统一，以及大模型在多机编队导航中的创新应用。
+建议深入了解触觉反馈与智能体协作如何打破机器人复杂作业的边界。
+- 详情：[/202607/19/README](/202607/19/README)
 
 ### 精读区论文标签
-1. [Jetson-PI: Towards Onboard Real-Time Robot Control via Foresight-Aligned Asynchronous Inference](/202607/18/2607.12659v1-jetson-pi-towards-onboard-real-time-robot-control-via-foresight-aligned-asynchronous-inference)  
-   标签：评分：8.0/10、query:q5
-   evidence：通过异步推理实现机载实时机器人控制
-2. [Exploratory, Communicative, and Deployable: Vision-Driven Embodied Agents for Open-World Mobile Manipulation](/202607/18/2607.13653v1-exploratory-communicative-and-deployable-vision-driven-embodied-agents-for-open-world-mobile-manipulation)  
+1. [TAC-LOCO: Unified Whole-Body Control for Quadrupedal TACtile-Informed LOCO-Manipulation](/202607/19/2607.10132v2-tac-loco-unified-whole-body-control-for-quadrupedal-tactile-informed-loco-manipulation)  
    标签：评分：8.0/10、query:q6
-   evidence：开放世界移动操作框架
-3. [Risk-Aware Belief Control Barrier Functions over Random Finite Sets](/202607/18/2607.15016v1-risk-aware-belief-control-barrier-functions-over-random-finite-sets)  
-   标签：评分：8.0/10、query:q1
-   evidence：动态环境中的安全控制与避障
-4. [Learning Agile Navigation in Crowded Environments for Quadruped Robots](/202607/18/2607.15036v1-learning-agile-navigation-in-crowded-environments-for-quadruped-robots)  
-   标签：评分：8.0/10、query:q1
-   evidence：敏捷导航与避障的几何安全性
+   evidence：四足机器人移动操作的全身控制
 
 ### 速读区论文标签
-1. [Learning Physics-Guided Residual Dynamics for Deformable Object Simulation](/202607/18/2607.13451v1-learning-physics-guided-residual-dynamics-for-deformable-object-simulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：可变形物体的机器人操纵
-2. [Dynamical Vehicle Orienteering Problem for Multi-Rotor Unmanned Aerial Vehicles](/202607/18/2607.13789v1-dynamical-vehicle-orienteering-problem-for-multi-rotor-unmanned-aerial-vehicles)  
-   标签：评分：7.0/10、query:q3
-   evidence：无人机的时间最优轨迹规划
-3. [Learning Robust Execution in Robotic Manipulation with Agentic Reinforcement Learning](/202607/18/2607.13818v1-learning-robust-execution-in-robotic-manipulation-with-agentic-reinforcement-learning)  
-   标签：评分：7.0/10、query:q6
-   evidence：机器人操作与执行稳定性
-4. [Learning Forward & Reverse Skills from a Single Unfinished Demonstration for Constrained Manipulation Tasks](/202607/18/2607.13882v1-learning-forward--reverse-skills-from-a-single-unfinished-demonstration-for-constrained-manipulation-tasks)  
-   标签：评分：7.0/10、query:q6
-   evidence：受限操作任务与运动基元
-5. [DRIFT: Drift and Aggregation for Motion Planning](/202607/18/2607.14507v1-drift-drift-and-aggregation-for-motion-planning)  
+1. [Sparse Robust Optimal Control in Continuous-Time: A Computationally Viable Approach](/202607/19/2607.11827v1-sparse-robust-optimal-control-in-continuous-time-a-computationally-viable-approach)  
+   标签：评分：7.0/10、query:q2
+   evidence：稀疏鲁棒最优控制的数值可行算法
+2. [EFLUX: Elastic Multi-Robot Formation Navigation and Adaptation with Agentic LLMs](/202607/19/2607.12050v1-eflux-elastic-multi-robot-formation-navigation-and-adaptation-with-agentic-llms)  
    标签：评分：7.0/10、query:q4
-   evidence：实时约束下的运动规划
-6. [Reflex: Real-Time VLA Control through Streaming Inference](/202607/18/2607.14695v1-reflex-real-time-vla-control-through-streaming-inference)  
-   标签：评分：7.0/10、query:q5
-   evidence：机器人控制的实时流式推理
-7. [Interleaved POMDP Planning for Multi-Object Search in Unknown Multi-Room Household Environments](/202607/18/2607.10437v1-interleaved-pomdp-planning-for-multi-object-search-in-unknown-multi-room-household-environments)  
+   evidence：多机器人团队在复杂环境下的导航与自适应
+3. [Agile perceptive multi-skill locomotion for quadrupedal robots in the wild](/202607/19/2607.13579v1-agile-perceptive-multi-skill-locomotion-for-quadrupedal-robots-in-the-wild)  
+   标签：评分：7.0/10、query:q3
+   evidence：通过简化动力学的轨迹优化生成运动数据集
+4. [3D Geometric Tooth Alignment Planning via Deep Reinforcement Learning](/202607/19/2607.14544v1-3d-geometric-tooth-alignment-planning-via-deep-reinforcement-learning)  
+   标签：评分：7.0/10、query:q1
+   evidence：优化具有牙间避障功能的几何轨迹
+5. [Modeling and Validation of Quality of Control for Edge-Offloaded Collaborative Navigation](/202607/19/2607.14853v1-modeling-and-validation-of-quality-of-control-for-edge-offloaded-collaborative-navigation)  
+   标签：评分：7.0/10、query:q1
+   evidence：导航设置中的动态避障
+6. [Steering Robustness into World Action Models via Mechanistic Interpretability and Optimal Control](/202607/19/2607.14943v1-steering-robustness-into-world-action-models-via-mechanistic-interpretability-and-optimal-control)  
+   标签：评分：7.0/10、query:q2
+   evidence：基于模型的优化控制反馈转向
+7. [Coordinated Incremental Trajectory Tracking of a Tailsitter Drone](/202607/19/2607.11651v1-coordinated-incremental-trajectory-tracking-of-a-tailsitter-drone)  
+   标签：评分：6.0/10、query:q3
+   evidence：用于轨迹跟踪的解析微分平坦变换
+8. [Environment Parameter Gradient Theorem for Policy-Environment Co-Design in Reinforcement Learning](/202607/19/2607.12590v1-environment-parameter-gradient-theorem-for-policy-environment-co-design-in-reinforcement-learning)  
+   标签：评分：6.0/10、query:q2
+   evidence：联合优化策略与环境参数
+9. [From Language to Navigation Goals: A Vision-Language Approach for Semantic Navigation of Mobile Robots Using RGB-D Perception](/202607/19/2607.13624v1-from-language-to-navigation-goals-a-vision-language-approach-for-semantic-navigation-of-mobile-robots-using-rgb-d-perception)  
    标签：评分：6.0/10、query:q4
-   evidence：具备障碍物感知能力的底层运动规划器
-8. [GraspGraphNet: Graph-Structured Multi-Embodiment Dexterous Grasp Generation](/202607/18/2607.11031v1-graspgraphnet-graph-structured-multi-embodiment-dexterous-grasp-generation)  
-   标签：评分：6.0/10、query:q6
-   evidence：机器人手部灵巧抓取生成
-9. [Min-Max Regret Task Allocation and Planning of Heterogeneous Multi-Robot System in Partially Known Environments](/202607/18/2607.13403v1-min-max-regret-task-allocation-and-planning-of-heterogeneous-multi-robot-system-in-partially-known-environments)  
-   标签：评分：6.0/10、query:q4
-   evidence：多机器人系统的任务分配与规划
-10. [Zero2Skill: Bootstrapping Robot Skills through Autonomous Data Collection, Training, and Deployment](/202607/18/2607.14047v2-zero2skill-bootstrapping-robot-skills-through-autonomous-data-collection-training-and-deployment)  
-   标签：评分：6.0/10、query:q6
-   evidence：机械臂操作策略学习的自主数据采集
-11. [Active Real-World Factor-Based Evaluation for Generalist Robot Policies](/202607/18/2607.14439v1-active-real-world-factor-based-evaluation-for-generalist-robot-policies)  
-   标签：评分：6.0/10、query:q6
-   evidence：通用机器人操纵策略的评估
+   evidence：移动机器人的自主导航框架
+10. [Curvature-Constrained and Constant-Speed Distributed Simultaneous Arrival Control for Multi-Robot Systems](/202607/19/2607.14781v1-curvature-constrained-and-constant-speed-distributed-simultaneous-arrival-control-for-multi-robot-systems)  
+   标签：评分：6.0/10、query:q3
+   evidence：多机器人系统的轨迹曲率约束
 
 
 <div class="dpr-home-promo-card">
