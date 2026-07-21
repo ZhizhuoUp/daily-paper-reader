@@ -6,73 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-20
-- 运行时间：2026-07-20 21:34:15 UTC
+- 最新运行日期：2026-07-21
+- 运行时间：2026-07-21 21:32:57 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日聚焦 17 篇前沿成果，重点突破高速避障控制与城市空中交通的 4D 轨迹设计。
-满分论文展示了任务空间收缩视界控制器的极速避障能力，合成数据引擎则为开放世界移动操作提供了新动力。
-建议深入了解自动化避障与合成数据生成，把握机器人迈向复杂环境应用
-- 详情：[/202607/20/README](/202607/20/README)
+今日聚焦 17 篇机器人前沿进展，重点突破林业机械与航天交会对接中的复杂运动规划与安全控制难题。
+推荐关注 9.0 分的林业起重机时优轨迹优化算法，以及 AI 增强型 MPC 在空间近距离操作中的安全适配表现。
+建议读者重点研究 AI 与传统控制结合的趋势，探索
+- 详情：[/202607/21/README](/202607/21/README)
 
 ### 精读区论文标签
-1. [A Task-Space Receding Horizon Controller for Fast Collision Avoidance](/202607/20/2607.15733v1-a-task-space-receding-horizon-controller-for-fast-collision-avoidance)  
-   标签：评分：10.0/10、query:profile-1
-   evidence：机械臂避障的实时收缩地平线控制器
-2. [Obstacle-Aware Four-Dimensional Trajectory Design for Urban Air Mobility](/202607/20/2607.15690v1-obstacle-aware-four-dimensional-trajectory-design-for-urban-air-mobility)  
-   标签：评分：8.0/10、query:q3
-   evidence：避障轨迹设计与优化
-3. [RAVEN: Reinforcement-Adaptive Visibility-Graph Planning for Robust Humanoid Navigation with Collision-Free MPC](/202607/20/2607.15701v1-raven-reinforcement-adaptive-visibility-graph-planning-for-robust-humanoid-navigation-with-collision-free-mpc)  
+1. [Task-Space Constrained Stochastic Trajectory Optimization for Time-Optimal Forestry Crane Motion Planning](/202607/21/2607.17818v1-task-space-constrained-stochastic-trajectory-optimization-for-time-optimal-forestry-crane-motion-planning)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：冗余机械臂的随机轨迹优化，包含避障约束
+2. [AI-Augmented Model Predictive Control for Safe and Adaptive Rendezvous and Proximity Operations](/202607/21/2607.16630v1-ai-augmented-model-predictive-control-for-safe-and-adaptive-rendezvous-and-proximity-operations)  
    标签：评分：8.0/10、query:profile-1
-   evidence：类人机器人导航的无碰撞MPC与轨迹规划
-4. [Polynomial-Based Solutions to Targeting Problems for Onboard Applications](/202607/20/2607.15801v1-polynomial-based-solutions-to-targeting-problems-for-onboard-applications)  
-   标签：评分：8.0/10、query:q3
-   evidence：使用多项式和凸规划的轨迹优化
-5. [Learning Reach-Avoid Task with Reinforcement Learning: Vectorized Simulation and Benchmark](/202607/20/2607.15935v1-learning-reach-avoid-task-with-reinforcement-learning-vectorized-simulation-and-benchmark)  
+   evidence：用于自主航天器交会对接和近距离操作的自适应MPC
+3. [ADMM-Based Safety-Critical Distributed NMPC for Cooperative Transportation by Quadrupedal Robots](/202607/21/2607.17007v1-admm-based-safety-critical-distributed-nmpc-for-cooperative-transportation-by-quadrupedal-robots)  
+   标签：评分：8.0/10、query:q5
+   evidence：基于ADMM的NMPC分布式实时优化
+4. [From Perception to Assistance: Open-Vocabulary Shared Autonomy for Robotic Manipulation](/202607/21/2607.17323v1-from-perception-to-assistance-open-vocabulary-shared-autonomy-for-robotic-manipulation)  
    标签：评分：8.0/10、query:profile-1
-   evidence：复杂场景下机械臂的到达-避障任务
-6. [Physics-enhanced reinforcement learning for real-time optimal control of dynamical systems](/202607/20/2607.16177v1-physics-enhanced-reinforcement-learning-for-real-time-optimal-control-of-dynamical-systems)  
-   标签：评分：8.0/10、query:q2
-   evidence：动力系统的实时最优控制
+   evidence：机器人操作且不与周围结构碰撞
+5. [Manifold-Guided Motion Planning for Tight Assemblies](/202607/21/2607.17898v1-manifold-guided-motion-planning-for-tight-assemblies)  
+   标签：评分：8.0/10、query:q4
+   evidence：紧约束下的刚体装配运动规划
+6. [Learning Adaptive Safety Margins for Visual Navigation](/202607/21/2607.18200v1-learning-adaptive-safety-margins-for-visual-navigation)  
+   标签：评分：8.0/10、query:q1
+   evidence：导航中的无碰撞路径与自适应安全裕度
 
 ### 速读区论文标签
-1. [Worlds in One Demo: A Synthetic Data Engine for Learning Open-World Mobile Manipulation](/202607/20/2607.13154v1-worlds-in-one-demo-a-synthetic-data-engine-for-learning-open-world-mobile-manipulation)  
+1. [HCPG-Flow:Hierarchical Contact-Progress Guidance for Flow-Policy Robot Manipulation](/202607/21/2607.17651v1-hcpg-flowhierarchical-contact-progress-guidance-for-flow-policy-robot-manipulation)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：利用流策略和接触进度引导的实时机器人操作。
+2. [Leveraging Two Robotic Arms for Tight Assembly Performance Gains](/202607/21/2607.17876v1-leveraging-two-robotic-arms-for-tight-assembly-performance-gains)  
    标签：评分：8.0/10、query:q6
-   evidence：从演示中学习开放世界移动操作
-2. [Worlds in One Demo: A Synthetic Data Engine for Learning Open-World Mobile Manipulation](/202607/20/2607.13154v2-worlds-in-one-demo-a-synthetic-data-engine-for-learning-open-world-mobile-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：学习开放世界移动操作
-3. [Towards Human-level Dexterous Teleoperation](/202607/20/2607.11481v1-towards-human-level-dexterous-teleoperation)  
+   evidence：双臂机器人装配的协调轨迹规划
+3. [AHEAD: Anticipatory Hand-Driven Teleoperation via Human Intent Prediction](/202607/21/2607.15172v1-ahead-anticipatory-hand-driven-teleoperation-via-human-intent-prediction)  
    标签：评分：7.0/10、query:q6
-   evidence：灵巧操纵中物体运动的精确控制
-4. [Directional Constraints for Efficient Exploration in Safe Reinforcement Learning](/202607/20/2607.12784v1-directional-constraints-for-efficient-exploration-in-safe-reinforcement-learning)  
+   evidence：用于机器人抓取和放置操作任务的实时遥操作
+4. [Vessel Trajectory Prediction using COLREGs-aware Optimal Planning](/202607/21/2607.15969v1-vessel-trajectory-prediction-using-colregs-aware-optimal-planning)  
+   标签：评分：7.0/10、query:q3
+   evidence：使用最优规划和数值优化器进行轨迹预测
+5. [Data and Learning Where it Matters for Contact-Rich Manipulation](/202607/21/2607.15982v1-data-and-learning-where-it-matters-for-contact-rich-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：接触丰富的操作以及自由空间运动的传统规划
+6. [Certifiable Safe Model-Based Reinforcement Learning with Control-Affine Dynamics Approximation](/202607/21/2607.16501v1-certifiable-safe-model-based-reinforcement-learning-with-control-affine-dynamics-approximation)  
    标签：评分：7.0/10、query:q2
-   evidence：机器人技能受限优化的安全层
-5. [Industrial Dexterity Benchmark: A Hardware-Software Benchmarking Platform for Industrial Dexterous Manipulation](/202607/20/2607.14021v1-industrial-dexterity-benchmark-a-hardware-software-benchmarking-platform-for-industrial-dexterous-manipulation)  
+   evidence：用于机器人控制的安全基于模型的强化学习
+7. [Foresight Residual RL for Long-Horizon Robot Manipulation with Vision-Language-Action Models](/202607/21/2607.16506v1-foresight-residual-rl-for-long-horizon-robot-manipulation-with-vision-language-action-models)  
    标签：评分：7.0/10、query:q6
-   evidence：工业灵巧操作的基准测试平台
-6. [Multi-Objective Kinodynamic Motion Planning with Asymptotic Pareto Optimality](/202607/20/2607.15508v1-multi-objective-kinodynamic-motion-planning-with-asymptotic-pareto-optimality)  
-   标签：评分：7.0/10、query:q4
-   evidence：多目标动力学约束运动规划框架
-7. [IMBench: A Benchmark for Intuitive Robotic Manipulation](/202607/20/2607.15641v1-imbench-a-benchmark-for-intuitive-robotic-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：直观机器人操作和动作生成的基准
-8. [Gaussian behaviors and stochastic data-driven control](/202607/20/2607.15949v1-gaussian-behaviors-and-stochastic-data-driven-control)  
-   标签：评分：7.0/10、query:q2
-   evidence：随机数据驱动的预测控制公式
-9. [Think When It Matters: Conditional VLM Reasoning for Social Navigation with RL Policies](/202607/20/2607.10991v1-think-when-it-matters-conditional-vlm-reasoning-for-social-navigation-with-rl-policies)  
+   evidence：基于VLA模型的长程机器人操作
+8. [User-Driven Learning from Demonstration: A Trajectory and Impedance Learning Method](/202607/21/2607.16998v1-user-driven-learning-from-demonstration-a-trajectory-and-impedance-learning-method)  
+   标签：评分：7.0/10、query:q8
+   evidence：机器人操作轨迹的实时学习与复现
+9. [PhysClaw-0: A Symbiotic Agentic System for Robot Autonomy via Language Corrections](/202607/21/2607.14047v1-physclaw-0-a-symbiotic-agentic-system-for-robot-autonomy-via-language-corrections)  
+   标签：评分：6.0/10、query:q6
+   evidence：用于操作策略学习的机器人自主性
+10. [SMC-ES: Automated synthesis of formally verified control policies](/202607/21/2607.15003v1-smc-es-automated-synthesis-of-formally-verified-control-policies)  
    标签：评分：6.0/10、query:q5
-   evidence：机器人导航强化学习策略的实时部署
-10. [Jetson-PI: Towards Onboard Real-Time Robot Control via Foresight-Aligned Asynchronous Inference](/202607/20/2607.12659v2-jetson-pi-towards-onboard-real-time-robot-control-via-foresight-aligned-asynchronous-inference)  
-   标签：评分：6.0/10、query:q5
-   evidence：车载实时机器人控制与异步推理
-11. [Flow-aware Optimal Navigation in Unsteady Flows through Reinforcement Learning](/202607/20/2607.13553v1-flow-aware-optimal-navigation-in-unsteady-flows-through-reinforcement-learning)  
-   标签：评分：6.0/10、query:q4
-   evidence：时变流体中的自主机器人导航
+   evidence：安全关键环境下的形式化验证控制策略
+11. [Robust Optimal Control of Arbitrarily Switched Systems: A Path-Complete Framework](/202607/21/2607.15055v1-robust-optimal-control-of-arbitrarily-switched-systems-a-path-complete-framework)  
+   标签：评分：6.0/10、query:q2
+   evidence：鲁棒最优控制与反馈策略综合
 
 
 <div class="dpr-home-promo-card">

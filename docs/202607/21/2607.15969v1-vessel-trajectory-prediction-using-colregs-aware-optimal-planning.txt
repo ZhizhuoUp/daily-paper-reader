@@ -1,0 +1,297 @@
+Title: Vessel Trajectory Prediction using COLREGs-aware Optimal Planning
+
+URL Source: https://arxiv.org/pdf/2607.15969v1
+
+Published Time: Mon, 20 Jul 2026 01:25:38 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Vessel Trajectory Prediction using COLREGs-aware Optimal Planning ⋆
+
+David Kaikkonen ∗, Fredrik Ljungberg ∗∗ , Erik Frisk ∗∗∗ ∗ david.kaikkonen@nibe.se  
+
+> ∗∗
+
+ABB Corporate Research, V¨ aster˚ as, Sweden (fredrik.ljungberg@se.abb.com)  
+
+> ∗∗∗
+
+Department of Electrical Engineering, Link¨ oping University, Sweden (erik.frisk@liu.se). 
+
+Abstract: This paper presents a trajectory prediction method for marine vessels based on optimal planning. Crude initial trajectories respecting static obstacles are first generated using A*-search to provide a feasible warm start. In the second step, a numerical optimizer is used to ensure COLREG compliance. The prediction problem is posed as sequential trajectory planning from the perspective of each surrounding vessel, requiring only their current positions, velocities, and intended destinations as input. As the latter is included in AIS messages, this enables faster predictions than learning-based methods that typically require longer data histories. The proposed method is validated using real-world scenarios constructed from AIS data. 
+
+Keywords: Marine systems, prediction methods, motion estimation, optimal control, autonomous vehicles 1. INTRODUCTION Autonomous vehicles are becoming increasingly common, and research is being conducted across several areas of transporta-tion, including the maritime sector. A key step in automated control of marine vessels is determining a dynamically feasible path, and since the explored navigation area is sometimes occupied by other maritime traffic, this planned path must be updated in real-time based on sensor feedback. Further, beyond being collision-free, the path must adhere to the Convention on the International Regulations for Preventing Collisions at Sea (COLREGs), which govern how vessels should communicate and navigate during interactions to behave in a predictable and risk-averse manner (Maza and Arg¨ uelles, 2022). Collision-free and COLREG-compliant paths can be obtained in several different ways (Zhao et al., 2022; Bergman et al., 2020; Zhang et al., 2022), but all methods have in common that they are highly dependent on the availability of accurate information regarding the motions of the other vessels. Information about another vessel’s current position, velocity, and heading direction can be obtained by fusing sensor data (e.g., from camera, LiDAR, or Radar) using a tracking algorithm. However, for automated maneuvering in highly trafficked areas, estimates of future trajectories are required that extend beyond the vessel’s current state. A naive way of predicting a vessel’s future position is to simply assume that it will keep its heading and speed for the foreseeable future. Such a constant-velocity (CV) assumption can be valid in open-sea traffic where vessels mostly travel along straight paths, see e.g., (Zhang et al., 2024; Cademartori et al., 2023). However, in collision-avoidance scenarios, especially in highly   
+
+> ⋆Conducted while D. Kaikkonen was an M.Sc student at Link ¨oping University and performing his thesis work at ABB Corporate Research. ©2026 IFAC the authors. This work has been accepted to IFAC for publication under a Creative Commons Licence CC-BY-NC-ND.
+
+trafficked areas like archipelagos where vessels frequently are forced to perform tight maneuvers, a CV assumption can give poor predictions unsuitable in collision avoidance scenarios. There are also proposed techniques for predicting more advanced maneuvers where many are based on learning-based black-box methods (Li et al., 2024; Yang et al., 2022). Such approaches can give very accurate results, especially in scenarios for which there exists substantial amounts of training data. However, not being able to trace inevitable poor predictions back to physical principles is a significant limitation in safety-critical applications like marine navigation. Beyond the lack of interpretability, black-box methods struggle to generalize to new scenarios, such as uncommon traffic situations or deviating environmental conditions. This paper explores an alternative method for predicting the motion of surrounding vessels by formulating the trajectory forecasting as an optimal control problem. The work is based on the results presented in (Johansson and Kaikkonen, 2025). The main idea is to predict the motion of the other ships by sequentially planning a trajectory from each of their perspectives. More specifically, initial trajectories are generated using A*-search to provide a feasible warm start for a numerical optimizer, similarly to how paths are often planned for the ego vessel. This is readily possible for larger ships as they must submit information about their final destinations through the automatic identification system (AIS). Beyond the goal point, the method relies only on a vessel’s current position and velocity, enabling faster predictions than black-box models that typically require long input histories. The approach incorporates basic physics and COLREGs and can be readily extended to account for environmental factors such as wind and waves, which is an additional advantage over learning-based methods. Validation in realistic simulation scenarios constructed from historical AIS data demonstrates its potential to capture plausible vessel behaviors. arXiv:2607.15969v1 [eess.SY] 17 Jul 2026 2. PROBLEM AND METHOD OUTLINE The main purpose of the prediction method is to support motion planning. Safe trajectory planning in traffic scenarios requires accurate predictions with sufficient look-ahead to anticipate conflicts and assess risks posed by nearby vessels. This creates a need to identify the vessels that are most critical to maneuver-safety, allowing for simpler prediction models for less critical vessels to improve computational efficiency. The proposed method addresses this by combining an approximate long-term prediction for all vessels with a more detailed short-term prediction for those showing a high collision risk, subsequently referred to as target vessels. The algorithm predicts the motion of one target vessel at a time and uses the cruder long-term prediction for the vessels currently not in focus. The long-term prediction estimates the vessel’s complete trajec-tory, considering only static obstacles such as islands and shal-low water. In contrast, the short-term prediction is continuously updated to assess collision risks and identify what COLREGs maneuver the vessel is expected to take to mitigate them. The long-term prediction serves as input for refining the short-term prediction by narrowing down the search space for reasonable paths and additionally provides approximate trajectories of other surrounding vessels. The following sections outline the main steps of the proposed prediction algorithm, and a summary in pseudocode is presented in Algorithm 1. 
+
+Algorithm 1 Vessel prediction  
+
+> 1:
+
+Stage 1: Initializing Algorithm  
+
+> 2:
+
+Identify surrounding vessels & designate target vessel  
+
+> 3:
+
+Set prediction parameters (safety distance, COLREGs dis-tance, max velocity, turn-rate),  
+
+> 4:
+
+Stage 2: Long-term A*  
+
+> 5:
+
+Create node network for A*, remove nodes inside static obstacles, increase cost near obstacles  
+
+> 6:
+
+Retrieve final destination from AIS data or goal estimation for all vessels  
+
+> 7:
+
+Compute long-term A* path for all vessels, which avoids static obstacles,  
+
+> 8:
+
+Estimate CPA between target vessel and surrounding ves-sels,  
+
+> 9:
+
+Stage 3: Short-term A* Warm-start  
+
+> 10:
+
+Estimate short-term goal point along long-term A* path for target vessel,  
+
+> 11:
+
+Identify COLREGs and forbidden zones at CPA between target vessel and surrounding vessels,  
+
+> 12:
+
+Solve A* towards short-term goal point, calculate control parameters used,  
+
+> 13:
+
+Stage 4: Optimal Control Problem  
+
+> 14:
+
+Use CPA, COLREGs & forbidden zones as inputs to the OCP,  
+
+> 15:
+
+Use short-term A* solution and calculated control parame-ters as warm start for OCP,  
+
+> 16:
+
+Define vessel kinematic model and set cost function, penal-izing travel time, steering inputs and acceleration,  
+
+> 17:
+
+Solve OCP to generate trajectory prediction for target vessel,  
+
+> 18:
+
+Save prediction and vessel data for the next iteration of the prediction algorithm and visualization. 
+
+2.1 Long-Term Prediction 
+
+The long-term prediction outlined in Stage 2 of Algorithm 1 is a large-scale trajectory, providing a general idea of how the vessel will navigate in an environment without dynamic obstacles. It is assumed that vessels plan their path to minimize travel time and fuel consumption. As such, A* search is chosen as an efficient method to find an optimal path where islands and shallow waters are treated as obstacles, and the destination is supplied by AIS data. This prediction is applied to the target vessel and all nearby vessels, and the predicted trajectories are used in step 8 of Algorithm 1 to estimate the closest points of approach (CPA) between them. As shown in Fig. 1, the CPA estimation evaluates the positions of the vessels relative to each other at every second along their predicted trajectories. This is used to identify when the target vessel is at the highest risk of collision with another vessel. 
+
+Fig. 1. CPA estimate where L2 = distance at CPA. The method uses the CPA estimation to identify the point at which it believes a COLREGs maneuver will be taken. The focus on COLREGs provides a foundation for the prediction that is less subject to interpretation and has to be considered in any scenario, common or unfamiliar, and also adapts the prediction to the specific context of maritime navigation. 
+
+2.2 Short-Term Prediction 
+
+The short-term prediction outlined in Stage 3 of Algorithm 1 produces a detailed trajectory that respects both vessel dynamics and COLREGs, describing how the vessel is expected to behave in the near future. It identifies traffic situations and generates forbidden zones to guide the prediction towards COLREGs compliance, and a short-term goal point chosen at a set distance along the long-term trajectory of the target vessel. This is used to formulate the OCP outlined in Stage 4 of Algorithm 1. Unlike typical motion-planning objectives that optimize for criteria such as energy consumption or distance traveled, this prediction focuses on factors that strongly influence a vessel’s choice of trajectory. Consequently, the method emphasizes classifying interactions according to the traffic scenarios shown in Fig. 2. The forbidden zones, further detailed in Section 2.4, ensure that the predicted trajectory does not violate COLREGs. 
+
+Fig. 2. The right course of action in each COLREGs situation. Left to right: Head-On, Overtaking, Give-Way, Stand-On 2.3 System States and Time Discretization in OCP 
+
+The level of detail in vessel dynamics and environmental factors have a high impact on the computational load of the algorithm. They must be carefully considered to be detailed enough to accurately capture vessel behavior while allowing the algorithm to frequently update the prediction as the situation evolves. As such, a simple vessel model detailing size, turn rate and maximum velocity defines the kinematic constraints for the OCP in step 16 of Algorithm 1. With all inputs, the vessels 
+
+x- and y-velocity, angular rate, ˙θ, and acceleration, a, define a kinematic model, with a state vector containing the x- and 
+
+y-position, orientation, θ, and velocity, v:
+
+˙x = v cos( θ), ˙θ = u1,
+
+˙y = v sin( θ), ˙v = u2. (1) The final time, T , depends on the system inputs ui and is defined as an optimization variable with time-discretization 
+
+dt = TN (2) with N being the number of elements in the time-discretization, determining the size of each time step in the solution. The time to travel the Euclidean distance between the start and goal points at maximum velocity is set as a minimum time constraint to ensure a physically feasible prediction, while the maximum for angular rate and acceleration are imposed as smoothness constraints. The optimization problem is then defined as a nonlinear program, 
+
+minimize 
+
+> u1,u 2
+
+αT + βu 1 + γu 2
+
+subject to Collision avoidance constraints COLREG constraints Time constraints Kinematic constraints Smoothness constraints (3) where α, β, and γ are weighted to scale each variable to comparable magnitudes. 
+
+2.4 COLREGs and Construction of Forbidden Zones 
+
+The construction of the input variables for the OCP is based on the method of identifying COLREGs scenarios by scanning areas separated by relative heading angles as described in (Maza and Arg ¨uelles, 2022; Breivik et al., 2017). The method builds upon calculating the interaction between the target vessel and each surrounding vessel one-by-one in order to evaluate if they have an impact on the outcome of the prediction. First, to determine if two vessels are approaching each other and may risk colliding, the dot product of the distance vector, drel , and relative velocity vector, vrel 
+
+drel · vrel ∝ cos( δ)
+
+is calculated. A negative scalar indicates that their distance is decreasing and a risk of collision cannot be ruled out. In such a scenario, COLREGs must be considered. The relative heading angle, θCOL is computed from the target vessel’s own heading, 
+
+θvessel , and the bearing to the obstacle vessel, θbearing , as 
+
+θCOL =  θvessel − θbearing 
+
+ − 2π
+
+ θvessel − θbearing 
+
+2π
+
+
+
+,θCOL =
+
+(θCOL , θCOL ≤ π, θCOL − 2π, θCOL > π. 
+
+An example of this is shown in Fig. 3. Scanning range   
+
+> 𝜃 𝐶𝑂𝐿
+> 𝐺𝑊
+> 𝑂𝑇
+> 𝐻 𝑂
+> −15 °
+> 𝑆𝑂
+> +165 °
+> 𝑆𝑂 𝐺𝑊
+> +15 °
+> −165 °
+> 0°Scanning range
+> 𝜃 𝐶𝑂𝐿
+> 𝐺𝑊
+> 𝑂𝑇
+> 𝐻 𝑂
+> −15 °
+> 𝑆𝑂
+> +165 °
+> 𝑆𝑂 𝐺𝑊
+> +15 °
+> −165 °
+> 0°
+
+Fig. 3. The identified COLREGs for each approach, with angles expressed in degrees for clarity. Depending on the identified COLREGs scenario, different forbidden zones are constructed around obstacles, which outline areas that imply a COLREGs violation if entered. These zones are generated in step 11 of Algorithm 1 and serve as constraints for the OCP-based short-term prediction. Examples are shown in Fig. 4. 
+
+Fig. 4. Forbidden zone creating a general safety margin around any vessel (dotted area), and forbidden zone for each specific COLREGs scenario (red area). From left to right: GW, HO, and OT. 
+
+2.5 Collision Avoidance Constraints in OCP 
+
+Algorithm 1 in Section 2, includes a short-term prediction step where an Optimal Control Problem (OCP) is formulated to predict short-term trajectories for target vessels. A key aspect of this OCP is the inclusion of collision avoidance constraints to ensure that the predicted trajectories do not violate COLREGs by entering forbidden zones around other vessels. The collision avoidance constraints are here formulated using established techniques from convex optimization (Boyd and Vandenberghe, 2004), which allow for efficient optimization and planning. Optimization techniques for motion planning with obstacles are described in (Zhang et al., 2020) where a dual formulation of distance constraints are used, which is also the approach briefly outlined below. See (Fan et al., 2024) for alternative approaches and related discussions. Each obstacle is represented as a convex polygon. Such a set can be described as an intersection of a number, m, of half-spaces, one for each face of the polygon. This means that the set, conveniently for optimization, can be represented by a linear matrix inequality in the form 
+
+Ap ≤ b
+
+where p ∈ R2 is a point in the plane, the rows of A ∈ Rm×2
+
+are normals to each face in the obstacle polygon, and b ∈ Rm
+
+based of distances. Any p satisfying the inequality is therefore inside the obstacle, and it is straightforward to transform the inequalities based on orientation and position of the obstacle. A collision avoidance constraint in motion prediction corre-sponds to that the minimum distance between the vessel and an obstacle is larger than some minimum distance dmin . A convex optimization formulation for the minimal distance from the EGO vessel position p0 to an obstacle represented by a convex polygon can be expressed as 
+
+minimize  
+
+> p,d
+
+∥d∥
+
+subject to Ap ≤ bp0 − p = d
+
+(4) where d is the distance to the obstacle. Now, the dual function 
+
+g(λ) for (4) , where λ are the dual variables, is a lower bound on the distance to the obstacle, and 
+
+g(λ) = ( Ap 0 − b)T λ
+
+for any λ ≥ 0 satisfying ∥AT λ∥ ≤ 1 (Boyd and Vandenberghe, 2004, p. 399). The dual function, with the constraints on λ, can therefore be used as a collision avoidance constraint in the OCP for motion planning (3) for all time steps k as 
+
+(Akpk − bk)T λk ≥ dmin 
+
+∥ATk λk∥ ≤ 1
+
+λk ≥ 0
+
+where Ak and bk is the polygon representation of the obstacle and pk and λk are the position of the EGO vessel and dual variables at time step k respectively. Since the full OCP is inherently a non-convex optimization prob-lem, the efficiency and feasibility of the optimization/planner will be sensitive to the optimizer’s initialization. The following section thereby presents a basic procedure for initializing both the dual variables λ and the predicted trajectories. 
+
+2.6 Initialization of Optimization Variables 
+
+In step 12 of Algorithm 1, the A* algorithm is used to initialize the solver with an approximate solution as shown in Fig. 5. In the A* graph-search, obstacle avoidance is ensured by removing nodes from the grid that are inside any obstacle, outlined in step 5 of Algorithm 1. As an additional safety margin, nodes which are nearby obstacles are identified by counting their amount of unobstructed neighbors. They are then given a higher cost, guiding the algorithm to choose a safer path if possible. From this solution, the Cartesian position, heading angle and distance optimization variable, λ is calculated as an approximate solution. 
+
+Fig. 5. Initial path approximation using the A* algorithm, where red nodes are given a higher cost. The initial guess for the optimization variable λ needs to consider the distance to every nearby obstacle in the scene. A method to find an approximate value of λ for every obstacle is to pick nodes along the approximate A* path, which is guaranteed to not collide with any obstacle, and calculate λ from those nodes to each obstacle in the scene using the minimization expressed in Section 2.5. This results in a final approximate solution shown in Fig. 6 Type 
+
+> equation
+> here.
+
+𝐵  𝐴     
+
+> 𝜆 𝐴
+> 𝜆 𝐴 :𝑟𝑎𝑛𝑑𝑜𝑚 𝑥 >0.5
+> Type
+> equation
+> here.
+
+𝐵  𝐴  
+
+> 𝜆 𝐴 𝐵1
+> 𝜆 𝐴 𝐵2
+> 𝜆 𝐴 𝐵3
+> 𝐴 ∗𝑇𝑟𝑎𝑗𝑒𝑐𝑡𝑜𝑟𝑦
+
+Fig. 6. Calculated guess of λAB from the approximated A* trajectory to each obstacle. 3. RESULTS The proposed prediction method is validated by analyzing AIS-data from real-world encounters using MarineTraffic (Marine-Traffic, 2025) and recreating them in a simulation environment to compare the algorithm’s predicted path with the actual outcome. Optimization is performed using CasADi (Andersson et al., 2019) using the solver IPOPT (W ¨achter and Biegler, 2006). The Root Mean Square Error (RMSE) between the predicted and real path is also calculated for each prediction. The scenarios were not selected to highlight navigation errors, but rather because they provide realistic conditions suitable for validating the prediction algorithm. 
+
+3.1 Double Head-On and Give-Way Predictions 
+
+The first simulation is shown in Fig. 7, which is a recreation of an encounter in Hake Fjord outside the port of Gothenburg on the evening of August 18, 2025, where a pleasure craft faced two consecutive vessels approaching head on as it rounded a nearby island. This is a complex scenario where the maneuver is not only dependent on the imminent obstacle ahead, but also on the following encounters with the approaching vessels afterward. It can quickly be assessed that a CV-prediction would predict that the vessel collides with the island straight ahead which would be an unlikely outcome. Instead, the prediction algorithm handles this by identifying the appropriate COLREGs maneuvers according to Fig. 2 and utilizing the closest point of approach estimation and long-term prediction to make a realistic prediction. 
+
+Fig. 7. Prediction results for Head-On Scenario between the red target vessel and two approaching black obstacle vessels. Fig. 8 shows how the proposed prediction method observes the scenario. It identifies the static obstacle straight ahead, but also considers the upcoming COLREGs scenarios. Using the results from steps 8 and 11 in Algorithm 1, the method first estimates the CPA to identify COLREGs and generate the corresponding forbidden zone according to Fig. 4 for both head-on scenarios. From this, it predicts that the vessel will avoid the island, follow COLREGs, and return to its original course after the maneuver, similar to the real outcome in the scenario. This context-aware prediction comes as a result of the long-term component in the initialization of the OCP, where a goal point has been extracted from either a goal point-estimation or AIS-data. In contrast to a CV-model, this allows the model to not only consider the feasibility of the imminent COLREGs maneuver, but also the most probable outcome once the maneuver is completed. 1000 1500 2000 2500 3000 
+
+> X
+> -6400 -6200 -6000 -5800 -5600 -5400 -5200 -5000 -4800 -4600 -4400
+> Y
+> RMSE Prediction Algorithm = 107.939 meters
+> Real Path Predicted Path Forbidden Zone Obstacle Direction
+
+Fig. 8. Proposed Prediction Algorithm interpretation of the scenario in Fig. 7, with generated forbidden zone and CPA-estimation. Fig. 9 shows a typical give-way scenario, captured from an encounter next to Pihlajasaari in the port of Helsinki on August 20, 2025, where the red target vessel faces an approaching vessel on its starboard side. In this configuration, a Constant Velocity (CV) prediction performs poorly as the vessel needs to adjust its trajectory in order to comply with the give-way COLREGs, and a straight-forward prediction places the vessels on a perceived collision course. Instead, the proposed prediction algorithm correctly identifies the give-way COLREGs and takes this into account when generating a trajectory. The predicted path is shown to have had the right intent and course of action as the path from the actual encounter in Helsinki. From the perspective of a motion planning algorithm on the black vessel, a CV-prediction may incorrectly indicate an imminent collision, prompting abrupt and unnecessary maneuvers to avoid it. Such erratic behavior would make the entire scenario less predictable and more difficult to navigate through safely. 
+
+3.2 Impact of Prediction Errors on Motion Planning 
+
+Fig. 10 reflects an encounter between two vessels in the port of Helsinki on the morning of August 19, 2025. The predicted target vessel is approaching from the south with a heading that is currently straight towards the island ahead, and another vessel is approaching from the north. This scenario shows that a prediction that does not lead to a direct collision may still indirectly create an unsafe situation by giving the planner a false sense of confidence. If the black vessel -3500 -3000 -2500 -2000 -1500 -1000 
+
+> X [m]
+> -4000 -3800 -3600 -3400 -3200 -3000 -2800 -2600 -2400 -2200 -2000
+> Y [m]
+> RMSE Prediction Algorithm = 99.319 meters
+> Real Path Predicted Path Obstacle Vessel Path
+
+Fig. 9. Prediction results for Give-Way scenario between the red target vessel and black obstacle vessel. approaching from the north would plan a path based on a CV-prediction of the target vessel, it would incorrectly assume that it is going to stay on track towards the island. With this prediction, the entire narrow passage at (x, y ) = ( −2700 , −3500) would be considered safe to travel through. This showcases a limitation with CV-predictions where motion planners are given larger free spaces to navigate through than what is actually plausible. The overconfident planner risks placing the vessel in what will lead to a complex COLREGs scenario, potentially leading to an inevitable collision once the target vessel alters its course. In contrast, the proposed prediction method identifies the obstacle ahead and predicts that the target vessel will adjust its course while also considering the vessel approaching from the north. -4000 -3500 -3000 -2500 -2000 -1500 -1000 
+
+> X [m]
+> -4500 -4000 -3500 -3000 -2500
+> Y [m]
+> RMSE Prediction Algorithm = 113.680 meters
+> Real Path Predicted Path Constant Velocity Prediction
+
+Fig. 10. Prediction results for Head-On Scenario between the red target vessel and black obstacle vessel approaching from the north. 
+
+3.3 Overtaking and Head-On Prediction 
+
+Fig. 11 shows the target vessel in red approaching from the top of the map with a southwest heading and two vessels ahead. This encounter took place in the port of Helsinki on August 18 and is unique for this study in the sense that the vessel’s current heading is not towards its final destination. It highlights the strength of the long-term prediction in step 4 of Algorithm 1, where the prediction towards a final destination guides the algorithm with decisions where more than one outcome may be feasible. The target vessel is allowed to overtake on either side of the vessel ahead according to Fig. 2, but when considering the long-term prediction there is a clear bias in overtaking on the port side as it places the vessel straight towards its final destination. After the overtaking, the algorithm recognizes the approaching head-on scenario and adjusts its path similarly, but not as drastically, as the vessel in the real scenario. While predicting the exact motion of another vessel is less critical, understanding its high-level behavior, such as which side it will pass an obstacle on, is important when planning the path of the EGO ship. -4500 -4000 -3500 -3000 -2500 -2000 -1500 -1000 
+
+> X [m]
+> -6500 -6000 -5500 -5000 -4500 -4000 -3500
+> Y [m]
+> RMSE Prediction Algorithm = 263.177 meters
+> Real Path Predicted Path Forbidden Zone
+
+Fig. 11. Predictions for Overtaking/Head-On scenario between the red target vessel and two black obstacle vessels. There are other methods of predicting the most likely path around a vessel in an overtaking scenario. One could model complex motion dynamics for the vessels and factor in the impact of wind and waves to evaluate which maneuver is easier to execute for the captain. While this is something that the proposed method has support for in step 16 of Algorithm 1, it comes at a computational cost and requires detailed information about the motion dynamics of the predicted vessels. Instead, the emphasis on basing a prediction on COLREGs and forbidden zones is proven to be a cheap method of adapting the prediction to the most likely actions given the scenario. Because COLREGs are expected to be followed, they provide a robust basis for the prediction method, making it adaptable even to scenarios it has not encountered before. 4. CONCLUSION In conclusion, this paper proposes a COLREGs-aware prediction algorithm which formulates the trajectory forecasting as an optimal control problem with the support of an approximate A*-trajectory. This is a modular approach with the ability to configure the solver similarly to how a motion planner functions. This is especially useful in previously unencountered scenarios, where a black-box approach is expected to perform poorly, by adapting the prediction by the same parameters a captain or autonomous vessel is likely to consider. Another key strength is that, unlike many machine learning and filter based methods which rely on a window of previously recorded data to make predictions, the proposed method requires only the current position, heading, and velocity. This allows it to generate a prediction more quickly when a vessel is first detected. The distance calculation to surrounding obstacles and long-term prediction is used to filter out high-risk and unfeasible scenarios that a CV-prediction often fails to identify. In the future, the algorithm could with benefit be expanded to include secondary factors affecting the navigation environment and vessel dynamics, such as wind and waves introducing forces in other degrees of freedom than those currently considered. REFERENCES Andersson, J.A.E., Gillis, J., Horn, G., Rawlings, J.B., and Diehl, M. (2019). CasADi – A software framework for nonlinear op-timization and optimal control. Mathematical Programming Computation , 11(1), 1–36. doi:10.1007/s12532-018-0139-4. Bergman, K., Ljungqvist, O., Linder, J., and Axehill, D. (2020). An optimization-based motion planner for autonomous ma-neuvering of marine vessels in complex environments. In 
+
+2020 59th IEEE Conference on Decision and Control (CDC) ,5283–5290. IEEE. Boyd, S. and Vandenberghe, L. (2004). Convex Optimization .Cambridge University Press. Breivik, M. et al. (2017). MPC-based mid-level collision avoidance for ASVs using nonlinear programming. In 2017 IEEE Conference on Control Technology and Applications (CCTA) , 766–772. IEEE. Cademartori, G., Oneto, L., Valdenazzi, F., Coraddu, A., Gam-bino, A., and Anguita, D. (2023). A review on ship motions and quiescent periods prediction models. Ocean Engineering ,280, 114822. Fan, J., Murgovski, N., and Liang, J. (2024). Efficient optimization-based trajectory planning for unmanned systems in confined environments. IEEE Transactions on Intelligent Transportation Systems .Johansson, E. and Kaikkonen, D. (2025). Motion Prediction of Surrounding Marine Surface Vessels . Master’s thesis, Link¨ opings universitet, Link¨ oping, Sweden. Li, Y., Yu, Q., and Yang, Z. (2024). Vessel trajectory prediction for enhanced maritime navigation safety: A novel hybrid methodology. Journal of Marine Science and Engineering ,12(8), 1351. MarineTraffic (2025). Marinetraffic: Global ship tracking intelligence. URL https://www.marinetraffic. com/en/ais/home/centerx:24.9/centery:60. 0/zoom:10 . Accessed: 2025-03-11. Maza, J.A.G. and Arg ¨uelles, R.P. (2022). COLREGs and their application in collision avoidance algorithms: A critical analysis. Ocean Engineering , 261, 112029. W ¨achter, A. and Biegler, L.T. (2006). On the implementation of an interior-point filter line-search algorithm for large-scale nonlinear programming. Mathematical programming , 106(1), 25–57. Yang, C.H., Wu, C.H., Shao, J.C., Wang, Y.C., and Hsieh, C.M. (2022). AIS-based intelligent vessel trajectory prediction using Bi-LSTM. IEEE Access , 10, 24302–24315. doi: 10.1109/ACCESS.2022.3154812. Zhang, D., Chu, X., Liu, C., He, Z., Zhang, P., and Wu, W. (2024). A review on motion prediction for intelligent ship navigation. Journal of Marine Science and Engineering ,12(1), 107. Zhang, G., Wang, Y., Liu, J., Cai, W., and Wang, H. (2022). Collision-avoidance decision system for inland ships based on velocity obstacle algorithms. Journal of Marine Science and Engineering , 10(6), 814. Zhang, X., Liniger, A., and Borrelli, F. (2020). Optimization-based collision avoidance. IEEE Transactions on Control Systems Technology , 29(3), 972–983. Zhao, X., He, Y., Huang, L., Mou, J., Zhang, K., and Liu, X. (2022). Intelligent collision avoidance method for ships based on colrges and improved velocity obstacle algorithm. Applied Sciences , 12(18), 8926.
