@@ -1,0 +1,1024 @@
+Title: Pose-Parameterized Motion Planning and CBF-QP Self-Collision Filtering for a Long-Reach Drilling Boom
+
+URL Source: https://arxiv.org/pdf/2607.18855v1
+
+Published Time: Wed, 22 Jul 2026 00:43:10 GMT
+
+Number of Pages: 42
+
+Markdown Content:
+# Pose-Parameterized Motion Planning and CBF-QP Self-Collision Filtering for a Long-Reach Drilling Boom 
+
+Mehdi Heydari Shahna a, ∗, Tuomo Kivelä b, Jouni Mattila a
+
+> aFaculty of Engineering and Natural Sciences, Tampere University, 33720 Tampere, Finland.
+> bSandvik Mining and Construction Oy, Tampere, Finland.
+
+Abstract 
+
+Long-reach drilling booms must reach successive poses without self-collision. Moving from operator-supervised control toward autonomy requires collision-aware motion planning and execution. For the Sandvik SB60, this study adapts established methods by integrating pose-parameterized planning with a capsule-based control barrier function quadratic program (CBF-QP) in measured-state inverse kinematics (IK). A fixed task-specific parameter set within each task generates waypoints, detours, timed references, and chained motion without target-specific retuning. The offline detour planner screens candidate waypoints using 23 selected rod-segment-to-body-region distances, whereas the online CBF-QP filters joint velocities using 14 configured capsule-pair constraints from a nine-primitive whole-body capsule model. Evaluation considers two drilling tasks in a manufacturer-developed SB60 Simscape Multibody model: a five-target restricted-orientation tour and a three-target full-pose tour. Across several hundred thousand samples, the method produced zero IK failures, generated several detour waypoints, achieved millimetre-level mean final-position error, and recorded no sampled CBF margins below the reported thresholds. 
+
+Keywords: redundant manipulators; robotics; autonomous drilling; underground construction 
+
+> ∗Corresponding author: Mehdi Heydari Shahna E-mail address: mehdi.heydarishahna@tuni.fi arXiv:2607.18855v1 [cs.RO] 21 Jul 2026
+
+1. Introduction 
+
+1.1. Drilling automation in underground construction 
+
+Tunnel construction, underground mining, and rock-bolt installation de-pend on drilling many holes from a single equipment setup. A typical un-derground drilling face contains 30 to 100 drill holes, each at a specified position and angle determined by the blast pattern, ground-support design, or production requirements [ 1, 2]. Each hole’s accuracy directly affects con-struction outcomes: hole position influences blast effectiveness in development drilling, hole angle affects bolt installation reliability in ground support, and accumulated positioning errors can propagate to over-break, under-break, and rework. The equipment performing these operations is a hydraulic boom manipu-lator. Modern drilling rigs may carry one or more booms, each comprising multiple actuated joints that position a long drilling rod, typically several meters in length [3]. These booms are kinematically redundant in general, with more actuated coordinates than the six required for a general tip pose, although procedure-scheduled joints may not be available for redundancy resolution in every operating mode. Their long reach and coupled geometry create a difficult control problem: transitions can bring the rod, boom housing, and carrier into close proximity, direct paths may require detours, and joint capabilities are anisotropic across the kinematic chain. Despite advances in automated boom positioning and pre-planned drilling-pattern execution, many boom transitions remain operator-supervised. In such workflows, the operator monitors boom motion and intervenes when interference is observed [1, 3]. Increasing the autonomy of these operations is a recognized goal in construction-automation research because it can reduce cycle time and mitigate operators’ exposure to hazards in confined drilling environments [2, 4, 5, 6]. 
+
+1.2. Current production practice and its limits 
+
+Three common limitations in operator-supervised drilling workflows moti-vate further automation. 
+
+• Pose-dependent motion preparation. Workflows based on manually defined trajectories or pose-specific waypoints require updates when the drilling face or rig setup changes [1, 3]. 2• Operator-monitored collision avoidance. In workflows without auto-mated collision checking or safety filtering, the operator monitors prox-imity between the rod, boom, and carrier and intervenes when necessary. 
+
+• Conservative motion-rate scaling. Reduced motion rates provide more time for operator intervention but increase transition duration. These limitations motivate a workflow that links drilling-pose specifications to collision-aware motion and feedback safety filtering. The following review positions the present work within established motion-planning, geometric collision-checking, and CBF-based safety-control research. This study adapts and integrates these components for closed-loop execution on an SB60-class boom. 
+
+1.3. Motion generation and safety filtering: related work and positioning 
+
+Manipulator motion planning, collision avoidance, and execution-time safety filtering are established but distinct research threads [ 7]. Sampling-based planners and trajectory optimizers search for collision-free nominal paths, for example through rapidly exploring random tree (RRT) variants or stochastic trajectory optimization for motion planning (STOMP) [ 8]. Ragaglia et al. [ 9] combined Cartesian-space RRT planning, inverse kinematics (IK), capsule collision checking, path smoothing, and kinematic time scaling for autonomous construction-machine motion. Geometric path construction and temporal parameterization are distinct. Alizadeh Kolagar et al. [ 10 ] combined deep reinforcement learning (DRL) motion commands with a jerk-bounded trajectory generator and precomputed safe-velocity zones to respect joint-level kinematic constraints. Section 3.1 specifies the seventh-order timing law and controller-grid discretization used here and clarifies that the nominal duration estimate does not certify the nonlinear IK solution or the filtered plant trajectory [ 11 , 12 ]. Artificial po-tential fields (APFs) provide reactive local corrections [ 13 ]. Control barrier function quadratic programs (CBF-QPs) instead modify a nominal control input subject to model-based inequality constraints and provide forward-invariance results only under their stated assumptions [ 14 , 15 , 16 ]. These standard forward-invariance results concern a continuous-time model. En-forcing a continuous-time CBF condition only at controller samples does not, in general, establish intersample invariance; sampled-data guarantees require additional intersample bounds or sampled-data barrier conditions [ 17 ]. 3Accordingly, this study states a conditional continuous-time result for the velocity-level capsule model and treats the simulation with a 5 ms controller period and second-order command filtering as empirical clearance evidence, not as an unconditional sampled-data or physical-machine guarantee. An offline planner shapes a nominal route according to its own geometric model, whereas the runtime filter acts according to its separate configured constraint model. Work on heavy hydraulic and drilling manipulators already covers several parts of the present pipeline. Kivelä et al. [18 ] optimized the kinematic structure and placement of a heavy underground drilling manipulator at design time. Their subsequent collision-avoidance controller [ 19 ] used point-cloud-based extended oriented bounding boxes (EOBBs), damped least-squares (DLS) redundancy resolution, null-space projection, and an APF for real-time obstacle and self-collision avoidance on a heavy hydraulic tunneling manipulator. Complementary actuator-level work on heavy-duty manipulators driven by electromechanical linear actuators (EMLAs) has used observer-based modular robust control to track planned joint trajectories under modeling uncertainty and disturbances [ 20 ]. More recent drilling-specific studies have addressed hole-sequence and arm-motion planning directly. Li et al. [21 ]combined vehicle-mounted scanning, local collision-aware arm motion, and traveling-salesman sequencing of drilling positions. Zhang et al. [ 22 ] combined an improved RRT, an APF, greedy pruning, and B-spline smoothing for an anchor-drilling arm. Sun et al. [ 23 ] used an improved bidirectional RRT (Bi-RRT) and APF together with cylinder- and sphere-based collision checks for a drill-and-anchor material-handling arm. Nie et al. [ 24 ] integrated an oriented-vector variant of the bidirectional RRT algorithm (v-BI-RRT) with oriented bounding-box (OBB) and capsule envelopes for self-collision-free route planning on a redundant rock-drilling ma-nipulator. Xu and Lin [ 25 ] combined multi-strategy RRT*, learned sampling, cylindrical collision envelopes, and B-spline smoothing for a large multi-arm rock-drilling robot. Cui et al. [ 26 ] combined genetic path optimization, an improved APF, and B-spline trajectory generation for cooperative tunnel-drilling arms. The evaluation scales reported by Li et al. [ 21 ] and Cui et al. [ 26 ] also place the two complementary validation tasks in context: Li et al. report 57–62 reachable drilling points per cycle across eight cycles, and Cui et al. allocate 40, 52, and 40 holes to three arms. The tasks and platforms are different, so these counts are not a performance benchmark, but they show why the multi-target tour below must be described as an initial feasibility 4case rather than production-pattern validation. CBF-based manipulator safety is likewise established. Rauscher et al. [ 14 ] formulated constrained robot control as a CBF-QP. Khazoom et al. [ 27 ]used sphere and capsule signed distances in a CBF whole-body controller for humanoid self-collision avoidance. Morton and Pavone [ 28 ] enforced whole-body, self-collision, workspace, and singularity constraints with operational-space CBFs at real-time rates. Shi et al. [ 29 ] combined capsule-shaped safety envelopes, high-order CBF filtering, and a replanning mechanism for a free-flying space robot. In construction robotics, Kim et al. [ 5] reported a shared-autonomy overhead-work system using a neural configuration-space barrier for drilling, anchoring, and bolting. The system of Kim et al. [ 5]is an initial prototype on a lighter platform and differs from autonomous underground drilling, but it is directly relevant to barrier-based construction-manipulator safety. The literature therefore shows that the individual components of the frame-work, including multi-pose planning, capsule collision models, CBF-QP filter-ing, and model-based validation, have clear precedents. The contribution of this study is the SB60-specific engineering integration of a pose-parameterized motion layer with a measured-state capsule-pair CBF-QP, together with a transparent model-based assessment of how the planner and filter interact. Relative to drilling-specific RRT/APF methods, the distinguishing feature is retention of an execution-time CBF constraint layer. Relative to general manipulator CBF work, the distinguishing feature is adaptation to the geom-etry, joint limits, long-rod collision pairs, and chained drilling-pose interface of a heavy hydraulic boom. The comparison in Table 1 is functional rather than a common-benchmark performance comparison. Consequently, the ablations in Section 4 compare only components of the proposed implementation. Capsules, cylinders with hemispherical end caps, are a standard abstraction for whole-body manipulator collision modeling [ 30 ]. In this work, the capsule-pair distance is computed in closed form, while the distance gradient used in the CBF rows is evaluated by finite differences with respect to the joint variables. This provides the distance and local linearization needed for the CBF-QP constraints; neither capsule geometry nor CBF theory is claimed as a standalone methodological novelty. 5Table 1 Positioning relative to relevant studies. 
+
+Study group Reported method and application Relation to the present study Kivelä et al. [ 18 ,19] Heavy underground/hydraulic ma-nipulator design optimization and real-time DLS/null-space/APF col-lision avoidance using point-cloud EOBBs. Closest prior work on the same ma-nipulator class; it uses a different lo-cal safety mechanism and reports a single collision-avoidance maneuver. Ragaglia et al.; Li et al.; Zhang et al.; Sun et al. [9, 21, 22, 23] Construction or drilling motion generation using Cartesian RRT, RRT/Bi-RRT, APFs, geometric col-lision checks, path smoothing, and drilling-position sequencing. Establish construction- and drilling-specific planning, including capsule collision checks; they do not use the present SB60 velocity-level capsule-pair CBF-QP. Nie et al.; Xu and Lin; Cui et al. [24, 25, 26] Capsule/OBB or cylindrical colli-sion models combined with sampling, learning, genetic optimization, APFs, and smoothing for single- or multi-arm rock-drilling manipulators. Closest planning comparators; they establish that capsule-based collision-aware motion generation for drilling arms is not itself novel. Rauscher et al.; Khazoom et al.; Morton and Pavone [14, 27, 28] CBF-QP or whole-body CBF control for constrained manipulation, includ-ing capsule-based self-collision con-straints and large sets of operational-space constraints. Establish the general CBF-QP and whole-body self-collision methodol-ogy on non-drilling platforms. Shi et al.; Kim et al. [29, 5] Capsule-HOCBF tracking with re-planning for a space robot, and neural-barrier planning/control for shared-autonomy overhead construc-tion work. Show that barrier filtering has al-ready been combined with replanning or construction tasks, but with differ-ent platforms, autonomy levels, dy-namics, and validation goals. Present study Pose-parameterized SB60 way-point/detour generation using 23 selected rod-segment-to-body-region distances, chained execution, and a measured-joint-state velocity-level CBF-QP imposing 14 configured whole-body capsule-pair constraints. Application-specific integration evaluated in two tasks using amanufacturer-developed model: afive-target restricted-orientation tour for planner–CBF interaction characterization and a three-target full six-degree-of-freedom (6-DOF) tour for continuous pose-tracking assessment. 
+
+1.4. Contributions and validation scope 
+
+Building on the SB60 kinematic foundations of Kivelä et al. [ 18 ] and the collision-avoidance objectives [19], the contributions are: 1. An SB60-specific, pose-parameterized motion layer that accepts a 6-DOF drilling-pose specification and combines adaptive z-lift, waypoint chaining, geometric detours, seventh-order time scaling, and inter-hop state propagation. The normalized timing profile, analytical peak-derivative factors, task-dependent duration rules, task-specific timing scales, joint command bounds, and upward rounding to the controller 6grid with sampling period Ts = 5 ms are reported for reproducibility. Within each task, the same settings are reused across all targets and ablation modes without target-specific retuning. 2. A measured-joint-state velocity-level CBF-QP implementation for the SB60, with CBF inequalities constructed from 14 configured capsule-pair distances in a nine-primitive whole-body capsule model. A separate reduced planning model evaluates 23 selected rod-segment-to-body-region distances for offline waypoint-risk assessment and detour scoring. The larger number of planner distances results from subdividing the rod and retaining multiple local segment-to-region checks; it does not indicate broader safety coverage or define the online CBF safe set. The platform-specific contribution is the geometric mapping and integration into the IK loop; the model-conditional scope is stated in Section 3.3. 3. Internal component ablations characterize planner–CBF interaction in Task 1, while Task 2 evaluates continuous full 6-DOF regulation under nominally collision-clear transit geometry. 4. An initial software-in-the-loop study comprising two complementary tasks in a manufacturer-developed SB60 Simscape Multibody model: a five-target restricted-orientation tour evaluated over 299 ,757 endpoint-inclusive controller samples ( 1498 .780 s ) and a three-target full 6-DOF tour evaluated over 73 ,731 samples. The evaluation covers tracking, solver failures, detour generation, joint-limit use, and the sampled 14-pair CBF margin. Here, “multi-pose” denotes chained execution of distinct target poses. The results provide application-specific feasibility evidence for the evaluated model and pose set. The remainder of the paper is organized as follows. Section 2 describes the SB60 boom and the two drilling-pose tasks. Section 3 presents the motion-generation method, including the task-dependent joint scheduling, CBF-QP formulation, detour planner, and tour-mode chaining. Section 4 reports the model-based validation and ablation results. Section 5 concludes the paper. 
+
+2. System description 
+
+This section describes the SB60 manipulator, its kinematic model and joint capabilities, and the drilling-pose specifications used in the two evaluations. 7The Sandvik SB60 is a hydraulic universal roll-over boom used in mecha-nized tunneling, drifting, cross-cutting, rock-bolt installation, and production drilling in cut-and-fill and room-and-pillar mining [ 18 ]. Mounted on a carrier, it positions a drilling rod at the rock face. Figure 1 shows the dual-boom DT923i as an example of the carrier-and-boom arrangement; the pictured machine uses a different boom model and is not the evaluated SB60 system [31].  
+
+> Fig. 1. Sandvik jumbo with dual drilling booms [31].
+
+As shown in Fig. 2, the SB60 has eight degrees of mobility (DOM): six revolute joints and two prismatic joints. Following the joint numbering of Kivelä et al. [ 18 ], the joints are as follows: q1, boom swing; q2, boom lift; q3,boom zoom (prismatic); q4, feed tilt; q5, feed swing; q6, feed roll; q7, feed tilt for bolting; and q8, feed extension (prismatic). The drilling rod is mounted at the feed end, after q8, and points along the +X axis of the end-effector body frame in the adopted convention. The availability of the feed-roll and bolting-tilt joints depends on the evaluated task. The task-dependent joint partitions are 
+
+J (1) free = {1, 2, 3, 4, 5, 8}, J (1) exact = {6, 7},
+
+J (2) free = {1, 2, 3, 4, 5, 6, 8}, J (2) exact = {7}.
+
+In Task 1, q6 and q7 follow procedure-scheduled references and are unavailable for Cartesian redundancy resolution. In Task 2, q7 follows an exact scheduled 8reference, whereas q6 remains a freely optimized coordinate with a soft posture reference, allowing the QP to regulate the complete Cartesian orientation. At the drilling targets, the scheduled values are q6 = 0 ◦ and q7 = 90 ◦ in Task 1, whereas q7 = 90 ◦ in Task 2. With the rod mounted, the manipulator tip reaches approximately 7 m 
+
+from the carrier, and the evaluated task requires millimeter-scale positioning at multiple drilling poses across the tunnel face [18, 3]. The mechanism’s kinematic flexibility also creates collision-avoidance challenges: a direct transition between two reachable drilling poses can bring the rod or boom housing close to other parts of the boom or carrier. Detour waypoints may therefore be required to avoid self-collision [19]. TUNI Luottamuksellinen - Confidential (3Y) 
+
+Fig. 2. Sandvik SB60 boom mounted on a tunneling-jumbo carrier. Labels 1–8 correspond to q1–q8 in the order defined in the text [ 18 ]. The lower image locates the boom on the carrier, and the arrow links the highlighted boom to the enlarged view. 
+
+9The boom kinematic model uses the modified Denavit–Hartenberg (DH) parameterization and fixed link values reported by Kivelä et al. [ 18 , Table 1]. Table 2 gives the symbolic joint structure used in this work. We define the generalized joint vector as 
+
+q = [ q1, q 2, q 3, q 4, q 5, q 6, q 7, q 8]⊤ = [ θ1, θ 2, d 3j , θ 4, θ 5, θ 6, θ 7, d 8]⊤.
+
+The constant angular offsets shown in Table 2 belong to the DH transformation and are not part of the actuated coordinates qi.The fixed geometric parameters are a1, a2, a4, d3p, d4, d6, and d7. The variables d3j and d8 are prismatic coordinates, while the remaining actuated coordinates are revolute.  
+
+> Table 2 Symbolic modified-DH structure of the SB60. Length parameters are expressed in meters and angular parameters in radians. Joint variables are shown in bold.
+
+Frame i ai−1 di αi−1 θi
+
+1 0 0 0 θ1
+
+2 a1 0 π/ 2 θ2 + π/ 2
+
+3 a2 d3p + d3j π/ 2 0
+
+4 0 d4 π/ 2 θ4 + π/ 2
+
+5 a4 0 π/ 2 θ5 + π/ 2
+
+6 0 d6 π/ 2 θ6
+
+7 0 d7 −π/ 2 θ7
+
+8 0 d8 π/ 2 0        
+
+> Note: The optimization retains all eight joint-velocity entries. In Task 1, q6and q7
+> are imposed as exact procedure-scheduled coordinates, leaving six freely optimized velocities. In Task 2, only q7is exact-scheduled; q6remains freely optimized with a soft posture reference, leaving seven freely optimized velocities. All eight coordinates remain in the kinematic and collision calculations.
+
+The representative joint ranges and capability limits used in this work are summarized in Table 3. Due to confidentiality constraints, these values should not be interpreted as exact specifications of the physical system. Because the chain contains both revolute and prismatic coordinates, their raw limits are not directly comparable across joint types. In Task 1, the endpoint-IK duration rule evaluates each freely optimized joint displacement against that joint’s own velocity and acceleration limits. In Task 2, segment duration is instead calculated from Cartesian position-component and shortest-arc orientation displacements using the limits reported in Table 7. The joint limits 10 Table 3 Representative joint ranges and task-dependent command bounds used in the evaluation. 
+
+Task 1 Task 2 Joint Range vmax amax vmax amax 
+
+q1 ±45 ◦ 10 ◦/s 40 ◦/s2 10 ◦/s 40 ◦/s2
+
+q2 [−25 ◦, 55 ◦] 8◦/s 35 ◦/s2 8◦/s 35 ◦/s2
+
+q3 [0 , 1.2] m 0.06 m /s 0.25 m /s2 0.06 m /s 0.25 m /s2
+
+q4 [−55 ◦, 35 ◦] 12 ◦/s 60 ◦/s2 8◦/s 35 ◦/s2
+
+q5 ±45 ◦ 12 ◦/s 60 ◦/s2 10 ◦/s 40 ◦/s2
+
+q6 ±179 ◦ scheduled scheduled 20 ◦/s 80 ◦/s2
+
+q7 [0 ◦, 90 ◦] scheduled scheduled 8◦/s 35 ◦/s2
+
+q8 [0 , 1.0] m 0.10 m /s 0.40 m /s2 0.06 m /s 0.25 m /s2
+
+in this table continue to bound the QP commands in both tasks. Here, vmax 
+
+and amax denote the maximum commanded joint velocity and acceleration, respectively. 
+
+3. Method 
+
+This section presents the target-agnostic reference generator, capsule collision models, CBF-QP IK solver, geometric detour planner, and tour-mode driver. 
+
+3.1. Reference-trajectory generation 
+
+In the implementation, the orientation waypoints lie on a single shortest-path quaternion geodesic from Qstart to Qgoal . Their interpolation parameters are determined by the normalized cumulative Cartesian arc length: 
+
+sk =
+
+> k−1
+
+X
+
+> m=1
+
+∥pm+1 − pm∥23X
+
+> m=1
+
+∥pm+1 − pm∥2
+
+, pk ∈ { pstart , pescape , pmid , pgoal } . (1) Accordingly, 
+
+Qescape = SLERP ( Qstart , Q goal ; sescape ) ,Qmid = SLERP ( Qstart , Q goal ; smid ) . (2) 11 The sign of Qgoal is reversed when necessary to ensure shortest-path interpo-lation. Consecutive orientation waypoints are then interpolated by spherical linear interpolation (SLERP) [32, 33]. Let 
+
+dh =
+
+q
+
+(xgoal − xstart )2 + ( ygoal − ystart )2.
+
+The implemented additional lift and safe transit height are 
+
+∆zlift = min {0.45 , max[0 .20 , 0.20 + 0 .03 dh]} , zsafe = max( zstart , z goal )+∆ zlift .
+
+(3) The escape and midpoint positions are 
+
+pescape = [ xstart , y start , z safe ]⊤, pmid =
+
+xstart + xgoal 
+
+2 , ystart + ygoal 
+
+2 , z safe 
+
+⊤
+
+.
+
+Thus, the additional lift is limited to 0.20 –0.45 m .For a segment of duration Tseg , normalized time is τ = tTseg ∈ [0 , 1] .Each segment between consecutive waypoints is then time-scaled by a seventh-order (septic) polynomial profile s(τ ) : [0 , 1] → [0 , 1] with s(0) = 0 ,
+
+s(1) = 1 , and zero first, second, and third derivatives at both endpoints: 
+
+s(τ ) = 35 τ 4 − 84 τ 5 + 70 τ 6 − 20 τ 7, τ ∈ [0 , 1] . (4) The exact absolute derivative maxima of the normalized profile are 
+
+κv = max   
+
+> τ∈[0 ,1]
+
+|s′(τ )| = 35 16 = 2 .1875 ,κa = max   
+
+> τ∈[0 ,1]
+
+|s′′ (τ )| = 84 √525 ≈ 7.51319 ,κj = max   
+
+> τ∈[0 ,1]
+
+|s′′′ (τ )| = 105 2 = 52 .5.
+
+(5) For Task 1, let qIK  
+
+> a
+
+and qIK  
+
+> b
+
+denote the endpoint-IK solutions of a segment, and define 
+
+∆qj = qIK  
+
+> b,j
+
+− qIK  
+
+> a,j
+
+, j ∈ J (1) free .
+
+The Task 1 unscaled duration is 
+
+¯T (1) seg = max 
+
+(
+
+max  
+
+> j∈J (1) free
+
+"
+
+κv
+
+|∆qj |
+
+v(j)max 
+
+,
+
+s
+
+κa
+
+|∆qj |
+
+a(j)max 
+
+#
+
+, 5Ts
+
+)
+
+. (6) 12 No per-joint jerk-limit term is used in this Task 1 rule. For Task 2, let ∆pℓ, ℓ ∈ { x, y, z }, denote the displacement of each Carte-sian position component, and let ∆θ denote the shortest-arc orientation displacement. The implemented Task 2 unscaled duration is 
+
+¯T (2) seg = max 
+
+(
+
+max 
+
+> ℓ∈{ x,y,z }
+
+"
+
+κv
+
+|∆pℓ|
+
+vxyz 
+
+,
+
+s
+
+κa
+
+|∆pℓ|
+
+axyz 
+
+, 3
+
+s
+
+κj
+
+|∆pℓ|
+
+jxyz 
+
+#
+
+,κv
+
+∆θωmax 
+
+,
+
+r
+
+κa
+
+∆θαmax 
+
+, 3
+
+s
+
+κj
+
+∆θjθ, max 
+
+, 5Ts
+
+)
+
+.
+
+(7) The Task 2 Cartesian timing limits are 
+
+vxyz = 0 .12 m /s, axyz = 0 .35 m /s2, jxyz = 0 .01 m /s3,ωmax = 8 ◦/s, αmax = 20 ◦/s2, jθ, max = 60 ◦/s3.
+
+For r ∈ { 1, 2}, the implemented duration is scaled and rounded upward to the controller grid according to 
+
+T (r)seg = Ts
+
+&
+
+ρ(r)pose ¯T (r)seg 
+
+Ts
+
+'
+
+, ρ(1) pose = 1 .7, ρ(2) pose = 1 .9. (8) The Task 2 jerk quantities are Cartesian reference-timing limits, not per-joint jerk capabilities. These duration calculations specify the nominal pose reference and do not certify the nonlinear IK solution, the active-set transitions of the CBF-QP, or the filtered plant trajectory. In Task 1, q6 and q7 are time-parameterized by the procedure scheduler. In Task 2, only q7 is imposed by the exact scheduler, while q6 evolves continuously within the pose-tracking QP. Since s(ℓ)(0) = s(ℓ)(1) = 0 for ℓ = 1 , 2, 3, consecutive nominal pose-reference segments joined at a common waypoint are C3, with zero nominal velocity, acceleration, and jerk at the shared waypoint. This continuity does not transfer automatically to the sampled joint commands because the nonlinear IK map and QP active set can change. Consequently, the sampled joint acceleration may change discontinuously at segment or active-set transitions. 
+
+3.2. Capsule-based self-collision model 
+
+Self-collisions on the SB60 are checked between geometric primitives that approximate the manipulator’s bounded regions. Capsules, cylinders with 13 hemispherical end caps, are a standard abstraction for whole-body manipulator collision modeling [ 9]. In this work, the capsule-pair distance is computed in closed form, while the distance gradient used in the CBF rows is evaluated by finite differences with respect to the joint variables. This provides the distance and local linearization needed for the CBF-QP constraints. We model the SB60 with two related sets of capsule primitives that serve different purposes. 
+
+1) Whole-body online CBF model: nine primitives and 14 configured pairs. 
+
+The boom is decomposed at the level of major mechanically bounded regions into 9 capsules, listed in Table 5: the carrier base plate, swing cluster, boom-lift assembly, zoom assembly, feed-tilt housing, feed-swing housing, roll/bolt region, cradle, and the long drilling rod. Each capsule axis is anchored to the relevant joint-frame origins or to the fixed carrier and rig points listed in Table 5. For example, the boom-lift capsule runs from the swing-cluster end to the boom pivot, and the zoom-assembly capsule runs from the swing-cluster end to the rod cradle, with length increasing as q3 extends. The configured final capsule radii range from 0.16 m for the long rod to 0.38 m for the carrier base plate. Of the 36 candidate pair distances among the 9 primitives, eight directly connected neighboring pairs are excluded because their capsules overlap by construction. Fourteen additional pairs are excluded because their guided or intentionally overlapping geometry does not provide a meaningful self-collision constraint in this abstraction; this category includes the nominal overlap between the swing-cluster and cradle capsules. Thus, 22 pairs are excluded in total and the remaining 14 pairs form the online CBF pair set, denoted by PCBF . These 14 pair distances are enforced by the CBF-QP and recomputed post-run for controller-set verification. The model is visualized in Fig. 3, and the 14 configured whole-body capsule pairs are listed in Table 4. 
+
+2) Offline rod-segment-to-body planning model: 23 selected distances. The detour planner uses a reduced model centered on the 6.74 m drilling rod. The rod is divided into nseg = 16 axial segments and evaluated against seven body-region envelopes. The implementation retains 23 predefined segment-to-region distances for waypoint-risk assessment and candidate scoring. These 23 local distances are not 23 whole-body capsule pairs and do not imply broader coverage than the 14-pair online model. The planning and CBF models use different primitives and indices, and no containment relation between their modeled clearance sets is assumed. The planning distances are used only to screen offline path segments and rank detour candidates, whereas the 14 configured CBF pairs include rod-to-body and non-adjacent body-to-body interactions and define CCBF . Satisfaction of either model does not imply 14 Fig. 3. SB60 geometry and the corresponding nine-primitive whole-body capsule approxi-mation at the home pose. Red dashed segments indicate the 14 configured capsule pairs. 
+
+satisfaction of the other. For configured capsule primitives m and n, let their centerline endpoints be am(q), b m(q), a n(q), b n(q) ∈ R3, with radii rm and rn. Let s, t ∈ [0 , 1] 
+
+parameterize the two centerline segments. Their signed surface clearance is 
+
+dmn (q) = min  
+
+> s,t ∈[0 ,1]
+
+am(q) + s bm(q) − am(q)
+
+− an(q) − t bn(q) − an(q)
+
+> 2
+
+− (rm + rn).
+
+(9) The distance gradient is evaluated using a forward difference: 
+
+[∇qdWB  
+
+> i
+
+(q)] j ≈ dWB  
+
+> i
+
+(q + ϵj ej ) − dWB  
+
+> i
+
+(q)
+
+ϵj
+
+,
+
+where 
+
+ϵFD = [10 −4, 10 −4, 10 −5, 10 −4, 10 −4, 10 −4, 10 −4, 10 −5]⊤.
+
+15 Table 4 Configured whole-body capsule pairs used by the online CBF-QP. 
+
+Pair index Primitive m Primitive n
+
+1 1 ( base_plate ) 5 ( feed_tilt )2 1 ( base_plate ) 6 ( feed_swing )3 1 ( base_plate ) 7 ( roll_bolt_region )4 1 ( base_plate ) 9 ( long_rig_rod )5 2 ( swing_cluster ) 5 ( feed_tilt )6 2 ( swing_cluster ) 6 ( feed_swing )7 2 ( swing_cluster ) 7 ( roll_bolt_region )8 2 ( swing_cluster ) 9 ( long_rig_rod )9 3 ( boom_lift ) 9 ( long_rig_rod )10 4 ( zoom_assembly ) 9 ( long_rig_rod )11 5 ( feed_tilt ) 8 ( cradle )12 5 ( feed_tilt ) 9 ( long_rig_rod )13 6 ( feed_swing ) 8 ( cradle )14 6 ( feed_swing ) 9 ( long_rig_rod )
+
+The increments associated with revolute coordinates are expressed in radians, whereas those for q3 and q8 are expressed in metres. For each online whole-body pair i ∈ P CBF , let dWB  
+
+> i
+
+(q) denote the signed capsule clearance defined above. The corresponding online CBF safety margin is hCBF  
+
+> i
+
+(q) = dWB  
+
+> i
+
+(q) − dsafe , i ∈ P CBF ,dsafe = 0 .22 m . (10) The value dsafe = 0 .22 m is an engineering design margin used in this model-based evaluation; it has not been validated as a physical-machine clearance. The online CBF safe set is 
+
+CCBF = q ∈ R8 : hCBF  
+
+> i
+
+(q) ≥ 0, ∀i ∈ P CBF , |P CBF | = 14 . (11) The separate planner distances, denoted by dplan  
+
+> ℓ
+
+for ℓ ∈ P plan with |P plan | = 23 ,are used only for offline waypoint-risk assessment and are not part of CCBF .
+
+3.3. CBF-constrained QP Control 
+
+At each control sample k, the controller uses the measured joint configura-tion qk ∈ R8 for forward kinematics, Jacobian evaluation, and capsule-distance 16 Table 5 Nine-primitive whole-body capsule model used for online CBF enforcement and post-run controller-set verification. The reported radii are the effective Task 2 values after configured primitive inflation.                                                   
+
+> #Primitive name Anchor (axis from →to) Effective radius (m) 1base_plate carrier mount horizontal span 0.38 2swing_cluster mount →swing pivot 0.25 3boom_lift swing →nominal boom origin 0.34 4zoom_assembly swing →zoom tip, length grows with q30.36 5feed_tilt zoom tip →feed-tilt origin 0.29 6feed_swing feed-tilt →feed-swing origin 0.25 7roll_bolt_region feed-swing →roll/bolt frame 0.28 8cradle roll/bolt →rig base 0.36 9long_rig_rod rig base (q8)→rig tip (q8), fixed length 6.7404 m 0.16
+
+calculation. The optimization variable includes all eight joint velocities. Exact equality bounds are imposed only on the joints in J (r)exact ; therefore, the free velocity variables are those indexed by J (r)free . This gives six free joint velocities in Task 1 and seven in Task 2. The forward kinematics provide the rig-tip position and orientation, 
+
+p(q) ∈ R3, Q(q) ∈ S3, (12) and the geometric Jacobian maps joint velocity to Cartesian twist, 
+
+ν =
+
+vω
+
+
+
+= J(q) ˙ q, J(q) ∈ R6×8. (13) Here, ⊗ denotes scalar-first quaternion multiplication. The error quater-nion is 
+
+Qe = Qref ⊗ Q(q)−1.
+
+Before applying the logarithm, Qe is normalized to unit length and canonical-ized to the nonnegative-scalar hemisphere: 
+
+Qe ← − Qe if [Qe]w < 0.
+
+Thus, [Qe]w ≥ 0, selecting the shortest rotation. For Qe = [ w, v], the implemented logarithm returns the full-angle rotation vector 
+
+log( Qe) = 
+
+
+
+2 atan2( ∥v∥2, w ) v
+
+∥v∥2
+
+, ∥v∥2 ≥ 10 −12 ,
+
+0, ∥v∥2 < 10 −12 .
+
+17 Accordingly, the returned vector magnitude is the shortest physical rotation angle, not the half-angle quaternion logarithm. All kinematic and distance quantities are evaluated at the measured qk,closing the controller loop through joint-configuration feedback. The position and orientation tracking errors are 
+
+ep =pref − p(q),eR = log  Qref ⊗ Q(q)−1 . (14) where ⊗ denotes quaternion multiplication and log (·) maps the unit quaternion error to its rotation-vector representation. The commanded Cartesian twist is 
+
+νcmd =
+
+ ˙pref + Kpep
+
+ωref + KReR
+
+
+
+. (15) The QP minimizes soft 6D tracking error, velocity regularization, velocity smoothing, posture tracking, and CBF slack: 
+
+min 
+
+> ˙q,δ
+
+12 ∥J(q) ˙ q − νcmd ∥2 
+
+> W6
+
++ λ
+
+2 ∥ ˙q∥22 + β
+
+2 ∥ ˙q − ˙qk−1∥22
+
++ 12 ∥ ˙q − ˙qpost ∥2 
+
+> Wpost
+
++ Ws
+
+2 ∥δ∥22,
+
+(16) 
+
+subject to 
+
+˙qmin (qk, ˙qk−1) ≤ ˙q ≤ ˙qmax (qk, ˙qk−1), (17) 
+
+For the task-dependent exact-scheduled joints, the velocity bounds are 
+
+[ ˙ qmin ]j = [ ˙ qmax ]j = ˙ q(r)
+
+> j, sch
+
+(tk), j ∈ J (r)exact . (18) In Task 1 this condition applies to q6 and q7, whereas in Task 2 it applies only to q7. The scheduled joints remain in the Jacobian and capsule-distance gradients, but their velocities cannot be altered by the QP. 
+
+−∇ qdWB  
+
+> i
+
+(qk) ˙ q − δi ≤ αh CBF  
+
+> i
+
+(qk)= α  dWB  
+
+> i
+
+(qk) − dsafe 
+
+ , i ∈ A (qk). (19) 
+
+δi ≥ 0, i ∈ A (qk). (20) 
+
+Here, A(qk) is the subset of the 14 online whole-body pairs that lie within the CBF activation distance: 18 A(qk) = i ∈ P CBF : dWB  
+
+> i
+
+(qk) ≤ don , |P CBF | = 14 . (21) 
+
+The posture term provides a soft motion bias for the joints in J (r)free . In Task 2, this includes q6, whose posture reference is soft and does not prevent its use for continuous orientation regulation. Exact-scheduled joints are instead imposed through Eq. (18) . For Task 2, the posture-reference velocity is 
+
+˙qpost = clip( ˙ qpost ,ref + kpost ⊙ (qpost ,ref − q), − ˙qpull ,max , ˙qpull ,max ) ,
+
+with 
+
+kpost = [0 .04 , 0.20 , 0.30 , 0.28 , 0.10 , 0.02 , 0.35 , 0.25] ,
+
+and 
+
+wpost = [0 .02 , 0.18 , 0.28 , 0.28 , 0.08 , 0.01 , 0.35 , 0.22] .
+
+The posture weight is 
+
+Wpost = gpost diag( wpost ), gpost = min[0 .30 , 0.04 + 0 .08 gslow + 0 .20 gCBF ] .
+
+The slow-motion thresholds are 0.003 m/s and 0.20 ◦/s. The componentwise posture-pull limits are 
+
+˙qpull ,max = [0 .8◦/s, 1.2◦/s, 0.008 m /s, 1.2◦/s, 0.8◦/s, 0.6◦/s, 1.5◦/s, 0.008 m /s] ⊤.
+
+The choice αh CBF  
+
+> i
+
+is the linear instance of a general extended class-K CBF condition ˙hCBF  
+
+> i
+
++ γ(hCBF  
+
+> i
+
+) ≥ 0, with γ(hCBF  
+
+> i
+
+) = αh CBF  
+
+> i
+
+. The implemented QP can be written in compact form as 
+
+min 
+
+> z
+
+12 z⊤Hz z + f ⊤ 
+
+> z
+
+z, (22) 
+
+where z = ˙q when slack is disabled and z = [ ˙q⊤, δ ⊤]⊤ when slack is enabled. Without slack, 
+
+H = J⊤W6J + ( λ + β)I + Wpost , (23) 
+
+f = −J⊤W6νcmd − β ˙qk−1 − Wpost ˙qpost . (24) 
+
+With slack, the CBF inequalities are augmented as 
+
+[ACBF , −I]
+
+ ˙qδ
+
+
+
+≤ bCBF . (25) 
+
+19 Thus, CBF constraints are imposed only for capsule pairs inside the activation distance don . If no capsule pair is inside don , the problem reduces to a bounded least-squares IK QP. When slack is enabled, the numerical optimization vector contains 8 + |A (qk)| entries. After accounting for the exact scheduled-joint equalities, the number of free decision variables is 
+
+|J (r)free | + |A (qk)|,
+
+namely 6 + |A (qk)| in Task 1 and 7 + |A (qk)| in Task 2. Because pose tracking is a soft objective, feasibility is determined by the velocity bounds and CBF inequalities. If the componentwise velocity bounds are nonempty, unbounded nonnegative row slacks make the augmented CBF constraints feasible, but positive slack relaxes the corresponding barrier inequality. With λ > 0, and with Ws > 0 when slack is enabled, the augmented objective is strongly convex and the QP has a unique minimizer. For the following continuous-time argument, we additionally assume that the parametric QP solution produces a locally Lipschitz closed-loop velocity on the evaluated region. Consider the velocity-level model    
+
+> ˙q=u, (26)
+
+with u = ˙q⋆ given by the QP. Assume that every hCBF  
+
+> i
+
+(q), i ∈ P CBF , is continuously differentiable in the evaluated region, the initial condition satisfies 
+
+q(0) ∈ C CBF , the QP is feasible with δi = 0 , and the joint velocity applied to the velocity-level model satisfies every relevant online CBF inequality. Then, for each active online pair i ∈ A (q),       
+
+> ˙hCBF
+> i(q, ˙q) + αh CBF
+> i(q)≥0.(27)
+
+On any interval [ta, t b] during which i ∈ A (q(t)) , the comparison lemma gives 
+
+hCBF  
+
+> i
+
+(t) ≥ hCBF  
+
+> i
+
+(ta)e−α(t−ta), t ∈ [ta, t b]. (28) Outside the activation set, dWB  
+
+> i
+
+(q) > d on > d safe , so the barrier margin is strictly positive. Assuming a continuous trajectory, a pair entering the activation set therefore does so with positive margin. Consequently, if the initial configuration lies in CCBF , the barrier gradients used in the inequalities equal the corresponding exact gradients of the modeled capsule-distance 20 functions, and the applied velocity satisfies every relevant zero-slack CBF inequality, the modeled 14-pair safe set is forward invariant for the continuous-time velocity-level model. This result does not apply to the separate 23-distance planning model. This continuous-time result does not directly extend to the sampled, command-filtered plant loop. No certified intersample bound or sampled-data CBF tightening is implemented [ 17 ]. Positive slack, saturation, acceleration projection, command filtering, finite-difference gradient error, and actuator mismatch can cause the applied velocity to violate an unrelaxed barrier inequality. The result therefore applies only when the applied velocity satisfies every relevant zero-slack constraint. The sampled Simscape histories provide empirical modeled-clearance evidence rather than an intersample or physical-machine safety certificate. The CBF-QP and the null-space APF controller evaluated on the same manipulator in [ 19 ] make different design trade-offs. In the null-space formu-lation, collision avoidance is introduced as a secondary term and therefore depends on the available redundancy; that method avoids a per-sample QP solve. In the present method, modeled clearance conditions enter the tracking QP as explicit inequalities and may modify the tracking motion. Without slack, these inequalities are hard constraints; with slack, any relaxation is explicit and penalized. Under the assumptions stated above, the zero-slack inequalities support a conditional continuous-time forward-invariance result [ 15 , 16 ]. Neither method provides an unconditional sampled-data or physical-machine guarantee in the present comparison. Because target-hardware execution time was not benchmarked, no deployment-time computational comparison is made. An APF does not by itself establish forward invariance of a clearance set. The zero-slack CBF inequalities support the conditional continuous-time result stated above, subject to the model, gradient, feasibility, and applied-command assumptions [ 15 , 16 ]. Neither formulation provides an unconditional sampled-data or physical-machine guarantee in the present evaluation. Null-space APF control avoids a per-sample QP solve, whereas the CBF-QP adds this computational cost in exchange for explicit inequality constraints and explicit slack variables. Because execution time on target hardware was not benchmarked, no deployment-time comparison is claimed here. 
+
+• In the null-space and APF formulation, the safety task is secondary: it acts only through the redundant degrees of freedom and cannot override 21 the primary tracking task. If the desired tracking would violate safety and the redundancy is insufficient to avoid it, the controller can fail into collision or numerical instability. In the CBF-QP formulation, modeled safety is encoded as a primary inequality in the tracking QP. Without slack, the CBF inequalities are hard constraints; with slack enabled, any barrier relaxation is explicit and penalized. The slack mechanism in Eqs. (16) and (25) provides explicit penalized relaxation rather than silent failure. 
+
+• The null-space and APF formulation relies on a closed-form artificial potential function that produces repulsive forces when the closest dis-tance falls below a threshold. There is no formal forward-invariance guarantee: the controller can in principle approach or cross a safety boundary if the APF gradients are dominated by the primary tracking task. The CBF-QP formulation provides a conditional continuous-time forward-invariance result under the standard assumptions of the CBF framework [ 15 , 16 ]. The implemented sampled-data system is therefore supported by the conditional continuous-time CBF argument for the 14-pair online model and by sampled post-run recomputation of the same modeled margin, rather than by an unconditional sampled-data or physical-machine guarantee. The two formulations are not strictly comparable in their design tradeoffs. Null-space and APF control is computationally lighter, since no QP solve is required, while the CBF-QP provides explicit model-conditional safety constraints at the cost of a per-sample QP solve. For an offline-planned drilling pipeline running at a 5 ms control rate, the QP cost is acceptable; for a higher-rate manipulator with very tight per-sample compute budgets, null-space and APF control may remain a better choice. 
+
+3.4. Geometric detour-waypoint planner 
+
+The four-waypoint chain in Section 3.1 can contain segments whose sam-pled planner clearance falls below dsafe + dheadroom . The geometric planner attempts to improve clearance according to its separate 23-distance screening model. Because this model differs from the 14-pair online CBF model, planner acceptance does not guarantee an improvement in hCBF min or a reduction in CBF intervention. Its 23 selected rod-segment-to-body-region distances are used only for offline screening and candidate ranking; they do not define CCBF 
+
+22 or establish forward invariance. For each segment, the planner proceeds as follows. 
+
+• Risk evaluation. Sample the straight-line segment from pa to pb at 
+
+Keval = 81 uniformly spaced points. At each sample point, evaluate the 23 selected planner-model distances and compute 
+
+dplan min (sk) = min 
+
+> ℓ∈P plan
+
+dplan  
+
+> ℓ
+
+(sk), |P plan | = 23 . (29) The distances are obtained either by solving IK at the sample point or, more rapidly, by the reduced geometric evaluation described below. If 
+
+min  
+
+> k
+
+dplan min (sk) > d safe + dheadroom , (30) the segment is accepted by the offline planner. 
+
+• Safety interpretation. This criterion is an offline screening heuristic. The model-conditional CBF statement applies only to CCBF under the assumptions in Section 3.3. 
+
+• Candidate generation. If risk is detected, the Task 1 implementation evaluates two candidate waypoints displaced from a base point along the positive and negative clearance-normal directions. The retained diagnostic stores one score for each sign. No 64-candidate random-hemisphere set is present in the archived run. 
+
+• Geometric scoring. For each candidate pcand , evaluate the resulting two-sub-segment path 
+
+pa → pcand → pb (31) at Keval samples per sub-segment. Compute dplan min ,cand as the minimum over the 23 planner-model distances across all sub-segment samples. Score the candidate by maximizing dplan min ,cand across candidates. 
+
+• Acceptance. Accept the candidate with the highest score if 
+
+dplan min ,cand > d safe + dheadroom . (32) 23 If neither evaluated candidate satisfies Eq. (32) , no planner-approved single-waypoint detour is available. The highest-scoring rejected can-didate is retained only in the diagnostic record and is not executed. Instead, the implementation inserts a deterministic raised-transit fall-back containing three waypoints at 20% , 50% , and 80% of the original segment. Their height is set to 
+
+zfb = max( za, z b) + max(∆ zcross , ∆ztransit ) ,
+
+and their orientations are obtained by shortest-path SLERP at the same progress values. The resulting waypoint chain is then audited again. The planner is marked as accepted only if every audited subsegment has finite clearance satisfying dplan min ≥ dtrigger ; otherwise, it returns the fallback path with a warning and plan.accepted = false .
+
+• Recursion. Apply the algorithm to the resulting two sub-segments. The retained Task 1 configuration used a maximum recursion depth of 1. The retained Task 1 planner configuration used Keval = 81 , two determin-istic candidate directions, and a maximum recursion depth of one. Candidate scoring used evalUseIK=false ; consequently, the 23 planner-model distances were evaluated directly from the reduced geometric model and no planner-side IK solves were performed during candidate scoring. The subsequent execution trajectory was still generated by the CBF-constrained IK method of Section 3.3. For comparison, applying the full-IK scoring alternative to the same two-candidate configuration would nominally require 
+
+NIK ,nom = 2 Ncand Keval = 2 · 2 · 81 = 324 (33) IK evaluations per initially risky segment, where the leading factor of two represents the two candidate subsegments. This count excludes fallback auditing and subsequent trajectory generation. The previously reported value of 4096 evaluations corresponded to an earlier 64 -candidate, 32 -sample configuration that was not used in the reported Task 1 run. 
+
+3.5. Tour-mode driver 
+
+The offline single-pose pipeline produces a trajectory from the rig’s current configuration to one drilling pose. To produce a continuous trajectory through 24 A. Target -agnostic waypoint / 
+
+reference generator 
+
+• Adaptive z-lift 
+
+• 4-waypoint chain 
+
+• Orientation waypoints  
+
+> Current rig-tip pose
+> Drilling target pose (𝑥, 𝑦, 𝑧 , u, v, roll)
+> Joint limits and motion limits
+
+B.  Geometric detour planner 
+
+• Risk evaluation 
+
+• Candidate detour sampling 
+
+• Clearance -based scoring 
+
+• Waypo int insertion   
+
+> Nominal
+> path
+> Capsule collision model
+> Trajectory
+> aggressiveness
+> Safety margin
+> 𝑑 safe
+> Evaluation and recursion depth
+> Collision -
+> aware spatial
+> path
+
+C.  Septic time -scaling 
+
+• Smooth segment timing 
+
+• Septic polynomial profiles   
+
+> •Time -scaled motion to target
+> Joint
+> displacement
+> Velocity/acceleration/jerk limits
+
+Tour  -mode driver  (offline stage) : outer wrapper around A, B, and C;  propagates joint state, inserts holds, and concatenates trajectories .
+
+> Continuous nominal trajectory stream
+
+D. Runtime CBF -QP inverse -kinematics safety filter 
+
+• QP objective: tracking 
+
+• Constraints: joint bounds+ CBF over 14 whole 
+
+-body pair distances + slack    
+
+> Joint bounds and
+> CBF parameters
+> Computed capsule distances
+> 𝒅 𝒊 (𝒒 𝒌 )and Jacobian 𝑱(𝒒 𝒌 )
+
+Safe joint 
+
+commands 
+
+𝒒 𝒄𝒎𝒅 (𝒕), 𝒒 ˙ 𝒄𝒎𝒅 (𝒕)  
+
+> Measured joint 𝒒 𝒌
+
+Simscape Multibody plant  (1 ms step time )
+
+Runtime (Online stage)      
+
+> 𝒑 ref ,𝑸 ref ,𝒗 ref ,ωref
+
+Fig. 4. Offline planning and closed-loop runtime CBF-QP validation pipeline. 
+
+The offline stage converts each drilling-pose specification into a continuous nominal reference stream using adaptive waypoint generation, geometric detour planning, septic time scaling, and tour-mode chaining. The detour planner evaluates 23 selected rod-segment-to-body-region distances for offline risk screening and candidate scoring. During runtime, the CBF-QP IK safety filter receives the reference stream together with the measured joint state qk. It recomputes the 14 configured whole-body distances and activates constraints for the subset within don dWB 
+
+i (qk), their gradients, and the geometric Jacobian J(qk), then solves a QP with tracking, joint-bound, CBF, and slack terms. The plant receives the resulting joint command and returns measured joint states for the next CBF-QP update. The 23-distance planner audit structures the nominal path, whereas the 14-pair whole-body CBF model defines the online constraint set. 
+
+a sequence of N drilling poses, the tour-mode driver runs the pipeline once per hop with three modifications. 
+
+Joint-state continuity. The starting joint configuration of hop n + 1 is the final joint configuration of hop n:
+
+q(n+1) 0 = q(n)
+
+f , n = 1 , . . . , N − 1. (34) This is what makes the tour an autonomous sequence rather than N inde-pendent point-to-point maneuvers. The rig does not return to a home pose between drilling poses; it transits directly from one drilling configuration to the next. 25 Table 6 Task 1 - Drilling-pose set used in the validation experiments.                                                         
+
+> ID Position [x, y, z ](m) Drill yaw u(◦)Drill pitch v(◦)Feed-roll setting q6(◦)Bolting-tilt setting q7(◦)Description T1 [3 .25 ,5.50 ,3.80] -90 0090 Validated baseline T2 [4 .50 ,3.00 ,3.20] -45 0090 Mid-front, side angle T3 [5 .50 ,4.00 ,3.50] -45 0090 Far-front, high T4 [3 .00 ,4.50 ,3.50] 00090 Center-front, straight T5 [4 .50 ,4.50 ,2.50] -30 0090 Near-front, low
+
+Fig. 5. Task 1 Boom motion from Home to T1 using the proposed framework. 
+
+Hold insertion. After each hop’s IK trajectory ends at the drilling pose, the driver appends a hold of duration Thold = 3 s , during which the commanded joint configuration remains constant at q(n) 
+
+> f
+
+. This allows the plant to settle from the plant-tracking transient at the hop end before the next hop begins. The 3 s value was chosen empirically based on the plant’s approximately 32 Hz 
+
+input-filter bandwidth, Section 2; shorter holds risk the next hop starting from a non-settled plant state, while longer holds increase tour cycle time without measurable benefit. 
+
+Trajectory concatenation. The per-hop IK trajectories, including their appended holds, are concatenated in time. At hop boundary n → n + 1 ,the joint position is continuous because q(n+1) 0 = q(n) 
+
+> f
+
+, and the nominal joint velocity is zero at the end of the hold and the start of the next transit. The sampled joint acceleration may nevertheless be discontinuous, as discussed in Section 3.1. Previous studies validated their null-space and APF safety filter on a single point-to-point maneuver, from start pose qs to goal pose qg, with one 26 Table 7 Common and task-specific controller, timing, and collision-avoidance parameters used in the experiments. 
+
+Parameter Symbol Task 1 Task 2 Controller sample time Ts 5 ms 5 ms 
+
+Plant step time Tp 1 ms 1 ms 
+
+Position feedback gain Kp 0.65 0.65 
+
+Orientation feedback gain KR 0.45 0.80 
+
+Position tracking weight Wp 1.0 1.0
+
+Orientation tracking weight WR 0.10 1.0
+
+Velocity regularization weight λ 10 −2 0.002 
+
+Velocity smoothing weight β 0.8 0.10 
+
+Maximum commanded linear speed vcmd ,max 0.12 m /s 0.12 m /s
+
+Maximum commanded angular speed ωcmd ,max 8◦/s 8◦/s
+
+CBF safety distance dsafe 0.22 m 0.22 m 
+
+CBF activation distance don 0.45 m 0.45 m 
+
+CBF class-K rate α 10 10 
+
+CBF slack penalty weight Ws 10 8 10 8
+
+Hold duration Thold 3 s 3 s 
+
+Online CBF pairs NCBF 14 14 
+
+Offline planner distances Nplan 23 23 
+
+Planner rod segment count nseg 16 16 
+
+Rod radius rrod 0.16 m 0.16 m 
+
+Rod length Lrod 6.7404 m 6.7404 m 
+
+Trajectory timing scale ρpose 1.7 1.9
+
+Cartesian timing speed vxyz – 0.12 m /s
+
+Cartesian timing acceleration axyz – 0.35 m /s2
+
+Cartesian timing jerk jxyz – 0.01 m /s3
+
+Angular timing speed ωmax – 8◦/s
+
+Angular timing acceleration αmax – 20 ◦/s2
+
+Angular timing jerk jθ, max – 60 ◦/s3
+
+self-collision avoidance event. The tour-mode driver here generalizes such single-maneuver demonstrations to multi-pose autonomous sequences, where each hop’s IK independently solves the safety-constrained tracking problem and the driver chains the hops into a continuous joint command stream. The architecture scales linearly with N : tour build time, IK runtime, and trajectory length all grow proportionally to the number of drilling poses, with no global optimization across hops. The whole proposed framework including offline planning and closed-loop online CBF-QP controller is shown in Fig. 4. 
+
+4. Model-based Results 
+
+The framework was evaluated in a manufacturer-developed SB60 engineer-ing model implemented in Simscape Multibody. The production controller, hydraulic hardware, physical sensors, and real boom are outside the evaluation 27 Fig. 6. Task 1 Boom motion from T1 to T2 and from T2 to T3 using the proposed framework. 
+
+scope. The framework was implemented in MATLAB R2024a. The CBF-QP IK solver used quadprog with the active-set algorithm; the detour planner and tour driver were MATLAB scripts wrapped around the solver. The rigid-body Simscape plant applied second-order command filtering at the Simulink-PS Converter blocks with time constant Ts = 5 ms , corresponding to fc ≈ (2 πT s)−1 = 31 .8 Hz .The Simscape tip-position signal is related to the controller frame by 
+
+pact ,sim = ptip ,sim + ∆ pcal , ∆pcal = −0.0135 0.150 −0.0005 ⊤ m. (35) The corresponding orientation-frame mapping is 
+
+Qref ,sim = Qref ,FK ⊗ Qmap ,Qcmd ,sim = QFK (qcmd ) ⊗ Qmap ,QFK ,act ,sim = QFK (qact ) ⊗ Qmap ,Qmap = 0 √0.5 0 √0.5 . (36) All quaternions use the (w, x, y, z ) convention, and Qmap is right-multiplied. The calibrated Simscape tip pose is used for the headline post-run tracking metrics; the FK quantities provide consistency diagnostics. 28 Fig. 7. Task 1 Boom motion from T3 to T4 using the proposed framework. 
+
+The plant integrates every Tp = 1 ms . Every Ts = 5 ms , the controller reads the simulated joint state, computes a CBF-filtered joint-velocity com-mand, and returns its integrated command to the plant. This closes the loop through simulated joint-state feedback; rig-tip pose is used only for post-run tracking and capsule-margin evaluation. Table 7 lists the common and task-specific controller parameters. Within each task, these values were fixed across all targets and ablation modes; no target-specific tuning was performed. 
+
+Computational cost. The detour planner was executed offline using Keval =81 , two deterministic candidate directions, maximum recursion depth one, and geometric candidate scoring ( evalUseIK=false ). A controlled wall-time comparison against full-IK candidate scoring was not retained for this final configuration; therefore, no planner-runtime speedup is reported. The CBF-QP was invoked every 5 ms in simulation. 
+
+4.1. Task 1: Multi-target drilling tour 
+
+Task 1 evaluates five drilling poses with varying Cartesian position and drill yaw (Table 6). Drill pitch is held at 0◦, while q6 = 0 ◦ and q7 = 90 ◦ define the procedure-scheduled feed configuration at the targets. Accordingly, Task 1 29 Fig. 8. Task 1 Boom motion from T4 to T5 using the proposed framework. 
+
+Table 8 Task 1 - Tracking and safety summary for the full CBF-planner tour.                              
+
+> Metric Value Evaluated duration 1498 .780 s
+> Control samples 299 ,757
+> Inserted detour waypoints 13 Planner-triggered transit segments 11 IK failures 0Samples with hCBF min <−1 mm 0Samples with hCBF min <−5 mm 0RMS position error 34 .08 mm
+> Maximum position error 86 .19 mm
+> RMS orientation error 0.0083 ◦
+> Maximum orientation error 0.0571 ◦
+> Mean hop-final position error 4.42 mm
+> Maximum hop-final position error 5.99 mm
+> Minimum sampled 14-pair CBF margin hCBF min −0.002033 mm (−2.033 μm)Samples with hCBF min <08,070 (2.692% )
+
+evaluates multi-target planning, tracking, and runtime collision filtering, but it is not intended as a full 6-DOF pose-variation test. With the carrier fixed, the target positions span approximately 2.5 m in 
+
+x, 2.5 m in y, and 1.3 m in z; several target configurations place joints near their limits. Starting from qhome , the tour visits T1 → T2 → T3 → T4 → T5 ,with q6 = 0 ◦ and q7 = 90 ◦. Table 8 summarizes the full-tour results. Safety was evaluated using the minimum clearance margin over the 14 configured CBF pairs: 
+
+hCBF min (t) = min 
+
+> i∈P CBF
+
+dWB  
+
+> i
+
+(q(t)) − dsafe 
+
+ , |P CBF | = 14 , dsafe = 0 .22 m . (37) A negative hCBF min indicates crossing of at least one modeled pair boundary. Because near-zero negative values may arise from numerical and sampled-data effects, counts below −1 mm and −5 mm are reported. Unless stated 30 Table 9 Task 1 - Comparative ablation results for the offline detour planner and runtime CBF-QP.                                          
+
+> Metric Full Planner only CBF-QP only Neither CBF yes no yes no Planner yes yes no no
+> hCBF min [mm] ≈0-332.08 ≈0-57.26
+> hCBF min <−1mm 028,524 04,660
+> hCBF min <−5mm 028,240 04,002 RMS pos. [mm] 34.08 33.31 39.12 38.69 Mean hop-final [mm] 4.42 4.42 4.46 4.46
+
+Table 10 Total comparative orientation-tracking accuracy.                
+
+> Mode RMS [deg] Max [deg] Final [deg] Full proposed method 0.0083 0.0571 0.0000 Planner only 0.0084 0.0571 0.0000 CBF-QP only 0.0098 0.0625 0.0000 Neither 0.0099 0.0625 0.0000
+
+otherwise, all subsequent margins are post-run recomputations of this metric. Position tracking was evaluated using 
+
+epos (t) = ∥pact ,sim (t) − pref (t)∥2 . (38) Trajectory-wide RMS and maximum errors describe transient tracking, whereas mean and maximum hop-final errors describe target-position accuracy. The shortest-arc quaternion orientation error is 
+
+eori (t) = 2 cos −1 min 1, Qref ,sim (t)⊤Qact ,sim (t)  . (39) The absolute inner product removes quaternion sign ambiguity. The drill-axis pointing error is reported separately because it does not measure rotation about the drill axis. Figures 5, 6, 7, and 8 show the simulated Home–T1–T2–T3–T4–T5 tour. Figure 9 compares the planned and realized trajectories by leg. Four internal component-ablation modes isolate the offline planner and runtime CBF-QP: Full, Planner only, CBF-QP only, and Neither. Planner-enabled modes have evaluated durations of approximately 1498 .780 s , while modes without the planner have durations of approximately 733 .13 s . Fig-ure 10 groups position histories by trajectory duration and compares all margin histories in the lower panel. In the evaluated tour, both CBF-QP-enabled modes had no samples below the −1 mm or −5 mm thresholds. Without runtime CBF-QP, Planner only 31 Fig. 9. Task 1 - Full-method trajectories by leg. Gray: planned path; blue: realized IK/FK path; dashed gray: original straight segment; black and green markers: leg start and target; red diamonds: inserted detours. Each panel reports its minimum 14-pair CBF margin. 
+
+and Neither reached minimum margins of −332 .08 mm and −57 .26 mm , with 
+
+28 ,240 and 4,002 samples below −5 mm , respectively. Figure 11 localizes these crossings to Home–T1; the inter-target legs retained positive margins. These results apply only to the configured 14-pair capsule model and do not establish clearance for excluded geometry. Across modes, orientation RMS error ranged from 0.0083 ◦ to 0.0099 ◦, and maximum orientation error ranged from 0.0571 ◦ to 0.0625 ◦.Removing the planner while retaining the CBF-QP increased RMS posi-tion error from 34 .08 mm to 39 .12 mm . The fraction of samples satisfying 
+
+min i dWB  
+
+> i
+
+≤ don increased from 15 .153% with the planner to 16 .871% with-out it. The lower value with the planner indicates slightly less exposure to the activation region, not lower CBF correction effort; evaluating the latter requires logging binding constraints, slack, and ∥ ˙qsafe − ˙qnom ∥.32 0 500 1000 1500 010 20 30 40 Position error [mm] Planner-enabled modes, trajectory/evaluation interval Full No runtime CBF 0 100 200 300 400 500 600 700 800 010 20 30 40 Position error [mm] No-planner modes, trajectory/evaluation interval No planner No CBF / No planner 0 50 100 150 200 250 300 Time [s], trajectory/evaluation interval -400 -200 0200 400 hmin  [mm] Whole-body minimum safety margin Full No runtime CBF No planner No CBF / No planner    
+
+> 0510 15 -60 020
+> CBF safety margin is violated
+
+Fig. 10. Task 1 - Ablation tracking and safety histories. Top: planner-enabled modes; middle: modes without the planner; bottom: hCBF min for all modes. The dashed line marks 
+
+hCBF min = 0 ; target markers denote Full-mode leg boundaries. 
+
+4.2. Task 2: Three-Target Full 6-DOF Drilling-Pose Tracking 
+
+Task 2 complements the planner- and safety-oriented Task 1 evaluation by varying all six components of the desired end-effector pose. Task 1 varied Cartesian position and drill yaw while retaining fixed pitch and procedure-scheduled feed settings; Task 2 imposes simultaneous variation in x, y, z, yaw, pitch, and roll. The machine starts from the same calibrated home position, 
+
+p0 = [6 .673 , 0.825 , 3.293] ⊤ m, and visits three drilling poses sequentially in one continuous trajectory. The target poses are listed in Table 11. Positions are expressed in the world frame, and orientations are given as yaw-pitch-roll angles using the ZYX convention. Across the target set, the Cartesian coordinates span 2.485 m , 2.420 m ,and 1.333 m in the x, y, and z directions, respectively. The corresponding orientation spans are 61 ◦ in yaw, 18 ◦ in pitch, and 22 ◦ in roll. Thus, the task explicitly excites all six components of the end-effector pose rather than varying only the drilling position or maintaining a nearly constant tool 33 Minimum safety margin by trajectory leg                      
+
+> -0.002 256.3 256.3 256.3 256.3
+> -332.1 256.3 256.3 256.3 256.3
+> -0.002 256.3 256.3 256.3 256.3
+> -57.3 256.3 256.3 256.3 256.3
+> Home->T1 T1->T2 T2->T3 T3->T4 T4->T5 trajectory leg Full
+> No real-time CBF with planner No planner with CBF No CBF and planner -300 -200 -100 0100 200 300 min h min  [mm]
+
+Fig. 11. Task 1 - Minimum sampled 14-pair CBF margin by tour leg and ablation mode. Negative values indicate modeled-boundary crossings. 
+
+Table 11 Task 2 - Cartesian positions and orientations of the target poses.                            
+
+> Target x(m) y(m) z(m) Yaw ( ◦)Pitch ( ◦)Roll ( ◦)T1 5.225 1.538 5.146 −152 −57 25
+> T2 2.740 1.502 5.184 −121 −46 47
+> T3 2.981 3.922 3.851 −91 −64 26
+
+orientation. Each target was generated from a configuration compatible with the calibrated forward-kinematic model and the configured joint-position limits. The requested poses are therefore kinematically reachable within the evaluated model. The nominal transit geometry was selected to remain clear of the planner’s detour-triggering region. Consequently, none of the three target transitions required an additional geometric detour waypoint. This intentional null planner intervention isolates continuous coupled translational and rotational tracking. The same plant geometry, calibrated home configuration, joint-position ranges, and collision models used in Task 1 were retained; Task 2 used its separately reported full-pose QP weights, timing scale, command bounds, and joint-scheduling configuration. In Full mode, the 368 .65 s , 73 ,731 -sample tour achieved position and orientation RMS errors of 1.005 mm and 0.0464 ◦, respectively. The corre-sponding maximum errors were 11 .342 mm and 0.1704 ◦. All samples satisfied 34 Fig. 12. Task 2 full-mode trajectories by leg. Gray: reference path; blue: realized IK/FK path; dashed gray: original straight segment; black and green markers: leg start and target. No geometrically risky segment was detected, and no detour waypoint was inserted. 
+
+the prescribed 20 mm position and 2◦ orientation tolerances, yielding a 100% 
+
+simultaneous-pose pass rate with zero solver failures. The terminal position/orientation errors were 2.50 mm /0.027 ◦, less than 
+
+0.001 mm /0.001 ◦, and 0.172 mm /0.027 ◦ at the three targets. The minimum sampled surface clearance among the 14 configured online capsule pairs was 
+
+0.251658 m , corresponding to a 31 .658 mm modeled margin above dsafe =0.22 m , with no sampled negative margins. Fig. 12 shows the realized IK/FK trajectory closely following the reference path and reaching all three targets without planner-inserted detours. Fig. 13 shows consistently low tracking errors: the maximum position, orientation, and drill-axis errors were 11 .34 mm , below 0.171 ◦, and approximately 0.10 ◦,respectively. Figure 14 illustrates the corresponding boom motion, and Table 12 summarizes the full-mode results. The planner-on geometric audit identified no risky transit segment and therefore accepted the nominal trajectory without inserting a detour. Con-sequently, the Full and CBF-QP-only trajectories were identical. This null planner intervention is expected for the selected geometry and does not 35 0 50 100 150 200 250 300 350 400 Time (s) 0246810 Position error [mm] Planner-enabled modes, trajectory/evaluation interval T1 T2 T3 0 50 100 150 200 250 300 350 400 Time (s) 00.05 0.1 Drill-axis err [deg]  Desired-task drill-axis pointing error - planner enabled 0 50 100 150 200 250 300 350 400 Time (s) 00.1 0.2 Desired task-orientation error [deg] Desired task-orientation error - planner enabled Fig. 13. Task 2 full-mode tracking histories. Top: Cartesian position error; middle: drill-axis pointing error; bottom: shortest-arc quaternion orientation error. Vertical dashed lines mark arrival at the three targets. 
+
+Fig. 14. Task 2 Boom motion using the proposed framework. 
+
+36 Table 12 Task 2 full-mode tracking, planning, and modeled-clearance summary.               
+
+> Metric Value Evaluated duration 368 .65 s
+> Control samples 73 ,731
+> Planner-risk segments 0Inserted detour waypoints 0Solver failures 0RMS position error 1.005 mm
+> Maximum position error 11 .342 mm
+> RMS orientation error 0.0464 ◦
+> Maximum orientation error 0.1704 ◦
+> Simultaneous-pose pass rate 100%
+> Minimum sampled 14-pair clearance 0.251658 m
+> Minimum modeled CBF margin 31 .658 mm
+> Samples with negative CBF margin 0
+
+demonstrate independent planner effectiveness. Task 1 instead evaluates the interaction between reduced-model route shaping and runtime 14-pair filtering; it does not establish the planner as an independent safety layer. During Full-mode execution, the runtime CBF-QP remained enabled and the minimum sampled clearance stayed 31 .658 mm above the configured safety threshold. CBF rows entered the activation set during part of the initial motion; however, activation does not necessarily mean that a constraint was binding. Because binding status, slack histories, and ∥ ˙qsafe − ˙qnom ∥ were not logged, the magnitude of the CBF command modification is not quantified. 
+
+5. Conclusion 
+
+This study integrated pose-parameterized motion generation with measured-state CBF-QP IK for the Sandvik SB60. A fixed task-specific parameter set within each task generated chained drilling-pose references without pose-specific retuning. The offline planner screened 23 selected rod-segment-to-body-region distances, while the runtime filter imposed 14 configured constraints from a nine-primitive whole-body capsule model. During a five-target tour evaluated in the manufacturer-developed Sim-scape Multibody model, the full method inserted 13 detour waypoints and was evaluated over 299 ,757 endpoint-inclusive controller samples ( 1498 .780 s )37 with zero IK failures. Mean and maximum hop-final position errors were 
+
+4.42 mm and 5.99 mm , and no sampled CBF margin fell below the −1 mm 
+
+or −5 mm thresholds. Without runtime CBF-QP, the planner-only mode reached a minimum margin of −332 .08 mm ; with CBF-QP retained, removing the planner increased RMS position error from 34 .08 mm to 39 .12 mm . These ablations distinguish online constraint enforcement from offline path shaping. These findings apply only to sampled evaluations of the configured capsule model and do not establish intersample, excluded-geometry, or physical-machine safety. The continuous-time forward-invariance statement remains conditional on the assumptions in Section 3.3. Future work will evaluate the production controller and hydraulic interfaces in hardware-in-the-loop tests before supervised, speed-limited experiments on a physical SB60. 
+
+CRediT authorship contribution statement Mehdi Heydari Shahna: Writing - original draft, Validation, Method-ology, Investigation, Formal analysis, Software, Data curation, Conceptualiza-tion. 
+
+Tuomo Kivelä: Writing - review & editing, Resources, Supervision, Funding acquisition. 
+
+Jouni Mattila: Writing - review & editing, Resources, Supervision, Funding acquisition. 
+
+Declaration of competing interest 
+
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper. 
+
+Acknowledgement 
+
+This work was supported by the Post Docs in Companies (PoDoCo) program in Finland, in collaboration with Tampere University and Sandvik Mining and Rock Technology. 38 References 
+
+[1] J. Karliński, E. Rusiński, T. Lewandowski, New generation automated drilling machine for tunnelling and underground mining work, Automation in Con-struction 17 (3) (2008) 224–231. doi:10.1016/j.autcon.2007.05.007. [2] G. Nikolakopoulos, A. Koval, M. Fumagalli, M. Konieczna-Fuławka, L. San-tas Moreu, V. Vigara-Puche, K. Verma, B. de Waard, R. Deutsch, Autonomous drilling and the idea of next-generation deep mineral exploration, Sensors 25 (13) (2025) 3953. doi:10.3390/s25133953. [3] Sandvik Mining and Rock Solutions, DT1132i Tunneling Drill: Technical Specification, accessed: 2026-07-20. [4] J. Külz, M. Terzer, M. Magri, A. Giusti, M. Althoff, Holistic construction automation with modular robots: From high-level task specification to execu-tion, IEEE Transactions on Automation Science and Engineering 22 (2025) 16716–16727. doi:10.1109/TASE.2025.3579720. [5] D. M. Kim, K. M. B. Lee, Y. H. Seo, N. Raicevic, R. B. Li, K. Long, C. S. Yoon, D. M. Kang, B. J. Lim, Y. P. Kim, N. Atanasov, T. Nguyen, S. W. Jun, Y. W. Kim, A shared-autonomy construction robotic system for overhead works, ICRA construction workshop (2025). arXiv:2511.09695, doi:10.48550/arXiv.2511.09695. [6] I. Kostavelis, L. Nalpantidis, R. Detry, H. Bruyninckx, A. Billard, C. Schlette, M. Bosch, K. Andronikidis, H. Lund-Nielsen, P. Yosefipor, U. Wajid, R. Tomar, F. Llano Martínez, F. Fugaroli, D. Papargyriou, N. Mehandjiev, G. Bhullar, E. Gonçalves, J. Bentzen, M. Essenbæk, C. Cremona, M. Wong, M. Sanchez, D. Giakoumis, D. Tzovaras, Robétarmé project: Human-robot collaborative construction system for shotcrete digitization and automation through ad-vanced perception, cognition, mobility and additive manufacturing skills, Open Research Europe 4 (2024) 4. doi:10.12688/openreseurope.16601.1. [7] M. Heydari Shahna, S. A. Alizadeh Kolagar, J. Mattila, Integrating DeepRL with robust low-level control in robotic manipulators for non-repetitive reaching tasks, in: 2024 IEEE International Conference on Mechatronics and Automation (ICMA), 2024, pp. 329–336. doi:10.1109/ICMA61710.2024.10632966. [8] M. Kalakrishnan, S. Chitta, E. Theodorou, P. Pastor, S. Schaal, Stomp: Stochastic trajectory optimization for motion planning, in: 2011 IEEE interna-tional conference on robotics and automation, IEEE, 2011, pp. 4569–4574. [9] M. Ragaglia, A. Argiolas, M. Niccolini, Cartesian-space motion planning for autonomous construction machines, in: 34th International Symposium on Automation and Robotics in Construction (ISARC), 2017. 
+
+39 [10] S. A. Alizadeh Kolagar, M. Heydari Shahna, J. Mattila, Combining deep rein-forcement learning with a jerk-bounded trajectory generator for kinematically constrained motion planning, in: 2025 European Control Conference (ECC), 2025, pp. 2507–2514. doi:10.23919/ECC65951.2025.11187262. [11] L. Biagiotti, C. Melchiorri, Trajectory Planning for Automatic Machines and Robots, Springer, Berlin, Heidelberg, 2008. doi:10.1007/978-3-540-85629-0. URL https://doi.org/10.1007/978-3-540-85629-0 
+
+[12] L. Berscheid, T. Kröger, Jerk-limited real-time trajectory generation with arbitrary target states, in: Proceedings of Robotics: Science and Systems XVII, 2021. doi:10.15607/RSS.2021.XVII.015. URL https://doi.org/10.15607/RSS.2021.XVII.015 
+
+[13] O. Khatib, Real-time obstacle avoidance for manipulators and mobile robots, in: Proceedings of the IEEE International Conference on Robotics and Automation, 1985, pp. 500–505. doi:10.1109/ROBOT.1985.1087247. [14] M. Rauscher, M. Kimmel, S. Hirche, Constrained robot control using control barrier functions, in: 2016 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), IEEE, 2016, pp. 279–285. [15] A. D. Ames, X. Xu, J. W. Grizzle, P. Tabuada, Control barrier function based quadratic programs for safety critical systems, IEEE Transactions on Automatic Control 62 (8) (2017) 3861–3876. doi:10.1109/TAC.2016.2638961. [16] A. D. Ames, S. Coogan, M. Egerstedt, G. Notomista, K. Sreenath, P. Tabuada, Control barrier functions: Theory and applications, in: 2019 18th European Control Conference (ECC), 2019, pp. 3420–3431. doi:10.23919/ECC.2019.8796030. [17] J. Breeden, K. Garg, D. Panagou, Control barrier functions in sampled-data systems, IEEE Control Systems Letters 6 (2022) 367–372. doi:10.1109/LCSYS.2021.3076127. URL https://doi.org/10.1109/LCSYS.2021.3076127 
+
+[18] T. Kivelä, J. Mattila, J. Puura, A generic method to optimize a redundant serial robotic manipulator’s structure, Automation in Construction 81 (2017) 172–179. doi:10.1016/j.autcon.2017.06.006. [19] T. Kivelä, J. Mattila, J. Puura, S. Launis, Redundant robotic manipulator path planning for real-time obstacle and self-collision avoidance, in: Advances in Service and Industrial Robotics, Vol. 49 of Mechanisms and Machine Science, Springer, Cham, 2018, pp. 208–215. doi:10.1007/978-3-319-61276-8-24. [20] M. Heydari Shahna, M. Bahari, J. Mattila, Robustness-guaranteed observer-based control strategy with modularity for cleantech EMLA-driven heavy-
+
+40 duty robotic manipulator, IEEE Transactions on Automation Science and Engineering 22 (2025) 10248–10273. doi:10.1109/TASE.2024.3520638. [21] Y. Li, P. Peng, H. Li, J. Xie, L. Liu, J. Xiao, Drilling path planning of rock-drilling jumbo using a vehicle-mounted 3d scanner, Sustainability 15 (12) (2023) 9737. doi:10.3390/su15129737. URL https://doi.org/10.3390/su15129737 
+
+[22] X. Zhang, M. Huang, M. Lei, H. Tian, X. Chen, C. Tian, Improved rapid-expanding-random-tree-based trajectory planning on drill ARM of anchor drilling robots, Machines 11 (9) (2023) 858. doi:10.3390/machines11090858. URL https://doi.org/10.3390/machines11090858 
+
+[23] S. Sun, S. Mao, X. Xue, C. Wang, H. Ma, Y. Guo, H. Yuan, H. Su, Research on obstacle-avoidance trajectory planning for drill and anchor materials handling by a mechanical arm on a coal mine drilling and anchoring robot, Sensors 24 (21) (2024) 6866. doi:10.3390/s24216866. URL https://doi.org/10.3390/s24216866 
+
+[24] S. Nie, B. Chen, Y. Li, D. Wang, Y. Xu, The autonomous route planning algorithm for rock drilling manipulator based on collision detection, Journal of Field Robotics 42 (7) (2025) 3918–3934. doi:10.1002/rob.22596. URL https://doi.org/10.1002/rob.22596 
+
+[25] Q. Xu, Y. Lin, Research on high-precision motion planning of large multi-arm rock drilling robot based on multi-strategy sampling rapidly exploring random tree, Sensors 25 (9) (2025) 2654. doi:10.3390/s25092654. URL https://doi.org/10.3390/s25092654 
+
+[26] Y. Cui, J. Pu, N. Hu, M. Cui, Smooth and efficient motion planning of large-scale and cooperative multi-arm tunnel drilling robot, Intelligence & Robotics 5 (2) (2025) 450–473. doi:10.20517/ir.2025.23. URL https://doi.org/10.20517/ir.2025.23 
+
+[27] C. Khazoom, D. Gonzalez-Diaz, Y. Ding, S. Kim, Humanoid self-collision avoidance using whole-body control with control barrier functions, in: 2022 IEEE-RAS 21st International Conference on Humanoid Robots (Humanoids), 2022, pp. 558–565. doi:10.1109/Humanoids53995.2022.10000235. URL https://doi.org/10.1109/Humanoids53995.2022.10000235 
+
+[28] D. Morton, M. Pavone, Safe, task-consistent manipulation with opera-tional space control barrier functions, in: 2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), 2025, pp. 187–194. doi:10.1109/IROS60139.2025.11246389. URL https://doi.org/10.1109/IROS60139.2025.11246389 
+
+[29] C. Shi, T. Meng, K. Wang, J. Lei, W. Wang, R. Mao, Safe tracking control for free-flying space robots via control barrier functions, Robotics and Autonomous 
+
+41 Systems 184 (2025) 104865. doi:10.1016/j.robot.2024.104865. URL https://doi.org/10.1016/j.robot.2024.104865 
+
+[30] M. Safeea, P. Neto, R. Béarée, Efficient calculation of minimum distance between capsules and its use in robotics, IEEE Access 7 (2019) 5368–5373. doi:10.1109/ACCESS.2018.2889311. URL https://doi.org/10.1109/ACCESS.2018.2889311 
+
+[31] Sandvik Mining and Rock Solutions, DT923i Tunneling Jumbo, accessed: 2026-07-20. [32] J. Chen, Y. K. Cho, Real-time 3d mobile mapping for the built environment, in: ISARC. Proceedings of the International Symposium on Automation and Robotics in Construction, Vol. 33, Vilnius Gediminas Technical University, Department of Construction Economics, 2016, p. 1. [33] M. Dong, G. Yao, J. Li, L. Zhang, Research on attitude interpolation and tracking control based on improved orientation vector slerp method, Robotica 38 (4) (2020) 719–731. 
+
+42

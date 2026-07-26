@@ -6,61 +6,61 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-25
-- 运行时间：2026-07-25 21:08:35 UTC
+- 最新运行日期：2026-07-26
+- 运行时间：2026-07-26 21:08:13 UTC
 - 运行状态：成功
 - 本次总论文数：13
 - 精读区：2
 - 速读区：11
 
 ### 今日简报（AI）
-今日聚焦机器人操控的稳定性与安全性，深度解析了统一触觉框架与加密模型预测控制的两项 8.0 分核心突破。
-重点关注 URF 框架在复杂触觉任务中的表现，以及加密技术如何为模型预测控制（MPC）提供实验级的安全保障。
-建议普通读者从人形机器人 3D 视觉感知与四足导航的潜空间想象入手，了解具身智能
-- 详情：[/202607/25/README](/202607/25/README)
+今日精选 13 篇前沿论文，深度解析长臂钻机运动规划与医疗导管安全交互等复杂控制难题。
+核心突破在于利用 CBF-QP 算法实现大型机械臂的自碰撞过滤，以及通过预测控制保障手术导管与组织的精准交互。
+建议关注高精度避障与多模态导航技术，探索机器人如何在极端与精细环境下实现安全作业。
+- 详情：[/202607/26/README](/202607/26/README)
 
 ### 精读区论文标签
-1. [URF: A Unified Robot Control-Policy Framework for Stable Contact Aware Manipulation](/202607/25/2607.20912v1-urf-a-unified-robot-control-policy-framework-for-stable-contact-aware-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：稳定的接触感知操作与控制策略框架
-2. [Safety and Security: Experimental Validation of Encrypted Model Predictive Control](/202607/25/2607.21136v1-safety-and-security-experimental-validation-of-encrypted-model-predictive-control)  
+1. [Pose-Parameterized Motion Planning and CBF-QP Self-Collision Filtering for a Long-Reach Drilling Boom](/202607/26/2607.18855v1-pose-parameterized-motion-planning-and-cbf-qp-self-collision-filtering-for-a-long-reach-drilling-boom)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：基于CBF-QP的长臂机械臂优化避障
+2. [Interaction Dynamics Modeling and Predictive Control for Safe Steerable Catheter--Tissue Interaction](/202607/26/2607.20939v1-interaction-dynamics-modeling-and-predictive-control-for-safe-steerable-catheter--tissue-interaction)  
    标签：评分：8.0/10、query:q2
-   evidence：基于优化的控制与模型预测控制
+   evidence：安全可控导管交互的预测控制
 
 ### 速读区论文标签
-1. [Predictive Training with Latent Imagination for Visual Quadruped Navigation](/202607/25/2607.17574v1-predictive-training-with-latent-imagination-for-visual-quadruped-navigation)  
-   标签：评分：7.0/10、query:q1
-   evidence：预测障碍物动力学以降低碰撞风险
-2. [Closing the Loop in Humanoid VLA: Persistent 3D Object Tokens for Verifiable Loco-Manipulation](/202607/25/2607.18016v1-closing-the-loop-in-humanoid-vla-persistent-3d-object-tokens-for-verifiable-loco-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：人形机器人移动操作与全身动作
-3. [Beyond Fixed Goal Delivery: Online POMDP Planning for Target Interception in Crowds](/202607/25/2607.18517v1-beyond-fixed-goal-delivery-online-pomdp-planning-for-target-interception-in-crowds)  
-   标签：评分：7.0/10、query:q1
-   evidence：拥挤环境下的在线避障规划
-4. [WorldScape Policy 2.0: Empowering Steerable World Action Modeling with Reasoning-Augmented Memory](/202607/25/2607.18840v1-worldscape-policy-20-empowering-steerable-world-action-modeling-with-reasoning-augmented-memory)  
-   标签：评分：7.0/10、query:q6
-   evidence：机器人操作的动作建模
-5. [Learning Personalized Safety Interventions for Haptic Human-Robot Shared Control](/202607/25/2607.19534v1-learning-personalized-safety-interventions-for-haptic-human-robot-shared-control)  
+1. [Token-Wise Latent Streaming from Slow Reasoners to Fast Planners for Dynamic Vision Language Navigation](/202607/26/2607.16806v1-token-wise-latent-streaming-from-slow-reasoners-to-fast-planners-for-dynamic-vision-language-navigation)  
+   标签：评分：7.0/10、query:q5
+   evidence：动态导航的实时反应式规划
+2. [Relative Entropy-Bounded Ambiguous Chance Constraints for Robust Planning in Nonlinear Systems](/202607/26/2607.16977v1-relative-entropy-bounded-ambiguous-chance-constraints-for-robust-planning-in-nonlinear-systems)  
    标签：评分：7.0/10、query:q2
-   evidence：基于控制屏障函数优化的安全干预
-6. [GuidedAttention: Interpretable and Correctable Visual Attention for OOD-Robust Robot Manipulation via Imitation Learning](/202607/25/2607.21049v1-guidedattention-interpretable-and-correctable-visual-attention-for-ood-robust-robot-manipulation-via-imitation-learning)  
-   标签：评分：7.0/10、query:q6
-   evidence：通过模仿学习实现鲁棒机器人操作的视觉注意力机制
-7. [BayesContact: Uncertain Pose Estimation via Visuo-Tactile Proposals and Simulation-based Inference](/202607/25/2607.16123v1-bayescontact-uncertain-pose-estimation-via-visuo-tactile-proposals-and-simulation-based-inference)  
+   evidence：模糊环境下非线性系统的鲁棒规划
+3. [DASH Robot: Minimalistic Design and Optimal Aerial-Terrestrial Locomotion via Contact-Implicit Control](/202607/26/2607.18527v1-dash-robot-minimalistic-design-and-optimal-aerial-terrestrial-locomotion-via-contact-implicit-control)  
+   标签：评分：7.0/10、query:q2
+   evidence：用于运动控制的接触隐式模型预测控制器
+4. [Online Optimization of Difference-of-Convex Compositions with Smooth Mappings](/202607/26/2607.19553v1-online-optimization-of-difference-of-convex-compositions-with-smooth-mappings)  
+   标签：评分：7.0/10、query:q2
+   evidence：带约束非凸问题的在线优化算法
+5. [Safe and Scalable Multi-Drone Payload Transport via CBF-based Reinforcement Learning with Zero-Shot Sim-to-Real Transfer](/202607/26/2607.20665v1-safe-and-scalable-multi-drone-payload-transport-via-cbf-based-reinforcement-learning-with-zero-shot-sim-to-real-transfer)  
+   标签：评分：7.0/10、query:q1
+   evidence：多无人机负载运输的安全与避障
+6. [Deep Reinforcement-Learning-Guided Model Predictive Control for Preventing Overtakes in Autonomous Racing](/202607/26/2607.20973v1-deep-reinforcement-learning-guided-model-predictive-control-for-preventing-overtakes-in-autonomous-racing)  
+   标签：评分：7.0/10、query:q2
+   evidence：分层强化学习引导的非线性模型预测控制
+7. [G2-Nav: Grounded and Guarded Vision-Language Costmaps for Robot Social Navigation](/202607/26/2607.16956v1-g2-nav-grounded-and-guarded-vision-language-costmaps-for-robot-social-navigation)  
+   标签：评分：6.0/10、query:q4
+   evidence：基于代价图的机器人社交导航与规划
+8. [RoboHarness: Memory-Driven Orchestration of Heterogeneous Robot Policies for Long-Horizon Planning](/202607/26/2607.18060v1-roboharness-memory-driven-orchestration-of-heterogeneous-robot-policies-for-long-horizon-planning)  
+   标签：评分：6.0/10、query:q4
+   evidence：任务与运动规划（TAMP）系统的编排
+9. [STeP: Signal Temporal Logic for Precise Specifications for Action Generation with Vision Language Models](/202607/26/2607.18580v1-step-signal-temporal-logic-for-precise-specifications-for-action-generation-with-vision-language-models)  
+   标签：评分：6.0/10、query:q4
+   evidence：使用STL约束的机器人动作生成
+10. [ModPack: An Extensible Teleoperation Interface for Bimanual Mobile Manipulation](/202607/26/2607.19479v1-modpack-an-extensible-teleoperation-interface-for-bimanual-mobile-manipulation)  
    标签：评分：6.0/10、query:q6
-   evidence：用于孔轴装配的视触觉位姿估计
-8. [PREFAIL: Identifying Precursors to Failures in Robotic Lift-and-Place Tasks to Improve Task Execution Performance](/202607/25/2607.16921v1-prefail-identifying-precursors-to-failures-in-robotic-lift-and-place-tasks-to-improve-task-execution-performance)  
-   标签：评分：6.0/10、query:q6
-   evidence：机器人搬运任务中的故障预测
-9. [Receiver-Centered Robot-to-Human Handover with Grasp-Aware Object Orientation](/202607/25/2607.17839v1-receiver-centered-robot-to-human-handover-with-grasp-aware-object-orientation)  
-   标签：评分：6.0/10、query:q6
-   evidence：使用协作机器人的机械工具自适应移交系统
-10. [Optimization of sim-to-real transfer in the humanoid robot NICO](/202607/25/2607.18210v1-optimization-of-sim-to-real-transfer-in-the-humanoid-robot-nico)  
-   标签：评分：6.0/10、query:q6
-   evidence：机器人抓取与操作
-11. [A Real-Time Generalized Nash Equilibrium Framework for Interaction-Aware Autonomous Driving in Mixed Traffic](/202607/25/2607.21043v1-a-real-time-generalized-nash-equilibrium-framework-for-interaction-aware-autonomous-driving-in-mixed-traffic)  
-   标签：评分：6.0/10、query:q2
-   evidence：基于优化的自动驾驶实时决策框架
+   evidence：双臂移动操作的遥操作接口
+11. [A real-time RGB-D perception pipeline for autonomous impact hammers in mining: self-filtering, rock segmentation and rock-breaking poses generation](/202607/26/2607.20748v1-a-real-time-rgb-d-perception-pipeline-for-autonomous-impact-hammers-in-mining-self-filtering-rock-segmentation-and-rock-breaking-poses-generation)  
+   标签：评分：6.0/10、query:q5
+   evidence：自主矿用破碎锤的实时感知与姿态生成
 
 
 <div class="dpr-home-promo-card">
