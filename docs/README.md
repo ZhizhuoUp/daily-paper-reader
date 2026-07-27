@@ -6,61 +6,64 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-26
-- 运行时间：2026-07-26 21:08:13 UTC
+- 最新运行日期：2026-07-27
+- 运行时间：2026-07-27 20:59:07 UTC
 - 运行状态：成功
-- 本次总论文数：13
-- 精读区：2
-- 速读区：11
+- 本次总论文数：14
+- 精读区：5
+- 速读区：9
 
 ### 今日简报（AI）
-今日精选 13 篇前沿论文，深度解析长臂钻机运动规划与医疗导管安全交互等复杂控制难题。
-核心突破在于利用 CBF-QP 算法实现大型机械臂的自碰撞过滤，以及通过预测控制保障手术导管与组织的精准交互。
-建议关注高精度避障与多模态导航技术，探索机器人如何在极端与精细环境下实现安全作业。
-- 详情：[/202607/26/README](/202607/26/README)
+今日聚焦多手协同与舰载操控，深度复盘 14 篇机器人领域最新进展。
+重点推荐 9.0 分力作：多手操控的任务空间搜索策略及舰载机械臂的阻抗控制优化。
+建议优先研读高分精读论文，掌握复杂动态环境下机器人精准作业的核心逻辑。
+- 详情：[/202607/27/README](/202607/27/README)
 
 ### 精读区论文标签
-1. [Pose-Parameterized Motion Planning and CBF-QP Self-Collision Filtering for a Long-Reach Drilling Boom](/202607/26/2607.18855v1-pose-parameterized-motion-planning-and-cbf-qp-self-collision-filtering-for-a-long-reach-drilling-boom)  
+1. [Embodying Multi-Hand Manipulation Policies by Searching the Assignment and Null Spaces](/202607/27/2607.22020v1-embodying-multi-hand-manipulation-policies-by-searching-the-assignment-and-null-spaces)  
    标签：评分：9.0/10、query:profile-1
-   evidence：基于CBF-QP的长臂机械臂优化避障
-2. [Interaction Dynamics Modeling and Predictive Control for Safe Steerable Catheter--Tissue Interaction](/202607/26/2607.20939v1-interaction-dynamics-modeling-and-predictive-control-for-safe-steerable-catheter--tissue-interaction)  
+   evidence：多臂构型空间运动跟踪与避障
+2. [Impedance Control of Ship-Borne Manipulators via Optimization-based Task-Space Inverse Dynamics](/202607/27/2607.22030v1-impedance-control-of-ship-borne-manipulators-via-optimization-based-task-space-inverse-dynamics)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：基于优化的船载机械臂控制，具有动态耦合补偿功能
+3. [GRACE: Gradient-Free Robot Action Generation via Combined Diffusion-MPPI Posterior Mean Estimation](/202607/27/2607.21661v1-grace-gradient-free-robot-action-generation-via-combined-diffusion-mppi-posterior-mean-estimation)  
+   标签：评分：8.0/10、query:q3
+   evidence：结合 MPPI 控制的无梯度机器人动作生成
+4. [One Hand Watches The Other: Dynamic Multi-Agent Cooperation for Sample-Efficient Bimanual Manipulation in Dynamic Environments](/202607/27/2607.22119v1-one-hand-watches-the-other-dynamic-multi-agent-cooperation-for-sample-efficient-bimanual-manipulation-in-dynamic-environments)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：动态环境下具有计算速度优势的双臂操作
+5. [Safe Learning Predictive Control for Ego-World Robotic Systems](/202607/27/2607.22225v1-safe-learning-predictive-control-for-ego-world-robotic-systems)  
    标签：评分：8.0/10、query:q2
-   evidence：安全可控导管交互的预测控制
+   evidence：机器人系统基于学习的安全预测控制
 
 ### 速读区论文标签
-1. [Token-Wise Latent Streaming from Slow Reasoners to Fast Planners for Dynamic Vision Language Navigation](/202607/26/2607.16806v1-token-wise-latent-streaming-from-slow-reasoners-to-fast-planners-for-dynamic-vision-language-navigation)  
-   标签：评分：7.0/10、query:q5
-   evidence：动态导航的实时反应式规划
-2. [Relative Entropy-Bounded Ambiguous Chance Constraints for Robust Planning in Nonlinear Systems](/202607/26/2607.16977v1-relative-entropy-bounded-ambiguous-chance-constraints-for-robust-planning-in-nonlinear-systems)  
-   标签：评分：7.0/10、query:q2
-   evidence：模糊环境下非线性系统的鲁棒规划
-3. [DASH Robot: Minimalistic Design and Optimal Aerial-Terrestrial Locomotion via Contact-Implicit Control](/202607/26/2607.18527v1-dash-robot-minimalistic-design-and-optimal-aerial-terrestrial-locomotion-via-contact-implicit-control)  
-   标签：评分：7.0/10、query:q2
-   evidence：用于运动控制的接触隐式模型预测控制器
-4. [Online Optimization of Difference-of-Convex Compositions with Smooth Mappings](/202607/26/2607.19553v1-online-optimization-of-difference-of-convex-compositions-with-smooth-mappings)  
-   标签：评分：7.0/10、query:q2
-   evidence：带约束非凸问题的在线优化算法
-5. [Safe and Scalable Multi-Drone Payload Transport via CBF-based Reinforcement Learning with Zero-Shot Sim-to-Real Transfer](/202607/26/2607.20665v1-safe-and-scalable-multi-drone-payload-transport-via-cbf-based-reinforcement-learning-with-zero-shot-sim-to-real-transfer)  
+1. [Certified Stochastic Control via Covariance Steering with Pick-to-Learn](/202607/27/2607.21086v1-certified-stochastic-control-via-covariance-steering-with-pick-to-learn)  
+   标签：评分：7.0/10、query:q7
+   evidence：航天器动力下降的认证随机控制
+2. [Learning Spatiotemporal Decision Priors for Efficient Path Planning under Partial Observability](/202607/27/2607.22166v1-learning-spatiotemporal-decision-priors-for-efficient-path-planning-under-partial-observability)  
    标签：评分：7.0/10、query:q1
-   evidence：多无人机负载运输的安全与避障
-6. [Deep Reinforcement-Learning-Guided Model Predictive Control for Preventing Overtakes in Autonomous Racing](/202607/26/2607.20973v1-deep-reinforcement-learning-guided-model-predictive-control-for-preventing-overtakes-in-autonomous-racing)  
+   evidence：利用时空决策先验进行高效路径规划
+3. [Trajectory-Regularized Stochastic Optimal Control via KL Divergence](/202607/27/2607.22201v1-trajectory-regularized-stochastic-optimal-control-via-kl-divergence)  
    标签：评分：7.0/10、query:q2
-   evidence：分层强化学习引导的非线性模型预测控制
-7. [G2-Nav: Grounded and Guarded Vision-Language Costmaps for Robot Social Navigation](/202607/26/2607.16956v1-g2-nav-grounded-and-guarded-vision-language-costmaps-for-robot-social-navigation)  
+   evidence：轨迹正则化随机最优控制
+4. [Design and Human Evaluation of Tactile Withdrawal Reflexes for a Skin-Covered Robot Arm](/202607/27/2607.22249v1-design-and-human-evaluation-of-tactile-withdrawal-reflexes-for-a-skin-covered-robot-arm)  
+   标签：评分：7.0/10、query:q6
+   evidence：机器人机械臂的触觉避障反射
+5. [Conformal Constraint Tightening for Chance-Constrained Motion Planning with Unknown Dynamics](/202607/27/2607.22409v1-conformal-constraint-tightening-for-chance-constrained-motion-planning-with-unknown-dynamics)  
+   标签：评分：7.0/10、query:q4
+   evidence：具有未知动力学和安全约束的运动规划
+6. [Plug, Play, and Comply: A Modular Framework for Online Variable Impedance with Arbitrarily Oriented Compliance Axes](/202607/27/2607.22483v1-plug-play-and-comply-a-modular-framework-for-online-variable-impedance-with-arbitrarily-oriented-compliance-axes)  
+   标签：评分：7.0/10、query:q6
+   evidence：机器人操作的柔性控制框架
+7. [ViTacWorld: Scaling Visuo-Tactile World Models for Contact-Rich Robot Manipulation](/202607/27/2607.22530v1-vitacworld-scaling-visuo-tactile-world-models-for-contact-rich-robot-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：用于机器人操作的视触觉世界模型
+8. [Offline RL with Hierarchical Action Chunking](/202607/27/2607.20834v1-offline-rl-with-hierarchical-action-chunking)  
    标签：评分：6.0/10、query:q4
-   evidence：基于代价图的机器人社交导航与规划
-8. [RoboHarness: Memory-Driven Orchestration of Heterogeneous Robot Policies for Long-Horizon Planning](/202607/26/2607.18060v1-roboharness-memory-driven-orchestration-of-heterogeneous-robot-policies-for-long-horizon-planning)  
+   evidence：目标条件强化学习的分层潜在规划
+9. [Constraint-Driven Synthesis of Hyper Petri Nets](/202607/27/2607.22062v1-constraint-driven-synthesis-of-hyper-petri-nets)  
    标签：评分：6.0/10、query:q4
-   evidence：任务与运动规划（TAMP）系统的编排
-9. [STeP: Signal Temporal Logic for Precise Specifications for Action Generation with Vision Language Models](/202607/26/2607.18580v1-step-signal-temporal-logic-for-precise-specifications-for-action-generation-with-vision-language-models)  
-   标签：评分：6.0/10、query:q4
-   evidence：使用STL约束的机器人动作生成
-10. [ModPack: An Extensible Teleoperation Interface for Bimanual Mobile Manipulation](/202607/26/2607.19479v1-modpack-an-extensible-teleoperation-interface-for-bimanual-mobile-manipulation)  
-   标签：评分：6.0/10、query:q6
-   evidence：双臂移动操作的遥操作接口
-11. [A real-time RGB-D perception pipeline for autonomous impact hammers in mining: self-filtering, rock segmentation and rock-breaking poses generation](/202607/26/2607.20748v1-a-real-time-rgb-d-perception-pipeline-for-autonomous-impact-hammers-in-mining-self-filtering-rock-segmentation-and-rock-breaking-poses-generation)  
-   标签：评分：6.0/10、query:q5
-   evidence：自主矿用破碎锤的实时感知与姿态生成
+   evidence：受约束机器人系统行为的建模与综合
 
 
 <div class="dpr-home-promo-card">

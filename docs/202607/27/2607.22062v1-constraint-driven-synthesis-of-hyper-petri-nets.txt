@@ -1,0 +1,1080 @@
+Title: Constraint-Driven Synthesis of Hyper Petri Nets
+
+URL Source: https://arxiv.org/pdf/2607.22062v1
+
+Published Time: Mon, 27 Jul 2026 00:35:46 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+# Constraint-Driven Synthesis of Hyper Petri Nets 
+
+Maksym Figat a, Alessandro Pinto b
+
+Abstract —This paper addresses the modeling and synthesis of constrained robotic system behaviors using Petri nets (PNs). It investigates how to construct models in which all observable system states satisfy given logical constraints while remaining consistent with executable transition semantics. To answer this, we introduce the Hyper Petri Net (HyPN) approach, which synthesizes Petri nets from Boolean specifications while explicitly distinguishing between observable markings and underlying Petri net execution. The proposed method introduces an explicit execution semantics over observable states, induced by admissible (atomic) firing sequences, ensuring by construction that all observable markings satisfy the constraints and revealing afundamental mismatch between logical feasibility and executable behavior. This is demonstrated in two scenarios inspired by a lunar rover system. These results are particularly relevant for the design of robotic and autonomous systems, as they provide a structured way to ensure correct system configurations while explicitly accounting for execution constraints. The proposed framework further suggests new research directions in execution abstraction, admissible transition systems, and policy selection for navigating between constraint-satisfying states. 
+
+Note to Practitioners —Robotic and automation systems are commonly developed by translating operational and safety re-quirements into supervisory logic and then verifying that the resulting controller satisfies the intended constraints. As the num-ber of interacting requirements increases, this process becomes difficult because engineers must manually encode mutual exclu-sions, resource constraints, and other operational rules, while exhaustive verification is often impractical due to state-space explosion. This paper presents a method for automatically synthe-sizing Hyper Petri Nets directly from Boolean requirements. The synthesized models guarantee by construction that all observable system states satisfy the specified constraints, while explicitly showing which transitions between these states are executable and which are not. This distinction is important in safety-critical applications, where a logically correct configuration may still be unreachable during execution. The approach was demonstrated using two supervisory-control scenarios inspired by a lunar rover mission. Because the resulting models are standard Petri nets, they can be further analyzed using established techniques such as reachability analysis, deadlock detection, and structural verification. The synthesis procedure is modular, and the size of the generated model grows linearly with the number of variables and constraints, allowing compact models to represent large sets of admissible configurations. The same representation can also be used during operation to monitor which requirements are currently satisfied and which are violated. The method reduces manual modeling effort and increases confidence in system correctness, making it relevant to robotics, industrial automation, and other safety-critical systems, including applications requiring            
+
+> aMaksym Figat (corresponding author) is with the Warsaw University of Technology (WUT), Warsaw, Poland. maksym.figat@pw.edu.pl . This work was initiated while he was a Visiting Postdoctoral Researcher at the NASA Jet Propulsion Laboratory (JPL), California Institute of Technology, Pasadena, CA, USA.
+> bThe author is with NASA Jet Propulsion Laboratory (JPL), California Institute of Technology, Pasadena, CA, USA. This work has been submitted to the IEEE for possible publication. Copyright may be transferred without notice, after which this version may no longer be accessible.
+
+transparent supervision of AI-based decision-making. The cur-rent framework focuses on Boolean invariant constraints. Future work will extend the approach to temporal and quantitative requirements, policy selection among alternative execution paths, and integration with higher-level decision-making methods. 
+
+Index Terms —Petri nets, Supervisory control, Formal synthe-sis, Constraint satisfaction, Formal methods 
+
+I. I NTRODUCTION 
+
+# IN many robotic applications, and especially in safety-critical domains such as space exploration, safety is often more important than performance. Invariant properties rep-resent an important and broad class of safety requirements. Informally, invariants are conditions expressed over the state space that must hold at all times during system execution. Examples include maintaining resource levels above critical thresholds, or ensuring that mutually incompatible actions are never executed simultaneously. Traditionally, ensuring that a robotic system satisfies such invariants places a significant burden on engineers. In practice, they must tackle two difficult tasks: (1) they must design a control policy that satisfies the invariants over the set of all reachable states, and (2) they must verify that the resulting closed-loop system indeed respects those invariants. Both steps are challenging and error-prone. To reason about such systems, it is necessary to distinguish be-tween logically admissible states and how they are connected through execution. This is captured by an explicit execution semantics defining transitions between states. Designing a policy under many interacting safety constraints is difficult because the constraints may be numerous and cou-pled. In effect, engineers are often forced to manually encode a complex decision procedure that resembles a specialized constraint solver. As the number of constraints grows, this process becomes increasingly ad hoc, brittle, and difficult to scale. Small changes in the specification such as the addition of an invariant may require substantial redesign of the policy logic. Verification is also problematic. In realistic robotic systems, the set of reachable states can be extremely large. As a result, exhaustive exploration is impractical. Instead, practitioners rely heavily on simulation and testing which is incomplete: it only explores a small subset of the possible executions, and the quality of the evidence depends strongly on the scenarios selected by subject-matter experts. The gap between stringent safety requirements and limited assurance guarantees at the implementation level motivates a synthesis approach. A synthesis tool starts from the set of invariant properties and synthesizes an executable behavioral model whose admissible runs satisfy the given invariants by construction. In this way, safety is not treated as a property to be tested after the fact, but as a structural property of the synthesized behavior. Many executable models have been used arXiv:2607.22062v1 [eess.SY] 24 Jul 2026 in robotics such as state machines, behavior trees [1], [2], and Petri Nets [3]. We are interested in Petri Nets (PNs) for several reasons including their ability to naturally capture resource limitations, and the support for analysis of several properties including deadlocks, invariants, and safety. In this paper, we propose a scalable synthesis process for generating a special class of Petri Nets from a set of invariant constraints .
+
+A. Related work 
+
+Model-driven engineering frameworks for robotics focus on integrating design-time abstractions with system implementa-tion, improving development efficiency but often relying on predefined architectural patterns [4]. Other works emphasize formal analysis and verification of robotic systems using Petri nets (PNs) and related formalisms, highlighting challenges related to state-space explosion and model complexity [5], [6]. Verification suffers from scalability issues when applied to complex systems. To address scalability, hierarchical PN models have been proposed, introducing structured represen-tations across multiple abstraction levels [7]. Extensions of these models consider compositional and behavioral seman-tics [8], [9], as well as applications to complex and distributed systems [10]. However, unrestricted composition mechanisms often complicate analysis and property preservation. The Robotic System Hierarchical Petri Net (RSHPN) meta-model [3] introduces a structured hierarchical representation of robotic systems across agent, subsystem, and behaviour levels, with parameters defined using the Robotic System Specifica-tion Language (RSSL) [11]. This approach enables modular modeling and supports automated controller generation. Sub-sequent work [12] demonstrates how structural decomposition and property inheritance can improve scalability of formal analysis. The RS(TM) 2 methodology [13] further extends this line of research by synthesizing system architectures from high-level ontological descriptions and enabling simulation-based evaluation across multiple abstraction levels. The problem of synthesizing system behaviors from high-level specifications has been studied in formal methods and control theory. In particular, the synthesis of controllers from temporal logic specifications has been extensively investigated, with applications in robotics and autonomous systems [14], [15], [16], [17]. However, these approaches typically focus on the expressiveness of the specification language and often face scalability challenges in complex systems. Temporal logic specifications can capture both safety and liveness properties, but the resulting synthesis problem can be computationally intractable for large state spaces or complex specifications. In the context of PNs, [18] proposes a method for synthesiz-ing PNs from temporal logic specifications. Starting from a PN model of a system to be controlled, and a set of linear temporal logic constraints, their method synthesizes a supervisor en-forcing the constraints. The approach has doubly exponential complexity in the size of the constraint formula, due to its translation into a deterministic finite automaton. A related line of work focuses on synthesizing PN supervisors from Generalized Mutual Exclusion Constraints (GMECs) [19], [20], [21], [22]. In these approaches, the problem is defined by a PN and linear inequalities over markings. The synthesis procedure adds places and transitions to enforce constraints. The work presented in this paper also focuses on invariant properties. However, we don’t assume a PN as a starting point for the definition of invariants. The problem we solve takes as input a set of propositional formulas, and directly generates a PN model whose observable reachable markings satisfy the given formulas. To achieve this goal in a scalable way, we introduce a new class of PNs called Hyper Petri Nets (HyPNs) that allow for the development of a compositional synthesis process. HyPNs are related to the work by Mukund on transition system models of concurrency [23], and the work of Fujita on hyperautomata [24], but differ in their focus on the distinction between observable states and execution semantics. The HyPN synthesis framework proposed in this paper rep-resents a new design point compared to the related work. First, it accepts a logical specification as input that focuses on safety properties captured by invariants. This is not as expressive as temporal logic, but it is sufficient and expressive enough for many safety-critical applications. Second, it is compositional and scalable, meaning that adding a new invariant reduces to generating a new HyPN for that invariant and composing it with the existing model. Furthermore, the size of the HyPN does not grow exponentially. 
+
+B. Contribution 
+
+This paper makes the following contributions:  
+
+> •
+
+Introduction of the HyPN model, which separates ob-servable system states from underlying PN execution and defines an explicit execution semantics over them.  
+
+> •
+
+Development of a constraint-driven synthesis procedure that constructs HyPN models from Boolean specifications in conjunctive normal form, ensuring that all observable markings satisfy the given constraints by construction.  
+
+> •
+
+Formalization of execution via admissible (atomic) firing sequences, revealing a gap between constraint satisfaction and realizable system behavior, reflected in restricted transitions with respect to reachability.  
+
+> •
+
+Validation of the proposed approach on a lunar rover-inspired case study, illustrating constraint-driven synthe-sis and execution semantics. 
+
+C. Paper outline 
+
+The remainder of the paper is organized as follows. Sec-tion II introduces the Hyper Petri Net (HyPN) model and distinguishes between observable states and PN execution. Section III presents the synthesis procedure, and Section IV analyzes its properties and scalability. Section V describes the lunar rover case study, while Section VI presents representa-tive scenarios. Section VII discusses implications for system design, and Section VIII concludes the paper. II. H YPER PETRI NET (H YPN) We consider a classical weighted Petri net (PN) [25] defined as P N = ( P, T, F, W, M 0), where P and T are finite sets of places and transitions, F ⊆ (P × T ) ∪ (T × P ) is the set of arcs, and W : F → N+ assigns weights, and M0 the initial marking. A marking is a function M : P → N. For a transition 
+
+t ∈ T , •t and t• denote its sets of input and output places, respectively. A transition t ∈ T is enabled at marking M if 
+
+∀p ∈ •t : M (p) ≥ W (p, t ), and its firing produces a new marking. The set of reachable markings from M0 is R(M0).In standard PNs, each reachable marking is a valid system state. This interpretation leads to two problems. First, modelers and analysts are forced to write properties considering all system states and the possible transitions among them, even if they are not interested in certain implementation details (such as the sequence of intermediate states reached during initialization). Second, when all states are considered as valid, enforcing constraints typically requires additional structural mechanisms, such as guard places or mutual-exclusion con-straints. As system complexity grows, these mechanisms may significantly increase model size or overly restrict system behavior, potentially leading to deadlocks. The primary concern in analysis should be to ensure that constraints hold at selected, semantically meaningful states. This perspective is related to the concept of Hyper Au-tomata [24], where transitions are defined over higher-order structures rather than individual steps. Similarly, we argue that certain sequences of elementary actions should be treated as atomic, without exposing intermediate configurations. To address this limitation, we introduce the Hyper Petri Net (HyPN) model. This motivates a formal distinction be-tween internal markings , produced during execution, and ob-servable markings , which represent stable and semantically meaningful system states. Instead of interpreting the firing of each transition as a state change, the system evolves between observable markings through finite sequences of transitions treated as atomic execution steps, and referred to as hyper-transitions , which induce state changes only at their endpoints. 
+
+A. Definition and Semantics 
+
+Definition 1 (Hyper Petri Net) . A Hyper Petri Net (HyPN) is a tuple: 
+
+HyP N = ( P, T, F, W, M 0, Mobs ), (1) 
+
+where (P, T, F, W, M 0) is a standard PN and Mobs ⊆ R (M0)
+
+denotes the set of observable markings .
+
+We define the execution semantics of a HyPN in terms of its induced abstract transition system, which captures the possible behaviors as sequences of observable markings according to the semantics of a non-deterministic automaton. In the following, the terms atomic observable transition and 
+
+macro-step are used interchangeably to denote a single abstract transition between two observable markings. As in standard PNs, a transition t ∈ T is enabled at marking M , denoted enabled (t, M ), if ∀p ∈ •t : M (p) ≥
+
+W (p, t ). The firing of t at M produces a successor marking 
+
+M ′ = f ire (t, M ). This is also represented as M t
+
+−→ M ′. We refer to transitions that are enabled according to this standard definition as locally enabled . Also, let Mi be a marking and 
+
+σ = ⟨t(1) , . . . , t (k)⟩ ∈ T ∗ a sequence of transitions. Then, σ is 
+
+realizable from Mi, denoted realizable (Mi, σ ), if there exists a marking sequence: 
+
+Mi = Mi, 0
+
+> t(1)
+
+−−→ Mi, 1
+
+> t(2)
+
+−−→ . . . t(k)
+
+−−→ Mi,k 
+
+such that for all n ∈ { 1, . . . , k }, enabled  t(n), M i,n −1
+
+. We say that the firing of a realizable sequence σ from Mi produces the sequence of markings (Mi, 0, . . . , M i,k ) = f ire (σ, M i).We use the shorthand notation last (σ, M i) = f ire (σ, M i)( k)
+
+to denote the last marking resulting from the execution of the entire sequence. 
+
+Definition 2 (Sequences of transitions) . Let Mi be a marking and σ = ⟨t(1) , . . . , t (k)⟩ ∈ T ∗ a realization sequence. Then:  
+
+> •
+
+σ is admissible from Mi, denoted admissible (Mi, σ ), if and only if realizable (Mi, σ ) holds, and last (σ, M i) ∈Mobs . 
+
+> •
+
+σ is atomic from Mi, denoted atomic (Mi, σ ), if and only if Mi ∈ M obs , last (σ, M i) ∈ M obs , and ∀ℓ ∈{1, . . . , k − 1} : f ire (σ, M i)( ℓ) /∈ M obs , i.e., only the endpoints are observable.  
+
+> •
+
+A transition t ∈ T is hyper-enabled at Mi ∈ M obs ,denoted enabled H (t, M i) if and only if ∃σ ∈ T ∗ :
+
+atomic (Mi, σ ) ∧ σ(1) = t.
+
+Given two observable markings Mi, M j ∈ Mobs , we define the atomic sequence set ΣH (Mi, M j ) = {σ ∈ T ∗ |
+
+atomic (Mi, σ ) ∧ last (σ, M i) = Mj } as the set of atomic sequences leading from Mi to Mj . The atomic sequence sets 
+
+can be computed using the algorithm in Sec. II-B. 
+
+Definition 3 (Abstract state transition system) . Let HyP N =(P, T, F, W, M 0, Mobs ) be a Hyper Petri Net, and ΣH its atomic sequence sets. Then, the abstract state transition system of HyP N is SHyP N = ( Mobs , ⇒, M 0) where M0 ∈ M obs is the initial state and ⇒⊆ M obs × M obs is defined as follows: 
+
+Mi ⇒ Mj ⇐⇒ ΣH (Mi, M j )̸ = ∅.
+
+Note that ⇒ captures only direct transitions and is not transitive in general, since atomic sequences cannot pass through intermediate observable markings. 
+
+B. Computation of ΣH
+
+Given a HyPN structure, initial marking M0, and observable markings Mobs , ΣH is computed according to Algorithm 1. The exploration uses a stack Q of tuples (M, σ, V isited ),where M is the current marking, σ the firing sequence to M ,and V isited is the set of visited markings along the current branch. Here, ϵ denotes the empty firing sequence, and σ ◦ t
+
+appends transition t to σ.The search enumerates only simple firing paths between observable markings, i.e., markings are not revisited within the same branch, preventing cyclic sequences from being included in ΣH . The exploration is performed independently for each 
+
+Mi ∈ M obs , since ΣH is defined as a relation parameterized by observable markings. Consequently, the computation can be parallelized across different initial observable markings Mi.Algorithm 1 Computation of ΣH 
+
+> 1:
+
+for each Mi ∈ M obs do  
+
+> 2:
+
+Initialize ΣH (Mi, M j ) ← ∅ for all Mj ∈ M obs  
+
+> 3:
+
+Q ← { (Mi, ϵ, {Mi})} 
+
+> 4:
+
+while Q̸ = ∅ do  
+
+> 5:
+
+Pop (M, σ, V isited ) from Q 
+
+> 6:
+
+for each t ∈ T with enabled (t, M ) do  
+
+> 7:
+
+M ′ ← f ire (M, t ) 
+
+> 8:
+
+σ′ ← σ ◦ t 
+
+> 9:
+
+if M ′ ∈ M obs and M ′̸ = Mi then  
+
+> 10:
+
+ΣH (Mi, M ′) ← ΣH (Mi, M ′) ∪ { σ′} 
+
+> 11:
+
+else if M ′ /∈ V isited then  
+
+> 12:
+
+Push (M ′, σ ′, V isited ∪ { M ′}) onto Q 
+
+> 13:
+
+end if  
+
+> 14:
+
+end for  
+
+> 15:
+
+end while  
+
+> 16:
+
+end for 
+
+C. Example 
+
+To illustrate the execution semantics of HyPN, consider the example depicted in Fig. 1. The net consists of two independent components, which allows the enabled transitions to be executed in arbitrary order. Let Mobs = {M0, M 1}
+
+denote the set of observable markings. The marking M0 =(1 , 0, 1, 0, 1, 1) represents the initial observable configuration, whereas M1 = (0 , 1, 0, 1, 1, 1) represents the target observable configuration. All remaining reachable markings are treated as internal, i.e., they are excluded from Mobs . At M0, two transitions t1 and t2 are locally enabled. Firing either transition produces an intermediate marking that remains reachable in the underlying PN but is not included in Mobs . The target observable marking M1 is obtained only after both subsystem updates are completed. The observable transition M0 ⇒ M1
+
+admits multiple atomic fire sequences, i.e., ΣH (M0, M 1) = 
+
+{⟨ t1, t 2⟩, ⟨t2, t 1⟩} . Both sequences are realizable and atomic, and therefore induce the same observable transition M0 ⇒
+
+M1. They are explicitly given by: σ(1) = ⟨t1, t 2⟩ : M0
+
+> t1
+
+−→
+
+M0,1
+
+> t2
+
+−→ M1, and σ(2) = ⟨t2, t 1⟩ : M0
+
+> t2
+
+−→ M ′
+
+> 0,1
+> t1
+
+−→ M1.
+
+The intermediate markings M0,1 and M ′ 
+
+> 0,1
+
+are reachable in the PN but excluded from Mobs by design. Hence, they are internal and do not appear in the transition system SHyP N ,with Mobs = {M0, M 1} and initial state M0. By symmetry, the same reasoning applies in the reverse direction. From 
+
+M1, the locally enabled transitions {t3, t 4} generate internal markings leading to M0 ∈ Mobs . Thus, ΣH (M1, M 0) =
+
+{⟨ t3, t 4⟩, ⟨t4, t 3⟩} , implying M0 ⇒ M1 and M1 ⇒ M0.This example shows that HyPN preserves the full behavior of the underlying PN while enforcing atomicity at the level of observable markings. Multiple admissible internal firing sequences may correspond to a single observable transition. 
+
+D. Structural implications and design rationale 
+
+This subsection explains the main structural consequences of the execution-based definition of ΣH and clarifies the role of HyPN as an extension of classical PNs. HyPN extends classical PNs without changing their semantics. If every 
+
+Fig. 1: Example HyPN illustrating atomic macro-steps be-tween observable markings. M0 ⇒ M1 admits sequences 
+
+⟨t1, t 2⟩ and ⟨t2, t 1⟩, and M1 ⇒ M0 admits ⟨t3, t 4⟩ and ⟨t4, t 3⟩.reachable marking is observable, i.e., Mobs = R(M0), and atomic sequences reduce to single transitions of the form ⟨t⟩,then the induced relation ⇒ coincides with the standard PN firing relation, and the induced transition system corresponds to the reachability graph. Thus, HyPN generalizes classical PNs rather than replacing them. Given the underlying PN (P, T, F, W, M 0) together with the chosen set of observable markings Mobs , the abstract transi-tion system SHyP N = ( Mobs , ⇒) is derived from admissible firing sequences and depends only on the operational behavior of the net. The induced transition relation ⇒ is determined by the execution semantics of the PN, and can be automatically computed via Algorithm 1. However, the choice of observable markings is a modeling decision. Observable and internal markings are not determined automatically by reachability but are defined by the designer. Atomicity is defined relative to the selected set Mobs and ensures that macro-steps represent meaningful changes at the observable level. HyPN is more than a simple grouping of firing sequences; it introduces a clear separation between observable and internal markings, a notion of hyper-enabled transitions at the observable level, and an induced abstract transition system SHyP N = ( Mobs , ⇒).Together, these elements create a two-layer semantic model that preserves the detailed behavior of the PN while providing a structured abstraction at the system level. The relational structure induced by HyPN does not reduce the dynamics to a single transition between observable mark-ings. For a given pair (Mi, M j ) ∈ M obs , there may exist mul-tiple atomic transition sequences that realize the same observ-able state change. These alternative execution paths are explic-itly represented in ΣH , thereby exposing the internal execution structure. Consequently, HyPN is not just a transition-graph abstraction but a relational structure that captures execution-level alternatives, redundancy, multiple realization paths, and potential system-level robustness. The existence of multiple admissible sequences between observable markings reflects alternative ways of realizing the same observable behavior within the same PN dynamics. HyPN makes these alternatives explicit by representing them as elements of a relational structure between observable markings, rather than merely as distinct paths in a reachability graph. In the next section, we provide a constructive procedure for deriving Mobs from a Boolean specification, transforming HyPN into a constraint-driven modeling framework in which logical requirements are enforced at the observable level while preserving the intrinsic dynamics of the PN. 
+
+E. Basic properties of HyPN 
+
+This subsection presents key properties of HyPN, including its relation to classical PNs, structural isomorphism, and behavioral equivalence. These properties provide a basis for reasoning about HyPN models and enable comparison between different HyPN instances and their observable behaviors. 
+
+Theorem 1 (Conservative extension) . Let H =(P, T, F, W, M 0, Mobs ) be a HyPN. If Mobs = R(M0)
+
+then, the induced observable transition relation ⇒ coincides with the standard PN firing relation. Proof. If Mobs = R(M0), then every reachable marking is observable and no marking is treated as internal. Hence, any atomic sequence must consist of a single transition, since any longer sequence would pass through intermediate observable markings and violate atomicity. Therefore, the induced relation 
+
+⇒ coincides with the standard PN firing relation. 
+
+Theorem 2 (Observable soundness) . Let Mi, M j ∈ M obs . If 
+
+Mi ⇒ Mj , then Mj ∈ R (Mi) in the underlying PN. Proof. If Mi ⇒ Mj , then by definition of ⇒ there exists a sequence σ ∈ T ∗ such that atomic (Mi, σ ) and execution of 
+
+σ from Mi yields Mj . By definition of atomicity, σ is admis-sible and therefore realizable. Hence, there exists a marking sequence Mi = Mi, 0
+
+> t(1)
+
+−−→ · · · t(k)
+
+−−→ Mi,k = Mj , where each transition is locally enabled. Therefore, Mj ∈ R (Mi).
+
+Definition 4 (Structural isomorphism) . Let 
+
+HyP N i = (Pi, T i, F i, W i, M 0,i , Mobs i ) and 
+
+HyP N j = ( Pj , T j , F j , W j , M 0,j , Mobs j ) be two HyPNs. They are structurally isomorphic, denoted HyP N i ∼= HyP N j , if there exist bijections ϕP : Pi → Pj and ϕT : Ti → Tj such that (x, y ) ∈ Fi ⇐⇒ (ϕ(x), ϕ (y)) ∈ Fj for all (x, y ) ∈ Fi,where: 
+
+ϕ(z) = 
+
+(
+
+ϕP (z), z ∈ Pi,ϕT (z), z ∈ Ti,
+
+and Wi(x, y ) = Wj (ϕ(x), ϕ (y)) for all (x, y ) ∈ Fi. Thus, structural isomorphism preserves the place-transition struc-ture and arc weights up to renaming of elements. 
+
+Definition 5 (Behavioral equivalence) . The behavior of a HyPN is given by the observable transition system SHyP N =(M obs , ⇒, M 0). Let Hi = ( Pi, T i, F i, W i, M 0,i , Mobs i ) and 
+
+Hj = ( Pj , T j , F j , W j , M 0,j , Mobs j ) be two HyPNs. The nets 
+
+Hi and Hj are said to be behaviorally equivalent, denoted by 
+
+Hi ≈ Hj , if the following conditions hold: 1) Structural isomorphism: The underlying PN structures are structurally isomorphic, i.e., there exist bijections 
+
+Fig. 2: HyPN synthesis from constraints C yielding H |= φ.
+
+between places and transitions that preserve arcs and arc weights. 2) Reachability of projected initial markings: Let M j 
+
+> 0,i
+
+de-note the projection of the initial marking M0,i of Hi onto 
+
+Hj under the structural isomorphism, and let M i 
+
+> 0,j
+
+denote the projection of M0,j onto Hi. Then M0,j ∈ R(M j
+
+> 0,i
+
+)
+
+and M0,i ∈ R(M i 
+
+> 0,j
+
+), where R(·) denotes the reachability set of the underlying PN. 3) Equality of observable behaviors: The observable tran-sition systems SHyP N,i and SHyP N,j coincide under the structural isomorphism. Consequently, the two nets induce identical observable mark-ing sets and equivalent observable transition relations. 
+
+III. M ODEL SYNTHESIS 
+
+This section presents a constraint-driven synthesis of a HyPN from a propositional specification φ of invariant prop-erties. Constraints are encoded into the net such that all observable markings satisfy φ, while intermediate markings follow execution semantics. The construction is clause-wise and compositional, with H denoting the final net and Hi
+
+clause-specific subnets. The overall synthesis concept is il-lustrated in Fig. 2. 
+
+A. Synthesis algorithm 
+
+Let V denote the set of propositional variables. Each variable x ∈ V induces two complementary literals: a positive literal x and a negative literal ¯x. We denote the sets of positive and negative literals by L := {x | x ∈ V } and 
+
+¯L := {¯x | x ∈ V }, respectively, and define the set of all literals as L = L ∪ ¯L. Let IV = [ V → B] be the set of all possible interpretations, meaning assignments of each variable to a truth value. For a propositional formula φ(V ) over V and an interpretation ν ∈ I V , we write ν |= φ(V ) if the formula holds when each variable is replaced by its assigned value according to ν.
+
+Problem 1 (Synthesis problem) . Given a propositional for-mula φ over the set of propositional variables V , construct a HyPN H and a mapping m : Mobs → IV such that 
+
+∀M ∈ M obs , m(M ) |= φ, also written as H |= φ.
+
+We start from a set of propositional constraints C over variables V , and we define φ = V 
+
+> Ci∈C
+
+Ci. The formula φ
+
+is then transformed into conjunctive normal form φCNF =Vmi=1 φi, where each clause has the form φi = W 
+
+> l∈Si
+
+l, and 
+
+Si ⊆ L denotes the set of literals in φi (e.g., φi = a ∨ b ∨ ¯c
+
+gives Si = {a, b, ¯c}). The synthesis constructs a clause-specific HyPN for each clause φi (Sec. III-B) and composes them into a single network using the composition operator ⊕
+
+(Sec. III-C), as summarized in Algorithm 2. Algorithm 2 constructs clause-specific HyPNs Hi for each 
+
+φi and composes them into H using ⊕, yielding H |= φ.Algorithm 2 HyPN synthesis from φCNF 
+
+Input: φCNF = Vmi=1 φi
+
+Output: HyPN H 
+
+> 1:
+
+for each clause φi do  
+
+> 2:
+
+Construct Hi such that Hi |= φi ▷ Sec. III-B  
+
+> 3:
+
+end for  
+
+> 4:
+
+H ← Lmi=1 Hi ▷ Sec. III-C  
+
+> 5:
+
+return H
+
+B. Clause-level HyPN synthesis 
+
+This subsection defines a clause-specific HyPN Hi for a clause φi = W  
+
+> lj∈Si
+
+lj , where Si ⊆ L is a set of literals in φi,and Vi := {x | x or ¯x ∈ Si} the corresponding variables. The subnet is defined as Hi = ( Pi, T i, F i, W i, M 0,i , Mobs  
+
+> i
+
+) with: 
+
+Pi = {px, p ¯x | x ∈ Vi} ∪ { psat  
+
+> i
+
+}, Ti = {tx, ¯x, t ¯x,x | x ∈ Vi}.
+
+Here, {px, p ¯x | x ∈ Vi} defines the set of literal places P lit 
+
+> i
+
+and psat  
+
+> i
+
+is a guard place for φi. The arc set Fi is defined as: 
+
+Fi = [
+
+> x∈Vi
+
+{(px, t x, ¯x), (tx, ¯x, p ¯x), (p¯x, t ¯x,x ), (t¯x,x , p x)}∪ [ 
+
+> lj∈Si
+
+{(psat  
+
+> i
+
+, t lj ,¯lj ), (t¯lj ,l j , p sat  
+
+> i
+
+)}.
+
+All arcs have unit weight. The first term connects, for each variable x ∈ Vi, complementary literal places via switching transitions, enforcing the invariant M (px)+ M (p¯x) = 1 for all 
+
+x ∈ Vi and all reachable markings. The second term connects the guard place psat  
+
+> i
+
+with transitions associated with literals in Si, enforcing the clause-level invariant P  
+
+> lj∈Si
+
+M (p¯lj ) + 
+
+M (psat  
+
+> i
+
+) = |Si|. A marking satisfies φi iff M (psat  
+
+> i
+
+) > 0.The initial marking M0,i is defined such that for each literal 
+
+lj ∈ Si, M0,i (plj ) = 1 and M0,i (p¯lj ) = 0 . Additionally, 
+
+M0,i (psat  
+
+> i
+
+) = |Si|. For example, for φi = lA ∨ ¯lB , the initial marking satisfies M0,i (plA ) = 1 and M0,i (p¯lB ) = 1 , while all complementary places are unmarked, as in Fig. 3(b). The set of observable markings is defined as: 
+
+Mobs  
+
+> i
+
+= {M ∈ R (M0,i ) | M (psat  
+
+> i
+
+) > 0}.
+
+For a marking M ∈ M obs  
+
+> i
+
+and a variable x ∈ Vi, m(M )( x)
+
+is true if there is a token in px, and false otherwise. By construction, every observable marking satisfies φi, i.e., ∀M ∈Mobs  
+
+> i
+
+, M |= φi, and thus Hi |= φi. Thus, Hi encodes the satisfaction condition of φi and serves as a building block for the final HyPN H. Examples of clause-specific subnets are shown in Fig. 3: (a) a clause composed of positive literals (e.g., lA ∨ lB ), and (b) a clause containing both positive and negative literals (e.g., lA ∨ ¯lB ). 
+
+C. HyPN composition 
+
+Given subnets {Hi} encoding φi, the goal is to construct a HyPN H with observable markings satisfying φ = V 
+
+> i
+
+φi. The composition operator ⊕ combines Hi and Hj , preserving (φi∧
+
+φj ), with H{i,j } = Hi ⊕ Hj . The final HyPN is H = L 
+
+> i
+
+Hi
+
+(see Fig. 4a). The operator ⊕ satisfies closure, commutativity, and associativity (see Sec. IV), ensuring well-definedness. 
+
+Fig. 3: Examples of clause-specific HyPN subnets: (a) clause composed of positive literals; (b) clause containing both positive and negative literals. Each subnet enforces clause satisfaction at observable markings. 
+
+(a) (b) 
+
+Fig. 4: (a) Clause-wise HyPN composition with ⊕; (b) binary composition Hi ⊕ Hj with conflicting literals, Mi(p¯lB ) = 1 ∧
+
+Mj (plB ) = 1 .
+
+Binary composition of HyPNs. Let Hi =(Pi, T i, F i, W i, M 0,i , Mobs  
+
+> i
+
+) and Hj =(Pj , T j , F j , W j , M 0,j , Mobs  
+
+> j
+
+) be two HyPNs. Their composition is H{i,j } = Hi ⊕ Hj , where: 
+
+H{i,j } = ( Pi ∪ Pj , T i ∪ Tj , F i ∪ Fj ,Wi ∪ Wj , M 0,i ⊕ M0,j , Mobs 
+
+> {i,j }
+
+)
+
+and the initial marking is M0,{i,j } := M0,i ⊕ M0,j , where 
+
+⊕ aligns tokens while preserving literal consistency. For a composed HyPN HI , let PI = P lit I ∪ P sat I , where P sat I =
+
+{psat i | i ∈ I} and P lit I ∩ P sat I = ∅. For clause-level nets, 
+
+P sat i ∩P sat j = ∅ for i̸ = j. Hence, overlaps between Pi and Pj
+
+may occur only in literal places. The construction of M0,{i,j }
+
+reduces to aligning initial markings on shared literal places, with modification of guard-place markings. This alignment is defined by the following cases. 
+
+Case 1 (No shared literal places) If P lit i ∩ P lit j = ∅, the composed marking is given by direct union: 
+
+(M0,i ⊕ M0,j )( p) = 
+
+(
+
+M0,i (p), p ∈ Pi,M0,j (p), p ∈ Pj .Case 2 (Shared literals without conflict). If P lit i ∩ P lit j̸ = ∅
+
+and ∀p ∈ P lit i ∩ P lit j : M0,i (p) = M0,j (p), the composed marking is as in Case 1. 
+
+Case 3 (Literal conflict and swap). If there exists p ∈ P lit i ∩
+
+P lit j such that M0,i (p)̸ = M0,j (p), define the conflict set 
+
+P conf ij = { p ∈ P lit i ∩ P lit j | M0,i (p)̸ = M0,j (p)}. Fig. 4b shows a representative conflict between complementary liter-als. Each pl ∈ P conf ij is resolved by selecting a swap transition: 
+
+t∗ 
+
+> l
+
+=
+
+(
+
+t¯l,l , if M0,i (pl) = 1 ,tl, ¯l, otherwise ,
+
+aligning the marking of Hj with Hi. Firing t∗ 
+
+> l
+
+updates literal and guard-place markings and is admissible if M (psat ) ≥ 1. If admissible, both pl and p¯l are removed from P conf ij ; otherwise, a symmetric swap is attempted in the other net. If neither swap is admissible, the clauses are incompatible. Swaps continue until P conf ij = ∅, reducing the problem to Case 2 with respect to literal places. The composed marking is then given by: 
+
+(M0,i ⊕ M0,j )( p) = 
+
+(
+
+Mi(p), p ∈ Pi,Mj (p), p ∈ Pj \ Pi.
+
+Observable markings of binary composition are defined as: 
+
+Mobs  
+
+> {i,j }
+
+=
+
+n
+
+M ∈ R (M0,{i,j }) ∀p ∈ P sat  
+
+> {i,j }
+
+: M (p) ≥ 1
+
+o
+
+,
+
+where P sat  
+
+> {i,j }
+
+:= P sat i ∪ P sat j . Observable markings satisfy the composed specification. 
+
+Composition of a finite set of HyPNs. It can be shown that the ⊕ operator is commutative and associative (see Section IV-A). Thus, given φCN F = Vki=1 φi, define HS =(PS , T S , F S , W S , M 0,S , Mobs  
+
+> S
+
+) := Lki=1 Hi where each Hi is synthesized from φi using the procedure described in Section III-B. Let P sat S = {psat i | i = 1 ..k }. The observable markings are defined as: 
+
+Mobs  
+
+> S
+
+= M ∈ R (M0,S ) ∀p ∈ P sat S : M (p) ≥ 1 .
+
+Observable markings satisfy φCN F , i.e., HS |= φCN F .
+
+D. Example 
+
+Consider the constraint φ = ( a ⇔ b) with CNF clauses 
+
+φ1 = ¯a ∨ b and φ2 = a ∨ ¯b, where S1 = {¯a, b },
+
+S2 = {a, ¯b}, and V1 = V2 = {a, b }. Clause-level syn-thesis results in HyPNs H1 and H2, whose composition 
+
+H{1,2} = H1 ⊕ H2 is shown in Fig. 5, with initial marking 
+
+M0,{1,2} = (1 , 0, 1, 0, 1, 1) . Two swap operations resolve conflicting literal markings. The observable markings are 
+
+Mobs  
+
+> {1,2}
+
+= {(1 , 0, 1, 0, 1, 1) , (0 , 1, 0, 1, 1, 1) }, which coincide with the satisfying valuations of φ (see Fig. 1), with all clause-satisfaction places marked, while other reachable markings are non-observable. From M0,{1,2}, any single transition leads to a non-observable marking, and observable markings are reached only after sequences of firings satisfying all clauses. 
+
+Fig. 5: Clause-level HyPNs synthesized for φ1 = ¯ a ∨ b and 
+
+φ2 = a ∨ ¯b, and their composition H1 ⊕ H2, yielding a HyPN encoding φ = a ⇔ b, i.e., H{1,2} |= ( a ⇔ b).
+
+E. Discussion on structural limitations 
+
+While the synthesis yields a compact PN structure, it intentionally does not enforce constraint satisfaction at all reachable markings, thereby avoiding the combinatorial blow-up associated with explicit modeling of literal-level dynamics. For the disjunctive constraint φ = a1 ∨ a2 ∨ · · · ∨ an, where 
+
+n = |V |, all Boolean valuations except the all-false one are ad-missible, resulting in 2n −1 states. Enforcing direct transitions between any two admissible states induces a complete directed graph, yielding (2 n − 1)(2 n − 2) transitions. This exponential growth renders modeling of literal dynamics impractical even for moderate n. In contrast, the proposed synthesis yields a linear-size PN with 2n transitions by abstracting away explicit inter-literal transitions and delegating their resolution to execution semantics. As a result, intermediate markings may temporarily violate the constraint, while correctness is preserved at observable markings. Such intermediate violations are essential for scalability. Rather than enforcing logical satisfaction at every reachable marking, correctness is ensured at the execution level: clause-level guard places combined with macro-step execution semantics permit temporary violations while guaranteeing that all observable markings satisfy φ.IV. F ORMAL PROPERTIES AND SCALABILITY ANALYSIS 
+
+We restrict the analysis to a subclass of HyPNs corre-sponding to the encoding of logical subformulas introduced in Section III. Let H denote the class of such HyPNs. Each clause-generated subnet, denoted Hi, belongs to H.This section analyzes the formal properties of the HyPN composition operator ⊕ introduced in Section III-C. We estab-lish its algebraic properties, ensuring that HyPNs synthesized from individual constraints can be composed modularly and in arbitrary order. We then examine the semantic relationship between the synthesized HyPN and the logical constraint for-mula it encodes, showing that observable markings correspond exactly to satisfying valuations. Finally, we briefly discuss scalability and structural complexity of the resulting networks. 
+
+A. Algebraic properties of the composition operator 
+
+Lemma 1 (Well-defined initial marking composition) . Let 
+
+Hi, H j ∈ H . Then the composed initial marking M0,{i,j } =
+
+M0,i ⊕ M0,j is a well-defined marking over Pi ∪ Pj .Proof. It suffices to show that (M0,i ⊕ M0,j )( p) is uniquely defined for every p ∈ Pi ∪Pj . If p ∈ Pi \Pj (resp. p ∈ Pj \Pi), the value is inherited from M0,i (p) (resp. M0,j (p)), while for 
+
+p ∈ Pi ∩Pj it is given by the literal-composition rule. Conflicts are resolved using the swap mechanism using a deterministic policy: a feasible swap in Hj is applied, otherwise in Hi, and if neither is feasible, the conflict remains unresolved. Hence, 
+
+(M0,i ⊕ M0,j )( p) is uniquely determined for all p ∈ Pi ∪ Pj ,and M0,{i,j } is a valid marking over Pi ∪ Pj .
+
+Theorem 3 (Closure) . Let Hi, H j ∈ H . Then Hi ⊕ Hj ∈ H .Proof. Let Hk = Hi ⊕ Hj . It suffices to show that the compo-sition preserves the constraint-structured form. By definition of 
+
+⊕, Hk = ( Pi ∪Pj , T i ∪Tj , . . . , M 0,i ⊕M0,j , Mobs 
+
+> {i,j }
+
+). Thus, the structural components are preserved, and by Lemma 1, the initial marking is well-defined. Since Hi, H j ∈ H , Hi |= φi
+
+and Hj |= φj . By definition, Mobs  
+
+> {i,j }
+
+= {M ∈ R(M0,{i,j }) |∀p ∈ (P sat i ∪ P sat j ) : M (p) ≥ 1}. Thus, every observable marking satisfies both clause conditions, hence φi ∧ φj .Therefore, Hk |= ( φi ∧ φj ), and Hk ∈ H .
+
+Theorem 4 (Commutativity) . Let Hi, H j ∈ H . Then Hi ⊕ Hj
+
+and Hj ⊕Hi are behaviorally equivalent ( Hi ⊕Hj ≈ Hj ⊕Hi). Proof. The composition operator ⊕ is defined component-wise. Since set union is commutative, the structural compo-nents satisfy Pi∪Pj = Pj ∪Pi, Ti∪Tj = Tj ∪Ti, Fi∪Fj =
+
+Fj ∪ Fi, Wi ∪ Wj = Wj ∪ Wi, and hence the composed nets have identical structure. The composed initial markings 
+
+M0,i ⊕ M0,j and M0,j ⊕ M0,i may differ due to conflict resolution, including in the markings of satisfaction places. However, for each literal conflict, the composed net contains complementary swap transitions tl, ˆl and tˆl,l (cf. t∗ 
+
+> l
+
+in Case 3 of HyPN composition) induced by Ti ∪ Tj . Hence, differences between the composed initial markings can be resolved by firing appropriate complementary swap transitions. By definition of observable markings, Mobs  
+
+> {i,j }
+
+= {M ∈
+
+R(M0,{i,j }) | ∀ p ∈ (P sat i ∪ P sat j ) : M (p) ≥ 1}, which is invariant under permutation of i and j. Since the two compositions have identical structure and differ due to conflict resolution handled by swap transitions, they yield identical sets of observable markings. Hence, Hi ⊕ Hj ≈ Hj ⊕ Hi.
+
+Theorem 5 (Associativity) . Let Hi, H j , H k ∈ H . Then (Hi ⊕
+
+Hj ) ⊕ Hk ≈ Hi ⊕ (Hj ⊕ Hk).Proof. The structural components are obtained by set unions: 
+
+(Pi ∪ Pj ) ∪ Pk = Pi ∪ (Pj ∪ Pk), and (Ti ∪ Tj ) ∪ Tk =
+
+Ti ∪ (Tj ∪ Tk), and analogously for arcs and weights. Hence, both (Hi ⊕ Hj ) ⊕ Hk and Hi ⊕ (Hj ⊕ Hk) yield the same net structure and satisfaction places P sat i ∪ P sat j ∪ P sat k . Let 
+
+M0,L and M0,R be the initial markings of (Hi ⊕ Hj ) ⊕ Hk
+
+and Hi ⊕ (Hj ⊕ Hk), respectively. They may differ due to different conflict-resolution orders on shared literal places, but both satisfy M (pl) + M (p¯l) = 1 for each (pl, p ¯l).The difference between M0,L and M0,R is a finite set of literal pairs with different markings. For each pair, the marking can be changed by firing a complementary swap transition tl, ¯l
+
+or t¯l,l . They preserve the invariant and modify a single pair 
+
+(pl, p ¯l). Although they affect satisfaction places, they correct the differences between literal pairs. Hence, there is a finite firing sequence from M0,L to M0,R , and by symmetry from 
+
+M0,R to M0,L , implying R(M0,L ) = R(M0,R ).
+
+Mobs = { M ∈ R (M0) | ∀ p ∈ (P sat i ∪ P sat j ∪ P sat k ) : 
+
+M (p) ≥ 1 }. Since both share the same structure and reachable markings, they induce the same set of observable markings. Hence, (Hi ⊕ Hj ) ⊕ Hk ≈ Hi ⊕ (Hj ⊕ Hk).
+
+Theorem 6 (Order independence of composition) . Let 
+
+H1, . . . , H n ∈ H . For permutation π of {1, . . . , n }, the com-posed net: Hπ(1) ⊕Hπ(2) ⊕· · ·⊕ Hπ(n) ≈ H1 ⊕H2 ⊕· · ·⊕ Hn.Proof. The result follows directly from Theorems 4 and 5, since permutation can be obtained by swapping neighbors, with associativity ensuring grouping is irrelevant. 
+
+B. Semantic properties of the synthesized HyPN 
+
+In this section we will use the following notation. For a marking M ∈ M obs , we denote m(M ) by vM . Also, we write V al (φ) = {v ∈ I V |v |= φ}.
+
+Theorem 7 (Soundness of HyPN encoding) . Let φ be the constraint formula encoded by a synthesized HyPN H. Then for every observable marking M ∈ Mobs , the induced valuation vM satisfies φ, i.e., M ∈ M obs ⇒ vM |= φ.Proof. Let φ = V 
+
+> i∈S
+
+φi be the CNF representation of the encoded formula, where each clause φi is represented by a clause-specific subnet Hi with clause-satisfaction place psat i .Consider any observable marking M ∈ M obs , and let vM
+
+be the valuation induced by M . By definition of observable markings, M (psat i ) ≥ 1 for all i ∈ S. By construction of each subnet Hi, the condition M (psat i ) ≥ 1 implies that at least one literal in the clause φi is true under vM . Therefore, vM |= φi
+
+for all i ∈ S. Since φ = V 
+
+> i∈S
+
+φi, it follows that vM |= φ.
+
+Theorem 8 (Completeness of HyPN encoding) . Let φ be the formula encoded by a synthesized HyPN H. Then every valuation satisfying φ induces an observable marking, i.e., 
+
+v |= φ ⇒ ∃ Mv ∈ M obs .Proof. Let φ = V 
+
+> i∈S
+
+φi be the CNF representation of the encoded formula, where each clause φi is represented by a subnet Hi with clause-satisfaction place psat i . Consider any valuation v such that v |= φ. Then v |= φi for all i ∈ S, so each clause φi, at least one literal is true under v. Let Mv
+
+be the marking induced by v on the literal places of H. By construction of each subnet Hi, this implies Mv (psat i ) ≥ 1.Therefore, Mv (psat i ) ≥ 1 for all i ∈ S. Hence, by definition of observable markings, Mv ∈ M obs .
+
+Theorem 9 (Bijection of the HyPN encoding) . Let φ be the constraint formula encoded by a synthesized HyPN H. Then there exists a bijection Φ : V al (φ) ↔ M obs .Proof. Let φ = V 
+
+> i∈S
+
+φi, φi = W 
+
+> l∈Si
+
+l. Define Φ : V al (φ) →Mobs by assigning to each v ∈ V al (φ) Φ( v) = Mv , where 
+
+Mv (px) = 1 ⇐⇒ v(x) = 1 , Mv (p¯x) = 1 ⇐⇒ v(x) = 0 ,and for each clause φi, Mv (psat i ) = |{ l ∈ Si | v |= l }| . Here, 
+
+v |= l means that l is true under v. Since v |= φ, every clause 
+
+φi contains at least one literal true under v, hence Mv (psat i ) ≥
+
+1 for all i ∈ S. Therefore, Mv ∈ M obs , so Φ is well-defined. Next, define Ψ : Mobs → V al (φ) by assigning to each observable marking M the valuation Ψ( M ) = vM induced by the literal places, i.e., vM (x) = 1 ⇐⇒ M (px) = 1 . By Theorem 7, vM |= φ, so Ψ is well-defined. By construction, 
+
+Ψ(Φ( v)) = v for all v ∈ V al (φ), and Φ(Ψ( M )) = M for all 
+
+M ∈ M obs . Thus, Φ and Ψ are mutually inverse, and Φ is a bijection between V al (φ) and Mobs .
+
+C. Scalability and structural complexity 
+
+The algebraic properties of the composition operator, in particular closure and associativity, enable incremental con-struction of the synthesized HyPN. New constraints can there-fore be incorporated by composing additional clause subnets without reconstructing the entire model. The structural size of the synthesized Petri net grows linearly with the size of the constraint formula: each literal introduces a constant number of places and transitions, while each clause con-tributes a clause-satisfaction place and a bounded number of arcs connecting the clause subnet to the literal places. Consequently, the numbers of places and transitions satisfy 
+
+|P |, |T | = O(|L|+|C|), where |L| and |C| denote the numbers of literals and clauses in the CNF formula. The modular structure of the synthesized net supports incremental analysis and simulation, as clause-satisfaction places are local to clause subnets, while literal places are shared across clause subnets. By Theorem 9, the number of observable markings is exactly the number of satisfying valuations of the constraint formula. Although it may be large for formulas with many solutions, checking observability is straightforward, as it only requires verifying that each clause-satisfaction place psat i contains at least one token. V. L UNAR ROVER CASE STUDY 
+
+We consider a case study inspired by the Endurance mis-sion [26]. A lunar rover operates on the far side of the Moon and must visit a sequence of points of interest (poi 1, . . . , poi k)
+
+in the South Pole–Aitken basin. Along the traverse, it must take scientific measurements every ∆m kilometers and com-municate with Earth whenever a relay satellite provides a communication window. The mission succeeds if all points of interest are visited, no measurement or communication opportunity is missed, and the rover remains operational. As in many cyber-physical autonomous systems, the control software is modular. A supervisory controller coordinates three subsystems: navigation, communication, and instrumentation. Figure 6 illustrates this architecture. The supervisor receives a mission command visit (poi 1, . . . , poi k) and issues commands to the subsystems: drive (poi i) to navigation, comm to com-munication, and measure to the instrument. In return, the subsystems provide observations oN , oC , and oI describing their states and the outcomes of issued commands. Such modular architectures are susceptible to coordination problems such as deadlocks and livelocks, motivating formal analysis of the integrated behavior. The rover is powered by a battery with state of charge soc. Since driving consumes more power than the generator can provide, the supervisor must manage energy carefully. When Supervisor 
+
+Navigation Communication Instrument 
+
+Fig. 6: A high-level view of the architecture of a hypothetical lunar rover. soc falls below a minimum threshold MIN, the supervisor issues a recharge command, placing the rover in hibernation so that generated power can restore the battery. Recharging stops once soc reaches an upper threshold MAX. Although soc is continuous, we use an abstraction based on three regions: below MIN, between MIN and MAX, and above MAX. Communication opportunities occur periodically. Because telemetry is essential for monitoring rover health and mission progress, communication is treated as a high-priority activity and should always be attempted during an available window. We use an abstract model in which each command is associated with a binary state variable indicating whether the corresponding activity is in progress. Specifically, d, c,
+
+m, and r denote driving, communication, measurement, and recharging, respectively. VI. S CENARIOS 
+
+To illustrate the applicability of the proposed correct-by-construction synthesis algorithm (Sec. III), two representative scenarios are derived from the lunar rover case study presented in Sec. V. The synthesized Petri net models capture the supervisory logic governing the activation, deactivation, and concurrency of rover activities, rather than their physical dynamics. For each scenario, a set of propositional constraints 
+
+C is defined, and a HyPN H is synthesized such that all observable markings M ∈ M obs satisfy the global constraint formula φ = V C, that is, M |= φ. The resulting models are analyzed through their observable behavior. 
+
+A. Scenario A 
+
+Let the supervisor control four rover activities under super-visory control: 1) drive ( d); 2) communicate ( c), 3) measure (m), and 4) recharge (r). These activities are subject to constraints ensuring safe operation. Scenario A focuses on the fundamental mutual-exclusion constraints between activities. The constraints and synthesis steps are given below. 
+
+1) HyPN synthesis Constraints. Consider the set C = {C1, C 2, C 3, C 4}:
+
+C1: d ⇒ (¯ c ∧ ¯m ∧ ¯r): excluding all other activities, 
+
+C2: m ⇒ ( ¯d ∧ ¯r): excluding driving and recharging, 
+
+C3: r ⇒ ( ¯d ∧ ¯m ∧ ¯c): excluding all other activities, 
+
+C4: c ⇒ ( ¯d ∧ ¯r): excluding driving and recharging. Fig. 7: Clause-specific HyPN subnets H1, . . . , H 5 correspond-ing to the five mutual-exclusion clauses in Scenario A. 
+
+Literal sets. The corresponding Boolean variables are V =
+
+{c, d, m, r }, with positive literals L = V and negative literals 
+
+¯L = {¯c, ¯d, ¯m, ¯r}. The set of all literals is L = L ∪ ¯L.
+
+Formula construction. The global constraint formula is defined as φ = C1 ∧ C2 ∧ C3 ∧ C4. Its CNF is given by: 
+
+φCN F = ( ¯d ∨ ¯c) ∧ ( ¯d ∨ ¯m) ∧ ( ¯d ∨ ¯r) ∧ ( ¯ m ∨ ¯r) ∧ (¯ r ∨ ¯c).
+
+Clause-wise synthesis. The CNF is φCN F = φ1 ∧ φ2 ∧ φ3 ∧
+
+φ4 ∧ φ5, where φ1 = ( ¯d ∨ ¯c), φ2 = ( ¯d ∨ ¯m), φ3 = ( ¯d ∨ ¯r),
+
+φ4 = ( ¯ m ∨ ¯r), and φ5 = (¯ r ∨ ¯c). Each clause φi yields a HyPN subnet Hi from the literal set Si ⊆ L . The resulting subnets are shown in Fig. 7 and are constructed analogously. 
+
+Composition. The final HyPN is Hf inal A = H{1,..., 5} =
+
+H1 ⊕ H2 ⊕ H3 ⊕ H4 ⊕ H5. Since no literal conflicts occur, composition is straightforward. Fig. 8 shows the successive compositions H1 ⊕ H2, H{1,2} ⊕ H3, H{1,2,3} ⊕ H4, and 
+
+H{1,2,3,4} ⊕ H5, leading to H{1,..., 5}. This process does not induce exponential structural growth. In particular, all literal places already appear in the intermediate net H{1,2,3},and composing with H4 and H5 only adds two additional satisfaction places ( psat  
+
+> 4
+
+and psat  
+
+> 5
+
+) and the associated arcs. This highlights the structural scalability of the approach. 
+
+2) Observable behavior analysis Satisfying valuations and observable markings. For V =
+
+{c, d, m, r }, only six of the 2|V | = 16 Boolean valuations satisfy φ, in one-to-one correspondence with the observable markings of the synthesized HyPN (as shown in Table I). 
+
+Transition sequences. Table II summarizes representative fir-ing sequences σi,j ∈ ΣH (Mi, M j ) between observable mark-ings. Each entry ⟨t1, . . . , t k⟩ denotes a firing sequence from 
+
+Mi to Mj , and the first column lists the active activities in each observable marking. The transitions directly correspond to activity activation and deactivation. For example, σ0,1 = ⟨t¯c,c ⟩
+
+Fig. 8: Stepwise composition of clause-specific HyPN subnets 
+
+H1, . . . , H 5 in Scenario A, resulting in Hf inal A = H{1,..., 5}.TABLE I: Satisfying valuations vi ∈ V al (φ) and cor-responding observable markings. The place ordering is 
+
+(p¯c, p c, p ¯r , p r , p ¯d, p d, p ¯m, p m, p sat  
+
+> 1
+
+, . . . , p sat  
+
+> 5
+
+).                                                                                                              
+
+> Variables Observable marking Val. crdmMi= ( literal places ;sat. places )
+> v10000M0= (1 ,0,1,0,1,0,1,0; 2 ,2,2,2,2)
+> v20100M5= (1 ,0,0,1,1,0,1,0; 2 ,2,1,1,1)
+> v30001M3= (1 ,0,1,0,1,0,0,1; 2 ,1,2,1,2)
+> v40010M4= (1 ,0,1,0,0,1,1,0; 1 ,1,1,2,2)
+> v51000M1= (0 ,1,1,0,1,0,1,0; 1 ,2,2,2,1)
+> v61001M2= (0 ,1,1,0,1,0,0,1; 1 ,1,2,1,1)
+
+activates communication, whereas σ2,4 = ⟨t ¯d,d , t c, ¯c, t m, ¯m⟩
+
+activates d and deactivates c and m.Not all transitions between observable markings are atomic. For example, the transition from M1 to M3 may proceed as ⟨t ¯m,m , t c, ¯c⟩, yielding M1 
+
+> t¯m,m
+
+−−−→ M2
+
+> tc, ¯c
+
+−−→ M3, or as 
+
+⟨tc, ¯c, t ¯m,m ⟩, yielding M1
+
+> tc, ¯c
+
+−−→ M0 
+
+> t¯m,m
+
+−−−→ M3. In both cases, the sequence passes through another observable marking, so it is non-atomic. This distinction becomes important below, when analyzing which transitions between observable states are direct and which require intermediate observable markings. When multiple admissible sequences exist, their selection may depend on the adopted policy, for example favoring shorter executions or those that preserve intermediate observable markings as safe stopping points. 
+
+Observable states. The observable states over (c, r, d, m )
+
+are S0 = (0 , 0, 0, 0) , S1 = (1 , 0, 0, 0) , S2 = (1 , 0, 0, 1) , S3 =(0 , 0, 0, 1) , S4 = (0 , 0, 1, 0) , and S5 = (0 , 1, 0, 0) .
+
+State-transition systems. Fig. 9 shows three transition rela-tions over the observable states. Under reachability, a transition TABLE II: Scenario A: Firing sequences σi,j ∈ ΣH (Mi, M j ) for observable markings. The first column lists the active activities in each marking, the second the satisfying valuation of φ, and the third the observable state, where Si corresponds to Mi.                                                                                                   
+
+> Active Val. State Marking M0M1M2M3M4M5
+> ∅v1S0M0–⟨t¯c,c ⟩⟨t¯c,c , t ¯m,m ⟩⟨t¯m,m ⟩⟨t¯d,d ⟩⟨t¯r,r ⟩{c}v5S1M1⟨tc, ¯c⟩–⟨t¯m,m ⟩⟨t¯m,m , t c, ¯c⟩⟨t¯d,d , t c, ¯c⟩⟨t¯r,r , t c, ¯c⟩{c, m }v6S2M2⟨tc, ¯c, t m, ¯m⟩⟨tm, ¯m⟩–⟨tc, ¯c⟩⟨t¯d,d , t c, ¯c, t m, ¯m⟩⟨t¯r,r , t c, ¯c, t m, ¯m⟩{m}v3S3M3⟨tm, ¯m⟩⟨t¯c,c , t m, ¯m⟩⟨t¯c,c ⟩–⟨t¯d,d , t m, ¯m⟩⟨t¯r,r , t m, ¯m⟩{d}v4S4M4⟨td, ¯d⟩⟨t¯c,c , t d, ¯d⟩⟨t¯c,c , t ¯m,m , t d, ¯d⟩⟨t¯m,m , t d, ¯d⟩–⟨t¯r,r , t d, ¯d⟩{r}v2S5M5⟨tr, ¯r⟩⟨t¯c,c , t r, ¯r⟩⟨t¯c,c , t ¯m,m , t r, ¯r⟩⟨t¯m,m , t r, ¯r⟩⟨t¯d,d , t r, ¯r⟩–
+
+from Si to Sj exists if there is a realizable sequence σ ∈ T ∗
+
+transforming Mi into Mj , yielding a densely connected state-transition system (Fig. 9a). Under the HyPN transition seman-tics, a transition exists only if ΣH (Mi, M j )̸ = ∅, i.e., if there is an atomic sequence from Mi to Mj , so the induced relation is a subrelation of reachability, i.e., ⇒H ⊆⇒ R (Fig. 9b). Fig. 9c shows a further restriction, where direct atomic transitions are omitted whenever an alternative realizable path passes through intermediate observable states. This corresponds to a policy that prioritizes executions through states satisfying 
+
+φ, for example to preserve safe stopping points or enforce a higher safety level. As a result, the induced transition graph becomes sparser, further reducing structural complexity. Although policy selection is outside the scope of this paper, it is a promising direction for future work. 
+
+Example and perspectives: Consider the transition from S5
+
+to S2. Multiple realizable sequences exist: a) S5¯r
+
+−→ S0
+
+> c
+
+−→
+
+S1
+
+> m
+
+−→ S2; b) S5¯r
+
+−→ S0
+
+> m
+
+−→ S3
+
+> c
+
+−→ S2; c) S5
+
+> c
+
+−→ (internal ) m
+
+−→
+
+(internal ) ¯r
+
+−→ S2; d) S5
+
+> m
+
+−→ (internal ) c
+
+−→ (internal ) ¯r
+
+−→ S2.Sequences (a–b) pass through observable states, whereas (c–d) remain internal. Hence, ΣH (M5, M 2)̸ = ∅, so a direct tran-sition appears in Fig. 9b. In contrast, all realizable sequences from S0 to S2 pass through observable states, e.g., via S1 or 
+
+S3, which implies ΣH (M0, M 2) = ∅. Accordingly, no direct transition appears between S0 and S2 in Fig. 9b. These examples motivate the three perspectives in Fig. 9: reachability (a): based on admissible sequences; HyPN tran-sition semantics (b): based on atomic sequences captured by 
+
+ΣH (Mi, M j ); and a safety-oriented restriction (c): where some direct atomic transitions are omitted whenever an alterna-tive admissible path passes through intermediate observable states. The last perspective reflects a policy that prioritizes paths through states satisfying φ, for example, to preserve intermediate observable states as safe stopping points. As a result, the induced graph becomes sparser, reducing structural complexity. While policy selection is outside the scope of this paper, this is an important direction for future work. 
+
+B. Scenario B 
+
+Let the supervisor control two activities: drive ( d) and recharge ( r). This scenario considers constraint-driven synthe-sis under resource availability, where action activation depends on the battery state of charge (SOC). The SOC is discretized into three mutually exclusive levels: e1 := ( soc ≤ MIN) ,
+
+e2 := (MIN < soc ≤ MAX) , and e3 := ( soc > MAX) ,where soc denotes the battery state of charge. The constraints 
+
+Fig. 9: State-transition systems induced by the synthesized HyPN under three perspectives: (a) reachability, based on admissible sequences; (b) HyPN transition semantics, based on atomic sequences; (c) safety-oriented execution, omitting some direct atomic transitions to preserve intermediate observable states rather than bypassing them. couple actions with resource levels and introduce exclusivity over (e1, e 2, e 3), which may lead to conflicting assignments on shared literal places during clause-level composition. Con-sequently, the synthesis requires the swap-based conflict res-olution mechanism (Case 3 in Sec. III-C). 
+
+1) HyPN synthesis Constraints. Consider the set of constraints C =
+
+{C1, C 2, C 3, C 4, C 5, C 6, C 7, C 8, C 9}, where: 
+
+C1: r ⇒ ¯d: recharging excludes driving, 
+
+C2: r ∨ d: at least one action is active, 
+
+C3: d ⇒ (e2 ∨ e3): driving requires sufficient energy, 
+
+C4: e1 ⇒ r: low SOC implies recharging, 
+
+C5: e3 ⇒ ¯r: high SOC disables recharging, 
+
+C6: e1 ⇒ (¯ e2 ∧ ¯e3),
+
+C7: e2 ⇒ (¯ e1 ∧ ¯e3),
+
+C8: e3 ⇒ (¯ e1 ∧ ¯e2),
+
+C9: e1 ∨ e2 ∨ e3: exactly one SOC level holds. These constraints define: (i) exclusive choice between r and 
+
+d, (ii) resource-dependent action feasibility, and (iii) mutual exclusivity of SOC levels, as captured by groups ( C1–C2), (C3–C5), and ( C6–C9), respectively. 
+
+Literal sets. The Boolean variables are V =
+
+{r, d, e 1, e 2, e 3}, with L = {x, ¯x | x ∈ V }.
+
+Formula construction. The global constraint formula is defined as φ = V9 
+
+> i=1
+
+Ci. Its CNF is φCN F = (¯ r ∨ ¯d) ∧ (r ∨
+
+d) ∧ ( ¯d ∨ e2 ∨ e3) ∧ (¯ e1 ∨ r) ∧ (¯ e3 ∨ ¯r) ∧ (¯ e1 ∨ ¯e2) ∧ (¯ e1 ∨ ¯e3) ∧
+
+(¯ e2 ∨ ¯e3) ∧ (e1 ∨ e2 ∨ e3).
+
+Clause-wise synthesis. The CNF is φCN F = V9 
+
+> i=1
+
+φi,where the clauses are: φ1 = (¯ r ∨ ¯d), φ2 = (r ∨ d),Fig. 10: Synthesized sub-PNs: H1, . . . , H 9, corresponding to the sub-formulas φ1, . . . , φ 9 for Scenario B. 
+
+Fig. 11: Representative intermediate compositions: a) H{1,2} = H1 ⊕ H2, and b) H{1,2,3} = H{1,2} ⊕ H3.
+
+φ3 = ( ¯d∨e2 ∨e3), φ4 = (¯ e1 ∨r), φ5 = (¯ e3 ∨¯r), φ6 = (¯ e1 ∨¯e2),
+
+φ7 = (¯ e1 ∨ ¯e3), φ8 = (¯ e2 ∨ ¯e3), φ9 = ( e1 ∨ e2 ∨ e3). Each φi
+
+yields a HyPN subnet Hi, resulting in nine subnets (Fig. 10). 
+
+Composition. The final HyPN is Hf inal B = L9 
+
+> i=1
+
+Hi. The composition involves conflicting assignments on shared literal places, resolved via the swap-based procedure (Case 3 in Sec. III-C). Figure 11 illustrates representative intermediate compositions. For example, composing H1 ⊕ H2 yields con-flicts in r and d: the former is resolved by firing tr, ¯r in 
+
+H2, while the latter requires firing t ¯d,d in H1 to preserve satisfaction. Subsequent compositions proceed analogously. The final model Hf inal B = H{1,..., 9} is shown in Fig. 12. For clarity, the net is presented in five panels connected via satisfaction places, but should be interpreted as a single unified HyPN network, making input/output places and the influence of satisfaction places on variables more explicit. 
+
+2) Observable behavior analysis Satisfying valuations and observable markings. The sat-isfying valuations of φ and the corresponding observable markings M0, . . . , M 3 are given in Table III. These define the observable states S0, . . . , S 3, with |V al (φ)| = 4 . Each state 
+
+Si corresponds to a valuation vi+1 .
+
+Transition structure. The transitions between observable markings are summarized in Table IV. The induced state-
+
+Fig. 12: Final HyPN Hf inal B = H{1,..., 9} for Scenario B. The net is shown in five panels for clarity, interconnected via shared satisfaction places resulting from clause-level composition. TABLE III: Satisfying valuations vi ∈ V al (φ) and cor-responding observable markings. The place ordering is 
+
+(p¯r , p r , p ¯d, p d, p ¯e1 , p e1 , p ¯e2 , p e2 , p ¯e3 , p e3 , p sat  
+
+> 1
+
+, . . . , p sat  
+
+> 9
+
+).                                     
+
+> Variables Observable marking Val. rde1e2e3Mi= ( literal places ;sat. places )
+> v101010M0= (1 ,0,0,1,1,0,0,1,1,0;1 ,1,1,1,2,1,2,1,1)
+> v201001M1= (1 ,0,0,1,1,0,1,0,0,1;1 ,1,1,1,1,2,1,1,1)
+> v310100M2= (0 ,1,1,0,0,1,1,0,1,0;1 ,1,1,1,1,1,1,2,1)
+> v410010M3= (0 ,1,1,0,1,0,0,1,1,0;1 ,1,2,2,1,1,2,1,1)
+
+transition system over S0, . . . , S 3 is fully connected under reachability, i.e., for any (Si, S j ) there exists a firing sequence 
+
+σi,j connecting Mi and Mj .
+
+Physical feasibility. Not all logically admissible transitions are physically feasible, as some require intermediate observ-able states due to SOC dynamics. For example, a direct transi-tion S2 → S1 (from recharging at low SOC to driving at high SOC) would imply an instantaneous SOC increase and must proceed via S3 (intermediate SOC level e2). The physically feasible transitions are: S1 → S0 (SOC decreases during driving), S0 → S3 (transition to recharging), S3 → S1 (fully charged, driving resumes), S0 → S2 (SOC drops to minimum), and S2 → S3 (recharging). All remaining transitions violate the monotonic, resource-dependent SOC evolution. 
+
+Discussion and implications. Logical feasibility does not imply physical realizability. While admissible transitions exist between all states, atomic transitions capture direct executabil-ity, and the underlying dynamics further restrict physically fea-sible transitions. Moreover, identical valuations (e.g., e2 = 1 in 
+
+v1 and v4) may correspond to different system behaviors (e.g., driving vs. recharging under different SOC levels), showing that system behavior is determined by transition sequences rather than individual states. Consequently, reasoning based solely on Boolean constraints may over-approximate feasible system evolution. This highlights a separation between logical, atomic, and physical levels, with HyPN capturing logical and atomic structure, while physical feasibility depends on system dynamics and is reflected in admissible transition sequences. TABLE IV: Structure of transitions between observable markings (Scenario B).                                                                                            
+
+> Active Val. State Marking M0M1M2M3
+> {d, e 2}v1S0M0–⟨te2,¯e2, t ¯e3,e 3⟩⟨td, ¯d, t e2,¯e2, t ¯e1,e 1, t ¯r,r ⟩⟨td, ¯d, t ¯r,r ⟩{d, e 3}v2S1M1⟨te3,¯e3, t ¯e2,e 2⟩–⟨td, ¯d, t e3,¯e3, t ¯e1,e 1, t ¯r,r ⟩⟨td, ¯d, t e3,¯e3, t ¯e2,e 2, t ¯r,r ⟩{r, e 1}v3S2M2⟨tr, ¯r, t e1,¯e1, t ¯e2,e 2, t ¯d,d ⟩⟨tr, ¯r, t e1,¯e1, t ¯e3,e 3, t ¯d,d ⟩–⟨te1,¯e1, t ¯e2,e 2⟩{r, e 2}v4S3M3⟨tr, ¯r, t ¯d,d ⟩⟨tr, ¯r, t e2,¯e2, t ¯e3,e 3, t ¯d,d ⟩⟨te2,¯e2, t ¯e1,e 1⟩–
+
+TABLE V: Comparison of synthesized HyPN models for two representative constraint classes                                    
+
+> Property Scenario A Scenario B Scaling Constraint class mutual exclu-sion resource-constrained —Variables 45|V|
+> Clauses 59|C|
+> Places 13 19 2|V|+|C|
+> Transitions 810 2|V|
+> Size of state space 16 32 2|V|
+> Observable states 64|Val( φ)|
+> Max observable edges 12 5problem-dependent Composition direct requires swaps conflict-dependent
+
+C. Comparative summary 
+
+Table V summarizes key properties of the scenarios and highlights the general scaling behavior of the proposed synthe-sis procedure. The results confirm that the structural size grows linearly with the number of clauses, while the observable state space scales with the number of satisfying valuations. This highlights a separation between structural complexity and behavioral expressiveness, where a compact Petri net structure induces an exponentially large space of observable states. VII. D ISCUSSION 
+
+The proposed HyPN model separates logical correctness from execution semantics by distinguishing observable mark-ings from the underlying transition structure. This enables reasoning about which markings satisfy constraints and how they can be reached through admissible execution sequences. 
+
+Structural scalability and state-space explosion. A key advantage of the synthesis is that it avoids explicit transition structures between all admissible Boolean states. Direct transi-tions between all admissible states induces a complete directed graph with (2 |V | − 1)(2 |V | − 2) transitions. In contrast, the synthesized HyPN has linear structural complexity in |V | and 
+
+|C|, with exactly 2|V | transitions and 2|V | + |C| places. This separates structural complexity from behavioral complexity: while the observable marking space may be exponential, the execution model remains compact and compositional. 
+
+From modeling to control and decision support. The framework supports constraint-aware control by enabling se-lection of actions that guarantee constraint satisfaction. This is relevant for safety-critical systems, where maintaining admis-sibility is essential. Explicit representation of admissible and inadmissible transitions supports AI explainability. 
+
+Execution semantics and admissibility. The analysis of Scenarios A and B shows that reachability alone is insufficient to characterize system behavior. While logical constraints de-fine the admissible state space, execution semantics determines TABLE VI: Comparison of HyPN with synthesis and control                 
+
+> Approach Input Scalability Main strength Limitation Temporal-logic synthesis temporal logic exponential expressive specs high complexity PN supervisory control PN +con-straints model-dependent enforcement on ex-isting PN requires a prede-fined model HyPN Boolean constraints linear in
+> |V|,|C|
+> direct synthesis with explicit semantics no temporal or optimal policies
+
+feasible transitions. Not all logically admissible transitions are physically realizable. This requires joint reasoning about state validity and execution feasibility. 
+
+Comparison with existing approaches. Compared to temporal-logic-based synthesis, the proposed approach prior-itizes scalability over expressiveness, focusing on invariant properties while avoiding state-space explosion. Compared to supervisory control of PNs, which modifies an existing model, it directly synthesizes a model from constraints, enabling a more systematic design. Table VI summarizes key differences. In particular, HyPN achieves linear structural scaling and direct synthesis from constraints, unlike the higher complexity of temporal-logic-based synthesis and the model dependency of supervisory control. 
+
+Limitations and future work. For constraint-driven synthe-sis, the set of observable markings Mobs is directly determined by the constraint structure and can be evaluated in O(|P sat |).However, the framework does not yet provide mechanisms for selecting preferred execution sequences or enforcing optimal-ity, and is limited to Boolean constraints and invariant prop-erties, without support for temporal or probabilistic aspects. Future work will focus on policy selection for admissible transition sequences and integration with temporal reasoning, enabling direct evaluation of temporal logic over execution sequences without explicit automata. 
+
+Implications for system design. The proposed framework provides a foundation for designing constraint-aware systems, where correctness is guaranteed by construction while main-taining a compact and scalable execution model. This enables integration of constraint satisfaction, execution reasoning, and decision-making within a unified formal representation for safety-critical and autonomous systems. VIII. C ONCLUSIONS 
+
+This paper introduced the HyPN model, which separates observable markings from the underlying PN execution and defines explicit execution semantics on them. A constraint-driven synthesis procedure was developed to automatically construct HyPN models from Boolean specifications in con-junctive normal form, guaranteeing that all observable mark-ings satisfy the constraints by construction. The proposed execution semantics, based on admissible firing sequences, highlights a fundamental gap between log-ical constraint satisfaction and realizable system behavior. The presented scenarios demonstrate that not all logically admissible transitions are executable, highlighting the need to distinguish between logical and executable behavior. Overall, the framework shifts system design from post-hoc verification toward constructing models that guarantee correctness by design, while maintaining a compact and scalable execution structure. Future work will focus on selection and control of admissible transition sequences, and extension of the frame-work with recovery mechanisms enabling transitions from non-observable to observable states, supporting initialization and fault recovery scenarios. ACKNOWLEDGMENTS 
+
+This work was supported by the Polish National Agency for Academic Exchange (NAWA) under the Bekker Programme, grant BPN/BEK/2024/1/00079, during a research stay at the Jet Propulsion Laboratory, California Institute of Technology. Part of this work was carried out at the Jet Propulsion Lab-oratory, California Institute of Technology, under a contract with the National Aeronautics and Space Administration. Part of this work was further developed at the Warsaw University of Technology. REFERENCES [1] R. Ghzouli, T. Berger, E. B. Johnsen, A. Wasowski, and S. Dragule, “Behavior trees and state machines in robotics applications,” IEEE Transactions on Software Engineering , vol. 49, no. 9, pp. 4243–4267, 2023. [2] M. Iovino, E. Scukins, J. Styrud, P. Ögren, and C. Smith, “A survey of behavior trees in robotics and ai,” Robotics and Autonomous Systems ,vol. 154, p. 104096, 2022. [3] M. Figat and C. Zieli´ nski, “Parameterised robotic system meta-model expressed by Hierarchical Petri nets,” Robotics and Autonomous Sys-tems , vol. 150, p. 103987, 2022. [4] S. García, D. Strüber, D. Brugali, and et al., Robotics Software Engi-neering: A Perspective from the Service Robotics Domain . NY, USA: Association for Computing Machinery, 2020, p. 593–604. [5] E. de Araújo Silva, E. Valentin, J. R. H. Carvalho, and R. da Silva Barreto, “A survey of Model Driven Engineering in robotics,” Journal of Computer Languages , vol. 62, p. 101021, 2021. [6] S. Dal Zilio, P.-E. Hladik, F. Ingrand, and A. Mallet, “A formal toolchain for offline and run-time verification of robotic systems,” Robotics and Autonomous Systems , vol. 159, p. 104301, 2023. [7] P. Huber, K. Jensen, and R. M. Shapiro, “Hierarchies in Coloured Petri Nets,” Lecture Notes in Computer Science; Advances in Petri Nets 1990 ,vol. 483, pp. 313–341, 1991. [8] W. Vogler, Modular construction and partial order semantics of Petri nets , 1992. [9] W. M. Zuberek and I. Bluemke, “Hierarchies of place/transition refine-ments in Petri nets,” in Emerging Technologies and Factory Automation, 1996. EFTA ’96. Proceedings., 1996 IEEE Conference on , vol. 1, Nov 1996, pp. 355–360 vol.1. [10] J. Luo, H. Ni, and M. Zhou, “Control Program Design for Automated Guided Vehicle Systems via Petri Nets,” IEEE Transactions on Systems, Man, and Cybernetics: Systems , vol. 45, no. 1, pp. 44–55, Jan 2015. [11] M. Figat and C. Zieli´ nski, “Synthesis of Robotic System Controllers Using Robotic System Specification Language,” IEEE Robotics and Automation Letters , vol. 8, no. 2, pp. 688–695, 2023. [12] ——, “Simplification of Robotic System Model Analysis by Petri Net Meta-Model Property Transfer,” IEEE Access , vol. 14, pp. 24 618– 24 635, 2026. [13] M. Figat, R. M. Mackey, and M. D. Ingham, “Ontology-driven robotic specification synthesis,” arXiv preprint arXiv:2602.05456 , 2026. [14] T. Wongpiromsarn, U. Topcu, and R. M. Murray, “Receding horizon temporal logic planning,” IEEE Transactions on Automatic Control ,vol. 57, no. 11, pp. 2817–2830, 2012. [15] L. Shamgah, T. G. Tadewos, A. Karimoddini, and A. Homaifar, “Path planning and control of autonomous vehicles in dynamic reach-avoid scenarios,” in 2018 IEEE Conference on Control Technology and Appli-cations (CCTA) . IEEE, 2018, pp. 88–93. [16] S. Maoz and I. Shevrin, “Just-in-time reactive synthesis,” in Proceedings of the 35th IEEE/ACM International Conference on Automated Software Engineering , 2020, pp. 635–646. [17] T. G. Tadewos, A. A. R. Newaz, and A. Karimoddini, “Specification-guided behavior tree synthesis and execution for coordination of au-tonomous systems,” Expert Systems with Applications , vol. 201, p. 117022, 2022. [18] B. Lacerda and P. U. Lima, “Petri net based multi-robot task coordination from temporal logic specifications,” Robotics and Autonomous Systems ,vol. 122, p. 103289, 2019. [19] M. V. Iordache and P. J. Antsaklis, “Supervision Based on Place Invariants: A Survey,” Discrete Event Dynamic Systems , vol. 16, no. 4, pp. 451–492, Dec. 2006. [20] E. Badouel, L. Bernardinello, and P. Darondeau, “P/t-nets with the step firing rule,” in Petri Net Synthesis . Berlin, Heidelberg: Springer Berlin Heidelberg, 2015, pp. 253–263. [21] Z. Li, M. Yan, and M. Zhou, “Synthesis of structurally simple su-pervisors enforcing generalized mutual exclusion constraints in Petri nets,” IEEE Transactions on Systems, Man, and Cybernetics, Part C (Applications and Reviews) , vol. 40, no. 3, pp. 330–340, 2010. [22] M. Iordache and P. Antsaklis, “A survey on the supervision of Petri nets,” in Petri nets , 2005. [23] M. Mukund, “Transition system models for concurrency,” DAIMI Report Series , vol. 21, no. 399, 1992. [24] T. Fujita, “Powerset-Theoretic Foundations for HyperAutomata and SuperHyperAutomata,” Systemic Analytics , vol. 3, no. 3, pp. 222–231, Sep. 2025. [25] T. Murata, “Petri nets: Properties, analysis and applications,” Proceed-ings of the IEEE , vol. 77, no. 4, pp. 541–580, 1989. [26] J. T. Keane, “Endurance: Lunar South Pole–Aitken Basin Traverse and Sample Return Rover,” NASA, 2023.
