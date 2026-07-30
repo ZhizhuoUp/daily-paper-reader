@@ -6,73 +6,67 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-29
-- 运行时间：2026-07-29 21:36:32 UTC
+- 最新运行日期：2026-07-30
+- 运行时间：2026-07-30 20:54:29 UTC
 - 运行状态：成功
-- 本次总论文数：17
-- 精读区：6
+- 本次总论文数：15
+- 精读区：4
 - 速读区：11
 
 ### 今日简报（AI）
-今日深度解析17篇前沿论文，聚焦超网络驱动的自适应控制与隐式接触微分下的残差MPC优化。
-重点关注利用超网络实现多任务自适应导航，以及通过隐式接触微分大幅提升残差MPC在复杂环境下的轨迹优化性能。
-建议关注强化学习与最优控制的融合趋势，并探索非凸走廊环境下无人机的高效避障策略。
-- 详情：[/202607/29/README](/202607/29/README)
+今日聚焦具身智能与自适应控制，深度解析移动操作与未知动力学追踪的最新突破。
+重点关注潜空间强化学习驱动的移动操作框架，以及实现“零悔恨”追踪的自适应模型预测控制。
+建议优先研读 RLMM-Flow 框架，探索如何利用潜空间表征提升复杂任务的执行精度。
+- 详情：[/202607/30/README](/202607/30/README)
 
 ### 精读区论文标签
-1. [Learning Adaptive Multi-Task Guidance, Navigation, and Control via Hypernetworks](/202607/29/2607.24292v1-learning-adaptive-multi-task-guidance-navigation-and-control-via-hypernetworks)  
+1. [RLMM-Flow: A Flow-based Mobile Manipulation Framework with Latent-Space Reinforcement Learning](/202607/30/2607.26460v1-rlmm-flow-a-flow-based-mobile-manipulation-framework-with-latent-space-reinforcement-learning)  
    标签：评分：9.0/10、query:profile-1
-   evidence：轨道机器人避障导航与GNC任务
-2. [Amortising Trajectory Optimisation for Residual MPC via Implicit Contact Differentiation](/202607/29/2607.24959v1-amortising-trajectory-optimisation-for-residual-mpc-via-implicit-contact-differentiation)  
-   标签：评分：9.0/10、query:q3
-   evidence：通过隐式微分加速含接触的轨迹优化
-3. [Reactive 3D Motion Planning for a Franka Arm via Star-World Workspace Reshaping](/202607/29/2607.25138v1-reactive-3d-motion-planning-for-a-franka-arm-via-star-world-workspace-reshaping)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：Franka机械臂的反应式3D运动规划与避障
-4. [Bound-Optimized Task Choice for Path Integral Control](/202607/29/2607.23866v1-bound-optimized-task-choice-for-path-integral-control)  
-   标签：评分：8.0/10、query:q2
-   evidence：航空航天和信息物理系统的随机最优控制
-5. [Hybrid Artificial Potential Fields and Spatio-Temporal Transformers for Real-Time AUV Path Planning](/202607/29/2607.25056v1-hybrid-artificial-potential-fields-and-spatio-temporal-transformers-for-real-time-auv-path-planning)  
+   evidence：具有避障和轨迹平滑性的移动操作
+2. [Self-Adaptive Learning and Model Predictive Control for Tracking Unknown Dynamics with No Regret](/202607/30/2607.26370v1-self-adaptive-learning-and-model-predictive-control-for-tracking-unknown-dynamics-with-no-regret)  
    标签：评分：8.0/10、query:q1
-   evidence：使用混合人工势场法的实时避障路径规划
-6. [Decompose and Reorganize: Planning with Primitives and Visuomotor Policies Learned from Demonstrations](/202607/29/2607.25397v1-decompose-and-reorganize-planning-with-primitives-and-visuomotor-policies-learned-from-demonstrations)  
+   evidence：用于避障移动物体的模型预测控制
+3. [Semi-Decentralized Multi-Spacecraft Collision Avoidance under Communication Constraints](/202607/30/2607.26570v1-semi-decentralized-multi-spacecraft-collision-avoidance-under-communication-constraints)  
+   标签：评分：8.0/10、query:q9
+   evidence：通信约束下的多航天器碰撞规避
+4. [Route by Kinematics, Act by Observation: Kinematics-Supervised Expert Routing in MoE-Augmented VLA](/202607/30/2607.26807v1-route-by-kinematics-act-by-observation-kinematics-supervised-expert-routing-in-moe-augmented-vla)  
    标签：评分：8.0/10、query:profile-1
-   evidence：将视觉运动策略集成到操纵任务的运动规划中
+   evidence：操作任务动作轨迹的运动学聚类
 
 ### 速读区论文标签
-1. [Bridging Reinforcement Learning and Optimal Control via Feasible Action Mapping](/202607/29/2607.23930v1-bridging-reinforcement-learning-and-optimal-control-via-feasible-action-mapping)  
-   标签：评分：8.0/10、query:q2
-   evidence：受限动力系统可行动作的优化映射
-2. [Model Predictive Planner for UAV Navigation in Non-Convex Air Corridors](/202607/29/2607.24369v1-model-predictive-planner-for-uav-navigation-in-non-convex-air-corridors)  
-   标签：评分：8.0/10、query:q2
-   evidence：用于运动规划的混合整数跟踪模型预测控制
-3. [Motion Generation With Environmental Constraints](/202607/29/2607.25053v1-motion-generation-with-environmental-constraints)  
-   标签：评分：8.0/10、query:q4
-   evidence：具有环境约束和无碰撞运动的机器人运动规划
-4. [Declarative Problem Solving in UAM Strategic Deconfliction](/202607/29/2607.21197v1-declarative-problem-solving-in-uam-strategic-deconfliction)  
-   标签：评分：7.0/10、query:q1
-   evidence：无冲突飞行计划的战略冲突解脱与路径优化
-5. [Actuator-Aware Spatiotemporal Tube Synthesis for Temporal Reach-Avoid-Stay Tasks](/202607/29/2607.23040v1-actuator-aware-spatiotemporal-tube-synthesis-for-temporal-reach-avoid-stay-tasks)  
-   标签：评分：7.0/10、query:q2
-   evidence：用于到达-规避任务的执行器感知时空管道合成
-6. [Anticipatory Risk-Guided Reinforcement Learning for Safe Flight Through Dynamic Clutter](/202607/29/2607.23565v1-anticipatory-risk-guided-reinforcement-learning-for-safe-flight-through-dynamic-clutter)  
-   标签：评分：7.0/10、query:q1
-   evidence：用于安全导航的预测性碰撞风险图
-7. [Try Once, Then Optimal: De-Redundified Procedure Memory for Cross-Episode Exploration Amortization](/202607/29/2607.23702v1-try-once-then-optimal-de-redundified-procedure-memory-for-cross-episode-exploration-amortization)  
+1. [FutureRTC: Real-Time Robot Execution with Anticipatory-Conditioned Action Chunking](/202607/30/2607.24008v1-futurertc-real-time-robot-execution-with-anticipatory-conditioned-action-chunking)  
+   标签：评分：7.0/10、query:q5
+   evidence：实时机器人执行与异步控制
+2. [KAI: A Kinematic-Aware Interface for Data-Efficient Articulated Object Manipulation](/202607/30/2607.24493v1-kai-a-kinematic-aware-interface-for-data-efficient-articulated-object-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：针对具有隐藏状态物体的机器人操作对象中心框架
-8. [Learning Input-Constrained Funnel Controllers from State Trajectory Data](/202607/29/2607.23876v1-learning-input-constrained-funnel-controllers-from-state-trajectory-data)  
-   标签：评分：7.0/10、query:q2
-   evidence：基于优化的硬约束反馈控制器框架
-9. [AXIS: A Growable Community-Driven Data Engine for Scalable Robot Manipulation](/202607/29/2607.21588v1-axis-a-growable-community-driven-data-engine-for-scalable-robot-manipulation)  
+   evidence：关节物体操作与运动学结构
+3. [Event-Triggered Discrete-Time Multivariable Extremum Seeking Systems](/202607/30/2607.25223v1-event-triggered-discrete-time-multivariable-extremum-seeking-systems)  
+   标签：评分：7.0/10、query:q5
+   evidence：多变量非线性系统的实时优化
+4. [Shared Voxel-Map-Based Cooperative Indoor UAV Guidance with a Multi-Agent Soft Actor-Critic Controller](/202607/30/2607.25728v1-shared-voxel-map-based-cooperative-indoor-uav-guidance-with-a-multi-agent-soft-actor-critic-controller)  
+   标签：评分：7.0/10、query:q1
+   evidence：多智能体系统中的去中心化连续避障控制
+5. [Transformer Transformer: A Unified Model for Motion-Conditioned Robot Co-design](/202607/30/2607.25798v1-transformer-transformer-a-unified-model-for-motion-conditioned-robot-co-design)  
+   标签：评分：7.0/10、query:q6
+   evidence：机器人操作性能和末端执行器轨迹跟踪
+6. [HiFi-UMI: Learning Deployable Manipulation Policies from High-Fidelity UMI Data Alone](/202607/30/2607.25895v1-hifi-umi-learning-deployable-manipulation-policies-from-high-fidelity-umi-data-alone)  
+   标签：评分：7.0/10、query:q6
+   evidence：学习可部署的操纵策略与轨迹精度
+7. [Adaptive Undulatory Locomotion of Snake-like Robots in Dynamic Viscous Environments via Deep Reinforcement Learning](/202607/30/2607.21960v1-adaptive-undulatory-locomotion-of-snake-like-robots-in-dynamic-viscous-environments-via-deep-reinforcement-learning)  
+   标签：评分：6.0/10、query:q4
+   evidence：蛇形机器人的自适应运动
+8. [Key-Interval A*: Accelerating Grid Pathfinding via Structural Abstraction](/202607/30/2607.23393v1-key-interval-a-accelerating-grid-pathfinding-via-structural-abstraction)  
+   标签：评分：6.0/10、query:q1
+   evidence：通过结构抽象加速栅格路径查找
+9. [ArmnetBench v0.1: Parallel Real-World Evaluation of Manipulation Policies on a Low-Cost Arm Farm](/202607/30/2607.24481v1-armnetbench-v01-parallel-real-world-evaluation-of-manipulation-policies-on-a-low-cost-arm-farm)  
    标签：评分：6.0/10、query:q6
-   evidence：用于可扩展机器人操作和轨迹平滑的数据引擎
-10. [Trade-off for Secure UAV-ISCC Systems](/202607/29/2607.21939v1-trade-off-for-secure-uav-iscc-systems)  
-   标签：评分：6.0/10、query:q3
-   evidence：无人机轨迹与资源的联合优化
-11. [$N_0$-TWAM: Scaling Tactile-Native World-Action Model for Contact-Rich Manipulation](/202607/29/2607.23783v1-n0-twam-scaling-tactile-native-world-action-model-for-contact-rich-manipulation)  
+   evidence：机械臂操作策略的评估
+10. [Cooperative Multi-UAV Navigation in Complex Environments via Systematic Multi-Agent Deep Reinforcement Learning](/202607/30/2607.25754v1-cooperative-multi-uav-navigation-in-complex-environments-via-systematic-multi-agent-deep-reinforcement-learning)  
+   标签：评分：6.0/10、query:q1
+   evidence：多无人机导航与安全课程调度
+11. [MoMo: Dial Motion Mode in Robot Manipulation with Spatiotemporal Action Tokenization](/202607/30/2607.26315v1-momo-dial-motion-mode-in-robot-manipulation-with-spatiotemporal-action-tokenization)  
    标签：评分：6.0/10、query:q6
-   evidence：用于触觉丰富操纵任务的触觉原生世界动作模型
+   evidence：具有运动模式的机器人操作模仿学习框架
 
 
 <div class="dpr-home-promo-card">
