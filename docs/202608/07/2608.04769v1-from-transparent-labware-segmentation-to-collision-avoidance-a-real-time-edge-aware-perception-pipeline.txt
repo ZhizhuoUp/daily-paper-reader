@@ -1,0 +1,393 @@
+Title: From Transparent Labware Segmentation to Collision Avoidance: A Real-Time Edge-Aware Perception Pipeline
+
+URL Source: https://arxiv.org/pdf/2608.04769v1
+
+Published Time: Thu, 06 Aug 2026 00:53:32 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# From Transparent Labware Segmentation to Collision Avoidance: A Real-Time Edge-Aware Perception Pipeline 
+
+Shijun Ding ∗, Chen Qian ∗, Weiwei Shang, and Junlin Xiong †
+
+Abstract — This paper presents an edge-aware instance seg-mentation framework that enables real-time robotic collision avoidance with transparent laboratory glassware using purely visual perception. Transparent vessels defy conventional seg-mentation due to refraction, specular reflection, and the absence of stable interior texture, yet their boundary contours remain comparatively reliable visual cues. Exploiting this observation, we augment a one-stage real-time instance segmentation back-bone with a lightweight edge-detection branch, edge-guided attention fusion, and a parameter-free SimAM module, and further construct LabGlass-IS , a 3,485-image, 21-category in-stance segmentation dataset of real laboratory glassware. The enhanced model achieves the highest Boundary F-score of 97.80 among compared methods, outperforming the YOLO-prompted FastSAM framework by 18.93 BF points. Further-more, it maintains an inference speed of 7.1 ms per frame and requires only 2.85% of the parameters of the closest accuracy competitor. Multi-view triangulation of mask cen-troids further provides 3D positions for conservative bounding-volume collision constraints. Real-robot trials achieve a 93.3% collision avoidance success rate, indicating the feasibility of the proposed perception-to-action pipeline for robot collision avoidance among fragile transparent objects. Our code is avail-able at https://github.com/havishamy/TransYOLO_ 3D . Our video is available at https://havishamy.github. io/paper-videos/ .
+
+I. I NTRODUCTION 
+
+Transparent laboratory vessels—such as beakers, test tubes, and Erlenmeyer flasks—are indispensable tools in chemical laboratories, serving as the primary carriers for sample storage, reaction execution, and quantitative analyses. These objects often coexist with robots, requiring reliable perception for safe motion planning and collision avoidance [1]. Robotic perception systems commonly rely on depth sensors such as RGB-D cameras or LiDAR [2], [3]. However, due to optical properties such as transparency, refraction, and specular reflection, these sensors frequently suffer from missing depth or measurement distortions when observing transparent objects [2], [4]. Stable perception of glass objects remains a challenging problem for robotic vision systems. Recent studies have proposed specialized architectures [5], [6] for transparent object perception. CNN-based meth-ods such as LBSNet [5] enhance boundary-aware fea-tures through multi-scale fusion and additional refinement branches, which improve segmentation accuracy but intro-duce extra feature extraction and fusion operations that increase inference latency. Transformer-based approaches [6] rely on global self-attention and multi-scale decoding, leading to substantial computational overhead and memory 
+
+> ∗
+
+Shijun Ding and Chen Qian contributed equally to this work. 
+
+> †
+
+Corresponding author: Junlin Xiong. Eye-in-hand 
+
+> camera
+> Robotic arm
+> 3D bounding box
+> Estimated 3D Centroid
+> Multi-view 3D Centroid Estimation
+> from Segment Masks: 3D Point (x,y,z)
+> Estimated 3D Centroid
+> Mask Centroid
+> Mask Centroid
+> Camera View 1
+> Camera View 2
+> Camera View 3
+> Target Mask
+> Target Mask
+> Target Mask
+
+Fig. 1: Pipeline of perception-driven robotic collision avoidance for transparent labware. The eye-in-hand cam-era on the robotic arm captures visual data, the 3D centroid of each vessel is derived from the segmentation mask centroid via multi-view triangulation, and a conservative 3D bounding box centered at the centroid is built as the collision avoidance constraint for robotic manipulation. consumption due to dense attention operations. Foundation models like SAM [7] further improve generalization but require heavy encoders and large-scale feature processing, making real-time deployment on robotic platforms difficult. More importantly, most methods focus on semantic or in-stance segmentation accuracy on benchmark datasets, with-out converting perception results into spatial representations that can be directly used for motion planning or collision avoidance. Another critical bottleneck is the scarcity of suitable datasets. Existing transparent object benchmarks [8]–[10] primarily emphasize semantic segmentation or object de-tection, yet these annotations are insufficient for robotic manipulation, where precise separation of individual object instances is essential. Laboratory-oriented datasets such as LabPics [11] offer only coarse category labels and ex-hibit substantial intra-class variability, which hinders the learning of fine-grained vessel geometry, structural details, and boundary cues. Furthermore, many large-scale datasets are synthetically generated [9], and thus fail to faithfully reproduce the intricate optical phenomena, cluttered layouts, and illumination variations encountered in real chemical laboratories. As a result, models trained on such data often suffer from limited robustness and poor transferability in practical robotic settings, underscoring the urgent need for a dedicated real-world instance segmentation benchmark for arXiv:2608.04769v1 [cs.RO] 5 Aug 2026 transparent laboratory objects. The core challenges can be summarized into three as-pects. First, transparent glass objects exhibit complex optical phenomena such as refraction, reflection, and weak texture, which lead to unstable visual cues and make reliable detec-tion and segmentation highly challenging. Second, many ex-isting segmentation approaches are computationally heavy or designed purely for offline evaluation, making them difficult to deploy in real-time robotic manipulation and collision-avoidance systems, where an effective perception-to-action pipeline is required. Third, there is a clear shortage of real-world instance segmentation datasets for transparent labora-tory glassware, while existing datasets often provide coarse annotations, limited instance-level labels, or rely heavily on synthetic imagery. In response to the above challenges, this work contributes in perception, system integration, and dataset construction:  
+
+> •
+
+At the perception level, we propose a lightweight edge-aware instance segmentation framework for transparent glass vessels, which explicitly strengthens boundary features to achieve accurate real-time segmentation.  
+
+> •
+
+At the system level, we construct a complete robotic perception and collision-avoidance pipeline (Fig. 1) by combining the proposed segmentation framework with multi-view 3D centroid estimation and conservative bounding-volume modeling.  
+
+> •
+
+At the data level, we introduce LabGlass-IS , a real-world benchmark for transparent laboratory glassware instance segmentation, comprising 3,485 images, 21 categories, and 6,099 instance annotations. II. R ELATED WORK 
+
+A. Transparent Object Segmentation 
+
+Transparent object segmentation has attracted increasing attention in recent years. Conventional appearance-based segmentation methods [12]–[16] often struggle to capture stable visual cues for transparent objects, leading to degraded performance in complex environments. CNN-based approaches have been proposed to enhance boundary and contextual features. Translab [8] jointly pre-dicts masks and boundaries, while LBSNet [5] intro-duces dynamic boundary-aware feature fusion to improve segmentation quality. Transformer-based methods such as Trans2Seg [6] further strengthen global context modeling through self-attention and multi-scale decoding, but usually introduce higher computational overhead. Foundation models such as SAM [7] and its lightweight variant FastSAM [17] have shown strong cross-task gener-alization. However, their performance on transparent lab-oratory glass vessels remains limited, and their computa-tional overhead still challenges real-time robotic deployment. Overall, existing methods primarily emphasize segmentation accuracy, while efficient and boundary-aware instance seg-mentation for robotic applications remains unresolved. 
+
+B. Vision-Based Robotic Manipulator Collision Avoidance 
+
+Vision-based collision avoidance relies on reliable obstacle modeling for motion planning and safe manipulation. Early approaches typically employ precise 3D reconstruction or dense point cloud modeling, which are computationally expensive and sensitive to perception noise. To enable real-time operation, recent studies adopt conser-vative geometric modeling strategies [18], [19], representing obstacles with simple primitives such as bounding boxes or convex polyhedra for efficient collision detection. Deep learning-based methods further estimate object locations from RGB or RGB-D images to support fast and reliable planning [20]. For transparent objects, unreliable depth and optical ef-fects make spatial estimation more challenging. Recent works improve geometry estimation through multi-view con-straints [21], refractive cues [22], and sim-to-real depth completion [23]. TORM [24] reconstructs multiple trans-parent objects from multi-view masks for robotic grasping, while HEAPGrasp [25] combines segmentation-based shape estimation with active hand-eye perception. Yet achieving stable and real-time obstacle representation using pure vision remains a challenging open problem. 
+
+C. Chemical Laboratory Instrument Datasets 
+
+Datasets play a critical role in transparent object percep-tion. Early datasets such as LabPics [11] and CABD [10] are limited in scale, category diversity, or annotation precision, restricting their applicability in complex laboratory environ-ments. Recent datasets including Trans10K [8] and Clear-Grasp [9] provide larger-scale data, but most focus on seman-tic segmentation or synthetic scenes and lack fine-grained instance annotations for laboratory glassware. Consequently, existing datasets are still insufficient for instance-level per-ception and robotic manipulation tasks in real chemical environments. To address this gap, this work constructs a real-world instance segmentation dataset ( LabGlass-IS ) for transpar-ent glass laboratory vessels, containing 6,099 annotated instances across 21 common container categories. III. M ETHOD 
+
+The proposed method consists of two main components: a lightweight edge-aware instance segmentation framework and a multi-view 3D centroid estimation pipeline with con-servative bounding-volume modeling. 
+
+A. Edge Detection and Edge-Guided Feature Module 
+
+Transparent glass vessels often exhibit unstable interior visual cues, while their boundaries remain relatively reliable. Motivated by this observation, a lightweight multi-scale edge detection module is introduced into the YOLOv5-Seg backbone. This module provides explicit boundary supervi-sion and generates edge-aware features used for subsequent feature fusion in the network neck. The overall framework of the proposed network is illustrated in Fig. 2. P3P4      
+
+> N2 N3 N4
+> Dropout
+> ASPP
+> Refine
+> C
+> Upsampling Edge -Guided
+> Attention Fusion
+> Seg
+> Head
+> Edge
+> Head
+> Segment
+> Loss
+> Edge
+> Loss
+> RGB Image
+> Mask
+> Edge Map
+> Backbone Neck
+> Edge Branch
+> Head
+> 1/2
+> 1/4
+> 1/8
+> 1/16
+> 1/32 P5
+> N5
+> P2
+> Prediction
+> E= σ( Upsample( ψ( 𝑭 𝒆 )))
+> BAM BAM BAM BAM
+> 𝑭 𝒆
+> Energy
+> Function
+> Minimizing
+> Block
+> 𝒂 𝒕 =1/𝒆 𝒕
+> ∗
+> Parameter -Free
+> Attention Weights
+
+Fig. 2: Overview of the proposed method. It comprises a hierarchical backbone with SimAM attention for multi-scale feature extraction, an auxiliary edge branch for boundary cue enhancement, and a feature fusion neck incorporating Bottleneck Attention Module (BAM). By jointly optimizing instance segmentation and edge detection, the model achieves superior contour precision for transparent objects. 
+
+1) Multi-scale Edge Feature Extraction: The edge branch takes multi-scale feature maps {P2, P 3, P 4, P 5} from the backbone as inputs. High-resolution features capture fine boundary details, while lower-resolution features provide more stable semantic context. To reduce computational over-head and unify feature representations, feature maps from different scales are first compressed to a common intermedi-ate channel dimension and spatially aligned. They are then upsampled to the same spatial resolution and fused along the channel dimension. To enlarge the receptive field and capture contextual information, a lightweight Atrous Spatial Pyramid Pool-ing (ASPP) module is employed. The resulting edge-aware feature representation is denoted as Fe, which preserves boundary details while incorporating cross-scale semantic consistency and suppressing background noise. The structure of the edge branch is illustrated in Fig. 2. 
+
+2) Edge Confidence Map Prediction: Based on the edge-aware feature representation Fe, a lightweight prediction head ψ generates an edge confidence map, which is upsam-pled to the original image resolution: 
+
+E = σ Upsample( ψ(Fe)) , (1) where E denotes the pixel-wise edge confidence and σ(·)
+
+represents the sigmoid activation function. The edge pre-diction head is used only for auxiliary supervision during training, while the intermediate edge-aware features are fused into the neck and retained during inference. 
+
+3) Edge-Guided Attention Fusion in the Neck: The aligned multi-scale edge features are further fused into the network neck through a Bottleneck Attention Module(BAM). These features do not directly participate in the loss com-putation; instead, they serve as edge-guided attention inputs that guide the network to emphasize boundary regions during inference. The three components work in a cooperative manner to en-hance transparent object perception. Multi-scale edge feature extraction provides stable boundary representations, while edge confidence prediction introduces explicit supervision to enforce boundary-aware learning. The edge-guided attention fusion further injects these features into the neck to empha-size reliable contours and suppress background noise. Since object boundary prediction and instance segmentation share strong structural consistency, emphasizing boundary regions through this progressive pipeline helps improve segmentation accuracy while suppressing noise caused by refraction effects and background textures. 
+
+4) SimAM-Based Feature Refinement: To improve fea-ture discrimination with minimal parameter overhead, the SimAM attention module [26] is inserted after the C3 modules. Transparent glassware often exhibits weak texture, refraction, and low contrast, causing object responses to be easily confused with background regions. SimAM alleviates this problem by assigning neuron-wise three-dimensional attention weights according to an energy-based measure of feature separability. Specifically, SimAM measures the linear separability be-tween a target neuron and other neurons within the same channel and defines the following energy function: 
+
+et = 1
+
+M − 1
+
+XM −1 
+
+> i=1
+
+(−1 − (wtxi + bt)) 2
+
++ (1 − (wtt + bt)) 2 + λw 2 
+
+> t
+
+,
+
+(2) where t denotes the target neuron, xi represents other neu-rons in the same channel, and M = H × W is the number of neurons in the channel. By minimizing this energy, the Fig. 3: From left to right: RGB images, intermediate feature maps of YOLO-Seg, and intermediate feature maps enhanced by the edge module and SimAM attention mechanism. attention weight is obtained as 
+
+at = 1 /e ∗ 
+
+> t
+
+. (3) Through this mechanism, SimAM emphasizes informative features and suppresses misleading high-energy responses generated by refraction and specular highlights, thereby improving the representation of transparent glass regions in complex environments. As illustrated in Fig. 3, the visualization of intermediate feature maps shows that the integration of the edge module and the SimAM attention mechanism leads to clearer object boundaries and significantly suppresses irrelevant surround-ing regions. 
+
+B. Multi-view 3D Centroid Estimation 
+
+For real-time collision avoidance during robotic manipula-tion, the proposed system estimates a coarse yet reliable 3D position for each segmented glass vessel using multi-view observations collected during robot motion. For a detected instance under the i-th viewpoint, the 2D geometric centroid is computed directly from the predicted segmentation mask. Let the predicted mask be Mi. The centroid in the image plane is defined as 
+
+ci = ( ui, v i) = 1
+
+|M i|
+
+X
+
+> (u,v )∈M i
+
+(u, v ). (4) Compared with bounding box centers, mask centroids more accurately reflect the projected object location and remain stable under partial occlusion, reducing triangulation jitter across views. Given the camera intrinsic matrix K, the centroid ci, and the camera pose Tbase cam ,i = [ Ri, Ci], the viewing ray in the camera frame can be computed as 
+
+dcam  
+
+> i
+
+= K−1[ui vi 1] ⊤/∥K−1[ui vi 1] ⊤∥. (5) The ray direction in the robot base frame is 
+
+di = Rid cam  
+
+> i
+
+. (6) Here Ci denotes the camera center in the base frame and Ri
+
+represents the rotation matrix. Since the robot end-effector equipped with an RGB cam-era performs small controlled motions, multiple observations 
+
+(Ci, di) are collected from different viewpoints. Ideally, the 3D centroid p lies at the intersection of these rays. Con-sidering inevitable perception noise, a least-squares multi-ray triangulation method is used to estimate the 3D centroid position of the transparent object. The distance from point p
+
+to the i-th ray can be written as 
+
+(I − did⊤ 
+
+> i
+
+)( p − Ci) . (7) The estimated 3D position is obtained by solving 
+
+ˆp = arg min 
+
+> p
+
+X
+
+> i
+
+(I − did⊤ 
+
+> i
+
+)( p − Ci) 2
+
+. (8) Although simpler than dense 3D reconstruction, this centroid-based estimation is sufficient to construct conser-vative bounding volumes for fragile glass vessels and can be efficiently integrated into the robot motion planning pipeline. 
+
+C. Perception-Guided Obstacle Modeling 
+
+Based on the estimated 3D centroid of each glass vessel, a conservative bounding volume is constructed to support safe collision avoidance during robotic manipulation. Given the estimated centroid p∗ ∈ R3, each glass vessel is approximated by an axis-aligned cubic bounding volume centered at p∗. The cube size is conservatively selected to cover the spatial extent of the object while accounting for segmentation uncertainty and geometric variations, and can be adjusted according to object categories to balance safety and workspace utilization. During robot motion planning, these bounding volumes are treated as dynamic obstacles in the workspace, and collision checking is performed between robot links and the volumes to generate safe and collision-free trajectories. Meanwhile, the robot continuously maintains multi-view observation of glass vessels and updates their centroids and bounding volumes online, ensuring stable perception and recognition of fragile transparent objects throughout the collision avoidance process. The overall workflow is shown in Algorithm 1. This conservative geometric modeling avoids precise shape reconstruction while ensuring fragile glassware re-mains protected, reducing computational overhead compared with dense mesh or point cloud representations and making the method suitable for real-time robotic applications. IV. E XPERIMENTS 
+
+In this section, we present quantitative and qualitative results to validate our method for transparent glassware segmentation and robotic collision avoidance on real-world LabGlass-IS dataset. 
+
+A. Dataset 
+
+To support transparent glassware perception in robotic manipulation scenarios, we construct a dedicated dataset of laboratory glassware with pixel-level instance annotations. The dataset was captured using the RGB stream of an Intel RealSense D435i camera and contains 3,485 images. All images have a resolution of 640 × 480 , with 6,099 annotated Algorithm 1: Real-Time Perception-Guided Obstacle Avoidance  
+
+> 1
+
+Initialize shared obstacle map O ← ∅  
+
+> 2
+
+Thread 1: Perception and 3D Estimation ; 
+
+> 3
+
+while camera is running do  
+
+> 4
+
+D ← Seg Model (camera frame ) 
+
+> 5
+
+for each d ∈ D do  
+
+> 6
+
+Compute centroid of d 
+
+> 7
+
+Back-project centroid to a 3D ray using camera matrix K and pose Tcam  
+
+> 8
+
+Update tracks using mask IoU and append observation rays  
+
+> 9
+
+if number of rays ≥ Nmin then  
+
+> 10
+
+Estimate 3D point P by least-squares ray intersection  
+
+> 11
+
+O ← O ∪ { P} 
+
+> 12
+
+Thread 2: Motion Planning and Execution ; 
+
+> 13
+
+for each waypoint wi do  
+
+> 14
+
+Plan trajectory π from qcurr to wi with obstacle set O 
+
+> 15
+
+if obstacle map updated then  
+
+> 16
+
+Replan trajectory  
+
+> 17
+
+Execute trajectory π
+
+instances across 21 categories of common laboratory glass-ware, covering a wide range of transparent objects in real lab-oratory environments. The data were collected by recording multi-view, multi-distance videos of glassware on laboratory benches with varying scene complexity, followed by frame extraction and redundancy filtering to remove highly similar frames. These objects exhibit typical transparent characteris-tics such as refraction, reflection, and weak internal textures. Diverse backgrounds and object arrangements reflect realistic robotic manipulation scenarios. All instances are manually annotated with pixel-level masks, as shown in Fig. 4. 
+
+B. Implementation Details and Training Settings 
+
+All experiments are implemented using the PyTorch framework and trained on an NVIDIA RTX 4090 GPU. Input images are resized to 640 ×640 during training and inference. YOLOv5-Seg is adopted as the baseline framework. With-out changing its overall architecture, we integrate an edge de-tection module, an edge-guided attention fusion mechanism, and a parameter-free attention module to enhance boundary perception and feature representation with minimal overhead. During training, the Adam optimizer is employed with an initial learning rate of 1 × 10 −3 and a batch size of 16. To improve model generalization, data augmentation techniques including random horizontal flipping and brightness and contrast perturbations are applied. The edge confidence map is used only during training as an auxiliary supervision signal to guide the network toward boundary-aware feature learning. No additional computation related to edge supervision is introduced during inference. 
+
+C. Experimental Results and Analysis 1) Quantitative Evaluation: To evaluate the performance of the proposed transparent glassware instance segmenta-tion method, we compare representative segmentation ap-proaches, including one-stage detection models and interac-tive segmentation methods. Notably, the FastSAM [17] model is also included for comparison. Since FastSAM requires prompts (e.g., points, boxes, or semantic inputs) for specific object segmentation, we use object bounding boxes generated by YOLO as prompts for FastSAM to obtain the final instance masks. All methods are trained and evaluated using the same dataset split and training settings to ensure fair comparison. Instance segmentation performance is evaluated using the following metrics:  
+
+> •
+
+mAP 50 /mAP 75 : Mean Average Precision computed at IoU thresholds of 0.50 /0.75 . 
+
+> •
+
+mAP 50:95 : Mean Average Precision averaged across IoU thresholds from 0.50 to 0.95 with a step of 0.05 ,providing a stricter evaluation of segmentation quality.  
+
+> •
+
+Boundary F-score (BF) : A metric specifically measur-ing how well the predicted mask contours align with the ground truth boundaries within a small distance threshold θ. We set θ = 2 pixels in our experiment.  
+
+> •
+
+BF of Slender Objects : The Boundary F-score calcu-lated specifically on a subset of the dataset containing thin and elongated glassware (glass rods and droppers), which are particularly challenging due to severe refrac-tion and weak visual cues. Table I presents the quantitative comparison results on the test set. The results show noticeable performance differences among general-purpose segmentation models in transparent glassware scenarios due to reflection, refraction, and trans-parency effects. SOLO shows relatively limited performance, while prototype-based methods such as YOLACT and YOLACT++ achieve improved results. PointRend [27] demonstrates strong boundary refinement capability and achieves the high-est mAP 50:95 of 84.35, though its heavy architecture and lower Boundary F-score (88.91) limit its suitability for real-time robotic applications. The combination of YOLO and FastSAM achieves an mAP 50:95 of 52.1, indicating adap-tation challenges of large pretrained models in transparent glassware scenarios. The proposed method achieves a competitive mAP 50:95 
+
+of 82.2 while delivering a superior BF of 97.80 at a high inference speed (7.1 ms). Notably, for slender objects (glass rods and droppers), our approach maintains a high BF of 98.21, whereas other models show a marked decline due to refractive interference. Although PointRend achieves a higher mAP 50:95 , the proposed method offers a balance between accuracy and efficiency, which is critical for de-ployment on resource-constrained robotic platforms. 
+
+2) Qualitative Evaluation: Qualitative comparison results are shown in Fig. 5. The proposed method demonstrates superior performance in scenarios involving small targets and wide-mouth bottle three-neck flask alcohol lamp beaker test tube brush condenser graduated cylinder             
+
+> distillation flask dropper conical flask evaporating dish round-bottom flask funnel plastic wash bottle
+> glass rod rubber tube separatory funnel medicine spoon test tube dropper bottle volumetric flask
+
+Corner Case 
+
+> low-contrast
+> heavily overlapping
+> small objects
+
+Fig. 4: Samples of the 21 laboratory apparatus types from our LabGlass-IS dataset. The first row shows original images, the second row shows images with detection boxes and instance masks, and the rightmost column presents challenging scenarios. Ours 
+
+Ours 
+
+YOLO YO LACT PointRend 
+
+YOLACT++ FastSAM SOLO 
+
+Fig. 5: Qualitative comparison on transparent glassware instance segmentation. Zoomed-in regions mainly highlight the segmentation errors of other methods, including missed small objects, boundary misalignment, incomplete masks and over-segmentation of complex glassware, while the proposed method produces more complete and accurate masks with clearer boundaries and better preservation of slender structures. TABLE I: Quantitative Comparison on the Test Set 
+
+Method Boundary F-score (BF) ↑ BF of Slender Objects ↑ mAP 50 ↑ mAP 75 ↑ mAP 50:95 ↑ FPS Time (ms) Params (M) SOLO 50.06 56.23 71.80 42.10 42.90 9.82 101.80 276.21 YOLO+FastSAM 78.87 67.69 68.20 55.60 52.10 6.25 160.10 144.06 YOLACT 89.93 88.73 95.54 80.72 68.60 43.50 22.99 190.35 YOLACT++ 89.74 89.49 88.61 84.53 77.38 39.08 25.59 196.44 PointRend 88.91 88.91 98.03 92.32 84.35 50.00 20.02 603.69 Ours 97.80 98.21 98.30 92.90 82.20 140.85 7.10 17.18 TABLE II: Ablation Experiments on Our Modules                            
+
+> Method Boundary F-score (BF) ↑mAP 50 ↑mAP 50:95 ↑mIoU ↑
+> Baseline 96.67 98.1 81.3 88.95 +SimAM 97.58 98.1 81.2 88.98 +P2 97.60 98.0 81.6 89.06 +P2+edge 97.71 98.0 81.8 89.20 Ours 97.80 98.3 82.2 89.33
+
+irregular object shapes. As illustrated, the original YOLO and YOLACT models frequently miss small targets in the scene and suffer from segmentation errors where bounding boxes and masks fail to align precisely at object boundaries. While YOLACT++ offers marginal improvements, it remains prone to neglecting slender structures or smaller objects. Furthermore, PointRend occasionally splits complex objects such as three-neck flasks into multiple objects, while FastSAM tends to generate incomplete masks. The SOLO model generally exhibits low boundary segmentation accuracy. It is worth noting that even when provided with accurate bounding box prompts, Fast-SAM sometimes fails to segment the correct object, likely because transparent chemical glassware is underrepresented in its pretraining data. Overall, the proposed method provides more accurate and stable instance segmentation results in complex transparent object scenarios. 
+
+D. Ablation Studies 
+
+To analyze the contributions of the proposed modules, ab-lation experiments are conducted on the laboratory glassware dataset. All models are trained and evaluated under identical settings, using the original YOLOv5-Seg as the base model while incrementally adding different network components. The results are summarized in Table II. Adding SimAM alone to the baseline substantially im-proves the Boundary F-score from 96.67 to 97.58, while yielding only a marginal change in mAP 50:95 (81.3 →
+
+81.2) and slightly improving mIoU (88.95 → 88.98). This indicates that SimAM mainly enhances boundary feature discrimination, although its contribution to overall mask accuracy is limited when applied alone. Introducing the high-resolution P2 feature layer further improves the Boundary F-score to 97.60, while increasing 
+
+mAP 50:95 from 81.2 to 81.6 and mIoU from 88.98 to 89.06. This indicates that high-resolution features help preserve fine spatial and boundary details, which is particularly beneficial for slender glassware such as glass rods and droppers. Adding the lightweight edge prediction branch further improves the Boundary F-score, mAP 50:95 , and mIoU to 97.71, 81.8, and 89.20, respectively, demonstrating that ex-plicit boundary supervision enhances boundary localization and mask completeness. Overall, the ablation results show that the proposed mod-ules contribute complementary improvements. In particular, high-resolution feature fusion and edge-aware design play a key role in improving segmentation quality. TABLE III: 3D Centroid Estimation Accuracy Across Dif-ferent Scenes                             
+
+> Scene #Objects Mean Error (mm) Max Error (mm) #Views S1 125.3 25.3 27 S2 240.2 45.1 27 S3 337.5 45.1 21 S4 450.3 60.5 27 S5 530.1 40.4 27
+> Avg –38.0 60.5 –
+
+TABLE IV: Obstacle Avoidance Success Rate Under 3Difficulty Levels                     
+
+> Difficulty #Trials #Objects Success Rate Avg Plan Time (s) Easy 515/5 0.017 Medium 525/5 0.018 Hard 534/5 0.018
+> Total 15 –14/15 0.017
+
+E. Collision Avoidance 
+
+To evaluate the effectiveness of the proposed perception-driven collision avoidance strategy, the estimated 3D cen-troids and conservative bounding volumes are deployed on a robotic manipulator in a real lab environment. We also measure the latency from object detection to 3D centroid estimation, defined as the time between the first image detection and the availability of its 3D centroid. The average per-frame latency is 73.70 ms, and the average time to obtain the first valid 3D centroid is 290.50 ms, demonstrating the system’s suitability for real-time collision avoidance. 
+
+3D centroid estimation accuracy. We evaluate 5 scenes with 1–5 glass vessels. Ground-truth centroids are measured manually ( ±5 mm precision) in the robot base frame. Ta-ble III reports the Euclidean errors, with an average of 38.0 mm and a maximum of 60.5 mm. Errors are mainly along the depth ( z) axis due to limited triangulation resolu-tion. Critically, the conservative bounding volumes are sized to fully enclose the objects with this margin, so such errors do not compromise safety. 
+
+Collision avoidance success rate. We conduct 15 trials across three difficulty levels (Easy/Medium/Hard). A trial succeeds if the robot reaches the goal without contact. As shown in Table IV, the system achieves a 93.3% success rate. The average MoveIt re-planning time is below 20 ms, con-firming that the perception-to-planning pipeline introduces negligible overhead at each update cycle. 
+
+Qualitative results. Fig. 6 shows representative keyframes of the avoidance process, where the robot detects obstacles, plans a collision-free trajectory, and reaches the goal safely. V. C ONCLUSIONS 
+
+Experimental results show that the proposed method achieves an effective balance between segmentation quality, real-time efficiency, and robotic usability for transparent lab-oratory glassware. On LabGlass-IS, it attains 82.2 mAP 50:95 Medium scenarios Hard scenarios Easy scenarios 
+
+Key frame 1 
+
+Key frame 2
+
+Key frame 3
+
+Key frame 1 
+
+Key frame 2
+
+Key frame 3
+
+Key frame 1 
+
+Key frame 2
+
+Key frame 3Fig. 6: Real-robot obstacle avoidance experiment. The red curve represents the planned obstacle avoidance trajectory. Columns show Easy/Medium/Hard scenarios; rows show key frames from start, avoidance, to goal. at 7.1 ms per frame, while the real-robot system reaches a 93.3% collision avoidance success rate. These results indi-cate that explicit edge-aware design, combined with multi-view centroid estimation and conservative obstacle modeling, provides a practical perception-to-action solution for robot collision avoidance in cluttered transparent-object scenes. The current system is primarily designed for reliable collision avoidance and does not yet support more precise geometric understanding or fine manipulation. Future work will focus on improving geometric perception accuracy and enabling more precise interaction capabilities, thereby ex-tending the framework to more complex manipulation tasks. REFERENCES [1] J. Jiang, G. Cao, J. Deng, T.-T. Do, and S. Luo, “Robotic perception of transparent objects: A review,” IEEE Trans. Artif. Intell. , vol. 5, no. 6, pp. 2547–2567, 2023. [2] L. Zhu, A. Mousavian, Y. Xiang, H. Mazhar, J. van Eenbergen, S. Debnath, and D. Fox, “Rgb-d local implicit function for depth completion of transparent objects,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR) , 2021, pp. 4649–4658. [3] W. Gao, J. Zhang, M. Zhao, Z. Zhang, S. Kong, M. Ghaffari, D. Song, C. Xu, and H. Kong, “Super lidar intensity for robotic perception,” 
+
+IEEE Robot. Autom. Lett. , 2026. [4] J. Lin, Y.-H. Yeung, S. Ye, and R. W. H. Lau, “Leveraging rgb-d data with cross-modal context mining for glass surface detection,” in Proc. AAAI Conf. Artif. Intell. , vol. 39, no. 5, 2025, pp. 5254–5261. [5] L. Tong, K. Qian, and X. Jing, “Lbsnet: Lightweight joint boundary detection and semantic segmentation for transparent and reflective objects,” IEEE Robot. Autom. Lett. , vol. 10, no. 2, pp. 955–962, 2024. [6] E. Xie, W. Wang, W. Wang, P. Sun, H. Xu, D. Liang, and P. Luo, “Segmenting transparent object in the wild with transformer,” arXiv preprint arXiv:2101.08461 , 2021. [7] A. Kirillov, E. Mintun, N. Ravi, H. Mao, C. Rolland, L. Gustafson, T. Xiao, S. Whitehead, A. C. Berg, W.-Y. Lo, et al. , “Segment anything,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. (ICCV) , 2023, pp. 4015–4026. [8] E. Xie, W. Wang, W. Wang, M. Ding, C. Shen, and P. Luo, “Seg-menting transparent objects in the wild,” in Eur. Conf. Comput. Vis. (ECCV) . Springer, 2020, pp. 696–711. [9] S. Sajjan, M. Moore, M. Pan, G. Nagaraja, J. Lee, A. Zeng, and S. Song, “Clear grasp: 3d shape estimation of transparent objects for manipulation,” in IEEE Int. Conf. Robot. Autom. (ICRA) . IEEE, 2020, pp. 3634–3642. [10] L. Zou, Z.-S. Ding, S.-Y. Ran, Z.-Z. Wu, Y.-S. Wei, Z.-H. He, and X.-F. Wang, “A benchmark dataset in chemical apparatus: recognition and detection,” Multimed. Tools Appl. , vol. 83, no. 9, pp. 26 419–26 437, 2024. [11] S. Eppel, H. Xu, M. Bismuth, and A. Aspuru-Guzik, “Computer vision for recognition of materials and vessels in chemistry lab settings and the vector-labpics data set,” ACS Cent. Sci. , vol. 6, no. 10, pp. 1743– 1752, 2020. [12] D. Bolya, C. Zhou, F. Xiao, and Y. J. Lee, “Yolact: Real-time instance segmentation,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. (ICCV) ,2019, pp. 9157–9166. [13] A. Nazir and M. A. Wani, “You only look once-object detection mod-els: a review,” in Int. Conf. Comput. Sustain. Global Dev. (INDIACom) .IEEE, 2023, pp. 1088–1095. [14] D. Bolya, C. Zhou, F. Xiao, and Y. J. Lee, “Yolact++: Better real-time instance segmentation,” IEEE Trans. Pattern Anal. Mach. Intell. ,vol. 44, no. 2, pp. 1108–1121, 2020. [15] X. Wang, T. Kong, C. Shen, Y. Jiang, and L. Li, “Solo: Segmenting objects by locations,” in Eur. Conf. Comput. Vis. (ECCV) . Springer, 2020, pp. 649–665. [16] B. Cheng, I. Misra, A. G. Schwing, A. Kirillov, and R. Girdhar, “Masked-attention mask transformer for universal image segmen-tation,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR) , 2022, pp. 1290–1299. [17] X. Zhao, W. Ding, Y. An, Y. Du, T. Yu, M. Li, M. Tang, and J. Wang, “Fast segment anything,” arXiv preprint arXiv:2306.12156 , 2023. [18] K. Nishimoto, R. Funada, T. Ibuki, and M. Sampei, “Collision avoidance for elliptical agents with control barrier function utilizing supporting lines,” in Amer. Control Conf. (ACC) . IEEE, 2022, pp. 5147–5153. [19] M. Missura and M. Bennewitz, “Predictive collision avoidance for the dynamic window approach,” in IEEE Int. Conf. Robot. Autom. (ICRA) .IEEE, 2019, pp. 8620–8626. [20] H. Li, X. Wang, X. Huang, Y. Ma, and Z. Jiang, “Multi-joint active collision avoidance for robot based on depth visual perception,” 
+
+IEEE/CAA J. Autom. Sinica , vol. 9, no. 12, pp. 2186–2189, 2022. [21] Y. R. Wang, Y. Zhao, H. Xu, S. Eppel, A. Aspuru-Guzik, F. Shkurti, and A. Garg, “Mvtrans: Multi-view perception of transparent objects,” 
+
+arXiv preprint arXiv:2302.11683 , 2023. [22] T. Tang, J. Liu, J. Zhang, H. Fu, W. Xu, and C. Lu, “Rftrans: Leveraging refractive flow of transparent objects for surface normal estimation and manipulation,” IEEE Robot. Autom. Lett. , vol. 9, no. 4, pp. 3735–3742, 2024. [23] X. Jing, K. Qian, and M. Vincze, “Cagt: Sim-to-real depth completion with interactive embedding aggregation and geometry awareness for transparent objects,” IEEE Trans. Circuits Syst. Video Technol. , vol. 35, no. 7, pp. 6656–6670, 2025. [24] Q. Qiao, F. Lin, H. Zhao, B. Xu, Z. Chen, D. Xu, and P. Lu, “Torm: Transparent objects reconstruction and manipulation with multi-view segmentation,” IEEE Robot. Autom. Lett. , vol. 11, no. 1, pp. 242–249, 2026. [25] G. Kennis and S. Arai, “Heapgrasp: Hand-eye active perception to grasp objects with diverse optical properties,” IEEE Robot. Autom. Lett. , vol. 11, no. 3, pp. 3206–3213, 2026. [26] L. Yang, R.-Y. Zhang, L. Li, and X. Xie, “Simam: A simple, parameter-free attention module for convolutional neural networks,” in 
+
+Int. Conf. Mach. Learn. (ICML) . PMLR, 2021, pp. 11 863–11 874. [27] A. Kirillov, Y. Wu, K. He, and R. Girshick, “Pointrend: Image segmentation as rendering,” in IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR) , 2020, pp. 9796–9805.
