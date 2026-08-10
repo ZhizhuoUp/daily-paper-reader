@@ -6,58 +6,67 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-08-09
-- 运行时间：2026-08-09 20:07:17 UTC
+- 最新运行日期：2026-08-10
+- 运行时间：2026-08-10 20:48:50 UTC
 - 运行状态：成功
-- 本次总论文数：12
-- 精读区：1
+- 本次总论文数：15
+- 精读区：4
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 12 篇前沿论文，深度聚焦具身智能从分层后训练到全身移动操控的技术突破。
-核心结论指出，超越扁平策略的分层架构与基于视频蒸馏的技能学习是提升机器人任务泛化性的关键。
-建议优先研读分层后训练策略（Hierarchical Post-Training），探索其在复杂机器人操控任务中的性能优势。
-- 详情：[/202608/09/README](/202608/09/README)
+今日聚焦移动操作机器人，重点突破了复杂负载下的实时运动规划与世界动作模型（WAM）的跨场景应用。
+满分论文通过 SVSDF 算法解决了任意形状物体的避障难题，而 MobileWAM 则利用预见链技术提升了长程任务的执行效率。
+建议深入探索世界模型在具身智能中的轻量化推理与交互式生成，这是实现通用机器人操作的关键路径。
+- 详情：[/202608/10/README](/202608/10/README)
 
 ### 精读区论文标签
-1. [Beyond Flat Policies: Hierarchical Post-Training for Embodied Agents in Robotic Manipulation](/202608/09/2608.05999v1-beyond-flat-policies-hierarchical-post-training-for-embodied-agents-in-robotic-manipulation)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：用于操作任务的分层机器人控制
+1. [Real-time Whole-Body Motion Planning for Mobile Manipulators Carrying Arbitrarily Shaped Payloads via Kinematically-Coupled SVSDF](/202608/10/2608.07005v1-real-time-whole-body-motion-planning-for-mobile-manipulators-carrying-arbitrarily-shaped-payloads-via-kinematically-coupled-svsdf)  
+   标签：评分：10.0/10、query:profile-1
+   evidence：移动操作臂的实时全身运动规划
+2. [MobileWAM: Bridging World Action Models to Mobile Manipulation with Chain-of-Foresight](/202608/10/2608.04657v1-mobilewam-bridging-world-action-models-to-mobile-manipulation-with-chain-of-foresight)  
+   标签：评分：8.0/10、query:q6
+   evidence：移动操作的全身控制
+3. [Toward Integrating Adaptive Experience Replay and Online Uncertainty Estimation in Safe Actor-Critic Optimal Control](/202608/10/2608.04732v1-toward-integrating-adaptive-experience-replay-and-online-uncertainty-estimation-in-safe-actor-critic-optimal-control)  
+   标签：评分：8.0/10、query:q2
+   evidence：带有屏障函数的安全Actor-Critic最优控制
+4. [Scalable Long-Horizon Planning with Staggered Updates for Lifelong MAPF](/202608/10/2608.06702v1-scalable-long-horizon-planning-with-staggered-updates-for-lifelong-mapf)  
+   标签：评分：8.0/10、query:q1
+   evidence：实时约束下的无碰撞路径
 
 ### 速读区论文标签
-1. [RoboReact: Agentic Skill Distillation from Generated Egocentric Videos for Generalizable Whole-Body Manipulation](/202608/09/2608.03387v2-roboreact-agentic-skill-distillation-from-generated-egocentric-videos-for-generalizable-whole-body-manipulation)  
+1. [LiLa-WAM: Lightweight Latent Reasoning World-Action Model for Robotic Manipulation](/202608/10/2608.03701v1-lila-wam-lightweight-latent-reasoning-world-action-model-for-robotic-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：全身类人机器人操纵技能
-2. [Approximate Multi-Objective Search Under Rulebooks](/202608/09/2608.04398v1-approximate-multi-objective-search-under-rulebooks)  
+   evidence：用于机器人操作控制的世界动作模型
+2. [PRIMAL3: Pathfinding via Reinforcement and Imitation Multi-Agent Learning - Leveraging LaCAM3](/202608/10/2608.04905v1-primal3-pathfinding-via-reinforcement-and-imitation-multi-agent-learning---leveraging-lacam3)  
+   标签：评分：7.0/10、query:q1
+   evidence：多智能体路径规划与避障
+3. [GeniWorld: A Generalizable Interactive World Model for Robotic Manipulation via Visual Actions](/202608/10/2608.06332v1-geniworld-a-generalizable-interactive-world-model-for-robotic-manipulation-via-visual-actions)  
+   标签：评分：7.0/10、query:q6
+   evidence：机器人操作的世界模型
+4. [LyEvO: Lyapunov-Guided Evolutionary Optimization for Safe and Robust Sim-to-Real Policy Learning](/202608/10/2608.06481v1-lyevo-lyapunov-guided-evolutionary-optimization-for-safe-and-robust-sim-to-real-policy-learning)  
+   标签：评分：7.0/10、query:q2
+   evidence：安全鲁棒控制的优化
+5. [CrossTracer: Cross-Embodiment Navigation via VLA Model Reasoning and Trace Residuals Adapting](/202608/10/2608.06688v1-crosstracer-cross-embodiment-navigation-via-vla-model-reasoning-and-trace-residuals-adapting)  
    标签：评分：7.0/10、query:q4
-   evidence：具有安全性和效率目标的机器人规划
-3. [MobileWAM: Bridging World Action Models to Mobile Manipulation with Chain-of-Foresight](/202608/09/2608.04657v2-mobilewam-bridging-world-action-models-to-mobile-manipulation-with-chain-of-foresight)  
-   标签：评分：7.0/10、query:q6
-   evidence：移动操作与全身控制
-4. [Action Chunk Scheduling for Batched Robot Policy Serving](/202608/09/2608.00337v1-action-chunk-scheduling-for-batched-robot-policy-serving)  
-   标签：评分：6.0/10、query:q5
-   evidence：针对闭环要求的实时机器人策略服务与调度
-5. [Conserved Quantities of Optimal Continuous-Thrust Trajectories in A Central Gravitational Field](/202608/09/2608.00842v1-conserved-quantities-of-optimal-continuous-thrust-trajectories-in-a-central-gravitational-field)  
-   标签：评分：6.0/10、query:q7
-   evidence：航天器的最优连续推力轨迹
-6. [OC-VLA++: Monocular Geometry-Guided Cross-View Consistency for Viewpoint-Robust Robotic Manipulation](/202608/09/2608.01066v1-oc-vla-monocular-geometry-guided-cross-view-consistency-for-viewpoint-robust-robotic-manipulation)  
+   evidence：机器人导航与路径规划的分层框架
+6. [Ising Acceleration for Multi-Robot Multi-Target Planning](/202608/10/2608.06803v1-ising-acceleration-for-multi-robot-multi-target-planning)  
+   标签：评分：7.0/10、query:q4
+   evidence：多机器人路径搜索与组合优化
+7. [DynActiveGS: Active Gaussian Splatting for Dynamic Scene Reconstruction](/202608/10/2608.01178v1-dynactivegs-active-gaussian-splatting-for-dynamic-scene-reconstruction)  
+   标签：评分：6.0/10、query:q1
+   evidence：动态约束路径规划
+8. [SG-WAM: Self-Guided World Modeling in Geometry-Aware Policy Space](/202608/10/2608.01397v1-sg-wam-self-guided-world-modeling-in-geometry-aware-policy-space)  
    标签：评分：6.0/10、query:q6
-   evidence：视点鲁棒的机器人操作
-7. [PRISM: Privileged Probabilistic Latent Supervision for End-to-End Autonomous Driving Motion Planning](/202608/09/2608.01201v1-prism-privileged-probabilistic-latent-supervision-for-end-to-end-autonomous-driving-motion-planning)  
-   标签：评分：6.0/10、query:q4
-   evidence：具有潜监督的自动驾驶运动规划
-8. [ChainVLA: Chaining Vision-Language-Action Queries through a Unified Execution State for Long-Horizon Manipulation](/202608/09/2608.02326v1-chainvla-chaining-vision-language-action-queries-through-a-unified-execution-state-for-long-horizon-manipulation)  
+   evidence：机器人操作的几何感知动力学
+9. [CoNav-UAV: Cooperative Dual-Altitude Aerial Navigation via Stackelberg Learning](/202608/10/2608.01802v1-conav-uav-cooperative-dual-altitude-aerial-navigation-via-stackelberg-learning)  
+   标签：评分：6.0/10、query:q1
+   evidence：无人机导航中的无碰撞近距离接近
+10. [ValueFormer: A Causal Transformer Value Function with Stage-Aware Labels for Semi-Autonomous Vision-Language-Action Policies](/202608/10/2608.02958v1-valueformer-a-causal-transformer-value-function-with-stage-aware-labels-for-semi-autonomous-vision-language-action-policies)  
    标签：评分：6.0/10、query:q6
-   evidence：具有连续运动自适应的长程操作
-9. [Why Does Action Chunking Improve Behavioral Cloning Performance in Robotic Control?](/202608/09/2608.02547v1-why-does-action-chunking-improve-behavioral-cloning-performance-in-robotic-control)  
-   标签：评分：6.0/10、query:q2
-   evidence：机器人控制策略与动作分块性能
-10. [Staying on Spec: Real-Time Monitoring under Uncertainty with a Maritime Case Study](/202608/09/2608.02811v1-staying-on-spec-real-time-monitoring-under-uncertainty-with-a-maritime-case-study)  
+   evidence：机器人操作的视觉-语言-动作策略
+11. [A Vision-based Control Framework for Real-time Autonomous UUV Operations](/202608/10/2608.04723v1-a-vision-based-control-framework-for-real-time-autonomous-uuv-operations)  
    标签：评分：6.0/10、query:q5
-   evidence：不确定性下机器人系统的实时监控框架
-11. [PFM-HR: Pose Flow Matching for Humanoid Robots](/202608/09/2608.03227v1-pfm-hr-pose-flow-matching-for-humanoid-robots)  
-   标签：评分：6.0/10、query:q4
-   evidence：类人机器人跟踪的运动先验
+   evidence：水下机器人的实时自主导航
 
 
 <div class="dpr-home-promo-card">
