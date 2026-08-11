@@ -6,67 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-08-10
-- 运行时间：2026-08-10 20:48:50 UTC
+- 最新运行日期：2026-08-11
+- 运行时间：2026-08-11 21:22:57 UTC
 - 运行状态：成功
-- 本次总论文数：15
-- 精读区：4
+- 本次总论文数：17
+- 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日聚焦移动操作机器人，重点突破了复杂负载下的实时运动规划与世界动作模型（WAM）的跨场景应用。
-满分论文通过 SVSDF 算法解决了任意形状物体的避障难题，而 MobileWAM 则利用预见链技术提升了长程任务的执行效率。
-建议深入探索世界模型在具身智能中的轻量化推理与交互式生成，这是实现通用机器人操作的关键路径。
-- 详情：[/202608/10/README](/202608/10/README)
+今日深度解析 17 篇机器人前沿进展，聚焦机械臂流形控制与高精度微分度量技术。
+重点推荐 PR-MPPI 算法实现的精确约束控制，以及 Hölder 有符号距离在可微并行计算中的创新应用。
+建议优先研读两篇 9.0 分精读论文，掌握复杂几何约束下的机器人运动规划新范式。
+- 详情：[/202608/11/README](/202608/11/README)
 
 ### 精读区论文标签
-1. [Real-time Whole-Body Motion Planning for Mobile Manipulators Carrying Arbitrarily Shaped Payloads via Kinematically-Coupled SVSDF](/202608/10/2608.07005v1-real-time-whole-body-motion-planning-for-mobile-manipulators-carrying-arbitrarily-shaped-payloads-via-kinematically-coupled-svsdf)  
-   标签：评分：10.0/10、query:profile-1
-   evidence：移动操作臂的实时全身运动规划
-2. [MobileWAM: Bridging World Action Models to Mobile Manipulation with Chain-of-Foresight](/202608/10/2608.04657v1-mobilewam-bridging-world-action-models-to-mobile-manipulation-with-chain-of-foresight)  
-   标签：评分：8.0/10、query:q6
-   evidence：移动操作的全身控制
-3. [Toward Integrating Adaptive Experience Replay and Online Uncertainty Estimation in Safe Actor-Critic Optimal Control](/202608/10/2608.04732v1-toward-integrating-adaptive-experience-replay-and-online-uncertainty-estimation-in-safe-actor-critic-optimal-control)  
-   标签：评分：8.0/10、query:q2
-   evidence：带有屏障函数的安全Actor-Critic最优控制
-4. [Scalable Long-Horizon Planning with Staggered Updates for Lifelong MAPF](/202608/10/2608.06702v1-scalable-long-horizon-planning-with-staggered-updates-for-lifelong-mapf)  
-   标签：评分：8.0/10、query:q1
-   evidence：实时约束下的无碰撞路径
+1. [Projection-Retraction MPPI: Exact Constraint-Manifold Control for Manipulators](/202608/11/2608.07573v1-projection-retraction-mppi-exact-constraint-manifold-control-for-manipulators)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：基于优化的机械臂控制，包含避障约束
+2. [Hölder Signed Distance: A Differentiable, Signed, Parallelizable Metric for Robotics](/202608/11/2608.07707v1-hlder-signed-distance-a-differentiable-signed-parallelizable-metric-for-robotics)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：用于实时优化运动规划的可微距离度量
+3. [Information-Aware Model Predictive Control for Satellite Inspection Missions](/202608/11/2608.07765v1-information-aware-model-predictive-control-for-satellite-inspection-missions)  
+   标签：评分：9.0/10、query:q7
+   evidence：用于卫星巡检任务的模型预测控制
+4. [Hierarchical Topology-Aware Planning and Control of Underwater Vehicle-Manipulator Systems in Confined Environments](/202608/11/2608.08871v1-hierarchical-topology-aware-planning-and-control-of-underwater-vehicle-manipulator-systems-in-confined-environments)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：水下机器人-机械臂系统的分层规划与轨迹优化
+5. [Real-Time Nonlinear MPC via Sequential Quadratic Programming with Structure-Exploiting ADMM and Interior-Point Methods for Underactuated Double-Pendulum Swing-Up](/202608/11/2608.09272v1-real-time-nonlinear-mpc-via-sequential-quadratic-programming-with-structure-exploiting-admm-and-interior-point-methods-for-underactuated-double-pendulum-swing-up)  
+   标签：评分：9.0/10、query:q5
+   evidence：通过序列二次规划实现的实时非线性MPC
+6. [PEEL: Parallel Extraction for Long-Horizon Disassembly Planning via Scale-Invariant Sampling](/202608/11/2608.08773v1-peel-parallel-extraction-for-long-horizon-disassembly-planning-via-scale-invariant-sampling)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：使用采样规划为机器人机械臂计算无碰撞移除动作
 
 ### 速读区论文标签
-1. [LiLa-WAM: Lightweight Latent Reasoning World-Action Model for Robotic Manipulation](/202608/10/2608.03701v1-lila-wam-lightweight-latent-reasoning-world-action-model-for-robotic-manipulation)  
+1. [AffordTrajDP: Dynamic Affordance-Guided Visuomotor Policy Learning for Robotic Manipulation](/202608/11/2608.01603v1-affordtrajdp-dynamic-affordance-guided-visuomotor-policy-learning-for-robotic-manipulation)  
+   标签：评分：8.0/10、query:q8
+   evidence：机器人操作的动态示能轨迹
+2. [Passively Safe Convex Guidance for Cislunar Rendezvous and Proximity Operations](/202608/11/2608.03060v1-passively-safe-convex-guidance-for-cislunar-rendezvous-and-proximity-operations)  
+   标签：评分：8.0/10、query:q7
+   evidence：用于安全地月空间交会对接和近距离操作的凸规划
+3. [Cislunar Pursuit-Evasion Game on Periodic and Quasi-Periodic Orbit](/202608/11/2608.08151v1-cislunar-pursuit-evasion-game-on-periodic-and-quasi-periodic-orbit)  
+   标签：评分：8.0/10、query:q7
+   evidence：用于航天器机动规划的受限微分动态规划
+4. [MPPI Planning with Gaussian Based Human Cost Function for Social Navigation](/202608/11/2608.08323v1-mppi-planning-with-gaussian-based-human-cost-function-for-social-navigation)  
+   标签：评分：8.0/10、query:q1
+   evidence：基于MPPI规划的时空代价函数避障
+5. [Faster-WAM: Efficient Inference-Time Future Conditioning for Robust World Action Models](/202608/11/2608.04404v1-faster-wam-efficient-inference-time-future-conditioning-for-robust-world-action-models)  
    标签：评分：7.0/10、query:q6
-   evidence：用于机器人操作控制的世界动作模型
-2. [PRIMAL3: Pathfinding via Reinforcement and Imitation Multi-Agent Learning - Leveraging LaCAM3](/202608/10/2608.04905v1-primal3-pathfinding-via-reinforcement-and-imitation-multi-agent-learning---leveraging-lacam3)  
-   标签：评分：7.0/10、query:q1
-   evidence：多智能体路径规划与避障
-3. [GeniWorld: A Generalizable Interactive World Model for Robotic Manipulation via Visual Actions](/202608/10/2608.06332v1-geniworld-a-generalizable-interactive-world-model-for-robotic-manipulation-via-visual-actions)  
+   evidence：机器人操作世界动作模型的高效推理
+6. [World-to-Wrist: Task-Conditioned Future Wrist Modeling for Fine-Grained Robot Manipulation](/202608/11/2608.05369v1-world-to-wrist-task-conditioned-future-wrist-modeling-for-fine-grained-robot-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：机器人操作的世界模型
-4. [LyEvO: Lyapunov-Guided Evolutionary Optimization for Safe and Robust Sim-to-Real Policy Learning](/202608/10/2608.06481v1-lyevo-lyapunov-guided-evolutionary-optimization-for-safe-and-robust-sim-to-real-policy-learning)  
-   标签：评分：7.0/10、query:q2
-   evidence：安全鲁棒控制的优化
-5. [CrossTracer: Cross-Embodiment Navigation via VLA Model Reasoning and Trace Residuals Adapting](/202608/10/2608.06688v1-crosstracer-cross-embodiment-navigation-via-vla-model-reasoning-and-trace-residuals-adapting)  
-   标签：评分：7.0/10、query:q4
-   evidence：机器人导航与路径规划的分层框架
-6. [Ising Acceleration for Multi-Robot Multi-Target Planning](/202608/10/2608.06803v1-ising-acceleration-for-multi-robot-multi-target-planning)  
-   标签：评分：7.0/10、query:q4
-   evidence：多机器人路径搜索与组合优化
-7. [DynActiveGS: Active Gaussian Splatting for Dynamic Scene Reconstruction](/202608/10/2608.01178v1-dynactivegs-active-gaussian-splatting-for-dynamic-scene-reconstruction)  
-   标签：评分：6.0/10、query:q1
-   evidence：动态约束路径规划
-8. [SG-WAM: Self-Guided World Modeling in Geometry-Aware Policy Space](/202608/10/2608.01397v1-sg-wam-self-guided-world-modeling-in-geometry-aware-policy-space)  
+   evidence：用于精细机器人操作的未来手腕建模
+7. [$ω$-0: A Latent Predictive World Action Model for Concurrent Humanoid Loco-Manipulation](/202608/11/2608.06375v1--0-a-latent-predictive-world-action-model-for-concurrent-humanoid-loco-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：类人机器人的全身移动操作
+8. [$ω$-0: A Latent Predictive World Action Model for Concurrent Humanoid Loco-Manipulation](/202608/11/2608.06375v2--0-a-latent-predictive-world-action-model-for-concurrent-humanoid-loco-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：使用潜层预测世界动作模型的类人机器人移动操作
+9. [TWINS: A Tactile Wearable Isomorphic Arm Networked System for Contact-Rich Manipulation Learning](/202608/11/2608.01733v1-twins-a-tactile-wearable-isomorphic-arm-networked-system-for-contact-rich-manipulation-learning)  
    标签：评分：6.0/10、query:q6
-   evidence：机器人操作的几何感知动力学
-9. [CoNav-UAV: Cooperative Dual-Altitude Aerial Navigation via Stackelberg Learning](/202608/10/2608.01802v1-conav-uav-cooperative-dual-altitude-aerial-navigation-via-stackelberg-learning)  
-   标签：评分：6.0/10、query:q1
-   evidence：无人机导航中的无碰撞近距离接近
-10. [ValueFormer: A Causal Transformer Value Function with Stage-Aware Labels for Semi-Autonomous Vision-Language-Action Policies](/202608/10/2608.02958v1-valueformer-a-causal-transformer-value-function-with-stage-aware-labels-for-semi-autonomous-vision-language-action-policies)  
+   evidence：用于丰富接触操作学习的机器人系统
+10. [JoyAI-RA 0.5: Scaling Robot Manipulation Learning via Dual Action Alignment](/202608/11/2608.05674v1-joyai-ra-05-scaling-robot-manipulation-learning-via-dual-action-alignment)  
    标签：评分：6.0/10、query:q6
-   evidence：机器人操作的视觉-语言-动作策略
-11. [A Vision-based Control Framework for Real-time Autonomous UUV Operations](/202608/10/2608.04723v1-a-vision-based-control-framework-for-real-time-autonomous-uuv-operations)  
+   evidence：通过双重动作对齐扩展机器人操作学习
+11. [ErgoSurf: Ergodic Control for the Coverage of Unknown Surfaces](/202608/11/2608.06208v1-ergosurf-ergodic-control-for-the-coverage-of-unknown-surfaces)  
    标签：评分：6.0/10、query:q5
-   evidence：水下机器人的实时自主导航
+   evidence：用于表面覆盖的在线遍历控制
 
 
 <div class="dpr-home-promo-card">
