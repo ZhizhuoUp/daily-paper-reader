@@ -6,73 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-08-11
-- 运行时间：2026-08-11 21:22:57 UTC
+- 最新运行日期：2026-08-12
+- 运行时间：2026-08-12 20:16:29 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日深度解析 17 篇机器人前沿进展，聚焦机械臂流形控制与高精度微分度量技术。
-重点推荐 PR-MPPI 算法实现的精确约束控制，以及 Hölder 有符号距离在可微并行计算中的创新应用。
-建议优先研读两篇 9.0 分精读论文，掌握复杂几何约束下的机器人运动规划新范式。
-- 详情：[/202608/11/README](/202608/11/README)
+今日聚焦人形机器人在狭窄空间的全身规划突破，共精读 6 篇涵盖空间感知与风险规避的高分成果。
+重点推荐 9.0 分的自避障全身路径规划方案，以及通过用户锚点显著提升 VLA 模型操作精度的 SpaceVLA。
+建议深入研读人形机器人复杂环境通行算法，并关注强化学习在加速策略执行中的应用。
+- 详情：[/202608/12/README](/202608/12/README)
 
 ### 精读区论文标签
-1. [Projection-Retraction MPPI: Exact Constraint-Manifold Control for Manipulators](/202608/11/2608.07573v1-projection-retraction-mppi-exact-constraint-manifold-control-for-manipulators)  
+1. [Whole-Body Planning for Humanoids Navigating Confined Spaces via Self-Collision Avoidance References](/202608/12/2608.10220v1-whole-body-planning-for-humanoids-navigating-confined-spaces-via-self-collision-avoidance-references)  
    标签：评分：9.0/10、query:profile-1
-   evidence：基于优化的机械臂控制，包含避障约束
-2. [Hölder Signed Distance: A Differentiable, Signed, Parallelizable Metric for Robotics](/202608/11/2608.07707v1-hlder-signed-distance-a-differentiable-signed-parallelizable-metric-for-robotics)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：用于实时优化运动规划的可微距离度量
-3. [Information-Aware Model Predictive Control for Satellite Inspection Missions](/202608/11/2608.07765v1-information-aware-model-predictive-control-for-satellite-inspection-missions)  
-   标签：评分：9.0/10、query:q7
-   evidence：用于卫星巡检任务的模型预测控制
-4. [Hierarchical Topology-Aware Planning and Control of Underwater Vehicle-Manipulator Systems in Confined Environments](/202608/11/2608.08871v1-hierarchical-topology-aware-planning-and-control-of-underwater-vehicle-manipulator-systems-in-confined-environments)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：水下机器人-机械臂系统的分层规划与轨迹优化
-5. [Real-Time Nonlinear MPC via Sequential Quadratic Programming with Structure-Exploiting ADMM and Interior-Point Methods for Underactuated Double-Pendulum Swing-Up](/202608/11/2608.09272v1-real-time-nonlinear-mpc-via-sequential-quadratic-programming-with-structure-exploiting-admm-and-interior-point-methods-for-underactuated-double-pendulum-swing-up)  
-   标签：评分：9.0/10、query:q5
-   evidence：通过序列二次规划实现的实时非线性MPC
-6. [PEEL: Parallel Extraction for Long-Horizon Disassembly Planning via Scale-Invariant Sampling](/202608/11/2608.08773v1-peel-parallel-extraction-for-long-horizon-disassembly-planning-via-scale-invariant-sampling)  
+   evidence：具备可微避障的全身规划
+2. [SpaceVLA: Spatially Grounded VLA for Robotic Manipulation with User-Authored Grasp and Place Anchors](/202608/12/2608.05730v1-spacevla-spatially-grounded-vla-for-robotic-manipulation-with-user-authored-grasp-and-place-anchors)  
+   标签：评分：8.0/10、query:q6
+   evidence：带有空间锚点的机器人操作VLA模型
+3. [Information-Aware Model Predictive Control for Satellite Inspection](/202608/12/2608.07765v2-information-aware-model-predictive-control-for-satellite-inspection)  
    标签：评分：8.0/10、query:profile-1
-   evidence：使用采样规划为机器人机械臂计算无碰撞移除动作
+   evidence：具有安全约束的卫星巡检模型预测控制
+4. [Event-Time Hybrid Optimal Control for Robotic Table Tennis Serves](/202608/12/2608.08157v1-event-time-hybrid-optimal-control-for-robotic-table-tennis-serves)  
+   标签：评分：8.0/10、query:q3
+   evidence：机器人操作任务的轨迹优化
+5. [Topological Feasibility Guarantees for Differentiable Predictive Control](/202608/12/2608.10332v1-topological-feasibility-guarantees-for-differentiable-predictive-control)  
+   标签：评分：8.0/10、query:q2
+   evidence：微分预测控制的可行性
+6. [Nonlinear Model Predictive Control via Sequential Convex Programming for Drone-to-Drone Docking](/202608/12/2608.10542v1-nonlinear-model-predictive-control-via-sequential-convex-programming-for-drone-to-drone-docking)  
+   标签：评分：8.0/10、query:q3
+   evidence：通过序列凸规划进行非线性轨迹优化
 
 ### 速读区论文标签
-1. [AffordTrajDP: Dynamic Affordance-Guided Visuomotor Policy Learning for Robotic Manipulation](/202608/11/2608.01603v1-affordtrajdp-dynamic-affordance-guided-visuomotor-policy-learning-for-robotic-manipulation)  
-   标签：评分：8.0/10、query:q8
-   evidence：机器人操作的动态示能轨迹
-2. [Passively Safe Convex Guidance for Cislunar Rendezvous and Proximity Operations](/202608/11/2608.03060v1-passively-safe-convex-guidance-for-cislunar-rendezvous-and-proximity-operations)  
-   标签：评分：8.0/10、query:q7
-   evidence：用于安全地月空间交会对接和近距离操作的凸规划
-3. [Cislunar Pursuit-Evasion Game on Periodic and Quasi-Periodic Orbit](/202608/11/2608.08151v1-cislunar-pursuit-evasion-game-on-periodic-and-quasi-periodic-orbit)  
-   标签：评分：8.0/10、query:q7
-   evidence：用于航天器机动规划的受限微分动态规划
-4. [MPPI Planning with Gaussian Based Human Cost Function for Social Navigation](/202608/11/2608.08323v1-mppi-planning-with-gaussian-based-human-cost-function-for-social-navigation)  
-   标签：评分：8.0/10、query:q1
-   evidence：基于MPPI规划的时空代价函数避障
-5. [Faster-WAM: Efficient Inference-Time Future Conditioning for Robust World Action Models](/202608/11/2608.04404v1-faster-wam-efficient-inference-time-future-conditioning-for-robust-world-action-models)  
+1. [SpeedTuning: Speeding Up Policy Execution with Lightweight Reinforcement Learning](/202608/12/2608.09138v1-speedtuning-speeding-up-policy-execution-with-lightweight-reinforcement-learning)  
+   标签：评分：8.0/10、query:q6
+   evidence：用于提升操作策略执行速度的强化学习
+2. [Risk-Aware Kinodynamic Motion Planning Under Uncertainty For Safe Navigation on Planetary Environments](/202608/12/2608.11175v1-risk-aware-kinodynamic-motion-planning-under-uncertainty-for-safe-navigation-on-planetary-environments)  
+   标签：评分：8.0/10、query:q9
+   evidence：行星环境下的动力学运动规划
+3. [Decoupling Intention from Trajectory: A Representational Deduction Framework for World Action Models](/202608/12/2608.06994v1-decoupling-intention-from-trajectory-a-representational-deduction-framework-for-world-action-models)  
+   标签：评分：7.0/10、query:q4
+   evidence：生成式运动规划与潜空间优化轨迹
+4. [Representation Handoffs for OpenArm-Based Laboratory Mobile Manipulation](/202608/12/2608.07154v1-representation-handoffs-for-openarm-based-laboratory-mobile-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：机器人操作世界动作模型的高效推理
-6. [World-to-Wrist: Task-Conditioned Future Wrist Modeling for Fine-Grained Robot Manipulation](/202608/11/2608.05369v1-world-to-wrist-task-conditioned-future-wrist-modeling-for-fine-grained-robot-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：用于精细机器人操作的未来手腕建模
-7. [$ω$-0: A Latent Predictive World Action Model for Concurrent Humanoid Loco-Manipulation](/202608/11/2608.06375v1--0-a-latent-predictive-world-action-model-for-concurrent-humanoid-loco-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：类人机器人的全身移动操作
-8. [$ω$-0: A Latent Predictive World Action Model for Concurrent Humanoid Loco-Manipulation](/202608/11/2608.06375v2--0-a-latent-predictive-world-action-model-for-concurrent-humanoid-loco-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：使用潜层预测世界动作模型的类人机器人移动操作
-9. [TWINS: A Tactile Wearable Isomorphic Arm Networked System for Contact-Rich Manipulation Learning](/202608/11/2608.01733v1-twins-a-tactile-wearable-isomorphic-arm-networked-system-for-contact-rich-manipulation-learning)  
-   标签：评分：6.0/10、query:q6
-   evidence：用于丰富接触操作学习的机器人系统
-10. [JoyAI-RA 0.5: Scaling Robot Manipulation Learning via Dual Action Alignment](/202608/11/2608.05674v1-joyai-ra-05-scaling-robot-manipulation-learning-via-dual-action-alignment)  
-   标签：评分：6.0/10、query:q6
-   evidence：通过双重动作对齐扩展机器人操作学习
-11. [ErgoSurf: Ergodic Control for the Coverage of Unknown Surfaces](/202608/11/2608.06208v1-ergosurf-ergodic-control-for-the-coverage-of-unknown-surfaces)  
-   标签：评分：6.0/10、query:q5
-   evidence：用于表面覆盖的在线遍历控制
+   evidence：移动操作与ROS2/MoveIt执行
+5. [CoCoNav: Conformal Control for Safe Robot Navigation in Crowds](/202608/12/2608.07751v1-coconav-conformal-control-for-safe-robot-navigation-in-crowds)  
+   标签：评分：7.0/10、query:q5
+   evidence：运行时认证规划与实时控制
+6. [Parameter-Dependent LMI Synthesis for Semi-Global Differential ISS Trajectory Tracking of Nonholonomic Mobile Robots Under Multiplicative Wheel Slip](/202608/12/2608.08049v1-parameter-dependent-lmi-synthesis-for-semi-global-differential-iss-trajectory-tracking-of-nonholonomic-mobile-robots-under-multiplicative-wheel-slip)  
+   标签：评分：7.0/10、query:q2
+   evidence：非圆滑移动机器人的轨迹跟踪
+7. [Cislunar Pursuit-Evasion Game on Periodic and Quasi-Periodic Orbits](/202608/12/2608.08151v2-cislunar-pursuit-evasion-game-on-periodic-and-quasi-periodic-orbits)  
+   标签：评分：7.0/10、query:q7
+   evidence：航天器机动规划与微分动态规划
+8. [AOC-CBS: Anytime-Optimal Continuous-time Conflict-Based Search for Generalised Multi-Agent Path Finding](/202608/12/2608.08175v1-aoc-cbs-anytime-optimal-continuous-time-conflict-based-search-for-generalised-multi-agent-path-finding)  
+   标签：评分：7.0/10、query:q4
+   evidence：连续时间多智能体路径搜索
+9. [Flying over The Uncertain Nature (FORTUNE): Intelligent and Humanistic 3D Path Planning for Low-Altitude Collaboration](/202608/12/2608.03408v1-flying-over-the-uncertain-nature-fortune-intelligent-and-humanistic-3d-path-planning-for-low-altitude-collaboration)  
+   标签：评分：6.0/10、query:q1
+   evidence：动态环境下的3D多无人机路径规划
+10. [Computing the Maximal Controlled Invariant Set for Neural Network Control Systems](/202608/12/2608.07908v1-computing-the-maximal-controlled-invariant-set-for-neural-network-control-systems)  
+   标签：评分：6.0/10、query:q2
+   evidence：神经网络控制系统的控制不变集
+11. [SurgWMBench: A Vision-Based Benchmark for World-Modeling Surgical Instrument Motion Planning](/202608/12/2608.08070v1-surgwmbench-a-vision-based-benchmark-for-world-modeling-surgical-instrument-motion-planning)  
+   标签：评分：6.0/10、query:q4
+   evidence：手术器械运动规划
 
 
 <div class="dpr-home-promo-card">
