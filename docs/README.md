@@ -6,73 +6,67 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-08-13
-- 运行时间：2026-08-13 21:11:59 UTC
+- 最新运行日期：2026-08-14
+- 运行时间：2026-08-14 20:14:17 UTC
 - 运行状态：成功
-- 本次总论文数：17
-- 精读区：6
+- 本次总论文数：15
+- 精读区：4
 - 速读区：11
 
 ### 今日简报（AI）
-今日深度解析 17 篇机器人前沿进展，聚焦接触隐式轨迹优化与复杂协同操作的算法突破。
-重点推荐 ContactIPM 求解器对物理约束的高效处理，以及通过稀疏 RL 实现的全身协调运动学习。
-建议优先研读两篇 9 分领衔论文，掌握从底层动力学优化到高层感知融合的具身智能前沿范式。
-- 详情：[/202608/13/README](/202608/13/README)
+今日深挖 15 篇机器人前沿成果，重点突破动态环境下的安全遥操作与高精度空中作业控制。
+预测性相对速度转向与滑模导纳控制成为提升复杂任务稳健性的关键，最高评分达 9.0。
+推荐关注 3D 高斯泼溅与大模型在具身智能中的跨界应用，把握移动操作的最新演进方向。
+- 详情：[/202608/14/README](/202608/14/README)
 
 ### 精读区论文标签
-1. [ContactIPM: A Structure-Exploiting Interior-Point Solver for Contact-Implicit Trajectory Optimization](/202608/13/2608.11731v1-contactipm-a-structure-exploiting-interior-point-solver-for-contact-implicit-trajectory-optimization)  
-   标签：评分：9.0/10、query:q3
-   evidence：接触隐式轨迹优化求解器
-2. [Learning Loco-Manipulation From SMPC Demonstrations With Sparse Offline-to-Online RL](/202608/13/2608.12063v1-learning-loco-manipulation-from-smpc-demonstrations-with-sparse-offline-to-online-rl)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：结合SMPC演示与强化学习的移动操作
-3. [MPPI Planning with Gaussian-Based Human Cost Function for Social Navigation](/202608/13/2608.08323v2-mppi-planning-with-gaussian-based-human-cost-function-for-social-navigation)  
-   标签：评分：8.0/10、query:q1
-   evidence：动态社交导航中用于避障的 MPPI 规划
-4. [SpeedTuning: Speeding Up Policy Execution with Lightweight Reinforcement Learning](/202608/13/2608.09138v2-speedtuning-speeding-up-policy-execution-with-lightweight-reinforcement-learning)  
+1. [Predictive Relative-Velocity Steering for Safe Robotic Manipulator Teleoperation in Dynamic Environments](/202608/14/2608.13284v1-predictive-relative-velocity-steering-for-safe-robotic-manipulator-teleoperation-in-dynamic-environments)  
+   标签：评分：9.0/10、query:q1
+   evidence：动态环境下机器人操作臂的主动避障
+2. [Robust Sliding Mode and Admittance Control of Underactuated Aerial Manipulators for Contact-Based Inspection](/202608/14/2608.10656v1-robust-sliding-mode-and-admittance-control-of-underactuated-aerial-manipulators-for-contact-based-inspection)  
    标签：评分：8.0/10、query:profile-1
-   evidence：加速机器人操作的策略执行
-5. [Skills in Weights, Memory in Code: Hybrid Learning for Memory-Dependent Robot Manipulation](/202608/13/2608.09410v1-skills-in-weights-memory-in-code-hybrid-learning-for-memory-dependent-robot-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：记忆依赖型机器人操作的混合学习
-6. [Learning-Based Behavior Planning for Automated Driving: Real-World Integration and Deployment](/202608/13/2608.12198v1-learning-based-behavior-planning-for-automated-driving-real-world-integration-and-deployment)  
+   evidence：具有轨迹跟踪和力调节功能的空中机械臂控制
+3. [Genetic Fuzzy System-Based Multi-Robot Coordination for Planetary Missions](/202608/14/2608.12755v1-genetic-fuzzy-system-based-multi-robot-coordination-for-planetary-missions)  
+   标签：评分：8.0/10、query:q9
+   evidence：具有避障功能的行星任务多机器人协作
+4. [NestDex: Nested Policy Learning with Copilot Assisted Teleoperation for Dexterous Manipulation](/202608/14/2608.13362v1-nestdex-nested-policy-learning-with-copilot-assisted-teleoperation-for-dexterous-manipulation)  
    标签：评分：8.0/10、query:profile-1
-   evidence：用于运动规划和安全的基于优化的监督层
+   evidence：机械臂运动规划与灵巧操作策略
 
 ### 速读区论文标签
-1. [Efficient Real-World Online Reinforcement Learning for Robot Manipulation via Centralized Training and Critic Decomposition](/202608/13/2608.09762v1-efficient-real-world-online-reinforcement-learning-for-robot-manipulation-via-centralized-training-and-critic-decomposition)  
-   标签：评分：8.0/10、query:q6
-   evidence：机器人操作的在线强化学习
-2. [Unified Planning-Learning Framework for Robust UUV Navigation Under Partial Observability](/202608/13/2608.05365v1-unified-planning-learning-framework-for-robust-uuv-navigation-under-partial-observability)  
+1. [Scalable High-Speed Lateral Control for Single-Body and Articulated Autonomous Vehicles](/202608/14/2608.08293v1-scalable-high-speed-lateral-control-for-single-body-and-articulated-autonomous-vehicles)  
+   标签：评分：7.0/10、query:q5
+   evidence：实时轨迹段分类与横向控制
+2. [WA-SpecDec: World-Aware Speculative Decoding for Vision-Language-Action Models](/202608/14/2608.08725v1-wa-specdec-world-aware-speculative-decoding-for-vision-language-action-models)  
    标签：评分：7.0/10、query:q1
-   evidence：水下航行器的间隙感知规划与反应式避障
-3. [AdaDexGrasp: Adaptive Dexterous Grasping via 3D Visuo-Tactile Representation Fusion](/202608/13/2608.07600v1-adadexgrasp-adaptive-dexterous-grasping-via-3d-visuo-tactile-representation-fusion)  
+   evidence：机器人控制策略中的避障
+3. [Embodied Multimodal Grounding for Open-Vocabulary Mobile Manipulation via Semantic 3D Gaussian Splatting](/202608/14/2608.10756v1-embodied-multimodal-grounding-for-open-vocabulary-mobile-manipulation-via-semantic-3d-gaussian-splatting)  
    标签：评分：7.0/10、query:q6
-   evidence：通过视触觉融合实现的自适应灵巧操作
-4. [OnEvoMemory: Evolving Memory through Online Robot Rollouts for Pretrained Robot Policies](/202608/13/2608.08749v1-onevomemory-evolving-memory-through-online-robot-rollouts-for-pretrained-robot-policies)  
-   标签：评分：7.0/10、query:q6
-   evidence：长程机器人操作策略
-5. [Graph-Guided Safe Diffuser: Topological Graph Guidance for Safe Diffusion Planning](/202608/13/2608.09484v1-graph-guided-safe-diffuser-topological-graph-guidance-for-safe-diffusion-planning)  
-   标签：评分：7.0/10、query:q1
-   evidence：安全扩散规划的拓扑图引导
-6. [Entanglement-Free Trajectory Planning for Tethered Mobile Robots with a Slack Tether](/202608/13/2608.09860v1-entanglement-free-trajectory-planning-for-tethered-mobile-robots-with-a-slack-tether)  
-   标签：评分：7.0/10、query:q4
-   evidence：具有动态系绳约束的机器人运动规划
-7. [Energy-Structured Latent World Models with Neural Time Fields for Physically Constistent Open-World Motion Planning](/202608/13/2608.09876v1-energy-structured-latent-world-models-with-neural-time-fields-for-physically-constistent-open-world-motion-planning)  
-   标签：评分：7.0/10、query:q4
-   evidence：物理一致的开放世界运动规划
-8. [Real-World Cooperative Bimanual Dexterous Grasp of Large Objects from Single-View Observations](/202608/13/2608.10383v1-real-world-cooperative-bimanual-dexterous-grasp-of-large-objects-from-single-view-observations)  
-   标签：评分：7.0/10、query:q6
-   evidence：双臂灵巧抓取与机器人操作
-9. [Detection and Ranging of Transient Extrinsic Contacts Based on 6D Dynamic Tactile Sensing](/202608/13/2608.07075v1-detection-and-ranging-of-transient-extrinsic-contacts-based-on-6d-dynamic-tactile-sensing)  
+   evidence：移动操作中的障碍物感知场景推理
+4. [Path Integral Value Matching for Linear Quadratic Stochastic Optimal Control](/202608/14/2608.10777v1-path-integral-value-matching-for-linear-quadratic-stochastic-optimal-control)  
+   标签：评分：7.0/10、query:q2
+   evidence：随机最优控制与路径积分控制
+5. [Robust Safety Filtering for Input-Constrained Underactuated Linear Systems](/202608/14/2608.10872v1-robust-safety-filtering-for-input-constrained-underactuated-linear-systems)  
+   标签：评分：7.0/10、query:q2
+   evidence：鲁棒安全过滤与控制屏障函数
+6. [Forward Trajectory Steering for Hamilton-Jacobi Reachability Analysis](/202608/14/2608.11480v1-forward-trajectory-steering-for-hamilton-jacobi-reachability-analysis)  
+   标签：评分：7.0/10、query:q3
+   evidence：用于安全控制和可达性分析的轨迹引导
+7. [Spatiotemporal Agility: Time-Constrained Reinforcement Learning for Vision-Guided Dynamic Quadrupedal Interception](/202608/14/2608.06907v1-spatiotemporal-agility-time-constrained-reinforcement-learning-for-vision-guided-dynamic-quadrupedal-interception)  
+   标签：评分：6.0/10、query:q5
+   evidence：动态目标的实时感知与敏捷运动
+8. [Particle-Based Conformal Prediction for Contact-Aware Uncertainty Calibration in Stratified Configuration Spaces](/202608/14/2608.09166v1-particle-based-conformal-prediction-for-contact-aware-uncertainty-calibration-in-stratified-configuration-spaces)  
    标签：评分：6.0/10、query:q4
-   evidence：操作中用于运动规划的接触检测
-10. [Complete, Scalable, and Robust Prioritized Planning for Multi-Robot Ordered Storage and Retrieval at Maximum Capacity](/202608/13/2608.07734v1-complete-scalable-and-robust-prioritized-planning-for-multi-robot-ordered-storage-and-retrieval-at-maximum-capacity)  
-   标签：评分：6.0/10、query:q4
-   evidence：高密度空间中的多机器人运动规划
-11. [Universal Birkhoff Method for Computing Extremals in the Elliptic Restricted Three-Body Problem](/202608/13/2608.07815v1-universal-birkhoff-method-for-computing-extremals-in-the-elliptic-restricted-three-body-problem)  
-   标签：评分：6.0/10、query:q3
-   evidence：受限三体问题中的轨迹优化
+   evidence：机器人避障导航中的不确定性表示
+9. [A New Approach for Feedback Stabilization and its Application for Data-Driven Control of Polynomial Systems](/202608/14/2608.10158v1-a-new-approach-for-feedback-stabilization-and-its-application-for-data-driven-control-of-polynomial-systems)  
+   标签：评分：6.0/10、query:q2
+   evidence：使用SOS优化进行反馈稳定的控制
+10. [Enabling Scalable Kinesthetic Teaching via Observer-based Hand-guiding with Active Support](/202608/14/2608.10847v1-enabling-scalable-kinesthetic-teaching-via-observer-based-hand-guiding-with-active-support)  
+   标签：评分：6.0/10、query:q6
+   evidence：用于操作任务的机器人手动引导和动觉教学
+11. [RoboSynChallenge: Mastering Real-World Dexterity via Generalizing Synthesized Manipulation Skills](/202608/14/2608.12416v1-robosynchallenge-mastering-real-world-dexterity-via-generalizing-synthesized-manipulation-skills)  
+   标签：评分：6.0/10、query:q6
+   evidence：泛化合成的操作技能
 
 
 <div class="dpr-home-promo-card">

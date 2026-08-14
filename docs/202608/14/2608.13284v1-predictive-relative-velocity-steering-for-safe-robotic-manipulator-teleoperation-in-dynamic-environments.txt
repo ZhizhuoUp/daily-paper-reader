@@ -1,0 +1,675 @@
+Title: Predictive Relative-Velocity Steering for Safe Robotic Manipulator Teleoperation in Dynamic Environments
+
+URL Source: https://arxiv.org/pdf/2608.13284v1
+
+Published Time: Fri, 14 Aug 2026 01:04:23 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Predictive Relative-Velocity Steering for Safe Robotic Manipulator Teleoperation in Dynamic Environments 
+
+Changhao Hu 1,2∗, Zeyi Liu 2,3∗, Songqiao Hu 2,3∗, Shuang Liu 2,4, Zihan Meng 4, and Xiao He 2,3†
+
+Abstract — Recent advances in teleoperation have enabled robotic manipulators to perform dexterous, human-arm-like motions. However, human operators may fail to avoid sud-denly appearing obstacles promptly and effectively, particularly under network latency or limited attention, thereby creating safety risks. To address this issue, we propose a lightweight and modular framework for proactive collision avoidance, operating directly at the end-effector velocity-command level. After preprocessing the point cloud, the framework first predicts potential collisions based on time-to-collision (TTC) with integrated overshoot protection, and subsequently rotates the relative-velocity vector using Rodrigues’ rotation formula. The deflection changes only the direction of the relative velocity while preserving its magnitude, thereby mitigating the deadlock problem commonly encountered by conventional artificial potential field (APF) methods. The prediction module compensates for point-cloud processing latency introduced by complex teleoperation pipelines, while the lightweight design enables the high-frequency control required for teleoperation. Simulations across diverse scenarios show that the proposed method achieves a higher end-effector collision avoidance rate than the baseline methods. Experiments on a physical robotic system further validate its collision-avoidance effectiveness. 
+
+I. I NTRODUCTION 
+
+Teleoperation has emerged as a widely used paradigm for robotic manipulation because of its precision and remote op-erability [1]. This paradigm enables complex and dexterous operations that remain challenging for conventional motion-planning and vision-language-action (VLA) methods, while distancing operators from hazardous environments. Safety is a critical requirement in teleoperation [2], [3]. In principle, human operators can manually issue commands to avoid obstacles. However, operators concentrating on the manipulation task may not notice obstacles in the remote environment promptly, especially when the workspace is non-stationary and obstacles may appear or move unexpect-edly. Even when an operator initiates an evasive maneu-ver, network latency and the complex processing pipeline inherent in teleoperation may prevent the corresponding command from being executed in time. Existing studies have therefore introduced safety-assistance mechanisms for    
+
+> *These authors contributed equally to this work.
+> †Corresponding author (email: hexiao@tsinghua.edu.cn).
+> 1Zhejiang University-University of Illinois Urbana-Champaign Institute, Zhejiang University, Haining 314400, China.
+> 2Department of Automation, Tsinghua University, Beijing 100084, China.
+> 3Institute for Embodied Intelligence and Robotics, Tsinghua University, Beijing 100084, China.
+> 4TetraBOT. This work was supported by National Natural Science Foundation of China under grants 62525308, 62473223, and Beijing Natural Science Foundation under grant L241016.
+> Fig. 1. Illustration of PARRY in teleoperation. Prompt: A 2x2 scientific illustration. Top row: Male VR operator faces network lag, causing a robotic arm to crash into a grey pillar (red explosion). Bottom row: Female VR operator works smoothly, robotic arm uses overhead camera vision to deflect its path along a green curve, successfully avoiding the pillar.
+
+teleoperation from several directions. These mechanisms include reactive repulsion-based collision avoidance methods typified by APFs [4]–[6], virtual fixtures (VFs) and haptic guidance that constrain the motion trajectory [7], [8], and control barrier function (CBF)-based safety filters that project operator commands onto a safe set [9], [10]. In addition, standards-based approaches such as speed and separation monitoring (SSM) in human–robot collaboration provide guidance for designing safety-distance policies [11]. However, in classical APF, attractive and repulsive forces may nearly cancel each other, resulting in local minima or velocity stagnation when the resultant force becomes small [12]. In teleoperation, an operator may misinterpret such stagnation as a network disconnection or hardware failure and consequently apply abnormal joystick commands, further increasing the risk of collision. Although VFs can provide effective guidance, they often rely on predefined fixtures or interactive construction and therefore exhibit limited robust-ness in unfamiliar environments. CBFs can offer stronger safety guarantees but typically require smooth obstacle rep-resentations and online optimization. Applying them directly to point-cloud inputs may thus require restrictive assumptions and incur a substantial computational burden. To mitigate these limitations, this paper presents PARRY (Predictive Avoidance by Rotating Relative velocit Y). The overall effect is illustrated in Fig. 1. PARRY operates at the teleoperation velocity-command level: given a depth point cloud and a nominal end-effector velocity, it outputs a new execution velocity without modifying the underlying tracking arXiv:2608.13284v1 [cs.RO] 13 Aug 2026 controller. Specifically, PARRY performs TTC-aware point-cloud prediction based on the relative motion of obstacles and computes repulsive guidance from the predicted point cloud. It then applies Rodrigues’ rotation formula to redirect the relative velocity without changing its magnitude. This directional deflection steers the end effector around obstacles while avoiding the velocity stagnation caused by near-zero resultant forces in classical APF methods. By directly pro-cessing point clouds through a lightweight pipeline, PARRY meets the real-time requirements of teleoperation. The main contributions of this work are as follows. 1) We propose PARRY, a plug-and-play reactive collision avoidance framework for teleoperation. Operating at the velocity-command level directly, it applies Ro-drigues’ rotation to redirect relative velocity, steering the end-effector around obstacles while preserving the magnitude of the relative velocity. 2) We develop a TTC-based prediction mechanism to compensate for obstacle-observation latency. The mechanism reconstructs a look-ahead point cloud and incorporates overshoot protection to prevent predicted points from passing beyond the end effector. This design enables reliable collision avoidance despite la-tency in the perception pipeline. 3) We conduct 1,000 paired Monte Carlo simulations under 0, 100, and 150 ms latencies, comparing PARRY with representative classical and advanced safety base-lines alongside ablation studies, resulting in a total of 21,000 runs, and validate its effectiveness and feasibility on a physical 7-DoF setup. II. R ELATED WORK 
+
+A. Rotational Obstacle Avoidance 
+
+To mitigate APF-induced stagnation and oscillation, exist-ing methods guide robots around obstacles using tangential forces or directional modulation. Singh et al. introduced the circulatory-field method [13]. Becker et al. subsequently proposed CFP and ICF, extending this approach to predictive multi-agent settings, point-cloud inputs, and whole-body collision avoidance [14], [15]. Ataka et al. developed a magnetic-field-inspired navigation method that relies only on local sensing [16], while Yang et al. combined magnetic-field potentials with dynamic movement primitives (DMPs) to generate trajectories around volumetric obstacles [17]. Souza et al. instead superimpose a vortex field obtained by rotating each obstacle’s repulsive field [18]. Khansari-Zadeh and Billard proposed a real-time dynamical-system approach that modifies the original dynamics through a state-dependent modulation matrix while preserving its attractor for convex obstacles [19]. ROAM rotates the initial dynamics toward the obstacle tangent space to handle concave obstacles [20], whereas CARE rotates two-dimensional navigation trajecto-ries using visually estimated repulsive forces [21]. APF-WF escapes local minima by temporarily switching to a dedicated wall-following mode [22]. 
+
+B. Delay Compensation and Prediction in Teleoperation 
+
+Communication and processing-pipeline delays in tele-operation can degrade system stability and transparency. Existing compensation and prediction methods primarily focus on bilateral control or command tracking. One classical approach is the Smith predictor. It constructs dynamic models of the remote robot and its environment on the local side to estimate delay-free feedback signals, such as contact forces and positions, thereby moving the communication delay outside the closed loop. Subsequent studies have incorporated this approach into teleoperation architectures and employed techniques such as online iden-tification to account for nonlinear and time-varying environ-ment dynamics [23]. Another approach is model-mediated teleoperation, which constructs a local contact model of the remote environment from remote sensory measurements and uses it to generate immediate haptic feedback on the local side. The remote robot then executes only motion or force commands consistent with this model, reducing the instability caused by direct coupling between the local and remote sides under large delays [24]. Shared-control approaches further model the operator’s motion and task objectives. They use kinematic models to propagate delayed state measurements to the robot’s current time and em-ploy model predictive control (MPC) to enforce collision avoidance [25]. Beyond command-side delay compensation, real-time safety assessment under non-stationary operating conditions has also been systematically reviewed [26]. III. M ETHOD 
+
+A. Problem Formulation and System Overview 
+
+We consider a teleoperation task in which an operator specifies the desired position P and orientation W of a robotic manipulator using a control interface, yielding the end-effector velocity vee . Let xee denote the current end-effector position in the base frame. For environmental per-ception, a depth camera captures a raw point cloud, which is then preprocessed to extract an obstacle point cloud O =
+
+{oi ∈ R3}Ni=1 , which represents the obstacle locations. The obstacle velocity vo is then estimated by frame-to-frame differencing of the most hazardous point. The end-effector velocity relative to the obstacle is defined as vrel = vee − vo. Based on the point cloud O and obstacle velocity vo, PARRY constructs the predicted point cloud bO = {boi ∈ R3}Ni=1 . It then computes the deflection angle θ from bO and redirects vrel to obtain the modified relative velocity vs. Transforming back to the base frame gives the commanded end-effector velocity vcmd = vs + vo,which steers the manipulator around the obstacle. The overall architecture of PARRY is shown in Fig. 2, and its workflow is summarized in Algorithm 1. 
+
+Notation: Throughout this paper, small positive thresholds 
+
+ϵa, ϵ o, ϵ f , ϵ v , and ϵ× are used to ensure numerical stability and prevent computational jitter. Raw Depth 
+
+> Image
+> Point Cloud
+> Preprocessing
+> Obstacle Point
+> Cloud
+> Prediction
+> Module
+> Obstacle
+> Velocity
+> Relative
+> Velocity
+> Handle Orientation
+> & Position
+> End-Effector
+> Velocity
+> Predicted Point
+> Cloud
+> Rodrigues
+> Rotation
+> Deflected
+> Velocity
+> Command
+> Velocity
+> Obstacle Reference Frame
+
+Fig. 2. Overall architecture of PARRY. 
+
+Algorithm 1: PARRY Velocity Deflection 
+
+Input: Point cloud X (k) = {xbi }; end-effector state 
+
+(x(k) 
+
+> ee
+
+, v(k) 
+
+> ee
+
+); previous state S(k−1) 
+
+Output: v(k) 
+
+> cmd
+
+and S(k) 
+
+> 1
+
+Init.: Set v(0)  
+
+> o
+
+← 0 and choose ˆa(0) ⊥ v(0)  
+
+> ee
+
+; 
+
+> 2
+
+Obtain O(k) by preprocessing X (k); 
+
+> 3
+
+if O(k) = ∅ then  
+
+> 4
+
+return v(k) 
+
+> ee
+
+, S(k−1) ; 
+
+> 5
+
+else  
+
+> 6
+
+i∗ ← arg min 
+
+> i
+
+∥o(k) 
+
+> i
+
+− x(k) 
+
+> ee
+
+∥2; 
+
+> 7
+
+Estimate v(k) 
+
+> o
+
+from o(k) 
+
+> i∗
+
+and S(k−1) ; 
+
+> 8
+
+Generate bO(k) from O(k), x(k) 
+
+> ee
+
+, and v(k) 
+
+> o
+
+; 
+
+> 9
+
+Compute F(k)rep from bO(k) and x(k) 
+
+> ee
+
+; 
+
+> 10
+
+v(k)rel ← v(k) 
+
+> ee
+
+− v(k) 
+
+> o
+
+; 
+
+> 11
+
+if degenerate or receding then  
+
+> 12
+
+keep v(k) 
+
+> s
+
+← v(k)rel , ˆa(k) ← ˆa(k−1) ; 
+
+> 13
+
+else  
+
+> 14
+
+Determine ˆa(k) from v(k)rel , F(k)rep , ˆa(k−1) ; 
+
+> 15
+
+θ(k) ← clip 
+
+
+
+krot ∥F(k)rep ∥2, 0, θ max 
+
+
+
+; 
+
+> 16
+
+Rotate v(k)rel by ˆa(k), θ(k) to obtain v(k) 
+
+> s
+
+; 
+
+> 17
+
+v(k) 
+
+> cmd
+
+← v(k) 
+
+> s
+
++ v(k) 
+
+> o
+
+; 
+
+> 18
+
+S(k) ←  o(k) 
+
+> i∗
+
+, v(k) 
+
+> o
+
+, ˆa(k); 
+
+> 19
+
+return v(k)
+
+> cmd
+
+, S(k);
+
+B. Self-Filtering-Based Point-Cloud Preprocessing 
+
+Using the depth image and camera intrinsics, valid depth pixels are back-projected into 3D points xci ∈ R3 in the camera frame. These points are then transformed into the manipulator base frame using the hand–eye calibration: 
+
+xbi = Rbc xci + tbc , (1) where xbi denotes the coordinates of the same point in the base frame, and Rbc and tbc are the rotation and translation from the camera frame to the base frame. The point cloud is subsequently cropped according to the workspace and table-top boundaries, and voxel-downsampled using a voxel side length of lv . The mean of the points within each nonempty voxel is selected as its representative point, denoted by oi.Robot self-filtering is then applied to the sampled point set {oi}. The manipulator links are approximated by M
+
+capsules, where the jth capsule is represented by endpoints 
+
+aj and bj and radius rj . Let dij denote the minimum distance from oi to the centerline of the jth capsule. Only points satisfying dij > rj for all j = 1, . . . , M are retained. To suppress depth noise and reduce fluctuations in the subsequent velocity estimates, radius-based outlier removal is further applied. Given a neighborhood radius rd
+
+and a minimum number of neighboring points Nmin , points with sufficiently many neighbors are retained, yielding the preprocessed point cloud 
+
+O = {oi | |{ om : 0 < ∥om − oi∥2 ≤ rd}| ≥ Nmin } , (2) where oi is the sampled point being evaluated, and om
+
+denotes another sampled point within its neighborhood. 
+
+C. Overshoot-Protected Adaptive Prediction 
+
+Teleoperation pipelines typically involve multiple inter-connected processes, which may cause substantial contention for hardware resources and increase the computational bur-den of point-cloud processing [27]. For non-stationary data streams, drift detection and adaptation have been investigated in learning-based real-time safety assessment [28]. In con-trast, PARRY addresses the temporal mismatch caused by sensing and processing delays through geometric point-cloud prediction. To compensate for this delay, we draw on the concept of TTC [29]. In this work, a TTC-inspired metric is defined as the obstacle’s radial approach time and is used to adaptively determine the point-cloud prediction horizon. Computationally efficient iterative updates have also been developed for online real-time safety assessment of dynamic systems [30]. To retain obstacle boundary points and keep a lightweight computation suitable for the control frequency of teleoperation, we identify the most hazardous point in the entire point cloud O and use its estimated obstacle velocity. For the point cloud at frame k, O(k) = {o(k) 
+
+> i
+
+}Ni=1 , the index of the most hazardous point is defined as 
+
+i∗ = arg min  
+
+> i
+
+o(k) 
+
+> i
+
+− x(k) 
+
+> ee 2
+
+. (3) The instantaneous obstacle velocity is estimated by differ-encing the most hazardous points in two consecutive frames: 
+
+˜v(k) 
+
+> o
+
+= o(k) 
+
+> i∗
+
+− o(k−1) 
+
+> i∗
+
+∆t , (4) where ∆t is the sampling time step. An exponential moving average (EMA) is applied to suppress point-cloud jitter and abrupt nearest-point switching. If the displacement of the nearest point exceeds the threshold dj , the velocity estimate from the previous frame is retained: 
+
+v(k) 
+
+> o
+
+=
+
+(v(k−1)  
+
+> o
+
+, o(k) 
+
+> i∗
+
+− o(k−1) 
+
+> i∗
+> 2
+
+> d j ,α˜v(k) 
+
+> o
+
++ (1 − α)v(k−1)  
+
+> o
+
+, otherwise ,
+
+(5) where α ∈ (0 , 1) is the smoothing factor. Let n denote the unit vector pointing from the end effector toward the most hazardous point. Assuming a constant obstacle velocity, the radial approach speed and radial approach time are respectively defined as vapp = −(v(k) 
+
+> o
+
+)Tn and Tapp =
+
+∥o(k) 
+
+> i∗
+
+− x(k) 
+
+> ee
+
+∥2/v app .The prediction horizon tp is then determined adaptively: 
+
+tp =
+
+(
+
+clip ( β T app , t min , t max ) , vapp > ϵ a,tmin , otherwise , (6) where β ∈ (0 , 1) is a scaling factor and [tmin , t max ] specifies the allowable range of the prediction horizon. The look-ahead displacement of the point cloud is ∆o =
+
+v(k) 
+
+> o
+
+tp, with its magnitude capped at dp. Without overshoot protection, each predicted point is given by 
+
+o(k) 
+
+> i,p
+
+= o(k) 
+
+> i
+
++ ∆ o. (7) Because all points share the same velocity estimate, a predicted point may pass beyond the end effector and induce a reverse repulsive force. Alternatively, it may move farther from the end effector and thereby underestimate the collision risk. To prevent these cases, overshoot protection is applied independently to each obstacle point. Let di = ∥o(k) 
+
+> i
+
+−x(k) 
+
+> ee
+
+∥2
+
+and ˆri = ( o(k) 
+
+> i
+
+− x(k) 
+
+> ee
+
+)/d i. Given the minimum allowable distance ds between a predicted point and the end effector, the predicted radial coordinate is ℓi,p = di + ˆ rT 
+
+> i
+
+∆o, and the corrected point is computed as 
+
+˜o(k) 
+
+> i
+
+= o(k) 
+
+> i
+
++ ∆ o + [min( di, d s) − ℓi,p ]+ ˆri, (8) where [z]+ = max( z, 0) , and ˜o(k) 
+
+> i
+
+denotes the predicted point after the first correction. If the corrected point remains farther from the end effector than the original point, it is re-verted to the original point to avoid inadvertently introducing an erroneous reverse repulsive force: 
+
+bo(k) 
+
+> i
+
+=
+
+(˜o(k) 
+
+> i
+
+, ˜o(k) 
+
+> i
+
+− x(k) 
+
+> ee 2
+
+< d i + ϵo,
+
+o(k) 
+
+> i
+
+, otherwise . (9) The final predicted point cloud is bO = {bo(k) 
+
+> i
+
+}Ni=1 .
+
+D. Rodrigues-Rotation-Based Safe Velocity Generation 
+
+Inspired by the classical artificial potential field method [5], this section develops an end-effector collision-avoidance strategy. Given the predicted point cloud 
+
+bO = {boi}Ni=1 , the distance between the predicted obstacle point and the end effector is ρi = ∥boi − xee ∥2. The points within the end-effector influence range form the active index set I = {i | 0 < ρ i < d max }.A classical APF constructs an attractive potential toward the goal and a repulsive potential around obstacles. For the desired position P , the attractive potential and force are 
+
+Uatt = 12 ξ∥xee − P ∥22 and Fatt = ξ(P − xee ), respec-tively, where ξ is the attractive gain. Let dmax denote the obstacle influence distance. The classical repulsive potential associated with an individual obstacle point is 
+
+Urep ,i =
+
+
+
+12 η
+
+ 1
+
+ρi
+
+− 1
+
+dmax 
+
+2
+
+, 0 < ρ i < d max ,
+
+0, ρi ≥ dmax ,
+
+(10) where η is the repulsive gain. The corresponding pointwise repulsive force is 
+
+f APF  
+
+> i
+
+=
+
+
+
+η
+
+ 1
+
+ρi
+
+− 1
+
+dmax 
+
+ 1
+
+ρ2
+
+> i
+
+xee − boi
+
+ρi
+
+, 0 < ρ i < d max ,
+
+0, ρi ≥ dmax .
+
+(11) The aggregate repulsive force is Frep = P 
+
+> i∈I
+
+f APF  
+
+> i
+
+. A classical APF then forms the resultant force FAPF = Fatt +
+
+Frep and uses it to determine the collision-avoidance motion. PARRY retains Frep as the notation for the aggregate repulsive force but computes it differently and does not directly add it to the attractive force. Unlike methods that execute predefined trajectories, teleoperation must consider the operator’s real-time commands. To provide adjustable sensitivity to obstacle distance while reducing the influence of distant obstacles on the operator’s intent, PARRY adopts a power-law pointwise repulsive force, where p > 1 is the distance-decay hyperparameter: 
+
+fi = − ηρpi
+
+(boi − xee ) , i ∈ I . (12) To prevent extensive but distant obstacle point clouds from dominating the avoidance direction, the final repulsive force 
+
+Frep is computed using distance-weighted aggregation: 
+
+Frep =
+
+P 
+
+> i∈I
+
+wifi
+
+P 
+
+> i∈I
+
+wi
+
+, (13) where wi = 1 /ρ pi is the distance weight. In the obstacle reference frame, the vrel defined in the problem formulation is used as the velocity before redirection. The rotation axis is first computed as 
+
+ˆa = vrel × Frep 
+
+∥vrel × Frep ∥2
+
+. (14) For mathematical well-posedness and control robustness, no redirection is applied—keeping the relative velocity unchanged—when I = ∅, ∥Frep ∥2 ≤ ϵf , ∥vrel ∥2 ≤ ϵv ,or when the end effector is already moving away from the obstacle ( vTrel Frep > 0 and ∥vrel × Frep ∥2 ≤ ϵ×). When the vectors are approximately antiparallel, the rotation axis becomes degenerate. PARRY then reuses the previous obstacle  
+
+> goal
+> obstacle
+> goal
+> APF
+> Ours
+> Slowdown
+> Area
+> Fig. 3. Comparison between APF velocity superposition and PARRY relative-velocity redirection.
+
+rotation axis ˆa(k−1) to maintain smooth temporal continuity and stability in the redirection. Importantly, in this antiparallel configuration, PARRY preserves the relative-velocity magnitude and therefore keeps the manipulator moving. Even if the vectors are collinear at the current time step, the continuing motion changes the robot configuration at the next time step, allowing the system to leave the degenerate state and resume normal redirection. In contrast, the resultant APF velocity approaches zero in this configuration, preventing the manipulator from adjusting its position. This transient velocity stagnation may cause the operator to misdiagnose the system state and issue abnormal commands, as illustrated in Fig. 3. The redirection angle is determined by the magnitude of the repulsive force: 
+
+θ = clip  krot ∥Frep ∥2 , 0, θ max 
+
+ , (15) and θmax is the maximum allowable redirection angle. Ro-drigues’ rotation formula is then applied directly to the original relative velocity vector: 
+
+vs = vrel cos θ + (ˆ a × vrel ) sin θ + ˆ a  ˆaTvrel 
+
+ (1 − cos θ) .
+
+(16) This mechanism combines the resistance of rotational avoidance to local minima with the maneuverability required for teleoperation in unstructured dynamic environments. Finally, transforming back to the base frame yields the commanded end-effector velocity: 
+
+vcmd = vs + vo. (17) IV. S IMULATION EXPERIMENTS 
+
+This section evaluates PARRY’s ability to safely modify teleoperation commands at the end-effector velocity level. Because large-scale repetition of human-in-the-loop exper-iments under identical randomized scenarios is impractical, nominal end-effector velocities are generated from a quintic-polynomial joint-space pick-and-place trajectory as a substi-tute for online joystick commands. A PD controller contin-ues to track the joint commands, while PARRY modifies only the nominal end-effector velocity without changing the  
+
+> Fig. 4. In the MuJoCo simulation, PARRY redirects the end effector around a dynamic spherical obstacle while completing the transport task.
+
+underlying controller. This setup enables large-scale paired comparisons under identical task and obstacle conditions. 
+
+A. Experimental Setup 
+
+We construct a MuJoCo simulation environment com-prising a UR5e manipulator, a Robotiq 2F-85 gripper, a workbench, and a manipulated object [31]. The manipulator performs a pick–transport–release task, as shown in Fig. 4, while the safety module modifies only the end-effector veloc-ity command and leaves the tracking controller unchanged. The physics simulation uses a time step of 2 ms, the velocity controller runs at 100 Hz, and the depth point cloud is updated at 30 Hz. During the execution of the primary task, a spherical obstacle with a radius of 0.10 m is launched from a hemi-spherical surface approximately 1.5 m from the end effector. In each trial, the sphere speed is sampled uniformly from 
+
+[0 .5, 3.5] m/s, the launch time from [0 .5, 6.0] s, and the target point from a spherical region of radius 0.25 m centered near the end effector. Zero-mean Gaussian noise with standard deviations of 0.01 m and 0.05 m/s is added to the point-cloud positions and obstacle velocity, respectively. To emulate the obstacle-observation latency introduced by depth perception and communication pipelines in teleoper-ation, delays of τ ∈ { 0, 100 , 150 } ms are applied to the obstacle point cloud, with τ = 0 ms serving as the reference condition. For each latency setting, 1,000 randomized scenar-ios are generated. Under the same random seed, all methods share identical sphere speeds, launch times, directions, and target points, enabling paired comparisons. 
+
+B. Baselines and Evaluation Metrics 
+
+The comparison includes three baselines and three ab-lations. APF-VS uses the same point-cloud repulsive-force formulation as PARRY but adds the repulsive force directly to the nominal task velocity. CBF-QP formulates point-cloud obstacle constraints as a kinematic CBF quadratic program with slack variables [32]. Related plug-and-play CBF-based safety layers have also been integrated with VLA policies to improve collision avoidance during robotic manipulation [33]. SSM scales the nominal task velocity according to the end-effector–obstacle distance and approach speed [11]. Starting from the complete PARRY framework, we disable overshoot protection, TTC prediction, and relative velocity individually to obtain PARRY w/o Guard, PARRY w/o Pred, and PARRY w/o Rel, respectively. The complete PARRY framework incorporates relative velocity, TTC-based adaptive prediction, and overshoot protection. For a fair comparison, all methods share the same task trajectories, randomized obstacles, point-cloud observations, and underlying controller, and the key parameters of each method are calibrated independently. The primary metric is the end-effector collision avoidance rate (CAR). Secondary metrics include the median minimum clearance between the end effector and the sphere surface and the median collision-avoidance computation time. The effect of overshoot protec-tion is quantified using large-angle flips in the repulsive-TABLE I MAIN MONTE CARLO RESULTS OVER 1,000 P AIRED TRIALS PER METHOD AND DELAY CONDITION 
+
+Method CAR (%) ↑ Min clearance (m) ↑ Time (ms) ↓
+
+0 ms 100 ms 150 ms 0 ms 100 ms 150 ms 
+
+APF-VS 79.1 74.7 73.7 0.176 0.142 0.136 0.024 
+
+CBF-QP 76.2 72.3 71.9 0.151 0.125 0.124 0.729 SSM 71.8 71.1 71.7 0.122 0.122 0.124 0.230 PARRY w/o Rel 72.4 72.7 72.7 0.134 0.131 0.130 0.049 PARRY w/o Pred 78.8 74.7 73.5 0.179 0.142 0.134 0.053 PARRY w/o Guard 82.5 80.2 80.1 0.215 0.184 0.165 0.074 
+
+PARRY (ours) 82.7 80.6 80.1 0.222 0.183 0.164 0.101 
+
+Notes: CAR : Collision Avoidance Rate; Time : median per-cycle cost of the avoidance module. 
+
+force direction and frames with an erroneous repulsive-force direction. A large-angle flip occurs when the angle of the repulsive force between two consecutive valid frames exceeds 90 ◦, whereas an erroneous direction occurs when the obstacle is still approaching but the repulsive force points toward it. CAR is computed over 1,000 trials in each group. Because all methods share paired scenarios, statistical significance is assessed using the exact McNemar test, with Holm correction applied to repeated comparisons across the three latency settings [34], [35]. 
+
+C. Results and Discussion 
+
+The results are reported in Table I and Fig. 5. 
+
+1) Baseline Safety Comparison: Under the baseline set-ting, PARRY reduces the end-effector collision rate by 17.2%, 27.3%, and 38.7% relative to APF-VS, CBF-QP, and SSM, respectively. The paired McNemar tests remain significant after Holm correction, with p < 0.01 . These results show that PARRY achieves a lower end-effector collision rate than the three baselines. 
+
+2) Robustness to Obstacle-Observation Latency: As τ
+
+increases from 0 to 150 ms, the collision rates of APF-VS and CBF-QP increase by 5.4 and 4.3 percentage points (pp), respectively, whereas that of the complete PARRY framework increases by only 2.6 pp and remains the lowest under every latency setting. Across the three settings, PARRY reduces the collision rate by 17.2%–24.3%, 27.3%–30.0%, and 29.7%–38.7% relative to APF-VS, CBF-QP, and SSM, respectively. These paired improvements are statistically sig-nificant at every latency setting after Holm correction ( p < 
+
+0.01 ). PARRY therefore maintains its CAR advantage under obstacle-observation latency and degrades more gradually than APF-VS and CBF-QP. 
+
+3) Ablation Study: At 0 ms latency, PARRY w/o Pred achieves a 23.2% relative reduction in the end-effector col-lision rate compared with PARRY w/o Rel, suggesting that relative-velocity processing in the obstacle reference frame better captures the dynamic relationship between the obstacle and end effector. After TTC-based point-cloud prediction is introduced, PARRY w/o Guard reduces the collision rate by 17.5%, 21.7%, and 24.9% relative to PARRY w/o Pred at 0 100 150              
+
+> Delay (ms)
+> 70 75 80 85
+> CAR (%)
+> (a) CAR vs. delay
+> APF-VS CBF-QP SSM PARRY
+> 0100 150
+> Delay (ms)
+> 0510 15 20
+> Affected trials (%)  20.2 18.5 14.4 3.6 1.9 1.6
+> (b) > 90 ∘force flips
+> 0100 150
+> Delay (ms)
+> 0510 15 20 20.4 4.8 2.1 0.1 0.6 0.9
+> (c) Wrong-way repulsion
+> w/o Guard PARRY
+> 0.5–1.25 1.25–2.0 2.0–2.75 2.75–3.5
+> Obstacle speed (m/s)
+> 60 70 80 90 100
+> CAR (%)
+> (d) CAR by speed, 0 ms
+> 0.5–1.25 1.25–2.0 2.0–2.75 2.75–3.5
+> Obstacle speed (m/s)
+> (e) CAR by speed, 100 ms
+> 0.5–1.25 1.25–2.0 2.0–2.75 2.75–3.5
+> Obstacle speed (m/s)
+> (f) CAR by speed, 150 ms
+
+Fig. 5. Monte Carlo evaluation (a) CAR under increasing obstacle-observation delay. (b) Percentage of trials containing at least one repulsive-force direction change greater than 90 ◦ between consecutive valid frames. (c) Percentage of trials containing at least one wrong-way frame, in which the obstacle is approaching while the repulsive force points toward it. Panels (b) and (c) compare PARRY with and without the overshoot guard. (d)–(f) CAR stratified by obstacle speed at 0, 100, and 150 ms, respectively. 
+
+0, 100, and 150 ms, respectively. Without prediction, the degradation with increasing latency is comparable to that of APF-VS. Prediction substantially reduces this degradation, with larger benefits at higher latencies. Although overshoot protection has only a limited effect on the collision rate, it suppresses reverse repulsive forces caused by predicted points passing beyond the end effector. Consequently, this substantially improves motion stability and operator experi-ence during teleoperation. At 0 ms latency, the proportion of trials exhibiting large-angle flips decreases from 20.2% to 3.6%, while the proportion exhibiting erroneous repulsive-force directions decreases from 20.4% to 0.1%. 
+
+4) Safety Margin and Computational Cost: PARRY achieves the largest median minimum end-effector clearance, at 0.188 m, compared with 0.150 m for APF-VS and 0.135 m for CBF-QP, indicating a larger safety margin than the base-line methods. Its median collision-avoidance computation time is 0.101 ms, substantially lower than the 0.729 ms required by CBF-QP and compatible with the 100 Hz control frequency used for teleoperation. 
+
+5) Local-Minimum Cases in Symmetric Two-Sphere Con-figurations: To compare the velocity-superposition mecha-nism of APF-VS with the directional-redirection mechanism of PARRY, we further construct four static configurations in Fig. 6. End-effector forward velocity vy and position y for APF-VS (dashed) and PARRY (solid) under four symmetric configurations. 
+
+which APF methods are prone to local minima. As shown in Fig. 6, the end-effector forward velocity 
+
+vy and position y exhibit consistent trends across all four configurations for APF-VS (dashed) and PARRY (solid). As the end effector approaches a local-minimum point, the APF-VS velocity vy persistently oscillates around zero, producing a pronounced plateau in y. By rotating only the direction of the relative velocity while preserving its magnitude, PARRY maintains the forward velocity component, traverses this region more smoothly, and reaches the target earlier. These results indicate PARRY mitigates the transient stag-nation caused by APF velocity superposition. It maintains a responsive end-effector motion under continuous teleop-eration commands and reduces the risk that an operator misinterprets the stagnation as a hardware failure. V. P HYSICAL -R OBOT EXPERIMENTS 
+
+To evaluate the feasibility of PARRY in a physical envi-ronment and to complement the simulation experiments with real human-in-the-loop interaction, we construct a physical-robot validation platform. The complete experiments are provided in the supplementary video. The hardware platform uses a 7-DoF Flexiv Rizon 4 manipulator, while the operator provides desired end-effector pose commands through a Meta Quest 3 controller. An Intel RealSense D435 depth camera mounted in front of the workbench captures the workspace point cloud at 30 Hz. The software pipeline uses TactAR [36] as the base tele-operation framework. When PARRY is enabled, point-cloud preprocessing, obstacle prediction, and velocity redirection are executed on a local workstation at a control frequency of 100 Hz. The corrected velocity command is then sent directly to the low-level controller of the manipulator. 
+
+A. Task Setup and Performance Evaluation 
+
+The operator is required to sequentially grasp four paper cups placed in a cluttered arrangement on one side of the workbench, stack them neatly on the other side, and then move the entire stack back to its original location. The cups vary in orientation and arrangement, and accurate alignment is required during stacking, motivating human-in-the-loop teleoperation rather than relying solely on fully autonomous VLA-based execution. Static and dynamic obstacles are introduced during task execution to evaluate the collision-avoidance response and motion behavior of PARRY.       
+
+> Fig. 7. Static obstacle scenario. Top: Baseline collision. Bottom: PARRY successfully steers around the obstacle in real time.
+> Fig. 8. Physical-robot trajectories.
+
+B. Evaluation in Static and Dynamic Scenarios 
+
+We evaluate PARRY under both static blockage and dy-namic intrusions. In the static scenario (Fig. 7, Fig. 8), base teleoperation framework collides with an obstacle placed in the nominal path, whereas PARRY redirects the end-effector to bypass the blockage and successfully complete the cup-stacking task. In the dynamic scenario, PARRY success-fully evades a moving obstacle manually introduced during transport in real time. These physical-robot experiments demonstrate PARRY’s collision-avoidance effectiveness and implementation feasibility in the tested teleoperation setup. VI. C ONCLUSION 
+
+This paper presented PARRY, a reactive predictive collision-avoidance framework for improving safety in tele-operation. PARRY used TTC-inspired look-ahead point-cloud reconstruction, redirected the relative velocity in the obstacle reference frame without changing its magnitude, and suppressed reverse repulsive forces through overshoot protec-tion. Paired Monte Carlo simulations showed that PARRY achieved the highest or jointly highest safety rate under all three obstacle-observation latencies and mitigated transient APF stagnation in symmetric configurations. Physical-robot experiments further demonstrated its teleoperation collision-avoidance capability and deployment feasibility under static and dynamic obstacle scenarios. This study remained limited to end-effector collision avoidance. Future work will extend the collision-avoidance constraints to all manipulator links and evaluate the effects of PARRY on teleoperation efficiency and operator experience in human–robot interaction tasks. ACKNOWLEDGMENTS 
+
+We disclose using Gemini 3.1 Pro, ChatGPT and Opus 4.8 to assist with language polishing, creating conceptual figures, and supplementary video voiceovers. The authors take full responsibility for the final content. REFERENCES [1] P. F. Hokayem and M. W. Spong, “Bilateral teleoperation: An histor-ical survey,” Automatica , vol. 42, no. 12, pp. 2035–2057, 2006. [2] N. Zhong and K. Hauser, “Attentiveness map estimation for haptic teleoperation of mobile robot obstacle avoidance and approach,” IEEE Robotics and Automation Letters , vol. 9, no. 3, pp. 2152–2159, 2024. [3] X. He, Z. Liu, S. Hu, C. Liu, and D. Zhou, “Real-time safety assessment techniques of dynamic systems,” Acta Automatica Sinica ,vol. 51, no. 2, pp. 249–270, 2024. [4] A. Gottardi, S. Tortora, E. Tosello, and E. Menegatti, “Shared control in robot teleoperation with improved potential fields,” IEEE Transac-tions on Human-Machine Systems , vol. 52, no. 3, pp. 410–422, 2022. [5] O. Khatib, “Real-time obstacle avoidance for manipulators and mobile robots,” The International Journal of Robotics Research , vol. 5, no. 1, pp. 90–98, 1986. [6] W. Qin, H. Zhang, Z. Fan, Y. Zhu, and J. Zhao, “A shared control method for teleoperated robot using artificial potential field,” Advanced Intelligent Systems , vol. 6, no. 10, p. 2300814, 2024. [7] L. B. Rosenberg, “Virtual fixtures: Perceptual tools for telerobotic manipulation,” in Proceedings of IEEE Virtual Reality Annual Inter-national Symposium . IEEE, 1993, pp. 76–82. [8] V. Pruks and J.-H. Ryu, “Method for generating real-time interactive virtual fixture for shared teleoperation in unknown environments,” The International Journal of Robotics Research , vol. 41, no. 9-10, pp. 925– 951, 2022. [9] S. Zhou, S. Papatheodorou, S. Leutenegger, and A. P. Schoellig, “Control-Barrier-Aided Teleoperation with Visual-Inertial SLAM for Safe MAV Navigation in Complex Environments,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) , 2024, pp. 17 836–17 842. [10] S. Hu, Z. Wang, Z. Liu, Z. Shen, and X. He, “Safelink: Safety-critical control under dynamic and irregular unsafe regions,” 2026. [Online]. Available: https://arxiv.org/abs/2503.16551 [11] J. A. Marvel and R. Norcross, “Implementing speed and separation monitoring in collaborative robot workcells,” Robotics and Computer-Integrated Manufacturing , vol. 44, pp. 144–155, 2017. [12] Y. Koren and J. Borenstein, “Potential field methods and their inherent limitations for mobile robot navigation,” in Proceedings. 1991 IEEE International Conference on Robotics and Automation , 1991, pp. 1398–1404 vol.2. [13] L. Singh, H. Stephanou, and J. Wen, “Real-time robot motion control with circulatory fields,” in Proceedings of IEEE International Confer-ence on Robotics and Automation , vol. 3. IEEE, 1996, pp. 2737–2742. [14] M. Becker, T. Lilge, M. A. M¨ uller, and S. Haddadin, “Circular fields and predictive multi-agents for online global trajectory planning,” 
+
+IEEE Robot. Autom. Lett. , vol. 6, no. 2, pp. 2618–2625, 2021. [15] M. Becker, P. Caspers, T. Hattendorf, T. Lilge, S. Haddadin, and M. A. M¨ uller, “Informed circular fields for global reactive obstacle avoidance of robotic manipulators,” IFAC-PapersOnLine , vol. 56, no. 2, pp. 1017–1022, 2023. [16] A. Ataka, H.-K. Lam, and K. Althoefer, “Magnetic-field-inspired nav-igation for robots in complex and unknown environments,” Frontiers in Robotics and AI , vol. 9, p. 834177, 2022. [17] S. Yang, Y. Sun, X. Su, J. Huang, Z. Bing, and A. Knoll, “An optimization-based magnetic field potential learning framework for robotic volumetric obstacle-avoidance,” IEEE Transactions on Indus-trial Electronics , 2025. [18] R. M. J. A. Souza, G. V. Lima, A. S. Morais, L. C. Oliveira-Lopes, D. C. Ramos, and F. L. Tofoli, “Modified artificial potential field for the path planning of aircraft swarms in three-dimensional environments,” Sensors , vol. 22, no. 4, p. 1558, 2022. [19] S. M. Khansari-Zadeh and A. Billard, “A dynamical system approach to realtime obstacle avoidance,” Autonomous Robots , vol. 32, no. 4, pp. 433–454, 2012. [20] L. Huber, J.-J. Slotine, and A. Billard, “Avoidance of concave obsta-cles through rotation of nonlinear dynamics,” IEEE Transactions on Robotics , vol. 40, pp. 1983–2002, 2023. [21] J. Kim, J. Sim, W. Kim, K. Sycara, and C. Nam, “Care: Enhancing safety of visual navigation through collision avoidance via repulsive estimation,” arXiv preprint arXiv:2506.03834 , 2025. [22] J. Kim, S. Park, W. Lee, W. Kim, H. Choi, N. Doh, and C. Nam, “Escaping local minima: Hybrid artificial potential field with wall-follower for decentralized multi-robot navigation,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 6616–6622. [23] A. C. Smith and K. Hashtrudi-Zaad, “Smith predictor type control ar-chitectures for time delayed teleoperation,” The International Journal of Robotics Research , vol. 25, no. 8, pp. 797–818, 2006. [24] P. Mitra and G. Niemeyer, “Model-mediated telemanipulation,” The International Journal of Robotics Research , vol. 27, no. 2, pp. 253– 262, 2008. [25] R. Lima, V. Vakharia, U. Rai, H. Mehta, V. Vatsal, and K. Das, “Model-mediated delay compensation with goal prediction for robot teleoperation over internet,” in 2023 IEEE International Conference on Systems, Man, and Cybernetics (SMC) . IEEE, 2023, pp. 1037–1043. [26] Z. Liu, S. Hu, and X. He, “Real-time safety assessment of dynamic systems in non-stationary environments: A review of methods and techniques,” in 2023 CAA Symposium on Fault Detection, Supervision and Safety for Technical Processes (SAFEPROCESS) . IEEE, 2023, pp. 1–6. [27] Z. Zhang, C. Liu, and H. Kim, “Understanding and mitigating network latency effect on teleoperated-robot with extended reality,” arXiv preprint arXiv:2506.01135 , 2025. [28] S. Hu, Z. Liu, M. Li, and X. He, “CADM+: Confusion-based learning framework with drift detection and adaptation for real-time safety assessment,” IEEE Transactions on Neural Networks and Learning Systems , vol. 36, no. 3, pp. 5126–5139, 2024. [29] A. Olivares-Alarcos, S. Foix, and G. Aleny` a, “Time-to-contact for robot safety stop in close collaborative tasks,” in Human-Robot Col-laboration . IET, 2023, ch. Chapter 5, pp. 87–104. [30] Z. Liu and X. He, “Online dynamic hybrid broad learning system for real-time safety assessment of dynamic systems,” IEEE Transactions on Knowledge and Data Engineering , vol. 36, no. 12, pp. 8928–8938, 2024. [31] E. Todorov, T. Erez, and Y. Tassa, “MuJoCo: A physics engine for model-based control,” in 2012 IEEE/RSJ International Conference on Intelligent Robots and Systems . IEEE, 2012, pp. 5026–5033. [32] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier function based quadratic programs for safety critical systems,” IEEE Trans. Autom. Control , vol. 62, no. 8, pp. 3861–3876, 2016. [33] S. Hu, Z. Liu, S. Liu, J. Cen, Z. Meng, S. Wang, X. Li, and X. He, “VLSA: Vision-language-action models with plug-and-play safety constraint layer,” 2026. [Online]. Available: https://arxiv.org/abs/2512.11891 [34] Q. McNemar, “Note on the sampling error of the difference between correlated proportions or percentages,” Psychometrika , vol. 12, no. 2, pp. 153–157, 1947. [35] S. Holm, “A simple sequentially rejective multiple test procedure,” 
+
+Scandinavian Journal of Statistics , pp. 65–70, 1979. [36] H. Xue, J. Ren, W. Chen, G. Zhang, Y. Fang, G. Gu, H. Xu, and C. Lu, “Reactive diffusion policy: Slow-fast visual-tactile policy learning for contact-rich manipulation,” arXiv preprint arXiv:2503.02881 , 2025.
