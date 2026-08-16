@@ -6,50 +6,43 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-08-15
-- 运行时间：2026-08-15 20:14:50 UTC
+- 最新运行日期：2026-08-16
+- 运行时间：2026-08-16 19:31:45 UTC
 - 运行状态：成功
-- 本次总论文数：9
-- 精读区：0
-- 速读区：9
+- 本次总论文数：7
+- 精读区：1
+- 速读区：6
 
 ### 今日简报（AI）
-今日速览 9 篇前沿论文，聚焦机器人导航、操控及非凸优化算法的智能化进阶。
-重点关注 SLIM-0.5B 模型在动作预测表征上的突破，以及通过课程学习提升导航鲁棒性的新方法。
-建议具身智能领域的读者优先研读 SLIM-0.5B，探索预测性潜变量如何赋能机器人精准操控。
-- 详情：[/202608/15/README](/202608/15/README)
+今日精选 7 篇前沿论文，深度解析单手眼相机下的机器人部件级语义重建与非结构化场景自动驾驶。
+重点推荐 RoboSeg 的在线三维重建方案，以及 JEPA-WAM 在机器人世界模型中引入的阶段级联合嵌入预测。
+建议开发者关注如何结合离线大模型与多模态交互，提升机械臂在复杂任务中的感知与操作鲁棒性。
+- 详情：[/202608/16/README](/202608/16/README)
 
 ### 精读区论文标签
-- 本次无精读推荐。
+1. [RoboSeg: Online Part-Level Semantic Reconstruction for Robotic Manipulation via a Single Eye-in-Hand Camera](/202608/16/2608.09778v1-roboseg-online-part-level-semantic-reconstruction-for-robotic-manipulation-via-a-single-eye-in-hand-camera)  
+   标签：评分：8.0/10、query:q6
+   evidence：机器人操作感知与任务导向抓取生成
 
 ### 速读区论文标签
-1. [Curriculum Generation under Structured Parametric Environments for Robust Navigation Policies](/202608/15/2608.08545v1-curriculum-generation-under-structured-parametric-environments-for-robust-navigation-policies)  
+1. [UnsDrive: Towards Robust End-to-End Autonomous Driving in Unstructured Scenes](/202608/16/2608.09098v1-unsdrive-towards-robust-end-to-end-autonomous-driving-in-unstructured-scenes)  
    标签：评分：7.0/10、query:q1
-   evidence：多变环境下的鲁棒导航策略与避障
-2. [Direct Search Methods for Online Nonconvex Optimization Under Inexact Bandit Feedback](/202608/15/2608.08979v1-direct-search-methods-for-online-nonconvex-optimization-under-inexact-bandit-feedback)  
-   标签：评分：7.0/10、query:q2
-   evidence：针对时变控制的在线非凸优化
-3. [SLIM-0.5B: Learning Action-Grounded Predictive Latents for Robot Manipulation](/202608/15/2608.09771v1-slim-05b-learning-action-grounded-predictive-latents-for-robot-manipulation)  
+   evidence：用于安全规划和轨迹生成的占据表征
+2. [JEPA-WAM: Stage-Level Joint-Embedding Prediction for World-Action Models in Robot Manipulation](/202608/16/2608.10780v1-jepa-wam-stage-level-joint-embedding-prediction-for-world-action-models-in-robot-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：机器人操作与动作生成
-4. [S2-HWM: Sparse Event-Structured Hierarchical World Model for Long-Horizon Surgical Robot Manipulation](/202608/15/2608.13103v1-s2-hwm-sparse-event-structured-hierarchical-world-model-for-long-horizon-surgical-robot-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：长时程手术机器人操作与潜空间轨迹
-5. [DreamX-Phi 1.0: Action-Conditioned Video World Model for Robotic Manipulation](/202608/15/2608.13489v1-dreamx-phi-10-action-conditioned-video-world-model-for-robotic-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：用于机器人操作的动作条件视频世界模型
-6. [Safety-Critical Control for Quadrotor UAVs via Decentralized Navigation Functions](/202608/15/2608.13507v1-safety-critical-control-for-quadrotor-uavs-via-decentralized-navigation-functions)  
-   标签：评分：7.0/10、query:q1
-   evidence：无人机的安全关键控制和成对避障
-7. [JEPA-WAM: Learning Vision-Language-Action Policies with Joint-Embedding World Modeling](/202608/15/2608.09381v1-jepa-wam-learning-vision-language-action-policies-with-joint-embedding-world-modeling)  
+   evidence：机器人操作的世界动作模型
+3. [Multi-modal Interactive Control of Robotic Arm based on Offline Large Language Models](/202608/16/2608.08183v1-multi-modal-interactive-control-of-robotic-arm-based-on-offline-large-language-models)  
    标签：评分：6.0/10、query:q6
-   evidence：机器人控制与动作生成
-8. [HarnessWAM: Bridging Prediction and Deliberation in World Action Models](/202608/15/2608.09516v1-harnesswam-bridging-prediction-and-deliberation-in-world-action-models)  
+   evidence：使用大语言模型的机械臂交互控制
+4. [Boundary-Seeking Policy Gradient for Safe Reinforcement Learning](/202608/16/2608.10204v1-boundary-seeking-policy-gradient-for-safe-reinforcement-learning)  
+   标签：评分：6.0/10、query:q2
+   evidence：带边界约束的优化安全强化学习
+5. [XCoT-VLA: Executable Chain-of-Thought for Vision-Language-Action Driving](/202608/16/2608.10976v1-xcot-vla-executable-chain-of-thought-for-vision-language-action-driving)  
+   标签：评分：6.0/10、query:q5
+   evidence：用于实时控制和轨迹生成的执行令牌
+6. [AirForesight: Current-to-Future Spatial Map Imagination with Cross-Space Planning Consistency for UAV-VLN](/202608/16/2608.12835v1-airforesight-current-to-future-spatial-map-imagination-with-cross-space-planning-consistency-for-uav-vln)  
    标签：评分：6.0/10、query:q4
-   evidence：机器人动作的具身控制与全局规划
-9. [BooST: Bridging Semantics and Motions for Efficient Skill Transfer](/202608/15/2608.10600v1-boost-bridging-semantics-and-motions-for-efficient-skill-transfer)  
-   标签：评分：6.0/10、query:q4
-   evidence：机器人的技能迁移与运动动力学
+   evidence：无人机的3D运动规划和轨迹预测
 
 
 <div class="dpr-home-promo-card">
