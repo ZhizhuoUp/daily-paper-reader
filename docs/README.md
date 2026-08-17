@@ -6,43 +6,70 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-08-16
-- 运行时间：2026-08-16 19:31:45 UTC
+- 最新运行日期：2026-08-17
+- 运行时间：2026-08-17 19:25:23 UTC
 - 运行状态：成功
-- 本次总论文数：7
-- 精读区：1
-- 速读区：6
+- 本次总论文数：16
+- 精读区：5
+- 速读区：11
 
 ### 今日简报（AI）
-今日精选 7 篇前沿论文，深度解析单手眼相机下的机器人部件级语义重建与非结构化场景自动驾驶。
-重点推荐 RoboSeg 的在线三维重建方案，以及 JEPA-WAM 在机器人世界模型中引入的阶段级联合嵌入预测。
-建议开发者关注如何结合离线大模型与多模态交互，提升机械臂在复杂任务中的感知与操作鲁棒性。
-- 详情：[/202608/16/README](/202608/16/README)
+今日精选 16 篇论文，深度聚焦灵巧手操作演进与多无人机协同避障技术。
+核心突破在于通过对抗学习实现人机动作精准对齐，以及利用时空屏障框架保障飞行器集群安全。
+推荐优先研读 AdvDex 论文，掌握将人类演示转化为机器人复杂技能的高效路径。
+- 详情：[/202608/17/README](/202608/17/README)
 
 ### 精读区论文标签
-1. [RoboSeg: Online Part-Level Semantic Reconstruction for Robotic Manipulation via a Single Eye-in-Hand Camera](/202608/16/2608.09778v1-roboseg-online-part-level-semantic-reconstruction-for-robotic-manipulation-via-a-single-eye-in-hand-camera)  
-   标签：评分：8.0/10、query:q6
-   evidence：机器人操作感知与任务导向抓取生成
+1. [AdvDex: Learning Dexterous Manipulation from Human Demonstrations via Joint-Aligned Actions and Adversarial Learning](/202608/17/2608.14028v1-advdex-learning-dexterous-manipulation-from-human-demonstrations-via-joint-aligned-actions-and-adversarial-learning)  
+   标签：评分：9.0/10、query:q6
+   evidence：从人类和机器人演示中学习灵巧操作
+2. [A Temporal Barrier Framework for Collision Avoidance in Multi-Agent Autonomous Aerial Vehicles](/202608/17/2608.14239v1-a-temporal-barrier-framework-for-collision-avoidance-in-multi-agent-autonomous-aerial-vehicles)  
+   标签：评分：9.0/10、query:q1
+   evidence：自主飞行器避障的时间屏障框架
+3. [Demonstration of Space Robot Teleoperation over a Lossy and Delayed Network using ATMOS](/202608/17/2608.14031v1-demonstration-of-space-robot-teleoperation-over-a-lossy-and-delayed-network-using-atmos)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：延迟下的空间机器人轨迹跟踪与对接
+4. [Vibration Suppression in Collaborative Flexible Payload Manipulation Using Passive Force Control](/202608/17/2608.14244v1-vibration-suppression-in-collaborative-flexible-payload-manipulation-using-passive-force-control)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：机械臂运动控制与负载操作
+5. [Expected Free Energy-based Informative Path Planning for Robotic Mars Exploration](/202608/17/2608.14466v1-expected-free-energy-based-informative-path-planning-for-robotic-mars-exploration)  
+   标签：评分：8.0/10、query:q1
+   evidence：火星探测的信息路径规划
 
 ### 速读区论文标签
-1. [UnsDrive: Towards Robust End-to-End Autonomous Driving in Unstructured Scenes](/202608/16/2608.09098v1-unsdrive-towards-robust-end-to-end-autonomous-driving-in-unstructured-scenes)  
-   标签：评分：7.0/10、query:q1
-   evidence：用于安全规划和轨迹生成的占据表征
-2. [JEPA-WAM: Stage-Level Joint-Embedding Prediction for World-Action Models in Robot Manipulation](/202608/16/2608.10780v1-jepa-wam-stage-level-joint-embedding-prediction-for-world-action-models-in-robot-manipulation)  
+1. [From Semantic Grounding to Decision Optimization: A Unified Framework for Long-Horizon UAV Vision-Language Navigation](/202608/17/2608.09564v1-from-semantic-grounding-to-decision-optimization-a-unified-framework-for-long-horizon-uav-vision-language-navigation)  
+   标签：评分：7.0/10、query:q4
+   evidence：无人机视觉语言导航与决策优化
+2. [Real-World Cooperative Bimanual Dexterous Grasp of Large Objects from Single-View Observations](/202608/17/2608.10383v2-real-world-cooperative-bimanual-dexterous-grasp-of-large-objects-from-single-view-observations)  
    标签：评分：7.0/10、query:q6
-   evidence：机器人操作的世界动作模型
-3. [Multi-modal Interactive Control of Robotic Arm based on Offline Large Language Models](/202608/16/2608.08183v1-multi-modal-interactive-control-of-robotic-arm-based-on-offline-large-language-models)  
-   标签：评分：6.0/10、query:q6
-   evidence：使用大语言模型的机械臂交互控制
-4. [Boundary-Seeking Policy Gradient for Safe Reinforcement Learning](/202608/16/2608.10204v1-boundary-seeking-policy-gradient-for-safe-reinforcement-learning)  
+   evidence：机器人操作中的协作双臂灵巧抓取
+3. [hint$^2$: Hierarchical World Models for Inference-Time Temporal Logic Guidance](/202608/17/2608.13678v1-hint2-hierarchical-world-models-for-inference-time-temporal-logic-guidance)  
+   标签：评分：7.0/10、query:profile-1
+   evidence：带安全约束的引导操作策略
+4. [FlatLab: A Unified Methodology Framework and Simulation-Based Benchmark for Robotic Manipulation of Flat Objects](/202608/17/2608.14049v1-flatlab-a-unified-methodology-framework-and-simulation-based-benchmark-for-robotic-manipulation-of-flat-objects)  
+   标签：评分：7.0/10、query:q6
+   evidence：扁平物体的机器人操作
+5. [PILOT: Privileged Imitation Learning for End-to-End Motion Planning of Autonomous UAVs under Partial Observability](/202608/17/2608.14082v1-pilot-privileged-imitation-learning-for-end-to-end-motion-planning-of-autonomous-uavs-under-partial-observability)  
+   标签：评分：7.0/10、query:q3
+   evidence：将最优控制专家策略蒸馏为运动规划策略
+6. [OccPlanner: Goal-Aware Occupancy-Conditioned Diffusion Planner for Pixel-Goal Navigation](/202608/17/2608.14160v1-occplanner-goal-aware-occupancy-conditioned-diffusion-planner-for-pixel-goal-navigation)  
+   标签：评分：7.0/10、query:q1
+   evidence：无碰撞连续规划与占据条件扩散规划器
+7. [Beyond Binary: Continuous State Optimization with Graph-Structured Objectives](/202608/17/2608.09366v1-beyond-binary-continuous-state-optimization-with-graph-structured-objectives)  
    标签：评分：6.0/10、query:q2
-   evidence：带边界约束的优化安全强化学习
-5. [XCoT-VLA: Executable Chain-of-Thought for Vision-Language-Action Driving](/202608/16/2608.10976v1-xcot-vla-executable-chain-of-thought-for-vision-language-action-driving)  
+   evidence：控制参数的连续状态优化
+8. [Continuous-Time Covariance Steering with Common Free-Final Time: Finite-Horizon Solutions and Infinite-Horizon Limits](/202608/17/2608.10267v1-continuous-time-covariance-steering-with-common-free-final-time-finite-horizon-solutions-and-infinite-horizon-limits)  
+   标签：评分：6.0/10、query:q2
+   evidence：状态协方差引导的随机最优控制
+9. [Prescribed-performance position tracking for infinite-dimensional passive systems](/202608/17/2608.10940v1-prescribed-performance-position-tracking-for-infinite-dimensional-passive-systems)  
    标签：评分：6.0/10、query:q5
-   evidence：用于实时控制和轨迹生成的执行令牌
-6. [AirForesight: Current-to-Future Spatial Map Imagination with Cross-Space Planning Consistency for UAV-VLN](/202608/16/2608.12835v1-airforesight-current-to-future-spatial-map-imagination-with-cross-space-planning-consistency-for-uav-vln)  
-   标签：评分：6.0/10、query:q4
-   evidence：无人机的3D运动规划和轨迹预测
+   evidence：机械系统的实时位置跟踪
+10. [DreamFly: Causal Memory and Receding-Horizon Diffusion Planning for Aerial Vision-Language Navigation](/202608/17/2608.12308v1-dreamfly-causal-memory-and-receding-horizon-diffusion-planning-for-aerial-vision-language-navigation)  
+   标签：评分：6.0/10、query:q3
+   evidence：空中导航的收缩时界扩散规划
+11. [AgilePE: Autonomous UAV Pursuit-Evasion via Self-Play Reinforcement Learning](/202608/17/2608.14135v1-agilepe-autonomous-uav-pursuit-evasion-via-self-play-reinforcement-learning)  
+   标签：评分：6.0/10、query:q5
+   evidence：实时底层控制与策略优化
 
 
 <div class="dpr-home-promo-card">
