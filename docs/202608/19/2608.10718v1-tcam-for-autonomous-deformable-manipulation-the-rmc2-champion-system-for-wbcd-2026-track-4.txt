@@ -1,0 +1,156 @@
+Title: TCAM for Autonomous Deformable Manipulation: The RMC2 Champion System for WBCD 2026 Track 4
+
+URL Source: https://arxiv.org/pdf/2608.10718v1
+
+Published Time: Wed, 12 Aug 2026 00:52:45 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+# TCAM for Autonomous Deformable Manipulation: The RMC2 Champion System for WBCD 2026 Track 4 
+
+## Guangrui Shen 1, Zhili He 1, Shigang Wang 1, Yuanjun Sun 1, Qing Yu 1,*  
+
+> 1
+
+TermiTech, Shenzhen, China  
+
+> *
+
+Corresponding author. Email: felix@termitech.cn Technical Report 
+
+Abstract 
+
+This technical report describes the RMC2 Team’s champion solution for the WBCD 2026 Track 4: Deformable Manipulation Challenge. The task requires a robot to pick a single T-shirt from a stack, load it onto a printing pallet, align the collar with a target area, and smooth the printing region, a sequence that involves single-layer separation, deformable transport, precise placement, and contact-rich surface adjustment. The competition strongly incentivizes fully autonomous execution, motivating the development of an autonomous solution. We built a fully autonomous system around the TCAM (TermiBrain Causal Action Model) framework, with the design principle that hardware, perception, data, and learning should jointly reduce the physical interaction complexity the policy must handle. A custom 3D-printed gripper designed for single-layer fabric separation improves picking reliability on a dual-arm ARX X5 platform. A wrist-centric four-camera setup pairs upper fisheye cameras for task-level context with lower RGB cameras for close-range gripper–cloth contact observation. We combine portable UMI-style demonstrations with real-robot demonstrations collected on the deployable platform to provide both broad manipulation priors and deployment-specific dynamics. TCAM ties these components into a closed loop: each trajectory is analyzed to identify the physical factors contributing to its outcome, driving targeted data recollection and policy fine-tuning. The policy outputs 30-step end-effector delta-pose action chunks from a multi-view VLA backbone. In the final competition, our system loaded 25 T-shirts at an average of approximately 23 seconds per attempt, with 22 achieving the required surface smoothness, securing first place in Track 4. 
+
+Keywords: deformable manipulation; vision-language-action; multi-view perception; learning from demon-stration; action chunking; dual-arm manipulation; TCAM 
+
+# 1 Introduction 
+
+Deformable-object manipulation remains one of the most difficult problems in robotics. Unlike rigid objects, whose states can be described by a compact pose, garments have high-dimensional, partially observable configurations that change continuously under gravity, friction, stretching, and robot contact. A small difference in grasp point can determine whether one or two layers are picked up; a slight change in release timing can turn a flat placement into a wrinkled one. These sensitivities make garment handling qualitatively harder than rigid pick-and-place. The WBCD 2026 Track 4: Deformable Manipulation Challenge provides a concrete evaluation of this problem in a manufacturing-inspired setting [1]. The robot must pick a single T-shirt from a stack, load it onto a printing pallet, align the collar with a target area, and smooth the printing region. The scoring rules assign separate points for successful pick-and-load, collar alignment, and surface smoothness, with a multiplier that strongly favors fully autonomous execution over teleoperation. This makes the competition not only a test of manipulation capability but also a test of system-level autonomy. Teleoperation is a natural baseline for such tasks. A human operator can interpret garment states, recover from unexpected deformations, and adapt strategies on the fly. However, relying on teleoperation forgoes the highest scoring multiplier and does not demonstrate deployable robotic intelligence. The alternative is to build a learned autonomous policy. Recent Vision-Language-Action (VLA) systems have demonstrated 1arXiv:2608.10718v1 [cs.RO] 11 Aug 2026 Table 1: Task stages and success criteria for the WBCD 2026 Track 4 challenge     
+
+> Stage Objective Success Criteria
+> Step 1: Picking Identify the topmost T-shirt from a stack and grasp exactly one T-shirt. Exactly one T-shirt is securely grasped without disturbing the rest of the stack. Step 2: Loading Transport the grasped T-shirt to the printing pallet and place it onto the pallet surface. The T-shirt is placed on the pallet and covers the effective printing area appropriately. Step 3: Alignment and Surface Quality Align the collar region with the target area and smooth the surface in the printing region. The collar region is aligned with the target region, and the target printing area has acceptable wrinkle quality.
+
+impressive generalization by connecting large vision-language backbones to robot action generation [2], scal-ing to heterogeneous embodiments [3], incorporating embodied memory for long-horizon reasoning [4], and learning from real-world corrections [5]. However, applying VLA methods to deformable manipulation in-troduces specific challenges that general-purpose systems do not directly address. First, the contact state between gripper and fabric is local and easily occluded, making it difficult to observe from standard camera placements. Second, garment deformation is highly sensitive to small action variations, so the policy must operate on a narrow distribution of physically successful interactions. Third, a single round of data collec-tion rarely covers the failure modes that emerge during deployment, requiring an iterative process of testing, diagnosing, and retraining. Our approach addresses these challenges not by solving them independently, but by co-designing hardware, perception, data collection, and learning so that they jointly narrow the physical interaction distribution the policy must handle. A custom 3D-printed gripper makes single-layer picking more physically reliable, reducing the space of contact outcomes the policy encounters. A wrist-centric four-camera system provides both task-level context and close-range contact observation, making the critical gripper–cloth interaction state directly visible. A mixed data pipeline combining UMI-style and real-robot demonstrations gives the policy both broad manipulation priors and deployment-specific dynamics. The TCAM (TermiBrain Causal Action Model) framework ties these components into a closed-loop workflow: after each deployment round, trajectories are analyzed to identify the physical factors contributing to success or failure, and the findings drive targeted data recollection and policy fine-tuning. Our main contributions are as follows: • A fully autonomous system for T-shirt picking, loading, alignment, and smoothing that secured first place in the WBCD 2026 Track 4 Challenge. • A custom gripper with hard fingertips, a Velcro-assisted flipping surface, and inward-angled geometry for reliable single-layer fabric separation. • A contact-aware wrist-centric four-view perception design combining wide-angle fisheye and close-range RGB cameras. • A mixed UMI and real-robot data pipeline with prompt-conditioned view configuration and iterative quality filtering. • The TCAM framework linking causal trajectory analysis and trajectory memory to end-effector delta-pose action-chunk learning in a data closed loop. 
+
+# 2 Challenge Setup 
+
+## 2.1 Task Description 
+
+The Track 4 challenge requires the robot to complete one T-shirt loading cycle through three steps: picking, loading, and alignment with surface-quality evaluation. The task is challenging because success is determined not only by whether the T-shirt is moved, but also by whether the correct number of garments is picked, whether the collar is aligned, and whether the surface 2Table 2: Scoring items, penalties, and autonomy multipliers for the WBCD 2026 Track 4 challenge              
+
+> Scoring Item Points / Penalty Meaning
+> Pick + Load +5 The robot successfully picks a single T-shirt and loads it onto the pallet. Alignment +2.5 The T-shirt collar region is aligned in the target region. Smooth Surface +2.5 The target printing region is smooth; this score applies only if alignment is achieved. Autonomy Multiplier x1 / x2 / x4 On-site teleoperation, remote teleoperation, and fully autonomous execution receive different multipliers. Multiple T-shirts Picked -5 More than one T-shirt is placed onto the pallet in a single attempt. Dislocated T-shirts Left Unpicked -0.5 each Remaining T-shirts are dislocated and the team gives up recovering or picking them. Human Manual Intervention During Steps 1-3 -5 Manual intervention during the manipulation steps incurs a penalty.
+
+is smooth enough for printing. 
+
+## 2.2 Scoring Characteristics and Competition Objective 
+
+The scoring rule strongly encourages full autonomy under the official Track 4 procedure [1]. Each completed T-shirt cycle receives base points for successful pick-and-load, alignment, and smooth surface quality, and the per-cycle score is multiplied by the autonomy level declared for that run. Fully autonomous execution receives the highest multiplier. The rules also penalize common failure cases, including picking multiple T-shirts, leaving dislocated unpicked T-shirts, or performing human manual intervention during the manipulation steps. This scoring design changes the technical objective. The optimal strategy is not only to maximize the suc-cess rate of a single T-shirt attempt, but also to maximize accumulated score within the limited competition time. Therefore, our system was designed around three goals: • Maintain fully autonomous robot execution during each manipulation attempt. • Maximize the probability of successful single-shirt picking, alignment, and smoothness. • Avoid spending excessive time on low-probability recovery once an attempt has clearly entered an unfa-vorable state. During the final competition, the manipulation policy itself was fully autonomous. Human operators did not teleoperate the robot during the pick-load-align-smooth process. However, at the run-management level, the team used a score-aware early-termination strategy: when an attempt showed a clear failure trend, the team stopped the robot execution and proceeded to reset rather than spending additional time on uncertain recovery. This strategy was used to maximize the total score rate under the competition rules. 
+
+# 3 System Overview 
+
+Figure 1 shows the overall system pipeline. The system integrates five components: a dual-arm ARX X5 robot platform (Section 4.1), task-specific custom grippers (Section 4.2), a contact-aware wrist-centric four-view perception system (Section 5), a mixed UMI and real-robot data collection pipeline (Section 6), and the TCAM causal action learning framework (Section 7). These components are connected through a closed-loop data workflow. Rather than collecting a fixed dataset and training once, we repeatedly deploy the policy, analyze failure cases, collect targeted additional data, and retrain until the system reaches competition-level reliability. The TCAM trajectory memory stores both successful and failed rollouts together with their causal analysis results, enabling this iterative 3Figure 1: Overall system pipeline with data closed-loop feedback. The system starts from mixed UMI-style and real-robot data collection, followed by filtering, TCAM training, real-robot deployment, competition execution, failure analysis, and targeted recollection. Failure cases and rollout feedback are stored in trajectory memory and fed back into iterative policy refinement. 
+
+refinement cycle. Section 6.3 describes the closed-loop process, while Section 7.2 details the trajectory-memory mechanism. 
+
+# 4 Hardware Design 
+
+## 4.1 Robot Platform 
+
+We use a dual-arm ARX X5 robotic platform for the task. The two arms are positioned face-to-face to cover both the T-shirt stack and the printing pallet. 
+
+## 4.2 Custom Gripper Design 
+
+A key challenge is to reliably separate and grasp only the top T-shirt from a stack. Standard parallel grippers have difficulty flipping open the top fabric layer, and once lifted, fabric can slip through the closing fingertips, causing drop failures during transport. To address this, we designed and 3D-printed task-specific grippers with three features: • Hard fingertip design. The fingertips are rigid rather than soft-padded, improving the ability to pick and lift the top layer. • Velcro-assisted top-layer flipping side. One side of the gripper is equipped with hook-side Velcro to flip open the top layer of the stack, exposing a graspable region and increasing the likelihood of grasping only the uppermost T-shirt. • Inward-angled gripper geometry. The fingertips are angled slightly inward so that they meet more tightly upon closure, improving garment retention during lifting and transport. This hardware design is not an isolated add-on; it changes the learning problem itself. By making single-layer picking physically easier and more repeatable, the gripper reduces the burden on the policy and improves the quality of collected demonstrations. 
+
+## 4.3 Printing Pallet Adaptation 
+
+We also adapted the printing pallet and workspace to reduce physical failure modes and improve visual observability. 4Figure 2: Custom gripper design.  
+
+> Figure 3: Printing pallet and workspace adaptation. The rough wooden side edges of the pallet were covered with adhesive tape to reduce friction during T-shirt loading. A protective cover was added underneath the pallet to prevent the garment from being caught by protruding screws. High-contrast black tape markers on the pallet and a patterned tablecloth under the workspace were used to provide stronger visual references for the TCAM policy.
+
+The original pallet had rough wooden side edges that created friction during T-shirt loading, and pro-truding screws underneath could catch the fabric during insertion. We covered the side edges with adhesive tape to allow the fabric to slide more easily, and added a 3D-printed protective cover underneath the pallet to prevent the garment from being hooked by the screws. To improve visual references for the policy, we added high-contrast black tape markers to the pallet surface and placed a patterned tablecloth under the workspace. The original white table surface was visually similar to the white T-shirts, making garment boundaries difficult to distinguish in camera observations. The textured tablecloth introduced stronger background contrast. Although we did not isolate the contribution of each modification through controlled ablations, the combined setup provided more stable visual cues for the TCAM policy in practice. 5Table 3: Wrist-mounted camera configuration and observation roles                     
+
+> View Camera Type Resolution Frame Rate Role
+> Left upper wrist Fisheye RGB 1920 x 1080 30 fps Wide-angle context observation Right upper wrist Fisheye RGB 1920 x 1080 30 fps Wide-angle context observation Left lower wrist Normal RGB 320 x 240 30 fps Close-range gripper-cloth contact observation Right lower wrist Normal RGB 320 x 240 30 fps Close-range gripper-cloth contact observation
+
+# 5 Multi-View Wrist-Centric Perception 
+
+## 5.1 Motivation 
+
+A single camera is insufficient for deformable T-shirt manipulation. The garment state is frequently occluded by the grippers, and some of the most critical information is local: whether the gripper has contacted only the top layer, whether the garment edge is being lifted. These states are difficult to infer from a fixed external camera or a single wrist-mounted view. We therefore designed a four-camera wrist-mounted observation system. All cameras move with the robot arms, and the system is split into two complementary tiers: upper wrist fisheye cameras for wide-angle task context and lower wrist RGB cameras for close-range gripper–cloth contact observation. 
+
+## 5.2 Camera Configuration 
+
+Each robotic arm is equipped with two wrist cameras: an upper fisheye camera and a lower RGB camera, giving four camera streams in total. Table 3 summarizes the configuration. All camera streams are resized to 224 × 224 before being fed into the policy. 
+
+## 5.3 Upper and Lower View Roles 
+
+The upper fisheye cameras and lower RGB cameras serve distinct and complementary roles. The upper fisheye views provide wide-angle context: the T-shirt stack, pallet position, arm configuration, and overall garment pose. These views indicate the current stage of the task and the garment’s global configuration. The lower RGB cameras provide direct visual evidence of the gripper–cloth interaction: the gripper opening relative to the cloth edge, whether the gripper is above or below the fabric, whether the top layer is being separated, and whether multiple layers are being unintentionally lifted. This local contact information is critical for single-layer picking. In deployment, we observed that the lower wrist views improved top-layer picking and reduced double-picking failures. This separation of global context and local contact observation is the central design principle of our perception system. 
+
+# 6 Data Collection and Data Closed Loop 
+
+## 6.1 Raw Demonstration Collection 
+
+We collected demonstrations from two sources: UMI-style data collection (600 episodes) and real-robot data collection (500 episodes). The UMI-style data follows the portable demonstration framework introduced in [6]. The UMI device is lightweight and easy to deploy across different scenes, table layouts, lighting conditions, and garment configurations, providing broader data coverage for scene generalization. However, our current UMI structure does not conveniently support mounting lower wrist cameras, so UMI episodes contain only the upper fisheye views. 6Figure 4: Four-view wrist observation.  
+
+> Table 4: Mixed UMI-style and real-robot demonstration dataset with prompt-conditioned view configurations
+
+Data Source Raw Episodes Final Training Episodes Primary Contribution 
+
+UMI-style collection 600 ∼200 Portable cross-scene demonstrations for human manipulation priors, broader scene coverage, and robustness; upper wrist fisheye views only due to UMI mounting constraints. Real-robot collection 500 ∼400 In-practice and competition-field four-view demonstrations collected directly on the deployable ARX X5 under force-compensation dragging, capturing contact views, robot dynamics, gripper behavior, latency, and camera geometry. Final mixed dataset 1100 raw total 600 Prompt-conditioned mixture of two-view UMI data and four-view deployable real-robot data for competition-time inference. Real-robot demonstrations were collected directly on the deployable ARX X5 platform with the full four-view camera setup, in both our practice environment and the competition field. These episodes capture the actual robot dynamics, custom gripper–fabric contact, control latency, and competition-specific workspace conditions. During training, prompts distinguish two-view UMI episodes from four-view real-robot episodes; at competition-time inference, the four-view prompt conditions the model toward the deployable rollout distribution. Unlike conventional master-slave teleoperation, our real-robot data collection uses a master-deployment integrated setup: operators directly drag the deployable ARX X5 arms under force-compensation mode to record demonstrations. This substantially reduces the embodiment gap between data collection and final deployment. 
+
+## 6.2 Final Training Dataset 
+
+After quality filtering, the final training dataset contains 600 mixed episodes: approximately 200 UMI-style and 400 real-robot. Table 4 summarizes the dataset composition and the primary contribution of each source. The filtering process removes low-quality trajectories, ambiguous demonstrations, poor camera synchro-7nization, and episodes with undesirable outcomes. This step is especially important for deformable-object learning, where inconsistent trajectories can teach the policy unstable contact behavior. 
+
+## 6.3 Data Closed Loop 
+
+Our training follows an iterative closed-loop workflow rather than a single-round data collection and training process: • Collect initial UMI-style and real-robot demonstrations. • Train the TCAM policy. • Deploy the policy on the real robot and record rollout outcomes. • Analyze failure modes to identify their physical causes. • Collect targeted additional data for the identified failure cases. • Filter and rebalance the dataset, then retrain and redeploy. The most common failure modes observed during this process include missed top-edge grasping, double-picking, garment loss during transport, poor initial pallet placement, collar misalignment, remaining wrinkles in the printing region, and over-adjustment that worsens an otherwise acceptable placement. This iterative process allows the system to improve in the exact failure distribution of the competition task. The trajectory-level analysis and memory mechanism that supports this loop is described in Section 7.2. 
+
+# 7 TCAM: TermiBrain Causal Action Model 
+
+## 7.1 Framework Overview 
+
+TCAM (TermiBrain Causal Action Model) is our system-level learning framework built around a self-developed multi-view Vision-Language-Action policy. Rather than treating demonstrations solely as trajectories for imitation, TCAM organizes each rollout as a causal interaction chain linking visual observation and gripper–cloth contact to action execution, garment deformation, and task outcome. TCAM analyzes this chain through a semi-automated workflow rather than fully automated causal attribution. Software first aggregates synchronized observations, actions, and outcome labels into a structured rollout record; human reviewers then inspect the record, identify physical factors such as missed edge contact, double picking, transport slip, collar misalignment, remaining wrinkles, or over-adjustment, and confirm the final causal tags. This analysis connects what the robot perceived and executed to how the garment responded and why the task succeeded or failed. 
+
+## 7.2 Trajectory Memory 
+
+Successful trajectories, failed trajectories, and the human-verified causal analysis results produced by this semi-automated workflow are stored in a trajectory memory buffer. This memory supports three functions: replay for retraining, identification of failure modes for targeted data recollection, and dataset rebalancing toward difficult cases. The iterative deploy–analyze–recollect–retrain loop described in Section 6.3 is driven by the contents of this memory. 
+
+## 7.3 Policy Input and Output 
+
+The policy receives synchronized wrist-camera images resized to 224 × 224, robot proprioception—including end-effector poses and gripper states—and task-conditioning prompts. As described in Section 6.1, prompts distinguish two-view UMI data from four-view real-robot data; competition-time inference uses the four-view prompt. The policy outputs 30-step chunks of end-effector delta-pose actions for both arms. Action chunking [7] improves temporal consistency and reduces frame-to-frame corrections that can create wrinkles, shift the collar, or cause the cloth to slip. 8Table 5: Final performance summary in the WBCD 2026 Track 4 challenge       
+
+> Metric Result
+> Completed T-shirts 25 Smooth T-shirts 22 Average time per attempt Approximately 23 seconds Unused autonomous loading time Approximately 15 seconds Manipulation control mode Fully autonomous TCAM policy execution
+
+# 8 Autonomous Execution and Run Management 
+
+During every active manipulation attempt, all robot motion is generated autonomously. No human teleop-eration or corrective action is used during picking, loading, alignment, or smoothing. The policy receives wrist-camera observations and outputs delta-pose action chunks as described in Section 7.3, enabling the robot to execute the complete pick–load–align–smooth cycle without human motion commands. At the run-management level, the team adopted the score-aware early-termination strategy described in Section 2.2. Concretely, if an attempt showed clear signs that recovery was unlikely within the remaining time, such as a failed grasp, severe misplacement, or a difficult wrinkle configuration, the team stopped the robot and reset the workspace rather than allowing the policy to continue on a low-probability recovery. The termination decision was based on human monitoring during the competition rather than an autonomous failure detector. This reflects a practical distinction worth noting: the manipulation policy itself was fully autonomous, while the decision to continue or terminate an attempt remained a human supervisory decision. Integrating this decision into the autonomous system is discussed as future work in Section 10. 
+
+# 9 Competition Performance 
+
+In the final competition, our system completed 25 T-shirts. Among them, 22 were judged as smooth in the target printing region. Table 5 summarizes the results. Counting both successful and early-terminated attempts, the average time per T-shirt attempt was approx-imately 23 seconds. The session followed the official 30-minute schedule with an additional one-minute time compensation due to judging-time conditions. Even under this setting, the system still had approximately 15 seconds of autonomous loading time unused. Post-competition analysis showed that alignment-specific demonstrations were underrepresented in the training dataset. During the competition, only a limited number of attempts received full alignment scores. Future work will expand alignment-focused data collection and evaluate its effect through targeted retraining. 
+
+# 10 Discussion 
+
+Our competition experience suggests several practical observations for deformable manipulation system de-sign. Task-specific hardware and learned policy should be co-designed: the custom gripper did not merely assist the policy but changed the physical interaction distribution it needed to learn (Section 4.2). For perception, the value of the four-camera setup lies not in the number of views but in contact observabil-ity, particularly the lower wrist cameras that make gripper–cloth interaction directly visible (Section 5.3). UMI-style and real-robot data serve complementary roles: UMI provides portable cross-scene coverage while real-robot episodes capture deployment-specific dynamics and contact views (Section 6.1). Finally, a single round of data collection is rarely sufficient; iterative deployment, failure analysis, and targeted recollection were necessary to reach competition-level reliability (Section 6.3). Several limitations remain. Although the policy performs well in the competition setting, long-horizon recovery from severe failures remains challenging. The early-termination decision was made by human observation rather than an autonomous failure detector (Section 8). A fully integrated system should auto-matically estimate whether the current state is recoverable and decide whether to continue or abort based on 9expected score and remaining time. Future work will also focus on scaling the data closed loop, improving generalization across textile categories, and extending the system toward manufacturing-oriented garment handling. 
+
+# 11 Conclusion 
+
+We presented the RMC2 Team’s champion solution for the WBCD 2026 Track 4: Deformable Manipulation Challenge. Our TCAM-based system autonomously executes all robot motion for T-shirt picking, loading, alignment, and smoothing, combining task-specific gripper design, wrist-centric four-view perception, mixed UMI and real-robot data, and closed-loop policy refinement. In the final competition, the system completed 25 T-shirts, 22 of which met the required surface-smoothness criterion, and secured first place in Track 4. 
+
+# Acknowledgements 
+
+We thank the ICRA WBCD 2026 organizers, judges, hardware providers, and volunteers for supporting the Track 4: Deformable Manipulation Challenge. We also thank all members of the RMC2 Team and TermiTech for their work on hardware design, data collection, model training, system integration, and competition deployment. 
+
+# References 
+
+[1] WBCD Competition, “Track 4: Deformable manipulation task rules.” GitHub repository, 2026. https: //github.com/wbcdcompetition/wbcd_tasks/tree/main/track-4-deformable-manipulation .[2] K. Black, N. Brown, D. Driess, A. Esmail, M. Equi, C. Finn, N. Fusai, L. Groom, K. Hausman, B. Ichter, et al. , “ π0: A vision-language-action flow model for general robot control,” arXiv preprint arXiv:2410.24164 , 2024. [3] Physical Intelligence, K. Black, N. Brown, J. Darpinian, K. Dhabalia, D. Driess, A. Esmail, M. Equi, C. Finn, N. Fusai, et al. , “ π0.5: A vision-language-action model with open-world generalization,” arXiv preprint arXiv:2504.16054 , 2025. [4] M. Torne, K. Pertsch, H. Walke, K. Vedder, S. Nair, B. Ichter, A. Z. Ren, H. Wang, J. Tang, K. Sta-chowicz, et al. , “MEM: Multi-scale embodied memory for vision language action models,” arXiv preprint arXiv:2603.03596 , 2026. [5] Physical Intelligence, A. Amin, R. Aniceto, A. Balakrishna, K. Black, K. Conley, G. Connors, J. Darpinian, K. Dhabalia, J. DiCarlo, et al. , “ π∗
+
+> 0.6
+
+: A vla that learns from experience,” arXiv preprint arXiv:2511.14759 , 2025. [6] C. Chi, Z. Xu, C. Pan, E. Cousineau, B. Burchfiel, S. Feng, R. Tedrake, and S. Song, “Universal manipula-tion interface: In-the-wild robot teaching without in-the-wild robots,” arXiv preprint arXiv:2402.10329 ,2024. [7] T. Z. Zhao, V. Kumar, S. Levine, and C. Finn, “Learning fine-grained bimanual manipulation with low-cost hardware,” in Robotics: Science and Systems , 2023. arXiv:2304.13705. 10

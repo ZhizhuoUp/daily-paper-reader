@@ -1,0 +1,319 @@
+Title: Observation-Constrained Joint-Space Viewpoint Optimization for Robotic Inspection of Cylindrical Cavities
+
+URL Source: https://arxiv.org/pdf/2608.16442v1
+
+Published Time: Tue, 18 Aug 2026 01:59:07 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Observation-Constrained Joint-Space Viewpoint Optimization for Robotic Inspection of Cylindrical Cavities 
+
+Yuezhong Wang ∗, Rongshen Yin ∗, Bichi Zhang, and Sören Schwertfeger 
+
+Abstract — Inspection is a core capability in many mobile robotics applications, including industrial facility monitoring, infrastructure maintenance, agriculture, and search and rescue. Observing the bottom of a cylindrical cavity, as required by ASTM search-task benchmarks for response robots, presents a representative challenge: the robot must position its camera precisely while satisfying visibility, kinematic, and collision constraints. This paper presents a fully autonomous method for observation-constrained inspection of cylindrical cavities in robot joint space. Rather than prescribing a single Cartesian camera pose, the method represents the inspection objective as a set of valid viewing geometries, thereby avoiding the rejection of reachable viewpoints and configurations with poor joint-limit margins. An RGB perception front end estimates the opening center and directed cavity axis from semantic masks using arc-supported ellipse fitting together with body and side-generator cues. These estimates parameterize constraints on camera-axis alignment, lateral offset, and axial standoff. A multistart derivative-free search then optimizes robot joint configurations with lexicographic priority given to constraint satisfaction; feasible configurations are ranked according to motion economy, joint-limit margin, and view quality. The resulting candidates are evaluated by a collision-aware motion planner, and the executed camera pose is verified geometrically and using a ray-based estimate of bottom visibility. In Isaac Sim, the proposed method successfully completes 92 of 100 target configurations and attains 91.65% mean bottom visibility among executed trials, compared with 76 of 100 and 84.3% for a multistart coordinate-search baseline. Tabletop and Unitree A2-mounted experiments demonstrate the complete perception– planning–execution pipeline. 
+
+I. I NTRODUCTION 
+
+The ASTM E2853/E2853M-22 standard [1] defines search tasks for evaluating ground response robot capabilities and is used in the RoboCup Rescue Robot League [2]. These tasks include inspecting confined openings and exemplify the precise camera placement required for robotic inspection. Robotic inspection differs from conventional pick-and-place manipulation in that the task objective is primarily observational. For a cylindrical cavity, a useful eye-in-hand view must look through the opening, remain near the cavity centerline, and preserve sufficient standoff to                           
+
+> ∗These authors contributed equally to this work. Yuezhong Wang, Bichi Zhang, and Sören Schwertfeger are with the Key Laboratory of Intelligent Perception and Human–Machine Collaboration, Ministry of Education, ShanghaiTech University, Shanghai, China. E-mail: {wangyzh12024, zhangbch2025, soerensch}@shanghaitech.edu.cn .Rongshen Yin is with the University of Pennsylvania, Philadelphia, PA, USA. E-mail: yinrsh@engineering.upenn.edu .This work was supported by the National Natural Science Foundation of China under Grant W2531052. The experiments were supported by the Core Facility Platform of Computer Science and Communication, SIST, ShanghaiTech University.
+> Fig. 1. Inspection platforms used in this work: (a) the tabletop eye-in-hand setup and (b) the Piper manipulator mounted on a Unitree A2.
+
+expose the interior. These requirements define a continuum of acceptable camera configurations. These requirements are also constrained by robot reachability: a visually ideal pose may approach a joint limit, lack a collision-free trajectory, or be unreachable from the robot’s current configuration. This set-valued structure matters because pose error alone is not a sufficient measure of inspection utility. Camera roll can vary without changing whether the cavity bottom is visible, while a small translational change near the rim can occlude a large part of the interior. Conversely, a configuration that is not closest to a nominal camera pose may provide a better executable view after joint limits and collision-free connectivity are considered. The planning objective should therefore preserve the allowable observation region until robot feasibility has been evaluated. Most manipulation pipelines first choose a Cartesian target and then invoke an inverse-kinematics (IK) solver. This decomposition is appropriate when the task requires a unique end-effector pose, but it is unnecessarily restrictive for inspection. View sampling relaxes the single-pose assumption, although it still searches camera-pose space before evaluating manipulator feasibility. The visual front end also faces target-specific projective effects: the fitted ellipse center generally differs from the projection of the physical circle center [3], while unique single-view circle-based pose recovery requires additional geometric information, such as a discriminable circle center or a predefined object frame [4]. We formulate cylindrical inspection as a search over robot configurations subject to explicit observation constraints. The visual front end provides only the task-relevant opening center and a directed axis pointing into the cavity. These quantities define an observation region in which the camera pose may vary. A feasibility-first joint-space optimizer searches this region, retains multiple candidate configurations, and delegates collision-free connection to the motion planner. arXiv:2608.16442v1 [cs.RO] 17 Aug 2026 The actually achieved view is then checked rather than accepting the nominal optimizer output. The evaluation separates two questions: a controlled Isaac Sim study uses identical ground-truth target geometry to compare viewpoint generation, whereas hardware demonstrations exercise the complete RGB perception-to-execution pipeline. The contributions of this paper are threefold:  
+
+> •
+
+an observation-region formulation for cylindrical inspec-tion that replaces a prescribed 6-DoF camera pose with explicit axis-alignment, lateral-offset, and axial-standoff constraints;  
+
+> •
+
+a feasibility-first joint-space optimizer that ranks multiple robot configurations using lexicographic hard and soft objectives, followed by collision-aware planning and post-execution geometric and visibility verification; and  
+
+> •
+
+a task-specific RGB front end that estimates the opening center and directed interior axis, integrated with a controlled 100-configuration simulation comparison and tabletop and quadruped-mounted demonstrations. II. R ELATED WORK 
+
+A. Cylindrical Perception 
+
+A projected circular rim generally appears as an ellipse, but its image center need not coincide with the projection of the physical circle center [3]. Moreover, unique single-view circle-based pose recovery requires additional information, such as a discriminable circle center or a predefined object frame [4]. Robust circle and ellipse detection can exploit local arc support rather than indiscriminate fitting to a complete, noisy contour [5], [6]. These observations are particularly relevant to inspection targets whose smooth surfaces provide weak texture and whose opening boundary may be only partially supported by reliable image gradients. Our front end combines semantic localization with arc-supported fitting and uses the visible cylindrical body to choose a directed interior axis. The output is deliberately task-specific: the planner needs the opening center, inward axis, cavity length, and aperture radius, but not an arbitrary object-frame roll angle. This avoids introducing unobservable pose components into the subsequent viewpoint objective. 
+
+B. View Planning and Active Perception 
+
+Classical view planning selects sensor poses for recon-struction or inspection coverage [7]. Recent systems extend this idea to online next-best-view selection for mobile manipulators, joint viewpoint planning and depth completion in clutter, and hand-eye active perception for optically difficult objects [8]–[10]. Such methods commonly optimize scene coverage, reconstruction uncertainty, or task perception quality over a sequence of views. Our problem is narrower but more geometrically explicit: a single inspection action must see through a finite circular aperture and retain a prescribed fraction of the internal bottom. Visual servoing instead closes the loop on image- or pose-space errors [11], [12]. The present method is not a replacement for visual servo control. It generates a feasible goal set before motion planning and verifies the executed view afterward; closed-loop image regulation could be added between these two stages when online target tracking is available. 
+
+C. Constrained Manipulation and Viewpoint Generation 
+
+Pose-set formulations such as Task Space Regions represent manipulation goals as allowable Cartesian regions [13], while analytical sensor planning has characterized admissible views under resolution, focus, and field-of-view constraints [14]. Improved IK solvers such as TRAC-IK increase robustness for a specified target pose [15]. These formulations establish that task constraints need not reduce to one rigid pose, but a pose-space region must still be mapped to robot configurations and connected by a feasible trajectory. Our method evaluates cylindrical observation constraints directly from forward kinematics and searches in joint space. This permits joint-limit margin and motion economy to influence viewpoint selection before trajectory generation. The resulting ranked configurations are then checked by MoveIt [16]. Thus, the contribution lies in the interface between a task-specific observation set and manipulator feasibility, rather than in a new collision-checking or trajectory-planning algorithm. III. M ETHOD 
+
+A. Pipeline Overview 
+
+The framework exposes a compact semantic interface between perception and manipulation. Perception returns an opening center pCo and a unit axis aC directed toward the cavity interior. Together with known target dimensions, these quantities define a finite observation region rather than a complete object pose. Forward kinematics maps each joint configuration to an eye-in-hand camera pose, from which observation feasibility can be evaluated without first constructing a Cartesian goal. The optimizer consequently returns a ranked set of joint states. Motion planning tests this set in rank order, and the final decision is made from the achieved robot state and estimated interior visibility. Fig. 2 summarizes these stage interfaces. 
+
+B. Problem Statement and Assumptions 
+
+Given an eye-in-hand image I and current joint state q0,the objective is to return a ranked set of joint configurations whose forward-kinematic camera poses satisfy the inspection geometry. The formulation assumes known opening diameter 
+
+D and cavity length L, calibrated camera intrinsics, a fixed eye-in-hand transform E TC , and a visible, static target. Target-free hand–eye calibration with joint scene reconstruction provides one way to obtain this transform [17]; Multical can additionally register cameras, IMUs, and LiDARs spatially and temporally on a mobile platform [18]. Calibration is out-side our scope, and all extrinsics are fixed during inspection. The viewpoint optimizer evaluates observation geometry and joint limits; collision geometry and trajectory connectivity are delegated to MoveIt. This separation makes the optimizer’s output a set of candidate observation configurations rather than a claimed collision-free motion. Target perception      
+
+> body/rim masks →ellipse opening center pCo,directed axis aC
+
+Observation model 
+
+> base-frame target geometry axis, lateral, and standoff constraints
+
+Joint-space search  
+
+> multistart coordinate search feasibility first; rank Qcand
+
+Execution and verification    
+
+> MoveIt trajectory planning achieved geometry and bottom visibility task semantics Cobs ranked goals
+> Fig. 2. Pipeline overview. Perception estimates task-specific cylindrical geometry, which defines an observation region. Joint-space search returns multiple feasible configurations; motion planning and post-execution checks operate on the ranked set.
+
+C. Geometry-Aware Target Perception 
+
+Let I be the eye-in-hand RGB image. A hierarchical semantic front end first localizes the cylinder body and then segments the opening inside the resulting region of interest. To reduce sensitivity to reflections and mask leakage, edge processing is restricted to a narrow band around the refined rim mask ˆM ,
+
+Brim = dilate( ˆM , k b) − erode( ˆM , k b). (1) Local arcs in Brim generate ellipse hypotheses. Candidates are ranked by edge support, angular coverage, mask consistency, fitting residual, and spatial distribution, after which the best inlier set is refitted with direct least squares [19]. Denote the selected ellipse by e = ( ue, v e, A e, B e, θ e), where Ae ≥ Be
+
+are the projected major- and minor-axis diameters in pixels. Given the calibrated focal length fx and known physical opening diameter D, the implementation uses the approximate relations 
+
+Ze = fxDAe
+
+, ρ = Be
+
+Ae
+
+, τ = arccos( ρ), (2) where Ze is the opening depth and τ is its inclination. Let 
+
+dm = [cos( θe + π/ 2) , sin( θe + π/ 2)] T be the image minor-axis direction. Perspective eccentricity is handled by two bounded center corrections, 
+
+ps = [ ue, v e]T + s∆cdm,
+
+∆c = min( kcAe(1 − ρ), k max Be) , s ∈ {− 1, +1 }. (3) The corresponding 3-D center and directed-axis hypotheses are 
+
+CCs =
+
+
+
+(us − cx)Ze/f x
+
+(vs − cy )Ze/f y
+
+Ze
+
+ , (4) 
+
+aCs = normalize 
+
+
+
+−s sin τ d m,x 
+
+−s sin τ d m,y 
+
+cos τ
+
+ . (5) Together, CCs and aCs define the hypothesis Ps = ( CCs , a Cs )
+
+for s ∈ {− 1, +1 }.The ellipse alone does not determine the physically consistent sign. The body mask supplies its image center 
+
+pI 
+
+> body
+
+and dominant longitudinal direction db. Let gs be the normalized image projection of aCs . Body-axis and body-pointing consistency are 
+
+qaxis (Ps) = 1 + |gTs db|
+
+2 ,qbody (Ps) = 12 1 + gTs
+
+pI 
+
+> body
+
+− ps
+
+∥pI 
+
+> body
+
+− ps∥ + ϵ
+
+!
+
+.
+
+(6) A centerline term qcenter ∈ [0 , 1] decreases with the nor-malized perpendicular distance from ps to the estimated body centerline. The body-based score is Srgb = wbqbody +
+
+wcqcenter + waqaxis . When two reliable side-generator lines are available, their oriented common direction dside yields 
+
+Sside = γl
+
+1 + gTs dside 
+
+2 + γtqbody . (7) The side score is used only when the line pair passes gates on residual, support, axis alignment, parallelism, and separation. Thus, 
+
+Sdis (Ps) = 
+
+(
+
+Sside (Ps), Qside ≥ Qmin ,Srgb (Ps), Qside < Q min . (8) where Qside is the line-pair quality score. The selected hypothesis is s∗ = arg max s∈{− 1,+1 } Sdis (Ps). The planner receives pCo = CCs∗ and aC = aCs∗ , with aC directed from the opening into the cavity. The two semantic masks play different roles: the opening rim provides metric scale and plane inclination, whereas the body extent and side generators resolve the otherwise ambiguous direction along the projected minor axis. This division prevents noisy body boundaries from directly determining the aperture geometry while still exploiting them for sign disambiguation. Near-frontal views remain ill-conditioned because ρ → 1 makes the minor-axis direction noise-sensitive. 
+
+D. Target and Observation Model 
+
+With cavity length L and inner radius rin , the task representation is MC = {pCo , a C , L, r in } and the bottom center is pCb = pCo +La C . It is transformed to the manipulator base using the fixed eye-in-hand transform, 
+
+pB = B RC pC + B tC , aB = B RC aC . (9) For joint vector q ∈ Rn, forward kinematics gives  
+
+> B
+
+TC (q) = B TE (q)E TC =
+
+Rc(q) pc(q)0 1
+
+
+
+, (10) with optical axis zc(q) = Rc(q)[0 , 0, 1] T . A camera-side consistency check reverses a when necessary so that the current camera lies outside the opening, then updates pb =
+
+po + La .The observation geometry is summarized by 
+
+eaxis (q) = arccos  clip( zc(q)T a, −1, 1)  ,daxial (q) = ( pc(q) − po)T (−a),elat (q) = ∥pc(q) − po − daxial (q)( −a)∥ .
+
+(11) The valid observation region is 
+
+Cobs = {q | eaxis (q) ≤ θmax , e lat (q) ≤ elat ,max ,dmin ≤ daxial (q) ≤ dmax }. (12) The three terms have distinct geometric roles. eaxis controls the viewing direction, elat measures the camera’s perpendic-ular distance from the cavity centerline, and daxial places the camera within an allowable interval outside the opening. Rotation about the optical axis remains unconstrained by the inspection task and can therefore be selected according to robot motion and joint-limit preferences. This retained freedom is precisely what is lost when one complete Cartesian camera pose is fixed in advance. To encourage the optical axis to pass through the opening toward the bottom, a virtual boresight point and gaze error are 
+
+pproxy = po + ( αL + dproxy )a, g(q) = pproxy − pc(q)
+
+∥pproxy − pc(q)∥ ,egaze (q) = arccos  clip( zc(q)T g(q), −1, 1)  .
+
+(13) Unlike Eq. (12), this term is a soft preference. 
+
+E. Feasibility-First Joint-Space Search 
+
+The method searches joint space directly because the obser-vation region does not identify a unique camera pose. Multiple seeds are sampled around the current configuration q0. From each seed, a derivative-free coordinate direct search evaluates 
+
+q ± ∆ei and contracts ∆ after an unsuccessful coordinate sweep [20]. Candidates are compared lexicographically by hard feasibility and then soft quality. Let [x]+ = max(0 , x ) and ri = qi, max − qi, min . Define the normalized lower- and upper-bound violations as v− 
+
+> i
+
+=[qi, min −qi]+/r i and v+ 
+
+> i
+
+= [ qi −qi, max ]+/r i. Their aggregate cost is 
+
+Ebound (q) = X
+
+> i
+
+(v− 
+
+> i
+
+)2 + ( v+ 
+
+> i
+
+)2 . (14) The hard cost is 
+
+Jhard (q) = wha [eaxis − θmax ]2+ + whl [elat − elat ,max ]2+
+
++ whs [dmin − daxial ]2+ + whs [daxial − dmax ]2+
+
++ whb Ebound (q).
+
+(15) For feasible states, let δi = wrap( qi − q0,i )/r i, Emotion =P 
+
+> i
+
+δ2 
+
+> i
+
+, and Ewrist = P 
+
+> i∈W
+
+δ2 
+
+> i
+
+. The normalized valid margin is ¯mi = min( qi − qi, min , q i, max − qi)/r i, giving 
+
+Elimit (q) = X
+
+> i
+
+[ ¯ m0 − ¯mi(q)] 2+. (16) The quality objective is 
+
+Jquality (q) = wmEmotion + wwEwrist + wj Elimit 
+
++ wqae2axis + wql e2lat + wqs (daxial − ddesired )2
+
++ wg e2gaze .
+
+(17) The nominal solution is the lexicographic minimizer of 
+
+(Jhard , J quality ). Rather than returning only this state, the solver retains the N highest-ranked distinct feasible configu-rations, 
+
+Qcand = {q(1) , . . . , q (N )}, q(1) = q∗. (18) The lexicographic comparison prevents a reduction in motion cost from compensating for a violated observation constraint. Retaining multiple distinct feasible states also separates two forms of feasibility: the optimizer checks viewing geometry and joint limits, whereas the downstream planner checks collision-free connectivity from the current state. A highly ranked candidate can therefore be rejected without rerunning perception or committing the system to one alternative view. 
+
+F. Execution and Post-Execution Verification 
+
+MoveIt evaluates Qcand in rank order. A candidate is executed only if a collision-free trajectory can be planned from the current state; a planning failure advances to the next candidate. The measured robot state then provides the achieved camera pose, from which the observation errors are recomputed. Interior visibility is estimated by sampling points pi on the circular bottom. The ray from camera center pc to pi
+
+intersects the opening plane at 
+
+λi = aT (po − pc)
+
+aT (pi − pc) , xi = pc + λi(pi − pc). (19) The sample is visible when 0 < λ i < 1 and 
+
+(I3 − aa T )( xi − po) ≤ rin − rclear , (20) where I3 is the 3 × 3 identity matrix. The bottom-visible ratio is V = Nvisible /N total . An inspection succeeds only if the achieved pose remains in Cobs and V ≥ Vmin . Because these quantities are recomputed from the measured post-execution joint state, the acceptance test accounts for discrepancies between the nominal optimizer output and the configuration actually reached. The aperture test also captures the finite rim explicitly: satisfying only an axis-angle condition does not guarantee that rays to the cavity bottom pass through the opening. IV. E XPERIMENTS 
+
+The evaluation addresses three questions. First, when every method receives the same target geometry, does observation-constrained joint-space search improve end-to-end inspection success? Second, do the resulting viewpoints expose more of the cavity bottom? Third, can the full RGB perception-to-execution pipeline operate on the tabletop system and on the Unitree A2-mounted manipulator? 
+
+A. Setup and Protocol 
+
+The platform uses a 6-DoF AgileX Piper manipulator and an eye-in-hand Intel RealSense D435i. Isaac Sim provides the simulated robot and target, while MoveIt performs collision-aware planning in simulation and on hardware. The target has inner diameter 5 cm, outer diameter 6 cm, and length 5.5 cm. The same kinematic chain, joint limits, candidate-to-MoveIt interface, and post-execution acceptance test are used throughout the planner comparison. (a) (b) Fig. 3. Isaac Sim evaluation visualization: (a) the manipulator and the sampled cylindrical-target configurations; (b) a representative eye-in-hand RGB observation. The RGB rendering is used for qualitative visualization in the controlled comparison, while all methods receive the same simulator ground-truth opening center and axis. 
+
+The proposed optimizer uses 48 seeds within 0.35 rad of 
+
+q0, at most 300 coordinate updates per seed, an initial step of 0.14 rad, and a halving schedule down to 5 × 10 −4 rad. It retains at most 16 feasible configurations. The observation thresholds are θmax = 0 .15 rad, elat ,max = 0 .005 m, and 
+
+daxial ∈ [0 .08 , 0.38] m, with ddesired = 0 .20 m, rclear =0.002 m, and Vmin = 0 .85 . These values are fixed for all 100 test configurations rather than retuned for individual target poses. Simulation evaluates 100 target configurations with target depth from 0.40 to 0.70 m and axis tilt up to approximately 
+
+50 ◦. Every method receives the same target configurations, initial robot states, and simulator ground-truth opening center and axis. This protocol intentionally removes perception error and isolates viewpoint generation. Only the viewpoint-generation strategy changes; collision-aware planning, exe-cution, and the final geometric and visibility criteria remain identical. Success is end-to-end: at least one candidate must admit a MoveIt trajectory, and the achieved pose must satisfy all observation constraints and the visibility threshold. 
+
+B. Simulation Comparison 
+
+Four strategies are compared. Fixed Pose + IK constructs one Cartesian view from the target geometry before solving IK. View Sampling + IK samples multiple Cartesian views and tests their IK solutions. Multi-Start CD applies multistart coordinate search to a conventional single-view objective. 
+
+Proposed uses the observation region, feasibility priority, ranked candidate set, and post-execution criteria in Sec. III. The first two baselines therefore commit to pose-space choices before manipulator feasibility is known, whereas both coordinate-search methods operate in joint space. The distinction between the latter two is the set-valued observation formulation and lexicographic feasibility treatment. The evaluation reports position error, angular error, bottom-visible ratio, and inspection success. Success is computed over all 100 configurations. The three continuous quantities are averaged over trials in which a trajectory is executed and an actual camera pose is available, including executed trials that fail the final inspection criterion. A configuration for which every candidate fails motion planning is counted as an inspection failure but cannot contribute to an executed-pose average. Because inspection admits multiple valid views, the pose-error quantities are treated as diagnostic components; the primary criterion is whether the achieved pose jointly satisfies the observation and visibility requirements.       
+
+> TABLE I SIMULATION RESULTS OVER 100 TARGET CONFIGURATIONS . P OSITION ERROR ,ANGULAR ERROR ,AND VISIBILITY ARE AVERAGED OVER TRIALS WITH AN EXECUTED CAMERA POSE ;SUCCESS IS COMPUTED OVER ALL
+> 100 CONFIGURATIONS .
+
+Method Pos. Ang. Visible Success (mm) (deg) (%) (/100) 
+
+Fixed Pose + IK 140.9 33.60 44.58 34 View Sampling + IK 49.2 15.51 80.2 65 Multi-Start CD 37.9 28.41 84.3 76 Proposed 42.9 21.68 91.65 92 
+
+Table I shows that the proposed method succeeds in 92 configurations, improving absolute success by 16 percentage points over Multi-Start CD and by 27 points over View Sampling + IK. Mean bottom visibility also rises from 84.3% for Multi-Start CD to 91.65%. The lowest position and angular errors are achieved by different baselines, while neither baseline attains the highest end-to-end success. This result is consistent with the task formulation: minimizing one deviation from a nominal view does not ensure that the executed camera simultaneously remains inside the axial and lateral bounds, faces through the opening, and exposes enough of the finite bottom surface. The non-success cases include configurations for which the search does not find a feasible joint state and cases where a feasible state cannot be connected by the motion planner. The current experiment records the final end-to-end outcome but does not retain a complete stage-wise failure breakdown. Consequently, the results support the benefit of the combined viewpoint-generation interface, but they do not isolate how much of the remaining 8% failure rate originates in search coverage versus trajectory connectivity. 
+
+C. Hardware Demonstration 
+
+The full RGB-to-execution pipeline was first run with the Piper fixed to a table and was then transferred without changing the planner to the Piper mounted on a Unitree A2. Unlike the controlled simulation comparison, hardware uses the estimated pCo and aC from Sec. III-C. The tabletop setup in Fig. 1(a) permits repeatable placement around the multi-opening test fixture, while the A2-mounted setup in Fig. 1(b) evaluates the same eye-in-hand workflow on an integrated mobile inspection platform. Fig. 4 illustrates the complete motion rather than only its initial and final states. The first row shows the large-scale arm reconfiguration, the second row shows approach to the target fixture, and the third row shows final alignment near the opening. The sequence demonstrates that the ranked-viewpoint interface can be executed on the quadruped-mounted arm and that the final eye-in-hand view exposes the cylindrical interior. 
+
+D. Scope and Limitations 
+
+The simulation experiment intentionally uses ground-truth target geometry; therefore, the 92% result characterizes Fig. 4. Complete A2-mounted inspection sequence, ordered left-to-right and top-to-bottom. The arm leaves its initial posture, reorients toward the detected cylindrical opening, approaches the target, and reaches a camera configuration from which the cavity interior is visible. 
+
+viewpoint generation, motion planning, and executed-pose ver-ification rather than RGB perception accuracy. The hardware evidence establishes system feasibility but is not a statistical success-rate study. Repeated trials, perception error against measured target geometry, runtime distributions, and stage-wise failure counts are needed for a complete robustness assessment. The formulation also assumes known cavity dimensions, a static visible target, and fixed camera-to-end-effector calibration. Near-frontal views remain weakly conditioned for monocular axis recovery, and coordinate search may become costly as the number of seeds or manipulator degrees of freedom increases. These limitations motivate future work on uncertainty-aware target geometry, online visual correction, and data-driven seed proposals, while retaining the explicit geometric acceptance test. V. C ONCLUSION 
+
+This paper formulated cylindrical-cavity inspection as an observation region rather than a unique 6-DoF camera pose. A compact RGB front end estimates the opening center and directed interior axis; explicit axis, lateral, and standoff constraints then guide a feasibility-first joint-space search. Ranked alternatives allow collision-aware planning to reject an inaccessible goal, while post-execution geometry and bottom visibility prevent acceptance based only on a nominal solution. Across 100 controlled Isaac Sim configurations, the method achieved 92 of 100 end-to-end successes and 91.65% mean bottom visibility over executed trials. The baselines with the smallest position or angular error did not produce the highest inspection success, supporting the use of a set-valued task criterion. Tabletop and Unitree A2-mounted demonstrations establish end-to-end feasibility; quantitative real-world perception and repeated-trial evaluation remain future work. Future work will investigate uncertainty-aware constraints, faster seed selection, and closed-loop image correction. Low-cost VR teleoperation offers a practical route for collecting demonstrations [21] from which seed distributions or recovery motions can be learned without replacing the geometric verification stage. REFERENCES [1] ASTM International, ASTM E2853/E2853M-22: Standard Test Method for Evaluating Ground Response Robot Capabilities: Search Tasks , ASTM International Std., 2022. [Online]. Available: https://doi.org/10.1520/E2853_E2853M-22 [2] R. Sheh, T. Kimura, E. Mihankhah, J. Pellenz, S. Schwertfeger, and J. Suthakorn, “The robocuprescue robot league: Guiding robots towards fieldable capabilities,” in Advanced Robotics and its Social Impacts .IEEE, 2011, pp. 31–34. [3] R. Matsuoka and S. Maruyama, “Eccentricity on an image caused by projection of a circle and a sphere,” ISPRS Annals of the Photogrammetry, Remote Sensing and Spatial Information Sciences ,vol. III-5, pp. 19–26, 2016. [4] G. Wang, Q. M. J. Wu, and Z. Ji, “Single view based pose estimation from circle or parallel lines,” Pattern Recognition Letters , vol. 29, no. 7, pp. 977–985, 2008. [5] C. Lu, S. Xia, W. Huang, M. Shao, and Y. Fu, “Circle detection by arc-support line segments,” in 2017 IEEE International Conference on Image Processing (ICIP) , 2017, pp. 76–80. [6] C. Lu, S. Xia, M. Shao, and Y. Fu, “Arc-support line segments revisited: An efficient high-quality ellipse detection,” IEEE Transactions on Image Processing , vol. 29, pp. 768–781, 2020. [7] W. R. Scott, G. Roth, and J.-F. Rivest, “View planning for automated three-dimensional object reconstruction and inspection,” ACM Comput-ing Surveys , vol. 35, no. 1, pp. 64–96, 2003. [8] M. Naazare, F. Garcia Rosas, and D. Schulz, “Online next-best-view planner for 3D-exploration and inspection with a mobile manipulator robot,” IEEE Robotics and Automation Letters , vol. 7, no. 2, pp. 3779– 3786, 2022. [9] Y. Liu, T. Jia, H. Zhang, G. Yang, H. Wang, and D. Chen, “RASP: Robot active scene perception with joint viewpoint planning and depth completion in cluttered environments,” IEEE Transactions on Automation Science and Engineering , vol. 22, pp. 20 611–20 623, 2025. [10] G. Kennis and S. Arai, “HEAPGrasp: Hand-eye active perception to grasp objects with diverse optical properties,” IEEE Robotics and Automation Letters , vol. 11, no. 3, pp. 3206–3213, 2026. [11] S. Hutchinson, G. D. Hager, and P. I. Corke, “A tutorial on visual servo control,” IEEE Transactions on Robotics and Automation , vol. 12, no. 5, pp. 651–670, 1996. [12] F. Chaumette and S. Hutchinson, “Visual servo control. I. basic approaches,” IEEE Robotics & Automation Magazine , vol. 13, no. 4, pp. 82–90, 2006. [13] D. Berenson, S. Srinivasa, and J. Kuffner, “Task space regions: A framework for pose-constrained manipulation planning,” The Interna-tional Journal of Robotics Research , vol. 30, no. 12, pp. 1435–1460, 2011. [14] K. Tarabanis, R. Y. Tsai, and P. K. Allen, “Analytical characterization of the feature detectability constraints of resolution, focus, and field-of-view for vision sensor planning,” CVGIP: Image Understanding ,vol. 59, no. 3, pp. 340–358, 1994. [15] P. Beeson and B. Ames, “TRAC-IK: An open-source library for improved solving of generic inverse kinematics,” in 2015 IEEE-RAS 15th International Conference on Humanoid Robots (Humanoids) , 2015, pp. 928–935. [16] D. Coleman, I. A. S , ucan, S. Chitta, and N. Correll, “Reducing the barrier to entry of complex robotic software: A MoveIt! case study,” 
+
+Journal of Software Engineering for Robotics , vol. 5, no. 1, pp. 3–16, May 2014. [17] X. Zhi and S. Schwertfeger, “Simultaneous hand-eye calibration and reconstruction,” in 2017 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2017, pp. 1470–1477. [18] X. Zhi, J. Hou, Y. Lu, L. Kneip, and S. Schwertfeger, “Multical: Spatiotemporal calibration for multiple IMUs, cameras and LiDARs,” in 2022 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2022, pp. 2446–2453. [19] A. Fitzgibbon, M. Pilu, and R. B. Fisher, “Direct least square fitting of ellipses,” IEEE Transactions on Pattern Analysis and Machine Intelligence , vol. 21, no. 5, pp. 476–480, 1999. [20] T. G. Kolda, R. M. Lewis, and V. Torczon, “Optimization by direct search: New perspectives on some classical and modern methods,” 
+
+SIAM Review , vol. 45, no. 3, pp. 385–482, 2003. [21] L. Dong, Z. Zhang, Y. Yang, and S. Schwertfeger, “Enabling practical dexterous grasping: A low-cost VR teleoperation system with diffusion policy and factor analysis,” in 2025 IEEE International Conference on Robotics and Biomimetics (ROBIO) , 2025, pp. 1220–1226.
