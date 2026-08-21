@@ -1,0 +1,555 @@
+Title: Real-Time In-Domain Congestion Control for the LWR Traffic Model via Control Barrier Functions
+
+URL Source: https://arxiv.org/pdf/2608.13841v1
+
+Published Time: Mon, 17 Aug 2026 00:20:27 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Real-Time In-Domain Congestion Control for the LWR Traffic Model via Control Barrier Functions 
+
+Zehang Zhu 1, Brian Block 1 and Stephanie Stockar 1
+
+Abstract — This paper presents a control barrier function-based method for real-time in-domain congestion control of the Lighthill-Whitham-Richards traffic model. Traffic congestion is formulated as a distributed safety control problem, leading to a infinite-dimensional optimization problem. Through the discretization and Karush-Kuhn-Tucker (KKT) analysis, the problem is converted into a high-dimensional quadratic pro-gram. A structure-exploiting primal-dual active set algorithm is then developed to compute the safe control input in real time, with convergence guarantees. Numerical simulations with different nominal controllers demonstrate the effectiveness and real-time feasibility of the proposed approach. 
+
+I. I NTRODUCTION 
+
+In recent years, mobility demand has increased continu-ously, causing an increase in traffic congestion. From 2023 to 2024, the average time spent in congestion rose by 20% 
+
+[1]. Advanced traffic control strategies, supported by rapid developments in connected transportation technologies, offer a promising means of reducing congestion and improving traffic efficiency and safety [2]. Macroscopic partial differential equation (PDE) models provide an efficient framework to model the large-scale traffic dynamics that lead to congestion and can support control design. A commonly used macroscopic model is the Lighthill–Whitham–Richards (LWR) model, which is a first-order, hyperbolic PDE that captures the spatiotemporal evolution of traffic density. The LWR model assumes that the velocity of vehicles adapts instantaneously based on a prescribed fundamental diagram [3], [4]. Highlighted for its simplicity and effectiveness, the LWR model is commonly used in traffic control, such as in boundary ramp-metering control [5], [6], moving-bottleneck control implemented via connected and automated vehicles [7], or in-domain variable speed limit (VSL) control [8]. With in-domain control, the actuator can have complete control over the internal traffic dynamics. One way to achieve the in-domain control for traffic models is to implement VSLs. In [9], VSLs were implemented using a PI-type feedback on a discrete model to control flow rate and traffic density. Model predictive control for VSLs was used in [10] to reduce total time spent in traffic and emissions. The use of VSL actuation to track a desired outflow was also developed in [11]. In [8], a continuous linear quadratic (LQ) controller  
+
+> This material is based upon work supported by the National Science Foundation CAREER Award 2042354.
+> 1Authors are with the Department of Mechanical and Aerospace En-gineering and the Center for Automotive Research, The Ohio State Uni-versity, 930 Kinnear Road, Columbus, OH 43212, USA
+
+{zhu.4178, block.168, stockar.1 }@osu.edu 
+
+was proposed to stabilize the LWR model through VSLs. These works, though, focus only on stabilizing the system to a desired setpoint or trajectory, not on ensuring system states stay within a desired set. Maintaining the traffic density in free-flow can be in-terpreted as a distributed safety control problem, which motivates the use of control barrier functions (CBFs), which ensure the system’s safety by enforcing the invariance of a safe set of states. The use of CBFs in ODE systems has been well studied. In [12], a CBF-based quadratic programming (QP) solver was proposed for control-affine ODE systems to solve the safe control input efficiently. The effectiveness of CBF-based methods has been verified in various microscopic driving scenarios [13]–[15], where the CBF guarantees the driving safety of autonomous vehicles. The use of CBFs for control in PDE systems has been less studied, though, and mainly for boundary control, not in-domain control. In [16], a second-order CBF was employed in the Stefan model at a boundary to prevent liquid freezing while driving the phase interface to a desired location. This approach was further extended to third-order moving-boundary dynamics in [17]. The safety control problem of an unmanned aerial vehicle with hanging loads, formulated as an ODE-PDE-ODE system, was discussed in [18], in which a CBF was used to regulate the input to ensure the safety of the loads. As mentioned, these works focus on boundary control, and the in-domain PDE safety control problem has been less studied in the literature. In particular, existing approaches do not address real-time computation of in-domain safe controls for traffic PDEs. To address the current limitations in safe, in-domain control of PDEs, we propose a real-time solvable, CBF-based method with VSLs to prevent congestion for the LWR model. The main contributions are as follows: (i)A formulation of CBF-based in-domain safe control for the LWR traffic model, addressing a gap in existing CBF approaches that focus primarily on boundary control; (ii) A structure-exploiting primal-dual active set (PDAS) algorithm for real-time computation of the optimal safe control input, with convergence guarantees; (iii) A numerical validation demonstrating safety enforcement and real-time feasibility under different nominal controllers. II. M ODEL AND PROBLEM DESCRIPTION 
+
+A. LWR Model 
+
+We consider the LWR model with VSL in-domain control on a straight road of length L with on-ramps, where position arXiv:2608.13841v1 [eess.SY] 14 Aug 2026 x ∈ [0 , L ] and time t ∈ [0 , T ]. The model is presented as 
+
+∂ρ ∂t + ∂(uQ )
+
+∂x = q (1) where ρ(x, t ) : [0 , L ] × [0 , T ] → R is the traffic density; 
+
+q(x, t ) is the on-ramp flow; and u(x, t ) is the continuous VSL control input. Q(x, t ) is the traffic flow described by 
+
+Q = f (ρ) (2) where f (ρ) : [0 , ρ max ] → [0 , Q max ] gives the equilibrium relationship between traffic density and flow. The maximum density, flow, and speed are ρmax , Q max , and Vmax , respec-tively. The corresponding maximum flow 
+
+Qmax = f (ρc) ≥ f (ρ), ∀ρ ∈ [0 , ρ max ] (3) happens at the critical density ρc, where the traffic state transitions from free-flow to congestion. The boundary and initial conditions of (1) are 
+
+Q(0 , t ) = Qup (t), ρ (x, 0) = ρ0(x) (4) where Qup (t) is the traffic flow from the upstream, and we assume that the supply of the downstream is big enough; 
+
+ρ0(x) is the initial density on the road. To ensure vehicles can enter the road from upstream, we impose the boundary condition u(0 , t ) = 1 . Since this paper focuses on single-step control, for notational simplicity, u(x) is used to denote 
+
+u(x, t ) in the remainder of the paper. 
+
+B. CBF Problem Description 
+
+Before formulating the problem, we first introduce the CBF theory briefly for completeness. 
+
+Control Barrier Functions [12]: Denote a control system 
+
+˙x = f (x, u ) and a safe set defined by h(x) ⩾ 0, where h(x)
+
+is a continuously differentiable scalar function. Then, h(x) is a CBF if there exists a selected extended class K∞ function 
+
+α such that the following inequality holds for any state x
+
+sup 
+
+> u
+
+˙h(x, u ) + α(h(x)) ⩾ 0 (5) For our purposes, the safety objective is to prevent con-gestion at the macroscopic level, thus the density ρ should not exceed a certain value. Denoting the density bound by 
+
+ρlimit , the CBF and the corresponding constraint at a certain time ta can be built as 
+
+h(x) = ρlimit − ρ(x, t a) ⩾ 0 (6a) 
+
+˙h(x, u ) + αh (x) = − ∂ρ ∂t t=ta
+
++ αh (x) ⩾ 0 (6b) where we omit the time t from the arguments of h(x) for notational simplicity and the extended class K∞ function is selected as a linear function with coefficient α.Combined with the LWR model (1), the CBF constraint (6b) can be recast, and we obtain the following pointwise-in-time infinite-dimensional optimization problem: 
+
+min 
+
+> u(·),u (0)=1
+
+Z L
+
+> 0
+
+12 (u − uori )2 dx (7a) s.t. Lu − αh + q ⩽ 0 (7b) where L is a linear operator satisfying Lu = −(uQ )x. To get homogeneous boundary conditions, we substitute u with 
+
+v which satisfies v = u−1 in the following analysis, and also denote vori = uori − 1. Moreover, due to the unknown ramp flow, a slack variable ξ is introduced to ensure the feasibility of the above optimization problem (7). Accordingly, the problem can be reformulated as follows 
+
+min 
+
+> v(·),ξ (·),v (0)=0
+
+Z L
+
+> 0
+
+J(v, ξ ) d x (8a) s.t. Lv + C − ξ ⩽ 0 (8b) 
+
+− ξ ⩽ 0 (8c) where J(v, ξ ) = 12 (v −vori )2 + β 
+
+> 2
+
+ξ2 and C = −αh +q −Qx.The optimization problem (8) is solved at each time step to find the safe functional control input v to keep the barrier function (6a) holding. Note that, at each time step, L and C
+
+can be computed using current traffic information, and are irrelevant to the optimization variable v.III. M ETHODOLOGY 
+
+A. Karush–Kuhn–Tucker Analysis 
+
+According to Karush–Kuhn–Tucker (KKT) theory, we define H(v, ξ ) = J(v, ξ )+ λ(Lv+C−ξ)−μξ , in which λ and 
+
+μ are non-negative functional multipliers w.r.t to the position 
+
+x. Then, the optimal functional solution of the problem (8) satisfies the following KKT conditions 
+
+∂H ∂v = v − vori + L∗λ = 0 (9a) 
+
+∂H ∂ξ = βξ − λ − μ = 0 (9b) 
+
+λ(Lv + C − ξ) = 0 , λ ⩾ 0, Lv + C − ξ ⩽ 0 (9c) 
+
+μξ = 0 , μ ⩾ 0, ξ ⩾ 0 (9d) where L∗ is the adjoint operator of L.From (9b), if the slack variable ξ = 0 , we can infer that 
+
+λ = μ = 0 , due to their positivity. So, we have v = vori 
+
+from (9a), which means the CBF is not active. Otherwise, the CBF is active when the ξ > 0. When μ = 0 in (9d), after eliminating ξ, the KKT conditions (9) are equal to 
+
+v = vori − L ∗λ (10a) 
+
+Lv + C − λ/β = 0 (10b) Let A, I ∈ [0 , L ] denote the space intervals where the CBF is active or not, respectively. Together with the above analysis, the optimization results are shown below 
+
+(v, λ ) = 
+
+(
+
+(vori , 0) , x ∈ I ,
+
+solution of (10) , x ∈ A . (11) 
+
+B. Discretization 
+
+The active CBF intervals A need to be found to obtain the safe control input. As the variables ρ, Q in the LWR model (1) cannot be represented in analytical form, discretization is necessary to solve the infinite-dimensional optimization problem. It is worth emphasizing that, though the optimiza-tion problem (8) degenerates into a traditional vector-form optimization problem, which is a QP problem as well, the high dimension of the optimization variable v, ranges from tens to hundreds, depending on the discretization, makes it challenging to find a safe control input by classical solvers in real-time. Therefore, a tailored solution method is developed for the discretized problem. We use Godunov’s scheme to update the LWR model (1), assuming that there are N cells in space, whose length is ∆x.We use the subscript i = 1 , 2, ..., N to denote the component of the vector associated with the i-th cell. The supply and demand of each cell are given by 
+
+Si =
+
+(
+
+f (ρc), ρi < ρ c
+
+f (ρi), ρi ⩾ ρc
+
+, D i =
+
+(
+
+f (ρi), ρi < ρ c
+
+f (ρc), ρi ⩾ ρc
+
+(12) where ρc is the critical density defined in (3). The flow at the interface between the i-th and (i + 1) -th cells are 
+
+Qi = min( Di, S i+1 ) (13) where the upstream flow of the first cell is given by Q0 =min( Qup , S 1) and the downstream flow of the last cell is given by QN = DN . Let control input ui adjust the flow 
+
+Qi, then the discrete update of LWR model (1) is 
+
+∂ρ i
+
+∂t = qi + ui−1Qi−1 − uiQi
+
+∆x
+
+= qi + Qi−1 − Qi
+
+∆x + vi−1Qi−1 − viQi
+
+∆x
+
+(14) where v0 = 0 as we claim in Section II, and we can infer that Ci = −αh i +qi + Qi−1−Qi 
+
+> ∆x
+
+. Therefore, the discrete form of the linear operator L, which is denoted by K, satisfies 
+
+K =
+
+ kij 
+
+∆x
+
+
+
+, kij =
+
+
+
+−Qi, j = i, Qi, j = i − 1,
+
+0, otherwise .
+
+(15) where K is a N ×N lower bi-diagonal matrix and KT is the discrete form of the adjoint operator L∗. We would like to emphasize that the bi-diagonal structure of K is provided by the physical properties of the traffic flow, which is important for the convergence of the proposed algorithm. 
+
+C. Controller Design Algorithm 
+
+From the activity discussion of ξ in (9d), we find that ξ =
+
+λ/β always holds. Together with (11), the KKT conditions (9) are equal to finding roots of the following function 
+
+F (v, λ ) = 
+
+ v − vori + KT λλ − max(0 , g (v, λ )) 
+
+
+
+(16) where g(v, λ ) = λ + d(Kv + C − λ/β ) and d is a positive constant. In theory, the choice of d does not affect the result; however, in practical applications, an appropriate d
+
+can help avoid numerical issues. We use subscripts A and I
+
+to partition the matrices or vectors on active and inactive sets. By eliminating v in (10b), on the active set A, λ satisfies 
+
+(( KK T + IN /β )λ)A = ( Kv ori + C)A (17) where IN is a N × N identity matrix. Inspired by [19], we propose Algorithm 1, a PDAS-based iteration, to obtain the 
+
+Algorithm 1 PDAS-based CBF Controller 
+
+Input: Matrix K; Vectors C, β ; Positive constant d; Initial multiplier λ0 and responding initial control input v0 =
+
+vori − KT λ0(e.g., λ0 = 0 and v0 = vori ). 
+
+Output: Safe control input v. 
+
+> 1:
+
+k ← 0. 
+
+> 2:
+
+while TRUE do  
+
+> 3:
+
+Calculate the active set Ak = {i | gi(vk, λ k) > 0}
+
+and inactive set Ik = {i | gi(vk, λ k) ⩽ 0}. 
+
+> 4:
+
+Set λk+1  
+
+> Ik
+
+= 0 . 
+
+> 5:
+
+Solve λk+1  
+
+> Ak
+
+by equation (17).  
+
+> 6:
+
+Calculate vk+1 by vori − KT λk+1 . 
+
+> 7:
+
+if vk+1 = vk then  
+
+> 8:
+
+break  
+
+> 9:
+
+else  
+
+> 10:
+
+k ← k + 1 . 
+
+> 11:
+
+end if  
+
+> 12:
+
+end while  
+
+> 13:
+
+v = vk+1 .active set A and optimal control input v. The convergence of Algorithm 1 is proved by the following corollary: 
+
+Corollary 1: Let (v∗, λ ∗) denote the unique solution of function F (v, λ ) in (16). For arbitrary initial multiplier λ0
+
+and vector v0 = vori − KT λ0, we have λk ⩽ λk+1 ⩽ λ∗ for all k ⩾ 1 and λk ⩾ 0 for all k ⩾ 2.
+
+Proof: The proof is provided in the Appendix. Together with the non-negativity and monotonicity of λk
+
+for all k ⩾ 2, once index i is identified in the active set, it will not be classified as inactive in subsequent iterations. Al-gorithm 1 is terminated after a finite number of iterations, not exceeding a predefined maximum, and (v∗, λ ∗) is obtained. 
+
+Remark 1: Indeed, the operator LL ∗ + Id/β is an elliptic operator, where Id is the identity operator.The operator shares similar positivity properties with the matrix consid-ered in the Appendix. We will investigate the theoretical analysis in continuous spatial domain in future work. IV. S IMULATION RESULTS 
+
+A. Simulation Settings 
+
+The model parameters used in the simulation are shown in Table I, where the parameter values are selected based on real-world data [20]. The Greenshield model, the selected fundamental diagram f (ρ), and the corresponding critical density ρc are given by 
+
+Q = f (ρ) = ρV max 
+
+
+
+1 − ρρmax 
+
+
+
+, ρ c = ρmax 
+
+2 (18) The upstream condition Qup , initial density ρ0, and ramp flow q of the case study are 
+
+Qup (t) = 45 + 5 exp( −10 −5πtL ) · sin 
+
+ πt 
+
+40 
+
+
+
++ 20 tL (19a) 
+
+ρ0(x) = 45 + 10 · sin 
+
+ πx L
+
+
+
+(19b) TABLE I: Simulation Parameters                             
+
+> Parameter Unit Value Maximum density ρmax veh/km 120 Maximum velocity Vmax km/h 72 Road length Lm400 Simulation time Ts250 Ramp location xqm100 ⩽xq⩽200
+> Ramp time tqs0⩽tq⩽200
+
+TABLE II: Controller Parameters                               
+
+> Parameter Unit Value CBF density limit ρlimit veh/km 60 LQ target density ρsveh/km 55 CBF linear function coefficient αs−10.8
+> CBF penalty coefficient βm2·s2/veh 21·10 4
+> LQ tuning Psveh −25·10 −3
+> Positive constant din g(v, λ )m2·s2/veh 22·10 4
+
+q(x, t ) = 
+
+(
+
+1.2 + 0 .3 sin( πt  
+
+> 25
+
+), see Table I, 
+
+0, otherwise. (19c) From (19b), the maximum initial density is less than the critical density ρc = 60 veh/km, indicating that the initial condition is in free-flow and congestion observed in the case study is caused by on-ramp flow. The average ramp flow in (19c) is 120 veh/hr and does not exceed 500 veh/hr, which is consistent with real-world data [20]. We consider two different nominal controllers: a zero-input (no velocity regulation) and an LQ controller from [8]. We briefly introduce the selected LQ controller. For the desired traffic density ρs, the linearized LWR model near 
+
+(ρs, v s = 0) without ramp flow can be expressed as 
+
+∂∆ρ∂t = −Vmax 
+
+
+
+1 − 2ρs
+
+ρmax 
+
+ ∂∆ρ∂x − ρsVmax 
+
+
+
+1 − ρs
+
+ρmax 
+
+ ∂∆v∂x 
+
+(20) where ρ = ρs + ∆ ρ and v = vs + ∆ v = ∆ v. Let V =
+
+−Vmax (1 − 2ρs 
+
+> ρmax
+
+) and Bs = −ρsVmax (1 − ρs 
+
+> ρmax
+
+), and we denote 
+
+y = ∆ ρ and z = ∂v ∂x (note that vs = 0 and v = ∆ v), then the equivalent state space formulation of the linearized LWR model (20) on a Hilbert space is 
+
+˙y(t) = V ddx y(t) + Bsz(t) (21) where z(t) is the rate of change of the input. Given a positive constant Ps, to minimize the cost R ∞ 
+
+> 0
+
+Ps|y|2 + |z|2 dt for the system (21), the optimal control input is 
+
+z = ∂v ∂x = −pPs
+
+exp( 2Bs 
+
+> √Ps
+> V
+
+(x − L)) − 1exp( 2Bs 
+
+> √Ps
+> V
+
+(x − L)) + 1 ∆ρ (22) and the original v can be computed accordingly. For details and properties of the LQ controller (22), refer to [8]. The controller parameters used in the simulation, together with their physical units, are shown in Table II. The CBF density limit ρlimit is chosen to be equal to the critical density 
+
+ρc to prevent congestion. A relatively large CBF penalty coefficient β is assigned to the slack variable, resulting 
+
+(a) (b) 
+
+(c) (d) 
+
+Fig. 1: Traffic density of (a) zero-input without CBF , (b) zero-input with CBF, (c) LQ controller without CBF, and (d) LQ controller with CBF. in smaller activated slack values. As ramp flows are not modeled in the original LQ controller design, compared with [8], we selected a more aggressive tuning parameter Ps to achieve stronger regulation capability. 
+
+B. Performance Evaluation 
+
+The simulation results of the traffic density, velocity, and speed limit are shown in Fig. 1, Fig. 2, and Fig. 3, respectively. Note that Fig. 1(a) and Fig. 2(a) show the traffic evolution in the absence of any control input under the given parameters. Due to the continuous ramp flow, congestion emerges and propagates upstream as expected. When the CBF is applied with the zero-input controller, no congestion is observed in Fig. 1(b). Due to the continuous inflow from the ramp, the active region of the CBF expands to contain more vehicles, until it is activated along the entire road at around 180 s to 200 s. Moreover, from Fig. 2(b), the upstream traffic velocity is always slower than the downstream inside the CBF active region, meaning that the CBF tries to prevent vehicles from entering the active region and encourages them to exit in order to avoid congestion. On the other hand, the regulation capability of the LQ controller suppresses congestion as shown in Fig. 1(c). By regulating the velocity of the congested regime in Fig. 2(c), upstream propagation is not observed. After 200 s, with no further on-ramp flow, the traffic density is driven to the desired ρs. However, as the ramp condition is not considered during the LQ controller design, the traffic density exhibits an overshoot due to the on-ramp flow, and the magnitude of the overshoot increases as the inflow rate increases. Because of this, slight congestion can be observed at the ramp location. When the combination of the LQ controller and CBF is applied, no congested regime is shown in Fig. 1(d). Moreover, the regulation capability of the LQ controller makes the active region of the CBF not expand continuously. (a) (b)  
+
+> (c) (d)
+
+Fig. 2: Traffic velocity of (a) zero-input without CBF, (b) zero-input with CBF, (c) LQ controller without CBF, and (d) LQ controller with CBF.   
+
+> (a) (b)
+> (c) (d)
+
+Fig. 3: Speed limit of (a) zero-input without CBF, (b) zero-input with CBF, (c) LQ controller without CBF, and (d) LQ controller with CBF. Notably in Fig. 2(d), in the downstream region of the ramp, traffic velocity is higher over a wider area. After 200 s, once the ramp inflow ceases, the CBF is not activated and the LQ controller drives the system to the desired ρs.We also quantitatively evaluate the controller performance using two metrics, total time spent (TTS) and total delay (TD), whose definitions are TTS =
+
+Z Tq
+
+> 0
+
+Z L
+
+> 0
+
+ρ(x, t ) d x dt (23a) TD =
+
+Z Tq
+
+> 0
+
+Z L
+
+> 0
+
+ρ(x, t )( Vmax − V (x, t )) d x dt (23b) where Tq = 200 represents the time the on-ramp inflow TABLE III: Performance under Different Simulation Cases            
+
+> Simulation Case TTS [veh ·h] TD [veh ·km] Zero-input w/o CBF 1.2725 44.4322 Zero-input w/ CBF 1.2610 43.2255 LQ controller w/o CBF 1.2379 41.2342 LQ controller w/ CBF 1.2379 41.2285
+> (a) (b)
+
+Fig. 4: Computation time comparison with different methods for nominal controllers: (a) zero-input and (b) LQ controller. stops. TTS measures cumulative time spent by all vehicles in the system, and TD quantifies the additional time incurred compared to free-flow conditions. The quantitative results are shown in Table III. Lower TTS and TD indicate that the proposed CBF-based method improves traffic efficiency, with significant gains in the zero-input case. When combined with an LQ controller, performance remains essentially unchanged despite the aggressive tuning parameter Ps, indicating that the safety filter preserves throughput while enforcing safety. Additional simulations were conducted with initially con-gested conditions. Similar behavior is observed, where the proposed method removes congestion while preserving the performance trends reported in Table III. 
+
+C. Real-time Feasibility 
+
+We compare the proposed method with quadprog and 
+
+osqp in MATLAB to showcase its real-time feasibility. 
+
+(vori , λ = 0) is set as the warm start for all methods . Results are shown in Fig. 4, where the time ratio is defined as the computation time divided by the simulation time step. The proposed method presents better computational effi-ciency than classical solvers for both nominal controllers, which is beneficial for further applications. By comparing the results in Fig.4(a) and Fig.4(b), it can be concluded that a proper nominal controller is helpful to improve the computational efficiency of the proposed method. As we mentioned before, compared with the zero-input, the LQ controller can reduce the active region of the CBF. This leads to fewer iterations in Algorithm 1, thus less computational time. The oscillations in computation time for the proposed method in Fig.4(b) come from the sinusoidal ramp inflow and the changing width of the active CBF set. V. C ONCLUSION 
+
+In this paper, a CBF-based method for real-time in-domain safe control of the LWR traffic model was pro-posed. The corresponding infinite-dimensional optimization problem was reformulated through KKT analysis and dis-cretization, leading to a structured quadratic program. A PDAS-based algorithm was developed to efficiently compute the pointwise-in-time safe control input, with convergence guarantees. Simulation results demonstrated that congestion can be effectively prevented using CBF and that when com-bined with an LQ controller, the performance remains largely unaffected. In addition, improved computational efficiency is achieved compared to classical QP solvers. Future work will focus on the following directions: (i) theoretical analysis of the proposed safety filter in the continuous spatial domain and extension to higher-dimensional models; (ii) improve-ment of the iteration policy, incorporation of practical speed constraints, and feasibility analysis under different parameter settings. APPENDIX PROOF OF COROLLARY 1
+
+Proof: Let M = KK T + IN /β , it is easy to show that 
+
+M is an M-matrix from (15). Note that vk = vori − KT λk
+
+always holds, and as M is an M-matrix, we have M −1 
+
+> AA
+
+> 0
+
+(denoted by M −1 
+
+> A
+
+later) and M −1 
+
+> A
+
+MAI < 0 for any partition 
+
+A and I. Firstly, we show that 
+
+λki̸ = 0 = ⇒ (Kv k + C − λk/β )i = 0 , ∀k ⩾ 1 (24) For k ⩾ 1, as λk 
+
+> Ik−1
+
+= 0 holds in each iteration, we have 
+
+i ∈ A k−1 if λki̸ = 0 and equation (17) holds. This implies 
+
+(Kv ori + C − (KK T + IN /β )λk)Ak−1
+
+= ( Kv k + C − λk/β )Ak−1 = 0 (25) which can lead to (Kv k + C − λk/β )i = 0 if λki̸ = 0 .Next, we check the monotonicity of λk for k ⩾ 1. For 
+
+i ∈ I k, if λki > 0, then we have gi(vk, λ k) = λki + d(Kv k +
+
+C − λk/β )i > 0 by (24), which is contradictory. This shows that λki ⩽ 0 for i ∈ I k, and implies 
+
+λk+1  
+
+> Ik
+
+= 0 ⩾ λk 
+
+> Ik
+
+(26) For i ∈ A k, we have gi(vk, λ k) = λki + d(Kv k + C −
+
+λk/β )i > 0, hence either λki > 0 implying (Kv k + C −
+
+λk/β )i = 0 by (24), or (Kv k + C − λk/β )i > 0. Therefore, by (17), (M λ k+1 )Ak = ( Kv ori + C)Ak = ( M λ k + Kv k +
+
+C − λk/β )Ak ⩾ (M λ k)Ak , and we have 
+
+(M (λk+1 − λk)) Ak = MAk
+
+ (λk+1 − λk)Ak
+
++ M −1 
+
+> Ak
+
+MAk Ik (λk+1 − λk)Ik
+
+ ⩾ 0 (27) which follows that λk+1  
+
+> Ak
+
+⩾ λk 
+
+> Ak
+
+, by combining (26) and the M-matrix properties. Thus, the monotonicity of λk is shown. Then, we prove the non-negativity of λk for k ⩾ 2. For any i satisfying λ1 
+
+> i
+
+< 0, we have gi(v1, λ 1) < 0 by (24), thus i ∈ I 1 and λ2 
+
+> i
+
+= 0 . Combined with the monotonicity of 
+
+λk, λk ⩾ λ2 ⩾ 0 for all k ⩾ 2.Finally, we verify that λ∗ ⩾ λk for k ⩾ 1. For inactive set 
+
+Ik−1, λ∗Ik−1 ⩾ 0 = λk 
+
+> Ik−1
+
+. For active set Ak−1, note the definition of (v∗, λ ∗), we have λ∗ = max(0 , g (v∗, λ ∗)) = max(0 , λ ∗ + d(Kv ori + C − M λ ∗)) . As equation (17) holds, we infer that λ∗Ak−1 = max(0 , λ ∗Ak−1 +d(M (λk −λ∗)) Ak−1 ),which implies that (M (λk −λ∗)) Ak−1 < 0. Similarly to (27), we have λ∗ ⩾ λk for k ⩾ 1.REFERENCES [1] F. H. Administration, “Urban congestion trends, 2024,” U.S. Department of Transportation, Washington, DC, USA, FHWA-HOP-25-195, 2024. [Online]. Available: https://ops.fhwa.dot.gov/publications/fhwahop25195/fhwahop25195.pdf [2] S. Siri, C. Pasquale, S. Sacone, and A. Ferrara, “Freeway traffic control: A survey,” Automatica , vol. 130, p. 109655, 2021. [3] M. J. Lighthill and G. B. Whitham, “On kinematic waves ii. a theory of traffic flow on long crowded roads,” Proceedings of the Royal Society of London. A. Mathematical and Physical Sciences , vol. 229, no. 1178, pp. 317–345, 1955. [4] P. I. Richards, “Shock waves on the highway,” Operations Research ,vol. 4, no. 1, pp. 42–51, 1956. [5] L. Tumash, C. Canudas-de-Wit, and M. L. Delle Monache, “Robust tracking control design for fluid traffic dynamics,” in 2019 IEEE 58th Conference on Decision and Control (CDC) , 2019, pp. 4085–4090. [6] H. Yu, M. Diagne, L. Zhang, and M. Krstic, “Bilateral boundary control of moving shockwave in lwr model of congested traffic,” IEEE Transactions on Automatic Control , vol. 66, no. 3, pp. 1429–1436, 2021. [7] B. Block, C. Pasquale, S. Stockar, S. Siri, and S. Sacone, “Analysis and validation of a freeway traffic model including controlled vehicles,” in 
+
+2025 IEEE 64th Conference on Decision and Control (CDC) , 2025, pp. 243–248. [8] B. Block and S. Stockar, “Lq control of traffic flow models via variable speed limits,” in 2024 American Control Conference (ACC) , 2024, pp. 4262–4267. [9] R. C. Carlson, I. Papamichail, and M. Papageorgiou, “Local feedback-based mainstream traffic flow control on motorways using variable speed limits,” IEEE Transactions on Intelligent Transportation Sys-tems , vol. 12, no. 4, pp. 1261–1276, 2011. [10] S. Liu, H. Hellendoorn, and B. De Schutter, “Model predictive control for freeway networks based on multi-class traffic flow and emission models,” IEEE Transactions on Intelligent Transportation Systems ,vol. 18, no. 2, pp. 306–320, 2017. [11] M. L. Delle Monache, B. Piccoli, and F. Rossi, “Traffic regulation via controlled speed limit,” SIAM Journal on Control and Optimization ,vol. 55, no. 5, pp. 2936–2958, 2017. [12] A. D. Ames, S. Coogan, M. Egerstedt, G. Notomista, K. Sreenath, and P. Tabuada, “Control barrier functions: Theory and applications,” in 2019 18th European Control Conference (ECC) , 2019, pp. 3420– 3431. [13] A. Alan, A. J. Taylor, C. R. He, A. D. Ames, and G. Orosz, “Control barrier functions and input-to-state safety with application to auto-mated vehicles,” IEEE Transactions on Control Systems Technology ,vol. 31, no. 6, pp. 2744–2759, 2023. [14] H. Liu, W. Zhuang, G. Yin, Z. Li, and D. Cao, “Safety-critical and flexible cooperative on-ramp merging control of connected and automated vehicles in mixed traffic,” IEEE Transactions on Intelligent Transportation Systems , vol. 24, no. 3, pp. 2920–2934, 2023. [15] M. Cho, Y. Lee, and K.-S. Kim, “Model predictive control of autonomous vehicles with integrated barriers using occupancy grid maps,” IEEE Robotics and Automation Letters , vol. 8, no. 4, pp. 2006– 2013, 2023. [16] S. Koga and M. Krstic, “Safe pde backstepping qp control with high relative degree cbfs: Stefan model with actuator dynamics,” IEEE Transactions on Automatic Control , vol. 68, no. 12, pp. 7195–7208, 2023. [17] ——, “Safe stabilization of the stefan problem with a high-order moving boundary dynamics by pde backstepping,” in 2025 IEEE 64th Conference on Decision and Control (CDC) , 2025, pp. 2997–3002. [18] J. Wang and M. Krstic, “Safe control of hyperbolic pde-ode cascades,” in 2024 American Control Conference (ACC) , 2024, pp. 2533–2538. [19] M. Hinterm¨ uller, K. Ito, and K. Kunisch, “The primal-dual active set strategy as a semismooth newton method,” SIAM Journal on Optimization , vol. 13, no. 3, pp. 865–888, 2002. [20] B. Block and S. Stockar, “Lq-informed rule-based variable speed limit control,” IFAC-PapersOnLine , vol. 59, no. 5, pp. 109–114, 2025.
