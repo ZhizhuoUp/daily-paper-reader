@@ -1,0 +1,496 @@
+Title: Backward Layout Search for Sequence-Constrained Robotic Assembly
+
+URL Source: https://arxiv.org/pdf/2608.18454v1
+
+Published Time: Thu, 20 Aug 2026 00:21:38 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Backward Layout Search for Sequence-Constrained Robotic Assembly 
+
+Xi Zhang 1,∗, Jiancong Dai 1,∗, Hao Chen 1,†, Zhengtao Hu 2, Changcai Yang 1, and Weiwei Wan 3
+
+Abstract — Robotic assembly layout planning must determine the assembly site and the initial pose of each part while ensuring collision-free execution of a prescribed assembly sequence. This problem is challenging because the obstacle environment changes after each assembly step, and unassembled parts re-maining in the workspace may block robot motions. We observe that the feasibility of each assembly step depends only on the initial poses of the current and later-assembled parts. Based on this dependency, we propose Backward Layout Search (BLS), which assigns initial part poses in reverse assembly order. Each expansion performs geometric, kinematic, grasp, and prescribed-motion checks, while collision masks and candidate-set filtering remove infeasible initial part pose candidates. Promising partial layouts are retained through beam selection, and complete layouts are validated by full motion planning in forward assembly order. Experiments on five assembly models show that BLS produces collision-free executable layouts and reduces step evaluations and search time compared with a matched forward search. 
+
+I. INTRODUCTION Robotic assembly planning must consider both robot mo-tion and workcell layout. Research on assembly sequence planning has focused on determining how a product should be assembled [1], [2], [3], [4], but has paid less attention to where unassembled parts should initially be placed. These initial poses directly affect assembly feasibility and motion cost because the robot must pick, transfer, and assemble each part. This paper addresses the following problem: given a prescribed assembly order and a set of candidate grasps, select the assembly site and the initial pose of each part such that the complete sequential assembly motion is collision-free and has a low motion cost. This problem is challenging because the obstacle envi-ronment evolves during assembly. Before each pick, the obstacles include the fixed workcell, the partial assembly, and all remaining unassembled parts at their initial poses. Picking the current part frees the space at its initial pose; after insertion, the part joins the partial assembly. Therefore, each assembly step has a different obstacle environment, and the initial pose of a later part may block several earlier motions. Prior work on robotic workcell layout optimization has considered prescribed task sequences, reachability, collision avoidance, travel distance, and manipulability [5], as well as product information and grasp-aware constraints [6], [7].  
+
+> 1College of Computer and Information Sciences, Fujian Agriculture and Forestry University, Fuzhou 350002, China.
+> 2School of Mechatronic Engineering and Automation, Shanghai Univer-sity, Shanghai, China.
+> 3Department of System Innovation, Graduate School of Engineering Science, Osaka University, Toyonaka, Osaka, Japan.
+> ∗Xi Zhang and Jiancong Dai contributed equally.
+> †Corresponding author: Hao Chen.
+
+chenhaox@outlook.com.  
+
+> Fig. 1. Overview of the proposed Backward Layout Search (BLS). (a) BLS planning pipeline. (b) Illustration of forward and backward layout search using top-view. Part colors correspond to the assembly order shown above.
+
+Motion-aware methods further couple layout decisions with trajectory, energy, or execution-time objectives [8], [9], [10], and surrogate models have been introduced to reduce re-peated motion-planning cost [11]. However, these methods generally evaluate each complete layout as a single candidate and do not explicitly exploit the assembly-order structure of the evolving obstacle environment. Consequently, an incom-patible placement of a later-assembled part may be detected only after many earlier poses have been assigned, and similar layouts may require repeated inverse-kinematics, collision, arXiv:2608.18454v1 [cs.RO] 19 Aug 2026 and motion-planning evaluations. To address these limitations, we propose Backward Layout Search (BLS), as illustrated in Fig. 1. For a fixed assembly site, the execution feasibility of step k depends only on the initial poses of part k and the later-assembled parts. BLS therefore assigns poses in reverse assembly order, so each assignment determines one new step without changing the later steps already checked. During expansion, local feasibility checks reject infeasible candidates, while required-motion collision masks and candidate-set filtering remove incompatible initial-pose candidates. Beam selection retains the partial layouts with the lowest scores based on nominal geometric costs. Complete layouts are then validated in forward order by full motion planning. The main contributions of this paper are as follows:  
+
+> •
+
+We formulate initial part layout planning for sequence-constrained robotic assembly. The formulation explicitly models the evolving obstacle environment and identifies the assembly-order dependency of step feasibility.  
+
+> •
+
+We propose BLS, which combines reverse-order assign-ment, local feasibility checks, required-motion collision masks, candidate-set filtering, and beam selection to efficiently search the discrete layout space. II. RELATED WORK 
+
+A. Task-Aware Robotic Workcell Layout Optimization 
+
+Task-aware workcell layout optimization extends geomet-ric arrangement by incorporating task requirements into layout evaluation. Bachmann et al. [5] optimized compo-nent placements for prescribed task sequences using way-point reachability, collision constraints, inter-task distance, and manipulability. Other studies considered task position-ing in multi-robot cells [12] and workcell design based on hierarchical manipulability maximization [13]. Beck [6] combined layout and product-model assembly information for automated 3D assembly-cell generation and validation. Other studies integrated optimization, simulation, and digital-twin technologies for reconfigurable and dynamic layout design [14], [15], learning-based online layout planning and scheduling [16], and 3D workcell layout planning under grasp and motion constraints [7]. These studies establish task feasibility as a key layout criterion, but they typically evaluate the complete workcell configuration as a single candidate. 
+
+B. Motion-Aware Layout Optimization 
+
+Motion-aware methods incorporate robot motion feasibil-ity and execution cost into layout optimization. Qiu et al. [8] jointly optimized workcell layout and robot trajectories with collision and energy objectives. Kawabe et al. [9] coupled motion planning with layout design in robotic cellular man-ufacturing systems. They later introduced surrogate-assisted optimization to reduce the computational cost of simultane-ous motion and layout design [11]. Baumg¨ artner et al. [10] showed that geometric and joint-motion proxies may not ac-curately represent cycle time and therefore evaluated layouts using time-optimal trajectory duration. Trajectory planning has also been incorporated into robot base-placement opti-mization for industrial pick-and-place sequences [17]. These methods model robot execution more directly, but evaluating many layout candidates requires repeated inverse kinematics, collision checking, and motion planning. 
+
+C. Assembly Sequence and Motion Planning 
+
+Assembly planning complements layout optimization by explicitly reasoning about precedence constraints, partial assemblies, and intermediate states. Tian et al. [1] used dis-assembly reasoning to generate assembly plans, illustrating backward reasoning for physical assembly constraints. Their subsequent ASAP framework [2] searches physically feasible assembly sequences while accounting for gravity and partial-assembly stability. Nagpal and Mehr [3] formulated assembly sequence planning as a sequential decision-making problem and used precedence constraints to prune the search space. Kiyokawa et al. [18] combined simulation-based feasibility and stability constraints with many-objective optimization for semi-automated disassembly sequence planning. Chen et al. [4] planned block assembly with unstable intermediate states using two manipulators, computing assembly orders, candidate grasps, assembly directions, and supporting grasps. These methods mainly optimize sequences and manipula-tion choices rather than the initial spatial configuration of the parts. The interaction among initial part poses, a prescribed assembly sequence, and the evolving obstacle environment remains comparatively underexplored. III. PROBLEM FORMULATION 
+
+A. Assembly Model and Layout Variables 
+
+We consider n rigid parts assembled by one robot in a prescribed order. We index the parts by this order, so part k
+
+is assembled at step k. We assume direct manipulation: each part is transferred from its initial pose to its assembly pose in a single grasp. Let Mi denote the geometry of part i in its body frame. Let E denote the fixed workcell environment, including the table and the robot base. Let C be a finite set of candidate assembly sites. A candidate a ∈ C defines the world pose 
+
+TA(a) ∈ SE(3) of the product frame. The product model provides the final pose of part i relative to the product frame, denoted by AT fi ∈ SE(3) . The final world pose of part i is 
+
+T fi (a) = TA(a) AT fi . (1) For each part, the assembly model also specifies an insertion motion that ends at this final pose. For each part i, let Pi be the finite set of candidate initial positions. Let Σi be the set of stable support orientations, computed by the method in [19]. Let Θi be the set of sampled in-plane rotations. The initial layout decision for part i is 
+
+xi = ( pi, σ i, θ i) ∈ X i, Xi = Pi × Σi × Θi, (2) where pi ∈ P i is an initial position. The support orientation 
+
+σi ∈ Σi determines which part face contacts the table, and θi ∈ Θi rotates the supported part about the table normal. Together, xi defines the initial part pose T 0 
+
+> i
+
+(xi) ∈ SE(3) .Each part has a finite set of object-relative candidate grasps 
+
+Gi = {gi, 1, . . . , g i,N gi }. Each grasp specifies a fixed object-to-end-effector transform. A grasp is not an independent layout variable: for each initial layout candidate, the planner selects a grasp from Gi and rejects the candidate if no grasp satisfies the required kinematic, collision, and motion constraints. We use xk:n = ( xk, . . . , x n) to denote the suffix of initial layout decisions from part k to part n.
+
+B. Evolving Assembly State 
+
+After steps 1, . . . , k , the geometry of the partial assembly is 
+
+Bk(a) = 
+
+> k
+
+[
+
+> i=1
+
+T fi (a)Mi. (3) We define B0(a) = ∅. The obstacle geometry changes within each assembly step. Before part k is picked, the obstacle set is 
+
+Oinit  
+
+> k
+
+= E ∪ B k−1(a) ∪
+
+> n
+
+[
+
+> j=k
+
+T 0 
+
+> j
+
+(xj )Mj . (4) After the pick, part k is attached to the end effector and included in the robot collision model during transfer and insertion instead of acting as a fixed obstacle. After release, it becomes part of the assembly. The retreat obstacle set is 
+
+Opost  
+
+> k
+
+= E ∪ B k(a) ∪
+
+> n
+
+[
+
+> j=k+1
+
+T 0 
+
+> j
+
+(xj )Mj . (5) 
+
+C. Local and Full Step Feasibility 
+
+We first define a local feasibility check for efficient prun-ing. It applies deterministic geometric and kinematic tests without sampling-based path planning. For step k, let 
+
+Gloc  
+
+> k
+
+(a, x k:n) ⊆ G k (6) denote the grasps that satisfy all local conditions. A grasp 
+
+g ∈ G k belongs to Gloc  
+
+> k
+
+(a, x k:n) if it admits collision-free IK solutions at both the initial and final part poses. The same grasp must also allow a collision-free post-grasp retreat, prescribed insertion, and post-release retreat. The local feasibility indicator is 
+
+ψk(a, x k:n) = 
+
+(
+
+1, Gloc  
+
+> k
+
+(a, x k:n)̸ = ∅,
+
+0, otherwise . (7) The local check is necessary but not sufficient for complete execution. It does not verify the transfer path from the initial pose to the pre-insertion pose. Let qH be a fixed collision-free home configuration. Full step feasibility requires a complete robot motion sequence: 
+
+qH → pick → post-grasp retreat → transfer 
+
+→ insertion → release → post-release retreat → qH .
+
+Define ϕk to indicate whether there exist a grasp g ∈Gloc  
+
+> k
+
+(a, x k:n) and collision-free trajectories for all segments of this sequence: 
+
+ϕk(a, x k:n) = 
+
+(
+
+1, if such a grasp and trajectories exist ,
+
+0, otherwise .
+
+(8) Every fully feasible step must pass the local check: 
+
+ϕk(a, x k:n) ≤ ψk(a, x k:n). (9) Let Γ( x1: n) ∈ { 0, 1} denote initial-layout feasibility. The value Γ( x1: n) = 1 requires every initial part pose to lie inside the tabletop region, avoid collision with E, and be collision-free with all other initial parts. A complete layout is feasible if 
+
+Φ( a, x 1: n) = Γ( x1: n) ∧
+
+> n
+
+^
+
+> k=1
+
+ϕk(a, x k:n) = 1 . (10) 
+
+D. Assembly-Order Dependency 
+
+During forward execution of step k, parts 1, . . . , k − 1 no longer occupy their initial poses and appear only in the fixed partial assembly Bk−1(a). In contrast, parts k, . . . , n remain at their initial poses before the pick. Therefore, ψk and ϕk
+
+depend on the assembly site a and suffix xk:n, but not on 
+
+x1: k−1. This yields the safe pruning rule 
+
+ψk(a, x k:n) = 0 = ⇒ Φ( a, x 1: n) = 0 , ∀x1: k−1. (11) Hence, an infeasible suffix can be discarded before earlier poses are generated. Moreover, once xk:n has been evaluated, assigning xk−1 does not require reevaluating steps k, . . . , n ,which motivates the reverse search order. 
+
+E. Optimization Objective 
+
+The layout search problem treats full feasibility as ahard constraint. During BLS, local feasibility checks provide necessary pruning conditions, and full feasibility is evaluated after a complete layout is generated. Let pH ∈ R3 be the tool-center point at qH . Let p0 
+
+> i
+
+(xi)
+
+and pfi (a) be the world positions of the same part-fixed reference point at the initial and final poses, respectively. Let ¯p0 
+
+> i
+
+(xi) and ¯pfi (a) be fixed-height points above these two poses. The nominal geometric cost of part i is 
+
+cnom  
+
+> i
+
+(a, x i) = ∥pH − ¯p0 
+
+> i
+
+∥2 + ∥¯p0 
+
+> i
+
+− p0 
+
+> i
+
+∥2
+
++ ∥¯p0 
+
+> i
+
+− ¯pfi ∥2 + ∥¯pfi − pfi ∥2
+
++ ∥¯pfi − pH ∥2.
+
+(12) The five terms respectively approximate the home-to-approach, pickup, transfer, insertion, and return segments. This cost is deterministic and inexpensive to evaluate but does not represent the final joint-space trajectory length. The total nominal cost is 
+
+Jnom (a, x 1: n) = 
+
+> n
+
+X
+
+> i=1
+
+cnom  
+
+> i
+
+(a, x i). (13) The layout problem is 
+
+(a⋆, x ⋆
+
+> 1: n
+
+) = arg min 
+
+> a,x 1: n
+
+Jnom (a, x 1: n)s.t. a ∈ C ,xi ∈ X i, i = 1 , . . . , n, 
+
+Γ( x1: n) = 1 ,ϕk(a, x k:n) = 1 , k = 1 , . . . , n. 
+
+(14) IV. BACKWARD LAYOUT SEARCH 
+
+A. Overview 
+
+Backward Layout Search (BLS) assigns initial poses in reverse assembly order, (xn, x n−1, . . . , x 1). At reverse depth 
+
+k, node Nk stores: 1) the assigned suffix xk:n; 2) its feasible grasps; 3) the candidate sets Xi(Nk) for unassigned parts 
+
+i < k ; and 4) the accumulated nominal cost. The root Nn+1 
+
+has no assigned pose and is first expanded by assigning xn.
+
+B. Candidate Set Generation 
+
+The allowed assembly region is discretized into a finite set of assembly sites C. All optimality statements therefore refer to this discrete domain. For each site a, the initial-pose sets Xi in Eq. (2) are filtered by tabletop and environment collision constraints, robot-base clearance, initial-pose IK, insertion, and post-release retreat feasibility. Each part is checked independently at this stage without other unassem-bled parts in the scene. Inter-part constraints are introduced during reverse expansion. The surviving poses form the root candidate sets 
+
+Xi(Nn+1 ) ⊆ X i. (15) The assembly site is rejected if any root candidate set is empty. 
+
+C. Reverse Expansion and Local Feasibility Checks 
+
+Assume that node Nk+1 contains the assigned suffix 
+
+xk+1: n. BLS expands this node by selecting xk ∈ X k(Nk+1 ),which forms the new suffix xk:n. BLS then computes the locally feasible grasp set Gloc  
+
+> k
+
+(a, x k:n) defined in Section III. The local check includes initial-layout collision, end-point IK, common grasp feasibility, post-grasp retreat, in-sertion, and post-release retreat. The child is rejected if 
+
+Gloc  
+
+> k
+
+(a, x k:n) = ∅. Sampling-based path planning is not used for partial-node pruning. It is applied only during the final validation of complete initial layouts. 
+
+D. Required-Motion Collision Masks 
+
+For a candidate initial placement xk, assembly site a, and grasp g, let 
+
+Wreq  
+
+> k
+
+(a, x k, g ) (16) denote the swept volume of the required local motions. The swept volume covers the post-grasp retreat, prescribed insertion, and post-release retreat motions. For a later part j > k , define the forbidden initial-pose set 
+
+Fk,j (a, x k, g ) = xj ∈ X j T 0 
+
+> j
+
+(xj )Mj ∩ W req  
+
+> k
+
+(a, x k, g )̸ = ∅ .
+
+(17) If the assigned decision xj ∈ F k,j (a, x k, g ), then grasp g
+
+cannot execute the required local motions for step k and is removed. If no grasp remains, the candidate xk is rejected. After assigning xk, the child initializes Xi(Nk) from the parent sets Xi(Nk+1 ) for all i < k . BLS filters the candidate sets of all earlier parts using initial-pose collision, tabletop, local-feasibility, and grasp constraints. The child is rejected if Xi(Nk) = ∅ for any i < k .
+
+E. Beam Selection 
+
+For node Nk, the beam score combines the nominal cost of the assigned suffix with an optimistic completion estimate for the unassigned parts: 
+
+S(Nk) = 
+
+> n
+
+X
+
+> j=k
+
+cnom  
+
+> j
+
+(a, x j )+ 
+
+> k−1
+
+X
+
+> i=1
+
+min   
+
+> xi∈X i(Nk)
+
+cnom  
+
+> i
+
+(a, x i). (18) The first term is the nominal cost of the assigned suffix. For each unassigned part, the second term selects the least-cost pose remaining in its current candidate set. The estimate ignores interactions among those parts and is used only for beam ranking. At the complete depth k = 1 , no unassigned part remains, so S(N1) = Jnom (a, x 1: n).At each reverse depth k, BLS scores all surviving children and uses the B lowest-scoring nodes as the next frontier. A smaller B reduces subsequent expansions and evaluations, whereas a larger B retains more alternative suffixes. Beam pruning makes BLS incomplete and therefore does not guarantee a global optimum over the discrete candidate sets. Regardless of its beam score, every reported layout must pass full motion validation. 
+
+F. Full Motion Validation 
+
+Sampling-based path planning is used only at this stage, not for partial-node pruning. Surviving complete layouts are validated in the prescribed forward assembly order using the full motion planner defined in Section III. The workcell state is updated after each successful step, and only layouts whose complete sequence succeeds are accepted. A planning timeout is treated as failure under the assigned budget but does not establish mathematical infeasibility. V. EXPERIMENTS 
+
+A. Experimental Platform and Assembly Models 
+
+All experiments use our custom-designed six-degree-of-freedom manipulator and run on a workstation equipped with an AMD Ryzen 7 9800X3D CPU. The implementation is in Python and uses CPU computation only. Fig. 2 shows the pyramid, hammer, chair, frame, and tower models, which provide different part geometries, support orientations, as-sembly structures, and evolving obstacle conditions. Every compared layout is evaluated with the same rule: a collision check at the home configuration qH , the local feasibility checks of Section III, and full motion validation. For a layout that passes validation, we report the TCP travel that is the Cartesian path length of the TCP over the complete validated assembly sequence. The attached video shows the execution of the returned layouts on the real robot. Algorithm 1: Backward Layout Search 
+
+Input: assembly sites C, initial-pose sets Xi, grasp sets Gi, beam width B
+
+Output: validated pair (a, x 1: n) with the lowest 
+
+Jnom , or failure  
+
+> 1
+
+best ← ∅, Jnom (∅) ← ∞ ; 
+
+> 2
+
+foreach a ∈ C do  
+
+> 3
+
+Build the root candidate sets Xi(Nn+1 ),
+
+i = 1 , . . . , n ; 
+
+> 4
+
+if ∃i : Xi(Nn+1 ) = ∅ then continue ; 
+
+> 5
+
+frontier ← { Nn+1 }; 
+
+> 6
+
+for k = n, n − 1, . . . , 1 do  
+
+> 7
+
+Nk ← ∅; 
+
+> 8
+
+foreach Nk+1 ∈ frontier and xk ∈ X k(Nk+1 )
+
+do  
+
+> 9
+
+Compute Gloc  
+
+> k
+
+(a, x k:n) by the local checks and the required-motion masks;  
+
+> 10
+
+if Gloc  
+
+> k
+
+(a, x k:n) = ∅ then continue ; 
+
+> 11
+
+Create child Nk and filter Xi(Nk) from 
+
+Xi(Nk+1 ) for all i < k ; 
+
+> 12
+
+if ∃i < k : Xi(Nk) = ∅ then continue ; 
+
+> 13
+
+Nk ← N k ∪ { Nk} with score S(Nk); 
+
+> 14
+
+frontier ← at most B lowest-scoring nodes of 
+
+Nk; 
+
+> 15
+
+if frontier = ∅ then break ; 
+
+> 16
+
+foreach complete node N1 ∈ frontier do  
+
+> 17
+
+Validate (a, x 1: n) in forward assembly order;  
+
+> 18
+
+if validation succeeds and 
+
+S(N1) < J nom (best ) then best ← (a, x 1: n); 
+
+> 19
+
+if best = ∅ then return failure;  
+
+> 20
+
+return best ; 
+
+> Fig. 2. Assembly models used in the experiments: (a) pyramid, (b) hammer, (c) chair, (d) frame, and (e) tower.
+
+B. BLS Initial Layouts and Spatial Interpretation 
+
+Fig. 3 shows the assembly sites and initial layouts returned by BLS. Several initial parts lie within the planar footprint of the translucent final assembly. This does not indicate a collision because the translucent geometry only visualizes the final product and is not a static obstacle. In every returned layout, the first part is placed directly at its final assembly pose. This placement is admissible because the partial assembly is still empty at step one, so the pose cannot block an earlier motion. 
+
+C. Backward Versus Forward Search 
+
+To assess the effect of initial-pose assignment order, BLS is compared with an iterative forward search, denoted Forward-Iter. Both methods use the same assembly-site set C,                                           
+
+> Fig. 3. Initial layouts and assembly sites returned by BLS for the five assembly models: (a) pyramid, (b) hammer, (c) chair, (d) frame, and (e) tower. Solid parts denote the initial part poses, whereas translucent parts visualize the eventual final assembly at the selected assembly site. TABLE I COMPARISON OF BLS AND FORWARD -I TER
+> Assembly Method Nominal cost Step evaluations Search time (s) (a) Pyramid BLS 2.156 336 109.50
+> Forward-Iter 2.156 624 157.15 (b) Hammer BLS 2.092 368 104.49
+> Forward-Iter 2.073 608 139.96 (c) Chair BLS 2.890 432 77.01
+> Forward-Iter 3.067 400 98.02 (d) Frame BLS 3.742 208 110.70
+> Forward-Iter 4.018 336 140.00 (e) Tower BLS 4.557 480 121.85
+> Forward-Iter 4.964 816 204.41
+
+initial-pose candidate sets Xi, grasp sets Gi, collision mod-els, nominal geometric cost Jnom , local feasibility checks, and full motion validation procedure.BLS assigns poses in reverse assembly order and reuses suffix feasibility results, whereas Forward-Iter assigns poses in forward order and repeatedly evaluates the growing prefix. As shown in Table I, BLS has lower search time for all five assembly models and requires fewer step evaluations in four of the five cases. The chair is the only exception in evaluation count, although BLS remains faster. Step evaluations count step-level feasibility checks rather than fixed-cost operations, so the runtime of each evaluation varies with the grasp, IK, collision, required-motion, and candidate-set filtering operations performed at each node. Therefore, search time need not scale linearly with the evaluation count. Nominal costs are comparable: BLS obtains lower values for the chair, frame, and tower, the same value for the pyramid, and a slightly higher value for the hammer. 
+
+D. Feasibility Comparison with Prior Layout Methods 
+
+We reproduce the layout methods of Bachmann et al. [5] and Ali et al. [7] in the same workcell and on the same five assembly models. Table II reports the outcome of each reproduced layout under the same evaluation rule. This comparison characterizes the reproduced layouts under our TABLE II FEASIBILITY AND VALIDATED TCP TRAVEL FOR THE FIVE ASSEMBLY MODELS .Method / Metric (a) Pyramid (b) Hammer (c) Chair (d) Frame (e) Tower Bachmann et al. [5] Fail (no feasible grasp) Fail (no feasible grasp) Fail (home collision) Fail (home collision) Fail (home collision) TCP travel (m) – – – – –Ali et al. [7] Pass Pass Fail (home collision) Fail (no feasible grasp) Fail (no feasible grasp) TCP travel (m) 1.714 2.069 – – –
+
+BLS (ours) Pass Pass Pass Pass Pass 
+
+TCP travel (m) 0.962 1.610 2.784 3.677 4.991 
+
+execution requirements rather than a general limitation of the original methods. The reproduced Bachmann layouts fail on all five models. On the pyramid and the hammer, the placed parts leave insufficient clearance for any candidate grasp, whereas on the chair, frame, and tower the robot is already in collision at qH , so no assembly step can start. The reproduced Ali layouts pass on the pyramid and the hammer. They fail on the chair by home collision and on the frame and tower by no feasible grasp. BLS passes full motion validation on all five models and is therefore the only compared method that produces an executable layout for the chair, frame, and tower. TCP travel can be compared only where both methods return a validated motion. In these two cases, BLS reduces it from 1.714 m to 0.962 m for the pyramid and from 2.069 m to 1.610 m for the hammer. VI. CONCLUSION This paper presented Backward Layout Search (BLS) for initial part layout planning under a prescribed assembly order. BLS exploits the assembly-order dependency of step feasibility to assign initial poses in reverse order, reuse previously evaluated suffix feasibility, and prune infeasible suffixes before earlier poses are generated. Candidate-set filtering and beam selection bound the search effort, and every surviving complete layout is accepted only after full motion validation. Across five assembly models, BLS achieves lower search time than Forward-Iter in all cases and fewer step evaluations in four of them, with comparable nominal cost, and it passes full motion validation for all five models. Under the same evaluation rule, the reproduced prior layouts fail in several cases because of home-configuration collisions or insufficient grasp clearance. REFERENCES [1] Y. Tian, J. Xu, Y. Li, J. Luo, S. Sueda, H. Li, K. D. D. Willis, and W. Matusik, “Assemble them all: Physics-based planning for gener-alizable assembly by disassembly,” ACM Transactions on Graphics ,vol. 41, no. 6, 2022. [2] Y. Tian, K. D. D. Willis, B. Al Omari, J. Luo, P. Ma, Y. Li, F. Javid, E. Gu, J. Jacob, S. Sueda, H. Li, S. Chitta, and W. Matusik, “ASAP: Automated sequence planning for complex robotic assembly with physical feasibility,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) , 2024, pp. 4380–4386. [3] K. Nagpal and N. Mehr, “Optimal robotic assembly sequence planning (ORASP): A sequential decision-making approach,” in 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) ,2024, pp. 9847–9854. [4] H. Chen, W. Wan, K. Koyama, and K. Harada, “Planning to build block structures with unstable intermediate states using two manipulators,” 
+
+IEEE Transactions on Automation Science and Engineering , vol. 19, no. 4, pp. 3777–3793, 2022. [5] T. Bachmann, K. Nottensteiner, and M. A. Roa, “Automated planning of workcell layouts considering task sequences,” in 2021 IEEE Inter-national Conference on Robotics and Automation (ICRA) , 2021, pp. 12 662–12 668. [6] J. Beck, “Towards an automated system for robot assembly cell layout optimization,” in Advances in Automotive Production Technology – To-wards Software-Defined Manufacturing and Resilient Supply Chains ,N. Kiefl, F. Wulle, C. Ackermann, and D. Holder, Eds. Cham: Springer, 2023, pp. 108–117. [7] R. Ali, Z. Hu, T. Kiyokawa, W. Wan, T. Nishi, and K. Harada, “Task and grasp constrained 3D robotic work-cell layout planning,” in 
+
+2025 IEEE 21st International Conference on Automation Science and Engineering (CASE) , 2025, pp. 2355–2362. [8] B. Qiu, S. Chen, Y. Gu, C. Zhang, and G. Yang, “Concurrent layout and trajectory optimization for robot workcell toward energy-efficient and collision-free automation,” The International Journal of Advanced Manufacturing Technology , vol. 122, pp. 263–275, 2022. [9] T. Kawabe, Z. Liu, T. Nishi, M. M. Alam, and T. Fujiwara, “Optimal motion planning and layout design in robotic cellular manufacturing systems,” in 2022 IEEE International Conference on Industrial Engi-neering and Engineering Management (IEEM) , 2022, pp. 1541–1545. [10] J. Baumg¨ artner, A. Puchta, and J. Fleischer, “Beyond proxies: A direct time-optimal approach to robot cell layout optimization,” CIRP Annals , vol. 74, no. 1, pp. 19–23, 2025. [11] T. Kawabe, T. Nishi, Z. Liu, and T. Fujiwara, “Surrogate-assisted motion planning and layout design of robotic cellular manufacturing systems,” Engineering Applications of Artificial Intelligence , vol. 150, p. 110530, 2025. [12] S. Mutti, G. Nicola, M. Beschi, N. Pedrocchi, and L. Molinari Tosatti, “Towards optimal task positioning in multi-robot cells, using nested meta-heuristic swarm algorithms,” Robotics and Computer-Integrated Manufacturing , vol. 71, p. 102131, 2021. [13] P. Franceschi, S. Mutti, and N. Pedrocchi, “Optimal design of robotic work-cell through hierarchical manipulability maximization,” Robotics and Computer-Integrated Manufacturing , vol. 78, p. 102401, 2022. [14] H. Arnarson, H. Yu, M. M. Olavsbr˚ aten, B. A. Bremdal, and B. Solvang, “Towards smart layout design for a reconfigurable man-ufacturing system,” Journal of Manufacturing Systems , vol. 68, pp. 354–367, 2023. [15] L. Wang, Z. Wang, K. Gumma, A. Turner, and S. Ratchev, “Multi-agent cooperative swarm learning for dynamic layout optimisation of reconfigurable robotic assembly cells based on digital twin,” Journal of Intelligent Manufacturing , vol. 36, no. 5, pp. 2959–2982, 2025. [16] L. Kaven, P. Huke, A. G¨ oppert, and R. H. Schmitt, “Multi agent reinforcement learning for online layout planning and scheduling in flexible assembly systems,” Journal of Intelligent Manufacturing ,vol. 35, pp. 3917–3936, 2024. [17] A. Wachter, C. Hartl-Nesic, and A. Kugi, “Robot base placement optimization for pick-and-place sequences in industrial environments,” 
+
+IFAC-PapersOnLine , vol. 58, no. 19, pp. 19–24, 2024. [18] T. Kiyokawa, K. Harada, W. Wan, T. Ishikura, N. Miyaji, and G. Mat-suda, “Many-objective-optimized semi-automated robotic disassembly sequences,” Robotics and Autonomous Systems , p. 105301, 2025. [19] W. Wan and K. Harada, “Reorientating objects with a gripping hand and a table surface,” in 2015 IEEE-RAS 15th International Conference on Humanoid Robots , 2015, pp. 101–106.

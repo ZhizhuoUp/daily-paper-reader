@@ -6,73 +6,64 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-08-21
-- 运行时间：2026-08-21 20:52:11 UTC
+- 最新运行日期：2026-08-22
+- 运行时间：2026-08-22 19:53:31 UTC
 - 运行状态：成功
-- 本次总论文数：17
-- 精读区：6
+- 本次总论文数：14
+- 精读区：3
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 17 篇论文，重点突破水面无人艇的安全避障规划与多段柔性机器人的复杂运动控制。
-核心关注基于转弯圆 CBF 的多模态轨迹规划，以及针对吸附式机器人的 FlexWorm 混合接触规划框架。
-建议开发者同步关注 MANIGUARD 安全基准与 ROS 2 机械臂接口，提升系统的工程稳定性与安全性。
-- 详情：[/202608/21/README](/202608/21/README)
+今日聚焦大模型驱动的具身智能规划，深度解析了 LLM 与 VLM 在水下航行及复杂任务决策中的前沿应用。
+重点推荐结合世界模型的 AUV 导航与证据门控的任务规划，展示了多模态模型在提升机器人决策可靠性上的突破。
+建议关注 VLM 如何通过逻辑门控优化复杂场景下的路径规划，这是提升自动化作业效率的关键方向。
+- 详情：[/202608/22/README](/202608/22/README)
 
 ### 精读区论文标签
-1. [Multimodal Trajectory Planning for Surface Vehicles using Turning Circle-based Control Barrier Functions](/202608/21/2608.19537v1-multimodal-trajectory-planning-for-surface-vehicles-using-turning-circle-based-control-barrier-functions)  
-   标签：评分：9.0/10、query:q1
-   evidence：使用控制屏障函数的避障轨迹规划
-2. [FlexWorm: Primitive-augmented Hybrid Contact-motion Planning for Suction-based Multi-segment Deformable Robots](/202608/21/2608.16853v2-flexworm-primitive-augmented-hybrid-contact-motion-planning-for-suction-based-multi-segment-deformable-robots)  
+1. [World-Model-Grounded LLM Planning for AUV and ASV Navigation Near Offshore Wind Farms](/202608/22/2608.19661v1-world-model-grounded-llm-planning-for-auv-and-asv-navigation-near-offshore-wind-farms)  
+   标签：评分：8.0/10、query:q3
+   evidence：基于梯度的轨迹优化器与MPC式重规划器
+2. [Evidence-Gated Task and Motion Planning with Vision-Language Models](/202608/22/2608.20084v1-evidence-gated-task-and-motion-planning-with-vision-language-models)  
    标签：评分：8.0/10、query:q4
-   evidence：碰撞和可行性约束下的运动规划
-3. [Effector-Centric NMPC of Tiltable-Multirotors for Offset-Free Omnidirectional Aerial Manipulation](/202608/21/2608.17819v1-effector-centric-nmpc-of-tiltable-multirotors-for-offset-free-omnidirectional-aerial-manipulation)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：物理约束下的空中操作非线性模型预测控制
-4. [Model Predictive Supervisory Control for Hierarchical and Distributed UAS Traffic Management](/202608/21/2608.18353v1-model-predictive-supervisory-control-for-hierarchical-and-distributed-uas-traffic-management)  
-   标签：评分：8.0/10、query:q2
-   evidence：用于安全和优化的模型预测监督控制
-5. [Hybrid Feedback Sampling for Sample-Efficient Model Predictive Control](/202608/21/2608.19443v1-hybrid-feedback-sampling-for-sample-efficient-model-predictive-control)  
-   标签：评分：8.0/10、query:q2
-   evidence：机器人系统的高采样效率模型预测控制
-6. [When Automata Meet Streams: Temporal Logic Compilation for Stream-Based Robotics Task and Motion Planning](/202608/21/2608.19453v1-when-automata-meet-streams-temporal-logic-compilation-for-stream-based-robotics-task-and-motion-planning)  
-   标签：评分：8.0/10、query:q4
-   evidence：基于流的机器人任务与运动规划
+   evidence：针对操作任务的任务与运动规划 (TAMP)
+3. [RoMAN-Flow: Taming Autoregressive Normalizing Flows for Offline Reinforcement Learning in Robotic Manipulation](/202608/22/2608.20208v1-roman-flow-taming-autoregressive-normalizing-flows-for-offline-reinforcement-learning-in-robotic-manipulation)  
+   标签：评分：8.0/10、query:q6
+   evidence：用于机器人操作的离线强化学习框架
 
 ### 速读区论文标签
-1. [MANIGUARD: A Benchmark and Data Suite for Specification-Grounded Safety Evaluation and Improvement of Robotic Manipulation](/202608/21/2608.17386v1-maniguard-a-benchmark-and-data-suite-for-specification-grounded-safety-evaluation-and-improvement-of-robotic-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：机器人操作的安全评估与轨迹生成
-2. [Keeping the Franka Emika Panda alive: a ROS 2 stack with a reliable position interface](/202608/21/2608.19740v1-keeping-the-franka-emika-panda-alive-a-ros-2-stack-with-a-reliable-position-interface)  
-   标签：评分：8.0/10、query:q5
-   evidence：Franka Panda的实时通信与控制循环
-3. [GOAG: Generative and Object-Agnostic Grasp Planner for Dexterous Robotic Manipulation](/202608/21/2608.19759v1-goag-generative-and-object-agnostic-grasp-planner-for-dexterous-robotic-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：灵巧机器人操作与抓取规划
-4. [StructRL: Structured Action-Space Exploration for Flow-Based VLAs](/202608/21/2608.15139v1-structrl-structured-action-space-exploration-for-flow-based-vlas)  
-   标签：评分：7.0/10、query:q6
-   evidence：连续机器人操作的结构化动作空间探索
-5. [ViTaR: Visuo-Tactile Residual Adaptation for Foundation VLA Manipulation](/202608/21/2608.15816v1-vitar-visuo-tactile-residual-adaptation-for-foundation-vla-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：机器人操作中的触觉反馈
-6. [$τ_0$-VLA: a Hierarchical Robot Foundation Model with World-Model-Guided Test-Time Computation](/202608/21/2608.16885v1-0-vla-a-hierarchical-robot-foundation-model-with-world-model-guided-test-time-computation)  
-   标签：评分：7.0/10、query:q6
-   evidence：用于操作的分层机器人基础模型
-7. [Don't Drop the BATON: Long-Horizon Robot Manipulation via Agentic Subtask Exploration and Transition-aware Memory](/202608/21/2608.16889v1-dont-drop-the-baton-long-horizon-robot-manipulation-via-agentic-subtask-exploration-and-transition-aware-memory)  
+1. [Embodied-Navigator: Point, Think, Memorize, and Align for Efficient Navigation](/202608/22/2608.17512v1-embodied-navigator-point-think-memorize-and-align-for-efficient-navigation)  
    标签：评分：7.0/10、query:q4
-   evidence：长程机器人操作与自由空间运动规划
-8. [PDDL-ART: Autonomous Symbolic Abstraction From Demonstration For Long-Horizon Robotic Manipulation Using Vision-Language Models](/202608/21/2608.17146v1-pddl-art-autonomous-symbolic-abstraction-from-demonstration-for-long-horizon-robotic-manipulation-using-vision-language-models)  
+   evidence：用于高效具身导航的TAMP-Nav框架
+2. [Dijkstra as an Oracle for Online Stochastic Shortest Path Navigation with Provable Guarantees](/202608/22/2608.17703v1-dijkstra-as-an-oracle-for-online-stochastic-shortest-path-navigation-with-provable-guarantees)  
+   标签：评分：7.0/10、query:q4
+   evidence：移动机器人的在线最短路径导航
+3. [Backward Layout Search for Sequence-Constrained Robotic Assembly](/202608/22/2608.18454v1-backward-layout-search-for-sequence-constrained-robotic-assembly)  
+   标签：评分：7.0/10、query:q4
+   evidence：装配序列的无碰撞执行和运动检查
+4. [Dream2Reward: Transition-Alignment Reward Models from Positive Demonstrations for Robotic Manipulation](/202608/22/2608.18787v1-dream2reward-transition-alignment-reward-models-from-positive-demonstrations-for-robotic-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：长程机器人操作的符号抽象
-9. [Real-Time In-Domain Congestion Control for the LWR Traffic Model via Control Barrier Functions](/202608/21/2608.13841v1-real-time-in-domain-congestion-control-for-the-lwr-traffic-model-via-control-barrier-functions)  
+   evidence：机器人操作与基于轨迹的奖励建模
+5. [Comparing Controller Synthesis Methods with Deadline-Miss Awareness](/202608/22/2608.18850v1-comparing-controller-synthesis-methods-with-deadline-miss-awareness)  
+   标签：评分：7.0/10、query:q5
+   evidence：动力系统的实时控制器设计方法
+6. [ADEPT: Accelerating Dexterity via Pre-Training and Post-Training using Reinforcement Learning](/202608/22/2608.19182v1-adept-accelerating-dexterity-via-pre-training-and-post-training-using-reinforcement-learning)  
+   标签：评分：7.0/10、query:q6
+   evidence：用于仿真到现实可迁移灵巧性的强化学习
+7. [BICPO-VLA: Behavior-Identified Continuation Preference Optimization for Smooth Asynchronous Vision-Language-Action Control](/202608/22/2608.13924v1-bicpo-vla-behavior-identified-continuation-preference-optimization-for-smooth-asynchronous-vision-language-action-control)  
    标签：评分：6.0/10、query:q5
-   evidence：使用控制屏障函数和二次规划的实时控制
-10. [Ensuring Safe Physical AI in Urban Mobility via Hazard-Informed Synthesized Envelopes](/202608/21/2608.14481v1-ensuring-safe-physical-ai-in-urban-mobility-via-hazard-informed-synthesized-envelopes)  
+   evidence：平滑异步控制并缩短动作生成间隔
+8. [From Continuous Design to Delay-Aware Discrete Synthesis: Guaranteed High-Bandwidth Joint Control for PMSM Drives](/202608/22/2608.14937v1-from-continuous-design-to-delay-aware-discrete-synthesis-guaranteed-high-bandwidth-joint-control-for-pmsm-drives)  
+   标签：评分：6.0/10、query:q5
+   evidence：机器人驱动器的实时关节控制
+9. [LLM-Based Hierarchical Coordinated Control with Continuation-Aware Policy Learning](/202608/22/2608.15041v1-llm-based-hierarchical-coordinated-control-with-continuation-aware-policy-learning)  
+   标签：评分：6.0/10、query:q5
+   evidence：具有约束感知动作的分层协调控制
+10. [LAPF: LLM-Agent-Based Path Finder Using the UAVScenes Dataset](/202608/22/2608.15175v1-lapf-llm-agent-based-path-finder-using-the-uavscenes-dataset)  
    标签：评分：6.0/10、query:q1
-   evidence：用于避障的危险告知安全包络
-11. [GUIDER: Evaluating Goal-Free Human Intent Inference for Teleoperated Manipulation on Real-Robot Data](/202608/21/2608.15446v1-guider-evaluating-goal-free-human-intent-inference-for-teleoperated-manipulation-on-real-robot-data)  
+   evidence：基于大模型智能体的自主导航路径规划
+11. [Vision-Based Tactile Intelligence for Robotics: Sensing, Learning, and Embodied Manipulation](/202608/22/2608.15490v1-vision-based-tactile-intelligence-for-robotics-sensing-learning-and-embodied-manipulation)  
    标签：评分：6.0/10、query:q6
-   evidence：遥操作机器人操作中的意图推理
+   evidence：具身操作的触觉智能
 
 
 <div class="dpr-home-promo-card">

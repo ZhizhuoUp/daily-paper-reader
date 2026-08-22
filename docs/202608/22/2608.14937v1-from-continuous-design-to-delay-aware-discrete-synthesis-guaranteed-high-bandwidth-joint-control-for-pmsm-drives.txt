@@ -1,0 +1,1132 @@
+Title: From Continuous Design to Delay-Aware Discrete Synthesis: Guaranteed High-Bandwidth Joint Control for PMSM Drives
+
+URL Source: https://arxiv.org/pdf/2608.14937v1
+
+Published Time: Tue, 18 Aug 2026 00:18:09 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+> PREPRINT SUBMITTED TO ARXIV 1
+
+# From Continuous Design to Delay-Aware Discrete Synthesis: Guaranteed High-Bandwidth Joint Control for PMSM Drives 
+
+Edmundo Pozo Fortuni´ c1,∗, Student Member, IEEE, Mehmet C. Yildirim 1, Member, IEEE, 
+
+Sami Haddadin 2, Fellow, IEEE 
+
+Abstract —The increasing dynamic demands of modern robotic joints require current controllers to achieve high bandwidth over wide operating ranges of speed, acceleration, and torque, where communication, computation, and discrete-time effects can no longer be neglected. Conventional PMSM current controllers are typically designed in continuous time and subsequently discretized, leaving the sampling frequency and the impact of implementation delays largely to heuristic selection and iterative validation. This paper introduces a task-aware, delay-extended discrete-time joint model that explicitly accounts for physical communication and computation delays and enables direct syn-thesis of a discrete PI current controller with prescribed band-width and delay guarantees throughout the operating envelope. The framework analytically determines the minimum required sampling frequency, controller gains, and DC-link voltage needed to satisfy the specified motor and joint performance. Simulations across a range of dynamic requirements validate the methodol-ogy and demonstrate substantially reduced sampling-frequency and DC-link-voltage requirements compared with conventional continuous-time-based design. Experiments on a newly developed custom robotic joint further validate the proposed framework under real embedded implementation conditions. 
+
+Index Terms —Current control, Permanent magnet syn-chronous motors (PMSM), Discrete-time Systems, bandwidth, digital delay, flexible joint robots, 
+
+I. I NTRODUCTION 
+
+# PERMANENT-magnet synchronous motors (PMSMs) are widely employed in modern robotic actuators due to their high torque density, efficiency, and dynamic capabilities [1]. Their current control is commonly based on field-oriented control (FOC), where the motor dynamics are transformed into the rotating (dq) reference frame to independently regulate the torque-producing current [2]. With the introduction of digital implementations, early approaches retained the continuous-time (CT) design while assuming sufficiently high sampling frequencies to neglect discrete effects [3]. Subsequent works introduced the use of complex-vector state variables and PI current control to simplify the system equations [4], [5] while others introduced some discretization delays into their con-troller design through equivalent continuous representations [6], [7]. 
+
+> 1
+
+The authors are with the Chair of Robotics and Systems Intelli-gence and the Munich Institute of Robotics and Machine Intelligence (MIRMI), Technical University of Munich, Germany. ∗Corresponding author: 
+
+edmundo.pozo@tum.de 
+
+> 2
+
+Sami Haddadin is with Mohamed Bin Zayed University of Artificial Intelligence, Abu Dhabi, United Arab Emirates. This work was partially supported by the funding of the European Union’s Horizon 2020 research and innovation programme as part of the project DARKO under grant no. 101017274. 
+
+Fig. 1. Design Synthesis for a PMSM embedded discrete controller based on its joint-level specifications. 
+
+Initial approaches to DT modeling relied on first-order Euler approximations of the continuous (dq)-model [8]. More accurate DT models were later developed to explicitly account for discretization effects under different sampling and PWM strategies [9]–[11], establishing a proper discretization in the rotating ( dq ) reference frame. While these works primarily addressed grid-connected converter applications, the DT model was later extended to PMSMs by incorporating the back-EMF [12]. Despite these developments, simplified DT models based on first-order approximations remain in use [13], [14], typically assuming a sufficiently high sampling frequency for the neglected discretization effects to remain insignificant. Several DT current-control approaches have also been pro-posed. Conventional PI regulators remain widely adopted [9]– [11], while nonlinear methods such as sliding-mode control [14] and observer-based approaches for compensating model uncertainties [8] have also been explored. Deadbeat control has additionally been proposed together with predictor-based compensation of the inherent digital delay [12]. The performance analysis of these approaches has focused arXiv:2608.14937v1 [cs.RO] 14 Aug 2026 PREPRINT SUBMITTED TO ARXIV 2
+
+on different aspects of the current-control problem. Some works emphasize the decoupling achieved by the controller architecture [10], [11], while others focus on robustness against parameter variations and model uncertainties [8], [14]. Comparisons between CT-based and DT approaches have also shown a degradation in the performance of CT-based designs [9], although the DT effects responsible for this degradation are not explicitly related to the resulting closed-loop response. A more direct relation to performance is established by dead-beat approaches. In [15], the PI controller is parametrized to achieve a two-sample deadbeat reference response, while other works analyze the limits between tracking, disturbance rejection, and robustness [16]. Predictor-based approaches alternatively seek to compensate the inherent digital delay through model-based prediction [12]. Nevertheless, these ap-proaches generally target specific closed-loop properties rather than providing a systematic synthesis from arbitrary prescribed performance requirements. Defining this relationship becomes particularly relevant in robotic actuators, where the required motor performance ulti-mately originates from joint-level requirements. In lightweight and intrinsically elastic robots, PMSMs are commonly coupled to harmonic-drive gearboxes [17] and elastic elements, intro-ducing dynamics between the electromagnetic motor torque and the actuator output torque [18]. These dynamics were systematically incorporated into joint-control design in [19], reducing the reliance on heuristic design choices while con-sidering the underlying motor actuation as ideal. As operating demands increase, however, the performance required from the controlled motor must also be established to ensure the behavior prescribed by the outer control loops. This provides a performance-based abstraction between the joint- and motor-level dynamics, avoiding the need to incorporate the complete motor dynamics into the joint-level design while ensuring that their influence remains within prescribed limits. Establishing this relationship further enables the embedded motor-controller requirements to be derived from the actuator performance. In particular, the sampling frequency represents a limited computational resource, while the achievable current dynamics are constrained by the available dc-link voltage; both can therefore be treated as hardware requirements derived from the prescribed motor performance. This paper presents a discrete-time design and synthesis framework for PMSM current controllers of robotic joints, linking joint-level performance requirements to the motor-control and embedded-system capabilities required to achieve them. From a prescribed closed-loop bandwidth and maximum admissible equivalent delay, together with the motor operating envelope, the framework determines the PI controller gains, minimum sampling frequency, and required dc-link voltage. Section II establishes the target motor performance and its relation to flexible-joint control and digital implementation. Section III presents the motor model and controller synthesis, including the determination of the controller gains, sam-pling frequency, and dc-link voltage. Section IV derives the conditions under which conventional continuous-time design can approximate the resulting response. The framework is evaluated in Section V, followed by a discussion in Section VI and conclusions in Section VII. II. P ROBLEM STATEMENT 
+
+A. PMSM Continuous Model 
+
+The continuous-time model of a surface-mounted permanent-magnet synchronous motor (PMSM) is well established. In the stationary abc -reference frame, the electrical dynamics are given by 
+
+ddt iabc = − RL iabc + 1
+
+L (vabc − ϵabc ) , (1) where i, v, and ϵ denote current, voltage, and back-EMF, respectively, with the subscript identifying their reference frame; R and L denote the phase resistance and inductance. For a sinusoidal back-EMF, the back-EMF vector and electro-magnetic torque, τm, are defined as 
+
+ϵabc = kt ˙θe
+
+
+
+− sin( θe)
+
+− sin( θe − 2π/ 3) 
+
+− sin( θe + 2 π/ 3) 
+
+, τm = ˙θ−1 
+
+> e
+
+ϵ⊤
+
+> abc
+
+iabc . (2) Where, kt is the torque/back-emf constant, θe and ˙θe are the electrical rotor position and angular velocity. Their relationship with the rotor mechanical position, θr , is set by the number of pole pairs, np, and defined by 
+
+θe = npθr , ˙θe = np ˙θr . (3) Applying the Clarke transformation [20] to (1) and (2) maps the three-phase quantities into the stationary αβ -reference frame, where complex vectors are denoted in bold, and yields 
+
+ddt iαβ = − RL iαβ + 1
+
+L (vαβ − ϵαβ ), ϵαβ = jk t ˙θeejθ e. (4) The Park transformation then maps a complex vector x from the αβ frame into the synchronous dq -frame according to 
+
+xαβ = xdq ejθ e , ˙xαβ =
+
+
+
+˙xdq + j ˙θexdq 
+
+
+
+ejθ e . (5) Applying (5) to (4) gives 
+
+ddt idq = −
+
+
+
+RL + j ˙θe
+
+
+
+idq + 1
+
+L(vdq − ϵdq ), ϵdq = jk t ˙θe. (6) The electromagnetic torque then reduces to 
+
+τm = 32 kt Im {idq } (7) Thus, torque can be directly regulated through the quadrature component of the current vector. 
+
+B. Continuous Current/Torque Control 
+
+The control voltage is defined then by two terms, 
+
+vt = vc + vff (8) where vt, vc, and vff denote the total, feedback-control and feedforward voltages, respectively. The feedforward term compensates the speed-dependant cross-coupling and back-EMF terms of the dq-frame model as, 
+
+vff = jL ˙θeidq + ϵdq (9) PREPRINT SUBMITTED TO ARXIV 3
+
+Under ideal compensation, the current dynamics reduce to the first-order system 
+
+H(s) = Idq (s)
+
+Vc(s) = 1
+
+L
+
+1
+
+s + RL
+
+(10) The feedback control voltage is generated using a PI controller, 
+
+C(s) = Kp,i 
+
+s (s + Ti,i ) (11) where Kp,i is the proportional gain and Ti,i defines the controller-zero frequency (together they form the integral gain). By placing the controller zero at the electrical pole and selecting the proportional gain according to the desired bandwidth, Ti,i = R/L and Kp,i = Lω bw , respectively, the plant pole is cancelled. The resulting closed-loop transfer function describes the current response from the commanded current i∗ 
+
+> dq
+
+to idq and, equivalently, the torque response from the commanded torque τcmd to τm, a 
+
+Hm(s) = Idq (s)
+
+I∗ 
+
+> dq
+
+(s) = τm(s)
+
+τcmd (s) = ωbw 
+
+s + ωbw 
+
+(12) Thus, under ideal continuous-time compensation, both the cur-rent and torque responses follow the same first-order dynam-ics, with zero steady-state error and a prescribed bandwidth 
+
+ωbw directly determined by Kp,i .
+
+C. Inherent Delay in Digital Implementation 
+
+The closed-loop response in (12) represents the ideal per-formance achievable under a fully continuous-time implemen-tation. In practice, however, the motor controller is digitally implemented and must therefore adhere to the discrete-time nature of signal acquisition, computation, and voltage actua-tion. Consequently, even if the digital controller perfectly re-produces the target first-order dynamics, its response cannot be equivalent to (12) without accounting for the delay inherently introduced by the digital implementation. In the ideal case, the digital implementation introduces one sampling period Ts of computational delay, while the zero-order hold (ZOH) associated with the voltage actuation con-tributes an additional equivalent delay of Ts/2. [] Therefore, even under otherwise ideal conditions, the equivalent delay 
+
+Td is bounded.. Accordingly, the best achievable equivalent representation of the controlled motor is 
+
+Hsm(s) = ωbw 
+
+s + ωbw 
+
+e−sT d , Td ≥ 1.5Ts, (13) Hence, Td = 1 .5Ts constitutes the ideal lower bound rather than an additional design choice, while other discrete-time effects may further increase the equivalent delay. III. D ISCRETE CONTROLLER SYNTHESIS 
+
+A key consequence of the discrete-time formulation is that the Park transformation in (5) is evaluated only at the sampling instants, becoming piecewise constant over each sampling interval, 
+
+xαβ (t) = xdq (t)·ejθ e[kT s], t ∈ [kT s, (k + 1) Ts[
+
+xdq (t)·ejθ e[( k+1) Ts], t ∈ [( k+1) Ts, (k+2) Ts[ (14) where, assuming constant electrical angular velocity within each sampling interval, 
+
+θe[k + 1] = θe[k] + ∆ e[k], ∆e[k] = Ts ˙θe[k]. (15) Therefore, the stationary αβ model is first discretized and subsequently transformed into the dq frame. This ordering preserves the electrical-angle evolution over each sampling interval and introduces the corresponding discrete rotation into the model. 
+
+A. Discrete PMSM Model 
+
+Applying exact discretization to the stationary-frame current dynamics yields 
+
+iαβ (( k + 1) Ts) = e− RL Ts iαβ (kT s)+ 1
+
+L
+
+Z (k+1) Ts
+
+> k
+
+e− RL (( k+1) Ts−t)(vαβ (t) − ϵαβ (t)) dt (16) Assuming also the applied voltage and the electrical speed remain constant within each sampling interval, the exact discrete-time solution becomes 
+
+iαβ [k + 1] = e− RLfs 
+
+| {z } 
+
+> := a
+
+iαβ [k] + 1 − e− RLfs 
+
+R| {z }
+
+> := b
+
+vαβ [k]
+
+− kt
+
+L ejθ e[k](1 − e− RLfs e−j np ˙θfs ) jn p ˙θ 
+
+> RL
+
++ jn p ˙θ
+
+(17) Evaluating the discrete Park transformation at the next sam-pling instant gives 
+
+xαβ [k + 1] = xdq [k + 1] · ejθ e[k] · ejT s ˙θe[k]
+
+| {z }
+
+> r−1
+> ω
+
+(18) Substituting this relation into the discrete αβ -frame model results in the following discrete motor model expressed in the rotating dq-reference frame: 
+
+idq [k + 1] = arω
+
+|{z} 
+
+> := aω
+
+idq [k] + brω
+
+|{z} 
+
+> := bω
+
+(vdq [k] − ϵdq [k]) 
+
+ϵdq [k] = kt
+
+rω − a
+
+1 − a
+
+| {z }
+
+> := cω
+
+j RL ˙θeRL + j ˙θe
+
+) (19) The zero-order-hold (ZOH) behavior introduced by the digital controller can be equivalently represented as a one-sample delay in the plant model []. Incorporating this delay yields the final discrete-time model 
+
+idq [k + 1] = aω idq [k] + bω (rω vdq [k − 1] − ϵdq [k]) (20) 
+
+B. Step 1: Controller Architecture and Gains 
+
+To compensate for the back electromotive force (back-EMF), the following feedforward voltage is introduced: 
+
+vd 
+
+> ff
+
+[k] = r−1 
+
+> ω
+
+ϵdq [k] (21) PREPRINT SUBMITTED TO ARXIV 4
+
+yielding the discrete complex plant 
+
+Hd(z) = bω rω
+
+z(z − aw) (22) Selecting the discrete complex PI controller 
+
+Cd[z] = Kp,i 
+
+bω rω
+
+(z − ai,i )
+
+z − 1 (23) where Kp,i and ai,i are the complex proportional and integral gains of the controller, defined by: 
+
+Kp,i = Kdp
+
+bω rω
+
+(24) 
+
+ai,i = e− RL Ts (25) the results in a second order closed-loop transfer function 
+
+Hdcl (z, K p,i ) = Kp,i 
+
+z2 − z + Kp,i 
+
+(26) From the structure of (26) and the Routh–Hurwitz criterion, the system is stable for 0 < K p,i < 1. However, its closed-loop behavior varies significantly within this range. For Kp,i ≤ 1/4,the poles are real, resulting in a monotonic response, whereas for 1/4 < K p,i ≤ 1/3, the poles become complex without introducing a resonant peak. The resulting responses for dif-ferent values of Kp,i are illustrated in Fig.2. Therefore, before determining the gain associated with the target bandwidth, a preliminary upper bound Kmax  
+
+> p,i
+
+is selected according to the desired closed-loop behavior. The gain required to achieve the target bandwidth is then obtained by imposing the −3-dB condition 
+
+|Hdcl (ejΩbw , K p,i )|2 = 12 . (27) Here, 
+
+Ωbw = ωbw Ts (28) denotes the normalized angular bandwidth. Solving (27) for 
+
+Kp,i yields 
+
+Kbw p,i = cos 2Ω bw − cos Ω bw 
+
++
+
+q
+
+2(cos 2Ω bw − cos Ω bw )2 + (sin 2Ω bw − sin Ω bw )2.
+
+(29) The selection of Kdp determines not only the equivalent bandwidth but also the equivalent delay of the synthesized response, thereby coupling both quantities to fs. At the closed-loop bandwidth, the ideal first-order target exhibits a phase lag of −π/ 4, whereas the phase of the synthesized response is given by 
+
+ϕ(Ω , K p) = arctan 
+
+ sin 2Ω − sin Ω cos 2Ω − cos Ω + Kp
+
+
+
+. (30) The additional phase lag can therefore be represented by an equivalent delay Td, such that 
+
+ϕ−3dB = − π
+
+4 − ωbw Td. (31)         
+
+> Fig. 2. Magnitudes (top) and Phases (bottom) of the closed loop current controllers 26 with different Kp parameters. Each Ωbwis highlighted and marked on the top axis. The bottom axis has the equivalent fbw /f sratio. Each corresponding phase is also marked.
+
+Since Kbw  
+
+> p
+
+is determined by the normalized target band-width Ωbw = ωbw Ts, the resulting equivalent delay is also inherently coupled to the sampling frequency. This relationship is later used to establish a lower bound on fs.
+
+C. Step 2: Sampling Frequency Boundaries 
+
+The minimum sampling frequency is constrained by three independent mechanisms: the acquisition of the physical phase currents, the discrete implementation of the rotating reference frame, and the closed-loop bandwidth and equivalent delay of the synthesized controller. Each condition establishes a lower bound on fs that must be simultaneously satisfied. 
+
+1) Signal Acquisition: Although the current controller is implemented in the synchronous discrete-time (dq ) reference frame, current acquisition is inherently performed in the sta-tionary (abc ) frame, where the physical phase currents are sampled. Consequently, the sampling frequency must satisfy the Nyquist criterion with respect to the spectral content of the measured (abc ) currents rather than the transformed 
+
+(dq ) quantities. Since the measured currents contain both the controller dynamics and the electrical rotation of the reference frame, the highest frequency component is given by the sum of the controller bandwidth and the electrical frequency. Therefore, PREPRINT SUBMITTED TO ARXIV 5   
+
+> Fig. 3. Boundaries required to select the correct minimum sampling frequency fsthat ensure the proper operation of two motors (see Tab.I) for the required conditions of bandwidth, maximum speed and current ripple.
+
+fs > 2 ( fc + fe) , (32) where fe is the maximum electrical frequency and 
+
+fc = max ( fr , f bw ) , (33) with fbw denoting the desired closed-loop current band-width and 
+
+fr = R
+
+2πL , (34) representing the electrical RL corner frequency of the motor. 
+
+2) Discrete Park Transformation: A second limitation orig-inates from the discrete implementation of the Park transfor-mation. Although the controller operates in the synchronous 
+
+(dq ) frame, the transformation is updated only at the sampling instants, introducing a discrepancy between the continuously rotating current vector and its discrete representation over each sampling interval. This produces a periodic current error that manifests as torque ripple, as reported in [21]. By limiting the admissible torque-ripple ratio to γq , the sampling frequency must satisfy 
+
+fs > ωe
+
+2 arccos (1 − 2γq ) , (35) thereby ensuring that the degradation in torque production caused by the discrete Park transformation remains below the specified limit over the complete operating envelope. 
+
+3) Closed-Loop Bandwidth and Equivalent Delay: As pre-viously established, the digital implementation imposes atheoretical lower bound of Td ≥ 1.5Ts. To limit the additional delay introduced by the synthesized response, the proposed design imposes an upper bound of 
+
+Td ≤ 2Ts. (36) Using the phase relationship derived in the controller syn-thesis, this requirement imposes 
+
+ϕ(Ω bw , K bw  
+
+> p
+
+) ≥ − π
+
+4 − 2Ω bw . (37) Substitution of Kbw  
+
+> p
+
+yields 
+
+4 (cos Ω bw − 1) 
+
+
+
+sin Ω bw − sin 2 3Ω bw 
+
+2
+
+
+
+≤ 0. (38) which is satisfied for 
+
+0 < Ωbw ≤ π
+
+6 . (39) Therefore, 
+
+fs ≥ 6
+
+π ωbw = 12 fbw . (40) This establishes the sampling-frequency boundary required to achieve the prescribed bandwidth while maintaining the equivalent delay within the specified limit. 
+
+4) Minimum Sampling Frequency: The three previous con-straints arise from independent mechanisms and must therefore be satisfied simultaneously. The minimum feasible sampling frequency is consequently given by 
+
+fs ≥ max 
+
+
+
+2 ( fc + fe) ; ωe
+
+2 arccos (1 − 2γq ) ; 12 fbw 
+
+
+
+. (41) This ensures aliasing-free current acquisition, bounds the torque ripple introduced by the discrete Park transformation, and provides the closed-loop bandwidth and equivalent-delay performance required from the synthesized current controller. PREPRINT SUBMITTED TO ARXIV 6                                                    
+
+> TABLE I MOTOR PARAMETERS OF THE ROBOTIC JOINT PROTOTYPE .Parameter Symbol Unit M1M2
+> Phase Resistance RΩ12.65e-2 7.55e-2 Phase Inductance LH3.21e-5 5.95e-5 Pole Pairs np−210 Torque Constant Back-EMF Constant ktN·m/A(V ·s/rad) 2.81e-2 3.1e-2 Rated Current imax A6.6 10 Rated Speed ωmax rad /s924 717 Maximum Electrical Frequency fe, max Hz 294e0 1.14e3 Rated Torque τmax N·m158e-3 320 Maximum Power Pmax W152 215 Rotor Inertia Jmkg ·m22.38e-5 1.34e-5
+
+D. Step 3: Required DC-link voltage 1) Nominal dq Voltage: Once the sampling frequency is selected according to the previous criteria, the corresponding controller gain K⋆p,i is fully determined. The voltage required to produce the commanded current can then be evaluated over the specified motor operating envelope. From the synthesized closed-loop response, the control-voltage transfer function is defined as 
+
+G(z, K p,i , ˙θ) = Vdq (z)
+
+I∗ 
+
+> dq
+
+(z) = Hd(z)
+
+Hdcl (z)= Kp,i 
+
+bω rω
+
+z2 − aω zz2 − z + Kp,i 
+
+(42) For the selected gain and maximum operating speed, the maximum control-voltage gain is obtained as 
+
+|G|max = |G(ejΩ⋆Gmax , K ⋆p,i , ˙θmax )| (43) where the corresponding frequency is determined from 
+
+Ω⋆Gmax = arg solve 
+
+> Ω∈[0 ,π ]
+
+ ddΩ
+
+
+
+G
+
+
+
+ejΩ, K ⋆p,i , ˙θmax  2
+
+= 0 
+
+
+
+(44) The maximum voltage can be then calculated using (8) with the feedforward voltage defined in (21) over the prescribed current idq max and speed range ˙θmax can then be obtained by: 
+
+umax = |G|max · | idq |max + |vff ( ˙θmax )| (45) The resulting umax defines the voltage authority required over the prescribed motor operating envelope. 
+
+2) DC-Link Voltage: The corresponding dc-link voltage depends on the selected modulation strategy. Since space-vector PWM (SVPWM) provides a higher utilization of the available dc-link voltage than sinusoidal PWM (SPWM), its minimum value is given by 
+
+V min dc =
+
+
+
+2|umax |, SPWM ,
+
+2
+
+√3 |umax |, SVPWM . (46) Together with fs and the controller gains, this completes the synthesis of the motor-controller requirements from the prescribed performance and operating envelope. ACKNOWLEDGMENTS 
+
+The authors thank J. Ringwald, A. Rahmon, and A. Wie-dermann for their valuable support. APPENDIX AMOTOR REQUIREMENTS FOR FLEXIBLE JOINT 
+
+PERFORMANCE 
+
+Following Abu-Schaffer’s et al [19] and subsequent devel-opments on flexible-based joints [], we know that the perfor-mance of the torque is defined by the torque control shaping under the overlying application (e.g. Impedance Control and/or Force Control, Trajectory Generation, etc.). Nevertheless, all of this applications consider an ideal performance of the motor controller; which, in principle does not allow us to quantify the target performance. Figure ?? shows a simplified example of a Unified Force-Impedance Controller for a flexible-joint [22]. The inner blocks have been extended to show the equiv-alent controlled motor model (13) in series of the classical approach. This of course, would affect the performance of the calculated values followin the traditional criteria defined in [19]. Therefore, a clear analysis including the effects of (13) is presented. 
+
+1) Flexible Joint Model: As stated in [18], the full system model can be defined as 
+
+M (q)¨ q + C(q, ˙q) + g(q) = τa + τext (47) 
+
+τa = τs + DK −1 ˙τs (48) 
+
+τs = K(θ − q) (49) 
+
+B ¨θ + τa = τm − τf (50) where the vectors q, θ ∈ Rn contain the link and motor output positions. In (47), M (q) ∈ Rn×n, C(q, ˙q), g(q) and 
+
+τext ∈ Rn are the inertia matrix, the centripetal and Coriolis vector and the gravity vector, and the external torques acting on the robot,respectively. Additionally, τa, τ s ∈ Rn are the total actuator torque propagated from the motor to the robot via the spring-damp system, and the spring torque itself. Its relation is defined in (48), where K = diag( ki) and 
+
+D = diag( di) ∈ Rn×n are the diagonal positive definite joint stiffness matrix and the diagonal positive semi-definite joint damping matrix respectively. Within the motor, B =diag( bi) ∈ Rn×n represents the positive definite motor inertia matrix,and τm and τf are the motor electromagnetic torque and the friction torques, respectively. By extracting one of the joints of the system and suppressing the external, friction, gravity, and Coriolis forces, the actuator transfer function can be defined as 
+
+HA(s) = τa(s)
+
+τm(s) = 1
+
+bk + ds s2 + dJ s + kJ
+
+. (51) where J is the equivalent joint inertia, defined by 
+
+J−1 = b−1 + m−1. (52) The denominator in (51) defines a second-order mode charac-terized by its natural frequency ωn and damping ratio ζ, while its steady-state torque ratio is given by 
+
+ωn =
+
+r kJ , ζ = d
+
+2√kJ , τa
+
+τm s=0 
+
+= Jb . (53) PREPRINT SUBMITTED TO ARXIV 7                                                                                           
+
+> TABLE II EQUIVALENT ACTUATOR MODELS AND RESULTING CLOSED -LOOP TRANSFER FUNCTIONS .
+> Actuator Model Closed-Loop Transfer Function HA,t cl (s)ω2
+> nζAdditional pole(s)
+> Ideal
+> 11
+> bθ
+> k+ds s2+ 2 ζω ns+ω2
+> n
+> kJθ
+> dθ
+> 2ωn
+> –Delay
+> e−sT d
+> Td
+> 2s+ 1
+> 1
+> ps+ 1
+> 2
+> Tdp b θ
+> (k+ds )e−sT d
+> s2+ 2 ζω ns+ω2
+> n
+> 2
+> TdpkJθ
+> 2dJ−dθ+2
+> Td−p
+> 2ωn
+> p=2
+> Td
+> −2
+> 
+> dθ−dJ
+> 
+> +O(Td)
+> Finite
+> ωbw
+> s+ωbw
+> ω0
+> s+ω0
+> ωbw
+> ω0bθ
+> k+ds s2+ 2 ζω ns+ω2
+> n
+> ωbw
+> ω0
+> kJθdJ+ωbw −ω0
+> 2ωn
+> ω0=ωbw −
+> 
+> dθ−dJ
+> 
+> +O(ω−1
+> bw )
+> Finite + Delay
+> ωbw e−sT d
+> s+ωbw
+> ω0
+> s+ω0
+> Td
+> 2s+ 1
+> 1
+> ps+ 1
+> 2ωbw
+> Tdp ω 0bθ
+> (k+ds )e−sT d
+> s2+ 2 ζω ns+ω2
+> n
+> 2ωbw
+> Tdpω 0
+> kJθdJ+2
+> Td−p+ωbw −ω0
+> 2ωn
+> p=2
+> Td
+> −
+> ωbw
+> 
+> 2dθ−dJ
+> 
+> 2
+> Td−ωbw
+> +O
+> 
+> Td, ω −1
+> bw
+> 
+> ω0=ωbw −
+> 2
+> Td
+> 
+> dθ−dJ
+> 
+> +ωbw dθ
+> 2
+> Td−ωbw
+> +O
+> 
+> Td, ω −1
+> bw
+> 
+
+These quantities characterize the dominant joint dynamics and will be used to evaluate how the motor-control dynamics modify the resulting joint response. 
+
+2) Joint Torque Controller: As defined by [19],the com-manded torque is assumed to be equivalent to the motor torque, thus the controller takes the shape defined as: 
+
+τcmd = τs + dk −1 ˙τs + bb −1 
+
+> θ
+
+(τd − τs − dsk−1 ˙τs) (54) where bθ is the desired reduced motor inertia, ds is the desired system damping coefficient, and τd is the desired joint torque. Applying (54) to (51) yields the shaped joint torque dynamics 
+
+HA,i  
+
+> cl
+
+(s) = τa(s)
+
+τd(s) = 1
+
+bθ
+
+k + ds s2 + dθ s + kJθ
+
+, (55) where Jθ and dθ are the shaped equivalent inertia and damping coefficient, respectively, defined as 
+
+J−1 
+
+> θ
+
+= b−1 
+
+> θ
+
++ m−1, dθ = ds
+
+bθ
+
++ dm . (56) As for the uncontrolled actuator, the shaped second-order dynamics can be characterized by their natural frequency, damping ratio, and steady-state torque ratio, 
+
+ωn,θ =
+
+r kJθ
+
+, ζθ = dθ
+
+2
+
+r Jθ
+
+k , τa
+
+τd s=0 
+
+= Jθ
+
+bθ
+
+. (57) These quantities characterize the desired joint-level perfor-mance. However, (55) assumes ideal motor torque generation and therefore neglects the effects of the inner motor-control dynamics. Including the controlled motor model in (13) when applying (54) to (51) instead yields 
+
+HA,t cl (s)=  
+
+> ωbw
+> bθ
+
+(k + ds )e-sT d
+
+(s+ωbw )( s2+dJ s+kJ)+ ωbw e-sT d
+
+
+
+( ds 
+
+> bθ
+
+− db )s+k( 1 
+
+> Jθ
+
+− 1 
+
+> J
+
+)
+
+ (58) which can be simplified using a first order Pad´ e aproximation for the delay e−sT d ≃ 1− Td    
+
+> 2s
+> 1+ Td
+> 2s
+
+to: 
+
+HA,c  
+
+> cl
+
+(s) =  
+
+> 2ωbw
+> Tdbθ
+
+(k + ds )  1 − Td 
+
+> 2
+
+s
+
+s4 + a3s3 + a2s2 + a1s + a0. ,a3 = 2
+
+Td
+
++ ωbw + dJ ,a2 = 2ωbw 
+
+Td
+
++ 2dJT d
+
++ kJ + ωbw 
+
+ dJ − ds
+
+bθ
+
++ db
+
+
+
+,a1 = 2kJT d
+
++ 2ωbw dθ
+
+Td
+
++ ωbw k
+
+ 2
+
+J − 1
+
+Jθ
+
+
+
+,a0 = 2ωbw kTdJθ
+
+.
+
+(59) Tab. II compares the resulting joint torque dynamics under different motor-model assumptions. In each case, the same closed-loop torque transfer function is regrouped according to the additional roots introduced by the motor dynamics. In the ideal case, the joint dynamics of (55) are directly recovered. The delay introduces an additional pole −p together with a nearby zero, resulting in an approximately cancelling pole–zero pair. Finite control bandwidth introduces an addi-tional low-pass pole −ω0, whose location is predominantly determined by ωbw . When both effects are considered, both additional dynamics are present. The approximations of p and ω0 reported in the table directly relate the additional poles to Td and ωbw , and show how their location affects the resonant frequency and damping of the dominant second-order joint dynamics. The O(·) terms are used to emphasize the dominant contributions and provide a simplified interpretation of these effects. For a given Td
+
+and ωbw , the exact pole locations, and consequently the exact resonant frequency and damping, can instead be obtained from the roots of the complete characteristic polynomial.This allows 
+
+Td and ωbw to be jointly selected via numerical optimization to satisfy the prescribed joint-level performance. PREPRINT SUBMITTED TO ARXIV 8
+
+APPENDIX BCLASSIC DISCRETE DESIGN REQUIREMENTS 
+
+The classic discrete design is based under the assumption that a first order euler aproximation is sufficient to model the effects of the PMSM under a discretized control, and by extension, a Discretized Continous Controller should be sufficient. Given that, the PI controller is replaced by a tustin based controller as 
+
+Cc2d[z] = Kc2dp,i (1 + T iT s
+
+2 )
+
+| {z }
+
+> := β
+
+z −
+
+> α
+
+z }| {
+
+1 − T iT s
+
+> 2
+
+1 + T iT s
+
+> 2
+
+z − 1 (60) and the feedforward terms are kept the same. Given this, we can analyze that the closed loop transfer function of the system would be, considering that the back-emf effects are properly canceled (which are not), it would be: 
+
+Hd 
+
+> ff
+
+(z) = bω rω
+
+z(z − aw) − jL ˙θebω rω
+
+(61) and 
+
+Hc2d 
+
+> ff ,cl
+
+= Kc2dp,i βb ω rω (z − α)(z−1) 
+
+h
+
+z(z−aω)−jL ˙θebω rω
+
+i
+
++Kc2dp,i βb ω rω (z−α)
+
+(62) For the discrete implementation to recover the behavior pre-dicted by the original CT design, several Ts-dependent ap-proximations must simultaneously hold: 
+
+rω ≈ 1 + j ˙θeTs, aω ≈
+
+
+
+1 − RL Ts
+
+ 
+
+1 + j ˙θeTs
+
+
+
+bω ≈ Ts
+
+L
+
+
+
+1 + j ˙θeTs
+
+
+
+.
+
+(63) Additionally, the current variation between consecutive sam-ples must remain negligible, such that idq [k + 1] ≈ idq [k],allowing the CT feedforward and cross-coupling compensation to approximate their discrete counterparts: 
+
+ar ω − jLb ω ˙θe ≈ a, β = b−1 Ts
+
+L . (64) These conditions require a sufficiently small Ts relative to the electrical rotational frequency ˙θe, the motor dynamics R/L ,and the current-control bandwidth. Therefore, a high sampling-to-fundamental frequency ratio alone does not guarantee the validity of the CT-based design over the complete operating envelope. APPENDIX CDISCRETE PMSM M ODEL UNDER ACCELERATION 
+
+To extend the discrete PMSM model to operation under acceleration, the electrical speed is allowed to vary within each sampling interval. Starting from the stationary-frame dynamics, the exact discrete current evolution is given by 
+
+iαβ [k + 1] = e− RLfs 
+
+| {z } 
+
+> := a
+
+iαβ [k] + 1 − e− RLfs 
+
+R| {z }
+
+> := b
+
+vαβ [k]
+
+− 1
+
+L
+
+Z (k+1) Ts
+
+> k
+
+e− RL (( k+1) Ts−t)ϵαβ (t)dt 
+
+| {z } 
+
+> := ϵdαβ [k]
+
+(65) Assuming constant electrical acceleration over each sampling interval, the electrical angle is expressed as 
+
+θe(t) = θe[kT s] + ( t − kT s) ˙θe[kT s]+ (t − kT s)2
+
+2 ¨θe[kT s], t ∈ [kT s, (k + 1) Ts] (66) Introducing the local time variable σ = t−kT s, the discrete back-EMF contribution can then be evaluated as 
+
+ϵdαβ [k] = − e− RL Ts
+
+L
+
+Z Ts
+
+> 0
+
+e RL σ ϵαβ (kT s + σ)dσ 
+
+= − jk te− RL Ts
+
+L
+
+Z Ts
+
+> 0
+
+˙θe(kT s + σ)e RL σ+jθ e(kT s+σ) dσ 
+
+= kt
+
+e− RL Ts
+
+L
+
+ Z Ts
+
+> 0
+
+ RL + j ˙θe(kT s + σ)
+
+
+
+e RL σ+jθ e(kT s+σ) dσ 
+
+−
+
+Z Ts
+
+> 0
+
+RL e RL σ+jθ e(kT s+σ) dσ 
+
+
+
+= kt
+
+e− RL Ts
+
+L
+
+ h
+
+e RL σ+jθ e(kT s+σ)iTs
+
+> 0
+
+−
+
+Z Ts
+
+> 0
+
+RL e RL σ+j 
+
+> 
+> θe[kT s]+ ˙θe[kT s]σ+¨θe[kT s]σ22
+> 
+
+dσ 
+
+
+
+= kt
+
+e− RL Ts
+
+L
+
+
+
+e RL Ts+jθ e[( k+1) Ts] − ejθ e[kT s]
+
+− RL ejθ e[kT s]− ( RL +j ˙θe [kTs ])22j ¨θe [kTs ]
+
+Z Ts
+
+> 0
+
+e     
+
+> j¨θe [kTs ]2
+> 
+> σ+RL+j˙θe [kTs ]
+> j¨θe [kTs ]
+> 2
+
+dσ 
+
+
+
+= kt
+
+L
+
+
+
+ejθ e[( k+1) Ts] − e− RL Ts+jθ e[kT s] − RL e− RL Ts+jθ e[kT s]×
+
+e− ( RL +j ˙θe [kTs ])22j ¨θe [kTs ]
+
+q j ¨θe[kT s]2
+
+Z ξ1
+
+> ξ0
+
+eξ2
+
+dξ 
+
+
+
+,
+
+
+
+ξ0=
+
+rj ¨θe[kT s]2 
+
+> RL
+
++j ˙θe[kT s]
+
+j ¨θe[kT s] ,ξ1=
+
+rj ¨θe[kT s]2 Ts + 
+
+> RL
+
++j ˙θe[kT s]
+
+j ¨θe[kT s]
+
+!
+
+(67) The resulting quadratic exponential integral can be expressed in terms of Dawson’s integral D(·) through the corresponding PREPRINT SUBMITTED TO ARXIV 9
+
+change of variables, yielding 
+
+ϵdαβ [k] = kt
+
+L
+
+
+
+ejθ e[( k+1) Ts] −e− RL Ts+jθ e[kT s] − RL e− RL Ts+jθ e[kT s]
+
+e− ( RL +j ˙θe [kTs ])22j ¨θe [kTs ]
+
+q j ¨θe[kT s]2
+
+h
+
+eξ21 D(ξ1) − eξ20 D(ξ0)
+
+i 
+
+.
+
+= kt
+
+L
+
+
+
+ejθ e[( k+1) Ts] − e− RL Ts+jθ e[kT s] − RLe− RL Ts+jθ e[kT s]
+
+q j ¨θe[kT s]2
+
+×
+
+"
+
+e   
+
+> RLTs+j
+> 
+> ˙θe[kT s]Ts+¨θe[kT s]T2
+> s
+> 2
+> 
+
+D(ξ1) − D(ξ0)
+
+# 
+
+= kt
+
+L
+
+
+
+(1 −D k(Ts)) ejθ e[( k+1) Ts] −(1 −D k(0)) e− RL Ts+jθ e[kT s]
+
+
+
+where 
+
+Dk(σ) = 
+
+> RL
+
+q j ¨θe[kT s]2
+
+D
+
+s
+
+j ¨θe[kT s]2 σ + 
+
+> RL
+
++ j ˙θe[kT s]
+
+j ¨θe[kT s]
+
+! .
+
+(68) where Dk(σ) contains the contribution associated with the variation of the electrical speed within the sampling interval. Finally, applying the discrete Park transformation at the up-dated electrical angle and including the one-sample controller delay yields 
+
+idq [k + 1] = axidq [k] + bxrk−1(vdq [k − 1] − ϵdq [k]) ,
+
+ϵdq [k] = r−1
+
+> k−1
+
+ktRL
+
+ r−1 
+
+> k
+
+(1 − D k(Ts)) − a (1 − D k(0)) 1 − a
+
+
+
+,ax = ar k, bx = br k, rk = e−j∆θe[k],
+
+∆θe[k] = ˙θe[kT s]Ts + ¨θe[kT s] T 2
+
+> s
+
+2 .
+
+(69) The resulting (dq ) model therefore extends the constant-speed formulation by explicitly incorporating the electrical acceleration through ∆θe[k] and Dk(σ).REFERENCES [1] N. Hemati, J. S. Thorp, and M.-C. Leu, “Robust nonlinear control of brushless DC motors for direct-drive robotic applications,” IEEE Transactions on Industrial Electronics , vol. 37, no. 6, pp. 460–468, dec 1990. [2] F. Blaschke, “The principle of field orientation as applied to the new transvector closed-loop control system for rotating-field machines,” 
+
+Siemens Review , vol. 34, no. 3, pp. 217–220, 1972. [3] R. Gabriel, W. Leonhard, and C. J. Nordby, “Field-oriented control of a standard AC motor using microprocessors,” IEEE Transactions on Industry Applications , vol. IA-16, no. 2, pp. 186–192, mar 1980. [4] T. M. Rowan and R. J. Kerkman, “A new synchronous current regulator and an analysis of current-regulated PWM inverters,” IEEE Transactions on Industry Applications , vol. IA-22, no. 4, pp. 678–690, jul 1986. [5] F. Briz, M. W. Degner, and R. D. Lorenz, “Analysis and design of current regulators using complex vectors,” IEEE Transactions on Industry Applications , vol. 36, no. 3, pp. 817–825, may 2000. [6] J. Holtz, J. Quan, J. Pontt, J. Rodr´ ıguez, P. Newman, and H. Miranda, “Design of fast and robust current regulators for high-power drives based on complex state variables,” IEEE Transactions on Industry Applications , vol. 40, no. 5, pp. 1388–1397, sep 2004. [7] M. Tiapkin, A. Balkovoi, and E. Samygina, “Current Controller Design of Precision Servo Drive,” in 2020 27th International Workshop on Electric Drives: MPEI Department of Electric Drives 90th Anniversary (IWED) . Moscow, Russia: IEEE, Jan. 2020, pp. 1–6. [8] Y.-R. Mohamed, “Design and Implementation of a Robust Current-Control Scheme for a PMSM Vector Drive With a Simple Adaptive Disturbance Observer,” IEEE Transactions on Industrial Electronics ,vol. 54, no. 4, pp. 1981–1988, Aug. 2007. [9] Hongrae Kim, M. W. Degner, J. M. Guerrero, F. Briz, and R. D. Lorenz, “Discrete-Time Current Regulator Design for AC Machine Drives,” 
+
+IEEE Transactions on Industry Applications , vol. 46, no. 4, pp. 1425– 1435, Jul. 2010. [10] N. Hoffmann, F. W. Fuchs, M. P. Kazmierkowski, and D. Schr¨ oder, “Digital current control in a rotating reference frame-part i: System modeling and the discrete time-domain current controller with improved decoupling capabilities,” IEEE Transactions on Power Electronics ,vol. 31, no. 7, pp. 5290–5305, 2015. [11] C. A. Busada, S. G. Jorge, and J. A. Solsona, “Comments on “digital current control in a rotating reference frame—part i: system modeling and the discrete time-domain current controller with improved decou-pling capabilities”,” IEEE Transactions on Power Electronics , vol. 34, no. 3, pp. 2980–2984, 2018. [12] Z. Zhang, L. Jing, X. Wu, W. Xu, J. Liu, G. Lyu, and Z. Fan, “A deadbeat pi controller with modified feedforward for pmsm under low carrier ratio,” IEEE Access , vol. 9, pp. 63 463–63 474, 2021. [13] S. Walz, R. Lazar, G. Buticchi, and M. Liserre, “Dahlin-based fast and robust current control of a PMSM in case of low carrier ratio,” IEEE Access , vol. 7, pp. 102 199–102 208, 2019. [14] T. Smidt Gabbi, H. A. Gr¨ undling, and R. Padilha Vieira, “Discrete-time sliding mode control based on disturbance observer applied to current control of permanent magnet synchronous motor,” IET Power Electronics , vol. 14, no. 4, pp. 875–887, 2021. [15] C. A. Busada, S. G´ omez Jorge, and J. A. Solsona, “A synchronous reference frame PI current controller with dead beat response,” IEEE Transactions on Power Electronics , vol. 35, no. 3, pp. 3097–3105, mar 2020. [16] Y. Liao, F. Li, H. Lin, and J. Zhang, “Discrete current control with improved disturbance rejection for surface-mounted permanent magnet synchronous machine at high speed,” IET Electric Power Applications ,vol. 11, no. 7, pp. 1333–1340, 2017. [Online]. Available: https: //ietresearch.onlinelibrary.wiley.com/doi/abs/10.1049/iet-epa.2017.0005 [17] M. Iskandar, C. Ott, O. Eiberger, M. Keppler, A. Albu-Sch¨ affer, and A. Dietrich, “Joint-level control of the DLR lightweight robot SARA,” in 2020 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , oct 2020, pp. 8903–8910. [18] M. W. Spong, “Modeling and control of elastic joint robots,” Journal of Dynamic Systems, Measurement, and Control , vol. 109, no. 4, pp. 310– 318, 12 1987. [Online]. Available: https://doi.org/10.1115/1.3143860 [19] A. Albu-Sch¨ affer, C. Ott, and G. Hirzinger, “A Unified Passivity-based Control Framework for Position, Torque and Impedance Control of Flexible Joint Robots,” The International Journal of Robotics Research ,vol. 26, no. 1, pp. 23–39, Jan. 2007. [20] R. Gabriel, W. Leonhard, and C. J. Nordby, “Field-oriented control of a standard ac motor using microprocessors,” IEEE Transactions on Industry Applications , vol. IA-16, pp. 186–192, 1980. [Online]. Available: https://api.semanticscholar.org/CorpusID:14562471 [21] J.-S. Yim, S.-K. Sul, B.-H. Bae, N. R. Patel, and S. Hiti, “Modified cur-rent control schemes for high-performance permanent-magnet AC drives with low sampling to operating frequency ratio,” IEEE Transactions on Industry Applications , vol. 45, no. 2, pp. 763–771, mar 2009. [22] S. Haddadin and E. Shahriari, “Unified force-impedance control,” The International Journal of Robotics Research , vol. 43, no. 13, pp. 2112– 2141, 2024.
