@@ -6,64 +6,58 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-08-22
-- 运行时间：2026-08-22 19:53:31 UTC
+- 最新运行日期：2026-08-23
+- 运行时间：2026-08-23 19:26:36 UTC
 - 运行状态：成功
-- 本次总论文数：14
-- 精读区：3
+- 本次总论文数：12
+- 精读区：1
 - 速读区：11
 
 ### 今日简报（AI）
-今日聚焦大模型驱动的具身智能规划，深度解析了 LLM 与 VLM 在水下航行及复杂任务决策中的前沿应用。
-重点推荐结合世界模型的 AUV 导航与证据门控的任务规划，展示了多模态模型在提升机器人决策可靠性上的突破。
-建议关注 VLM 如何通过逻辑门控优化复杂场景下的路径规划，这是提升自动化作业效率的关键方向。
-- 详情：[/202608/22/README](/202608/22/README)
+今日聚焦无人机视觉导航与机器人灵巧操作，深度解析 DPNet 如何实现高效的死胡同预测与规避。
+重点关注无人机在复杂环境下的自主避障突破，以及世界模型与几何推理在机器人全身控制、双臂抓取中的前沿应用。
+建议优先研读 DPNet 的导航策略，并关注如何利用局部几何推理提升机器人在非完整视角下的作业能力。
+- 详情：[/202608/23/README](/202608/23/README)
 
 ### 精读区论文标签
-1. [World-Model-Grounded LLM Planning for AUV and ASV Navigation Near Offshore Wind Farms](/202608/22/2608.19661v1-world-model-grounded-llm-planning-for-auv-and-asv-navigation-near-offshore-wind-farms)  
-   标签：评分：8.0/10、query:q3
-   evidence：基于梯度的轨迹优化器与MPC式重规划器
-2. [Evidence-Gated Task and Motion Planning with Vision-Language Models](/202608/22/2608.20084v1-evidence-gated-task-and-motion-planning-with-vision-language-models)  
-   标签：评分：8.0/10、query:q4
-   evidence：针对操作任务的任务与运动规划 (TAMP)
-3. [RoMAN-Flow: Taming Autoregressive Normalizing Flows for Offline Reinforcement Learning in Robotic Manipulation](/202608/22/2608.20208v1-roman-flow-taming-autoregressive-normalizing-flows-for-offline-reinforcement-learning-in-robotic-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：用于机器人操作的离线强化学习框架
+1. [DPNet: Efficient Dead-End Prediction and Avoidance for Vision-Based UAV Navigation](/202608/23/2608.16640v1-dpnet-efficient-dead-end-prediction-and-avoidance-for-vision-based-uav-navigation)  
+   标签：评分：8.0/10、query:q1
+   evidence：无人机导航中的死胡同预测与规避
 
 ### 速读区论文标签
-1. [Embodied-Navigator: Point, Think, Memorize, and Align for Efficient Navigation](/202608/22/2608.17512v1-embodied-navigator-point-think-memorize-and-align-for-efficient-navigation)  
+1. [GigaBrain-WBC-0.5: A Behavior World Model for Robust Whole-Body Control with Environment Interaction](/202608/23/2608.18234v1-gigabrain-wbc-05-a-behavior-world-model-for-robust-whole-body-control-with-environment-interaction)  
    标签：评分：7.0/10、query:q4
-   evidence：用于高效具身导航的TAMP-Nav框架
-2. [Dijkstra as an Oracle for Online Stochastic Shortest Path Navigation with Provable Guarantees](/202608/22/2608.17703v1-dijkstra-as-an-oracle-for-online-stochastic-shortest-path-navigation-with-provable-guarantees)  
-   标签：评分：7.0/10、query:q4
-   evidence：移动机器人的在线最短路径导航
-3. [Backward Layout Search for Sequence-Constrained Robotic Assembly](/202608/22/2608.18454v1-backward-layout-search-for-sequence-constrained-robotic-assembly)  
-   标签：评分：7.0/10、query:q4
-   evidence：装配序列的无碰撞执行和运动检查
-4. [Dream2Reward: Transition-Alignment Reward Models from Positive Demonstrations for Robotic Manipulation](/202608/22/2608.18787v1-dream2reward-transition-alignment-reward-models-from-positive-demonstrations-for-robotic-manipulation)  
+   evidence：人形机器人的全身运动跟踪与控制
+2. [PartialBiGrasp: Inferring Hidden Local Geometry for Bimanual Grasping from Partial Views](/202608/23/2608.19188v1-partialbigrasp-inferring-hidden-local-geometry-for-bimanual-grasping-from-partial-views)  
    标签：评分：7.0/10、query:q6
-   evidence：机器人操作与基于轨迹的奖励建模
-5. [Comparing Controller Synthesis Methods with Deadline-Miss Awareness](/202608/22/2608.18850v1-comparing-controller-synthesis-methods-with-deadline-miss-awareness)  
-   标签：评分：7.0/10、query:q5
-   evidence：动力系统的实时控制器设计方法
-6. [ADEPT: Accelerating Dexterity via Pre-Training and Post-Training using Reinforcement Learning](/202608/22/2608.19182v1-adept-accelerating-dexterity-via-pre-training-and-post-training-using-reinforcement-learning)  
+   evidence：双臂机器人抓取与操作
+3. [PVRA: A Pointwise Key-point Voting Framework for Robotic Assembly](/202608/23/2608.19968v1-pvra-a-pointwise-key-point-voting-framework-for-robotic-assembly)  
    标签：评分：7.0/10、query:q6
-   evidence：用于仿真到现实可迁移灵巧性的强化学习
-7. [BICPO-VLA: Behavior-Identified Continuation Preference Optimization for Smooth Asynchronous Vision-Language-Action Control](/202608/22/2608.13924v1-bicpo-vla-behavior-identified-continuation-preference-optimization-for-smooth-asynchronous-vision-language-action-control)  
+   evidence：自主机器人装配操作
+4. [Learning Highly Dynamic Skills Transition for Quadruped Jumping Through Constrained Space](/202608/23/2608.19977v1-learning-highly-dynamic-skills-transition-for-quadruped-jumping-through-constrained-space)  
+   标签：评分：7.0/10、query:q1
+   evidence：机器人穿越受限障碍物的无碰撞轨迹
+5. [Wave-Based Bilateral Teleoperation between Nonlinear Manipulators with Direct Contact Force Feedback](/202608/23/2608.20043v1-wave-based-bilateral-teleoperation-between-nonlinear-manipulators-with-direct-contact-force-feedback)  
+   标签：评分：7.0/10、query:profile-1
+   evidence：非线性机械臂之间的双边遥操作
+6. [DECOWAM: Decoupled Whole-Body World-Action Model for Legged Mobile Manipulation](/202608/23/2608.20114v1-decowam-decoupled-whole-body-world-action-model-for-legged-mobile-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：腿式移动操作的全身世界动作模型
+7. [Zetta $ζ$: An Efficient Closed-Loop Embodied Harness for Self-Evolving Physical Intelligence](/202608/23/2608.16590v1-zetta--an-efficient-closed-loop-embodied-harness-for-self-evolving-physical-intelligence)  
    标签：评分：6.0/10、query:q5
-   evidence：平滑异步控制并缩短动作生成间隔
-8. [From Continuous Design to Delay-Aware Discrete Synthesis: Guaranteed High-Bandwidth Joint Control for PMSM Drives](/202608/22/2608.14937v1-from-continuous-design-to-delay-aware-discrete-synthesis-guaranteed-high-bandwidth-joint-control-for-pmsm-drives)  
-   标签：评分：6.0/10、query:q5
-   evidence：机器人驱动器的实时关节控制
-9. [LLM-Based Hierarchical Coordinated Control with Continuation-Aware Policy Learning](/202608/22/2608.15041v1-llm-based-hierarchical-coordinated-control-with-continuation-aware-policy-learning)  
-   标签：评分：6.0/10、query:q5
-   evidence：具有约束感知动作的分层协调控制
-10. [LAPF: LLM-Agent-Based Path Finder Using the UAVScenes Dataset](/202608/22/2608.15175v1-lapf-llm-agent-based-path-finder-using-the-uavscenes-dataset)  
-   标签：评分：6.0/10、query:q1
-   evidence：基于大模型智能体的自主导航路径规划
-11. [Vision-Based Tactile Intelligence for Robotics: Sensing, Learning, and Embodied Manipulation](/202608/22/2608.15490v1-vision-based-tactile-intelligence-for-robotics-sensing-learning-and-embodied-manipulation)  
+   evidence：用于实时执行的闭环具身框架
+8. [Design Optimization for Large High-Force Soft Robot Manipulators Under Gravitational Loads](/202608/23/2608.16728v1-design-optimization-for-large-high-force-soft-robot-manipulators-under-gravitational-loads)  
    标签：评分：6.0/10、query:q6
-   evidence：具身操作的触觉智能
+   evidence：软体机器人机械臂的设计优化
+9. [Operator-based data embedding for data-driven control of continuous-time systems from noisy data](/202608/23/2608.17518v1-operator-based-data-embedding-for-data-driven-control-of-continuous-time-systems-from-noisy-data)  
+   标签：评分：6.0/10、query:q2
+   evidence：连续时间系统的数据驱动控制设计
+10. [PRISM: Precision and contact-rich Real-world Industrial Skill dataset with Multimodal sensing](/202608/23/2608.17962v1-prism-precision-and-contact-rich-real-world-industrial-skill-dataset-with-multimodal-sensing)  
+   标签：评分：6.0/10、query:q6
+   evidence：接触丰富的工业操作任务数据集
+11. [RoboEdit: Turning Human Manipulation Videos into Scalable Robot Experience](/202608/23/2608.18948v1-roboedit-turning-human-manipulation-videos-into-scalable-robot-experience)  
+   标签：评分：6.0/10、query:q6
+   evidence：人到机器人的操作视频重定向
 
 
 <div class="dpr-home-promo-card">
