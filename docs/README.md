@@ -6,73 +6,58 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-08-28
-- 运行时间：2026-08-28 03:53:35 UTC
+- 最新运行日期：2026-08-29
+- 运行时间：2026-08-29 03:31:14 UTC
 - 运行状态：成功
-- 本次总论文数：17
-- 精读区：6
+- 本次总论文数：12
+- 精读区：1
 - 速读区：11
 
 ### 今日简报（AI）
-今日追踪17篇机器人前沿进展，重点攻克双臂协作与多智能体安全控制难题。
-斩获满分的PRISM框架通过贝叶斯成本调优的MPC革新了双臂操作，而多智能体安全控制也迎来了可扩展的约束缩减新方案。
-建议读者优先研读PRISM的双臂控制算法，并关注轨迹级连续动作表示等速读板块的实用技术。
-- 详情：[/202608/28/README](/202608/28/README)
+今日深挖 12 篇前沿论文，重点攻克了最优控制中的色散前向树搜索算法及其计算复杂性分析。
+核心突破在于利用未来潜状态推断机器人动作，以及多无人机协作中的分布式轨迹规划与资源调度优化。
+建议优先研读高分精读论文，掌握在复杂控制任务中平衡搜索覆盖度与计算效率的实战技巧。
+- 详情：[/202608/29/README](/202608/29/README)
 
 ### 精读区论文标签
-1. [PRISM: Projection-Integrated Sampling-Based MPC with Bayesian Cost Tuning for Bimanual Manipulation](/202608/28/2608.25666v1-prism-projection-integrated-sampling-based-mpc-with-bayesian-cost-tuning-for-bimanual-manipulation)  
-   标签：评分：10.0/10、query:profile-1
-   evidence：基于GPU加速的实时双臂操作采样模型预测控制
-2. [Scalable Tube-Tightened Multi-Agent Safety via Certified Constraint Reduction](/202608/28/2608.25323v1-scalable-tube-tightened-multi-agent-safety-via-certified-constraint-reduction)  
-   标签：评分：8.0/10、query:q1
-   evidence：基于管路收紧指数控制屏障函数的分布式模型预测控制用于避障
-3. [Towards safe and optimal flight: Viability Kernel MPC for Fully Actuated Multirotor](/202608/28/2608.25459v1-towards-safe-and-optimal-flight-viability-kernel-mpc-for-fully-actuated-multirotor)  
-   标签：评分：8.0/10、query:q2
-   evidence：用于实时避障的生存核 MPC
-4. [Fast Generative Grasping via Lie Group-Constrained MeanFlow](/202608/28/2608.26076v1-fast-generative-grasping-via-lie-group-constrained-meanflow)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：面向实时操作的快速生成式抓取
-5. [Active sensing to characterize the heterogeneity of plant stress](/202608/28/2608.27088v1-active-sensing-to-characterize-the-heterogeneity-of-plant-stress)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：机器人机械臂的无碰撞轨迹
-6. [Diffusion Policies for Short-Horizon Planning in Robot Crowd Navigation](/202608/28/2608.27158v1-diffusion-policies-for-short-horizon-planning-in-robot-crowd-navigation)  
-   标签：评分：8.0/10、query:q1
-   evidence：导航中避障的短时域规划
+1. [Dispersive Forward Tree Search for Optimal Control: Coverage, Complexity, and Computation](/202608/29/2608.26314v1-dispersive-forward-tree-search-for-optimal-control-coverage-complexity-and-computation)  
+   标签：评分：8.0/10、query:q3
+   evidence：用于最优控制和轨迹的动力学规划器
 
 ### 速读区论文标签
-1. [Trajectory-Level Continuous Action Representation for Robotic Manipulation](/202608/28/2608.24111v2-trajectory-level-continuous-action-representation-for-robotic-manipulation)  
-   标签：评分：8.0/10、query:q8
-   evidence：实时操作的轨迹级动作表示
-2. [Anytime Global Tensor Motion Planning](/202608/28/2608.25830v1-anytime-global-tensor-motion-planning)  
-   标签：评分：8.0/10、query:q3
-   evidence：使用轨迹优化作为局部规划器的随时全局运动规划
-3. [Residual Deep Reinforcement Learning-Based Computed Torque Control for a Cable-Driven Lower-Limb Rehabilitation Robot under Disturbances and Parametric Uncertainties](/202608/28/2608.26739v1-residual-deep-reinforcement-learning-based-computed-torque-control-for-a-cable-driven-lower-limb-rehabilitation-robot-under-disturbances-and-parametric-uncertainties)  
-   标签：评分：8.0/10、query:q2
-   evidence：康复机器人的计算力矩控制与轨迹跟踪
-4. [Enhancing Sim2Real Transfer for Torque-Controlled Robots through Real2Sim Dynamics Estimation and Reinforcement Learning](/202608/28/2608.22629v1-enhancing-sim2real-transfer-for-torque-controlled-robots-through-real2sim-dynamics-estimation-and-reinforcement-learning)  
-   标签：评分：7.0/10、query:profile-1
-   evidence：力矩控制机器人手臂与轨迹匹配
-5. [Sequential Object Placement Optimization with Convex Decomposition](/202608/28/2608.25162v1-sequential-object-placement-optimization-with-convex-decomposition)  
+1. [Inferring Action from Future Latent State for Robotic Manipulation](/202608/29/2608.22067v1-inferring-action-from-future-latent-state-for-robotic-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：机器人操作中物体放置的非线性优化
-6. [Bayesian Flow Networks for Offline Trajectory Planning](/202608/28/2608.25163v1-bayesian-flow-networks-for-offline-trajectory-planning)  
+   evidence：机器人操作的世界动作模型
+2. [DELE-w0.5: Inferring Action from Future Latent State for Robotic Manipulation](/202608/29/2608.22067v3-dele-w05-inferring-action-from-future-latent-state-for-robotic-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：机器人操作与动作推理
+3. [Distributed Trajectory Planning and Resource Allocation for Dynamic Multi-UAV Collaborative Computing](/202608/29/2608.23123v1-distributed-trajectory-planning-and-resource-allocation-for-dynamic-multi-uav-collaborative-computing)  
    标签：评分：7.0/10、query:q3
-   evidence：使用贝叶斯流网络的离线轨迹规划
-7. [Leveraging Inter-object Affordances for Efficient Planning in Contact-rich Tasks](/202608/28/2608.25641v1-leveraging-inter-object-affordances-for-efficient-planning-in-contact-rich-tasks)  
-   标签：评分：7.0/10、query:q4
-   evidence：机器人任务的任务与运动规划
-8. [EgoNav: Bridging Learned Waypoints and Geometry-Aware Local Control for Robust Indoor Navigation](/202608/28/2608.25642v1-egonav-bridging-learned-waypoints-and-geometry-aware-local-control-for-robust-indoor-navigation)  
+   evidence：轨迹规划与资源分配的联合优化
+4. [NeuralParker: A Reinforcement Learning Planner for Irregular Parking Environments](/202608/29/2608.24485v1-neuralparker-a-reinforcement-learning-planner-for-irregular-parking-environments)  
    标签：评分：7.0/10、query:q1
-   evidence：具备避障能力的室内导航局部规划器
-9. [Learning the Right Abstraction: Neural Reduced Dynamics for Complex Robot Control](/202608/28/2608.19375v1-learning-the-right-abstraction-neural-reduced-dynamics-for-complex-robot-control)  
+   evidence：基于强化学习的混合规划器，用于处理带障碍物几何形状的任意姿态泊车
+5. [FLARE: A Failure-Aware Framework for Autonomous Correction and Recovery in Visual-Language Robotic Manipulation](/202608/29/2608.26645v1-flare-a-failure-aware-framework-for-autonomous-correction-and-recovery-in-visual-language-robotic-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：机器人操作与碰撞恢复的故障感知框架
+6. [GRAFT: Grounded and Efficient Online Reinforcement Adaptation for Fine-Grained Robot Manipulation](/202608/29/2608.27079v1-graft-grounded-and-efficient-online-reinforcement-adaptation-for-fine-grained-robot-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：精细机器人操作的在线自适应
+7. [TaPeR: Probabilistic Recovery of Sparse Task Precedence Graphs from a Handful of Demonstrations](/202608/29/2608.21035v1-taper-probabilistic-recovery-of-sparse-task-precedence-graphs-from-a-handful-of-demonstrations)  
+   标签：评分：6.0/10、query:q6
+   evidence：提取长程操作任务的任务依赖结构
+8. [Zeroth-Order Nonsmooth Nonconvex Optimization with Convex Liftings and Its Application to State-Feedback $H_\infty$ Policy Optimization](/202608/29/2608.23178v1-zeroth-order-nonsmooth-nonconvex-optimization-with-convex-liftings-and-its-application-to-state-feedback-hinfty-policy-optimization)  
    标签：评分：6.0/10、query:q2
-   evidence：复杂机器人控制的神经动力学
-10. [Model-Free Adaptive Parameter Tuning for Efficient Multi-Robot Warehouse Operations](/202608/28/2608.21533v1-model-free-adaptive-parameter-tuning-for-efficient-multi-robot-warehouse-operations)  
+   evidence：状态反馈策略优化与控制
+9. [Macro-Operator Generation and Predicate Selection for TAMP Operator Learning](/202608/29/2608.23629v1-macro-operator-generation-and-predicate-selection-for-tamp-operator-learning)  
    标签：评分：6.0/10、query:q4
-   evidence：仓库作业的多机器人规划器
-11. [Real-Time Transient Response Optimization](/202608/28/2608.21886v1-real-time-transient-response-optimization)  
-   标签：评分：6.0/10、query:q5
-   evidence：电机控制系统的实时瞬态响应优化
+   evidence：操作任务与运动规划
+10. [Pivot-and-Station Multi-Agent Path Finding: Solvability, Complexity, and Algorithms](/202608/29/2608.24585v1-pivot-and-station-multi-agent-path-finding-solvability-complexity-and-algorithms)  
+   标签：评分：6.0/10、query:q1
+   evidence：多智能体路径搜索与避障
+11. [One-Shot Learning from Demonstration of Contact-Rich Robotic Manipulation by Identifying Physical Interactions](/202608/29/2608.24741v1-one-shot-learning-from-demonstration-of-contact-rich-robotic-manipulation-by-identifying-physical-interactions)  
+   标签：评分：6.0/10、query:q6
+   evidence：机器人操作的示教学习
 
 
 <div class="dpr-home-promo-card">
