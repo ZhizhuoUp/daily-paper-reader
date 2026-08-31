@@ -6,47 +6,61 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-08-30
-- 运行时间：2026-08-30 22:39:09 UTC
+- 最新运行日期：2026-08-31
+- 运行时间：2026-08-31 23:21:06 UTC
 - 运行状态：成功
-- 本次总论文数：8
-- 精读区：0
-- 速读区：8
+- 本次总论文数：13
+- 精读区：3
+- 速读区：10
 
 ### 今日简报（AI）
-今日速读 8 篇论文，聚焦具身智能在语义导航、单样本触觉操控及可解释动作建模方面的突破。
-重点关注 OptiSight 如何融合几何与语义提升导航精度，以及 LM-X 通过预测进度与不确定性让机器人操控更透明。
-建议深入了解物理交互识别与多模态推理的结合，这是实现通用机器人任务的关键。
-- 详情：[/202608/30/README](/202608/30/README)
+今日聚焦多臂协作与高效操控，深度解析基于博弈论的运动规划及轻量化VLA策略。
+重点推荐获满分评价的迭代LQ博弈多臂规划方案，以及亚百万级参数的极简操控模型PredVLA。
+建议关注如何利用人类视频进行上下文世界建模，以实现机器人在开放任务中的快速泛化。
+- 详情：[/202608/31/README](/202608/31/README)
 
 ### 精读区论文标签
-- 本次无精读推荐。
+1. [Coordinated Motion Planning for Multi-Arm Systems via Iterative LQ Games](/202608/31/2608.27726v1-coordinated-motion-planning-for-multi-arm-systems-via-iterative-lq-games)  
+   标签：评分：10.0/10、query:profile-1
+   evidence：多机械臂运动规划的迭代LQ博弈
+2. [Macro-Operator Generation and Predicate Selection for TAMP Operator Learning](/202608/31/2608.23629v2-macro-operator-generation-and-predicate-selection-for-tamp-operator-learning)  
+   标签：评分：8.0/10、query:q6
+   evidence：针对操作任务的任务与运动规划 (TAMP)
+3. [Plan Along the Way: Event-Triggered Foundation-Model Planning for TAMP Execution in Partially Observable Manipulation](/202608/31/2608.28075v1-plan-along-the-way-event-triggered-foundation-model-planning-for-tamp-execution-in-partially-observable-manipulation)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：针对操作任务的反应式任务与运动规划
 
 ### 速读区论文标签
-1. [OptiSight: Bridging Semantic Reasoning and Geometric Control for Embodied Navigation](/202608/30/2608.23354v1-optisight-bridging-semantic-reasoning-and-geometric-control-for-embodied-navigation)  
-   标签：评分：7.0/10、query:q1
-   evidence：导航中的避障与几何控制
-2. [One-Shot Learning from Demonstration of Contact-Rich Robotic Manipulation by Identifying Physical Interactions](/202608/30/2608.24741v1-one-shot-learning-from-demonstration-of-contact-rich-robotic-manipulation-by-identifying-physical-interactions)  
+1. [Zero-WAM: In-Context World-Action Modeling from Human Videos for Open-Ended Task Generalization](/202608/31/2608.26103v2-zero-wam-in-context-world-action-modeling-from-human-videos-for-open-ended-task-generalization)  
    标签：评分：7.0/10、query:q6
-   evidence：机器人操作与跟踪演示轨迹
-3. [LM-X: Explainable Action Modeling with Progress, Event, and Uncertainty Prediction for Generalist Robot Manipulation](/202608/30/2608.25757v1-lm-x-explainable-action-modeling-with-progress-event-and-uncertainty-prediction-for-generalist-robot-manipulation)  
+   evidence：机器人操作的上下文学习
+2. [PredVLA: A Sub-Million-Parameter Predictive-Coding Policy for Robot Manipulation](/202608/31/2608.26673v1-predvla-a-sub-million-parameter-predictive-coding-policy-for-robot-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：通用机器人操作与动作建模
-4. [Gripper-aware Vision Language Action Models](/202608/30/2608.24603v1-gripper-aware-vision-language-action-models)  
-   标签：评分：6.0/10、query:q6
-   evidence：机器人操作与多夹具抓取策略
-5. [TemporalFlow-VLA: Learning Physically Grounded Execution History for Long-Horizon Robot Manipulation](/202608/30/2608.26821v1-temporalflow-vla-learning-physically-grounded-execution-history-for-long-horizon-robot-manipulation)  
-   标签：评分：6.0/10、query:q6
-   evidence：长程机器人操作与执行历史
-6. [Active Surface-Driven Reconfigurable Gripper: Robust Grasping and Sequential Manipulation of Thin Objects](/202608/30/2608.26883v1-active-surface-driven-reconfigurable-gripper-robust-grasping-and-sequential-manipulation-of-thin-objects)  
-   标签：评分：6.0/10、query:q6
-   evidence：薄型物体的机器人操作
-7. [Task-space model-based control of pneumatic soft actuators](/202608/30/2608.27186v1-task-space-model-based-control-of-pneumatic-soft-actuators)  
-   标签：评分：6.0/10、query:q5
-   evidence：基于实时动态模型的任务空间控制
-8. [STEP: State-Aware Task Estimation and Planning with Multi-Modal LLMs for Human-Robot Collaboration](/202608/30/2608.27225v1-step-state-aware-task-estimation-and-planning-with-multi-modal-llms-for-human-robot-collaboration)  
+   evidence：用于机器人操作的预测编码策略
+3. [Contact-Guided Exploration for Non-Prehensile Locomanipulation with Multi-Critic RL](/202608/31/2608.28140v1-contact-guided-exploration-for-non-prehensile-locomanipulation-with-multi-critic-rl)  
+   标签：评分：7.0/10、query:q6
+   evidence：移动平台的非抓取式操作
+4. [Spatial-Semantic Reasoning using Large Language Models for Efficient UAV Search Operations](/202608/31/2608.28270v1-spatial-semantic-reasoning-using-large-language-models-for-efficient-uav-search-operations)  
+   标签：评分：7.0/10、query:q5
+   evidence：使用多项式样条的无人机实时轨迹规划
+5. [LUCID: An Agentic AI Framework on Digital-Twin in the Loop for QoS-Guaranteeing Robotic Control](/202608/31/2608.28437v1-lucid-an-agentic-ai-framework-on-digital-twin-in-the-loop-for-qos-guaranteeing-robotic-control)  
+   标签：评分：7.0/10、query:q5
+   evidence：实时机器人控制与轨迹规划
+6. [Meta-Ctrl: Guaranteed Plan Generation by Decoupling Syntactic and Semantic Constraints](/202608/31/2608.22149v1-meta-ctrl-guaranteed-plan-generation-by-decoupling-syntactic-and-semantic-constraints)  
    标签：评分：6.0/10、query:q4
-   evidence：人机协作的任务估计与规划
+   evidence：受约束的机器人规划生成
+7. [Learning to Act While Waiting: RL Finetuning of Generalist Robot Policies Under Inference Latency](/202608/31/2608.23831v2-learning-to-act-while-waiting-rl-finetuning-of-generalist-robot-policies-under-inference-latency)  
+   标签：评分：6.0/10、query:q5
+   evidence：针对实时机器人控制的延迟感知框架
+8. [Dynamical System-Based Imitation Learning and Neuroadaptive Control for Trajectory Recovery in Autonomous Ships](/202608/31/2608.23924v1-dynamical-system-based-imitation-learning-and-neuroadaptive-control-for-trajectory-recovery-in-autonomous-ships)  
+   标签：评分：6.0/10、query:q3
+   evidence：轨迹恢复与神经自适应控制
+9. [Stability Analysis and Data-driven Verification via Recurrent Lyapunov Functions](/202608/31/2608.26447v1-stability-analysis-and-data-driven-verification-via-recurrent-lyapunov-functions)  
+   标签：评分：6.0/10、query:q2
+   evidence：通过递归李雅普诺夫函数进行稳定性分析与控制
+10. [AI Control Scientist: LLM-driven Agentic System for Automated Control Design](/202608/31/2608.26780v1-ai-control-scientist-llm-driven-agentic-system-for-automated-control-design)  
+   标签：评分：6.0/10、query:q2
+   evidence：自动控制设计与参数调优
 
 
 <div class="dpr-home-promo-card">
