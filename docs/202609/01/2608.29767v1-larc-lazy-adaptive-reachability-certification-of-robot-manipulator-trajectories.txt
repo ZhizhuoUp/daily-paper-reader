@@ -1,0 +1,293 @@
+Title: LARC: Lazy Adaptive Reachability Certification of Robot Manipulator Trajectories
+
+URL Source: https://arxiv.org/pdf/2608.29767v1
+
+Published Time: Tue, 01 Sep 2026 01:44:51 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+> 1
+
+# LARC: Lazy Adaptive Reachability Certification of Robot Manipulator Trajectories 
+
+Yu Feng, Member, IEEE , Hao Wu, Student Member, IEEE , Yuzhe Wang, and Jianshu Zhou, Member, IEEE 
+
+Abstract —Discrete trajectory checks can miss collisions be-tween sampled robot states. Reachability-based certification bounds motion between states, but uniform time partitions waste computation where clearance is large. We present lazy adaptive reachability certification (LARC), which checks aplanned trajectory by bisecting only intervals with an inconclusive clearance test. For piecewise-cubic Hermite joint trajectories, the method bounds link occupancy using midpoint capsules inflated by exact componentwise speed maxima. Certified intervals covering the trajectory provide continuous-time external-obstacle clearance, subject to geometric containment, static obstacles, and a prescribed margin. On 160 AgileX PIPER trajectories from 80 start–goal pairs, LARC matched all decisions of the fixed-fine baseline at depth nine. It used 20328 interval evaluations (24.8% of baseline work), with a median paired speedup of 
+
+10 .28 ×. A separate MoveIt/FCL audit checked 158051 states and detected collisions in 21 direct-interpolation controls, none of which LARC certified. The method reduced computation under a shared certificate model, but 27 of 139 sampled-clear trajectories remained uncertified. The sampled audit cannot independently prove continuous-time clearance. 
+
+Index Terms —Collision avoidance, reachability analysis, robot safety, trajectory certification. 
+
+I. I NTRODUCTION 
+
+# ARM links can collide with surrounding objects even when the gripper follows a collision-free path. The whole manipulator must therefore be checked, including its motion between waypoints. Geometric clearance complements sensing and mechanical adaptation in embodied manipulation [1]. Tactile sensors provide contact information [2]–[5], while compliant and underactuated hands adapt to grasped objects [6]– [10]. Neither capability alone establishes clearance between upstream links and obstacles during the approach. Reachability methods address the gaps between waypoint checks by enclosing each link’s swept volume over a time interval. If this enclosure is separated from the obstacles, the link remains clear throughout that interval. ARMTD incorporates reachable sets into online trajectory design [11]. SPARROWS uses spherical forward occupancy and exact obstacle distances [12], whereas CROWS combines learned spherical predictions with conformal buffers [13]. For a given occupancy model, the interval length affects both enclosure tightness and the cost of certification. 
+
+This work was supported in part by the National University of Singapore under the NUS Start-up Grant (FY2026). Yu Feng, Hao Wu, and Jianshu Zhou are with the Department of Mechanical Engineering, National University of Singapore, Singapore. Corresponding author: Jianshu Zhou (e-mail: jianshuzhou@nus.edu.sg). Yuzhe Wang is with Singapore Institute of Manufacturing Technology, Agency for Science Technology and Research, Singapore. 
+
+Long intervals reduce evaluation counts but may produce enclosures too loose to certify. Uniformly short intervals spend computation even where clearance is already sufficient. LARC uses the clearance test to select temporal resolution (Fig. 1). It bisects inconclusive intervals until they pass or reach a prescribed depth, without changing the trajectory. We make three contributions:  
+
+> •
+
+an adaptive interval certifier with capsule enclosures de-rived from exact componentwise Hermite speed maxima;  
+
+> •
+
+a continuous-time external-obstacle clearance guarantee under stated containment and scene assumptions; and  
+
+> •
+
+a comparison with fixed-resolution certifiers on 160 paired trajectories, including generation failures and a separate sampled MoveIt/FCL audit. II. R ELATED WORK 
+
+Capability and reachability maps describe attainable end-effector poses for base placement, inverse queries, and mor-phology analysis [14]–[20]. Learned reachability models also support grasp ranking, moving-target tracking, and mobile-manipulator embodiment selection [21]–[23]. Certifying a trajectory additionally requires bounds on every link’s swept occupancy (Fig. 2). ARMTD, SPARROWS, and CROWS address forward occu-pancy within trajectory design [11]–[13]. We examine interval allocation after planning, using deterministic analytic enclo-sures. Our comparison holds trajectories, geometry, margin, and distance evaluation fixed to isolate the effect of temporal refinement. III. P ROBLEM FORMULATION 
+
+Consider an n-joint serial manipulator with candidate trajec-tory q(t; k) over t ∈ [0 , T h], where k indexes the candidate. Let 
+
+Vℓ(q) denote the geometry occupied by link ℓ at configuration 
+
+q. The link’s forward occupancy over a time interval I is 
+
+FO ℓ(I; k) = [
+
+> t∈I
+
+Vℓ(q(t; k)) . (1) We seek a computable outer envelope bRℓ(I; k) satisfying the containment condition 
+
+FO ℓ(I; k) ⊆ bRℓ(I; k). (2) The external obstacles O are axis-aligned bounding boxes (AABBs), fixed throughout the trajectory. We prescribe a positive clearance margin in the modeled geometry, 
+
+ρ ∈ R>0. (3) arXiv:2608.29767v1 [cs.RO] 30 Aug 2026 2(a) 
+
+> MoveIt / OMPL trajectory
+> xyzshelf_easy_pair_0009_ompl
+
+(b)     
+
+> Continuous-time interval model
+> 1. Hermite interval 2. Reachable envelope 3. Clearance test
+> q(t), qdot(t), I=[ta,tb] Cℓ(q(tm))
+> ⊕B(0,bℓ(I)) gℓ(I)=d( R̂ ℓ(I),O)−ρ
+
+(c) 
+
+> Lazy adaptive certification loop
+> Interval refinement
+> bisect if g(I) ≤ 0 and depth < dmax
+
+(d) 
+
+> Trajectory-level output
+> All leaves certified
+> Certified
+> Unresolved leaf at dmax
+> Uncertified / inconclusive
+> Negative output ≠ collision proof
+
+Fig. 1. LARC trajectory certification. (a) A recorded MoveIt/OMPL trajectory with capsule poses, gripper path, and static axis-aligned boxes. (b) Hermite reconstruction, midpoint-capsule inflation, and the clearance test with margin ρ. (c) Binary refinement of inconclusive intervals. (d) All terminal intervals must pass for the trajectory to be certified. An uncertified result does not prove collision. 
+
+All experiments use ρ = 10 mm as a fixed simulation parameter, without statistical calibration. Writing d for the minimum Euclidean distance between sets, we define 
+
+g(I; k) = min  
+
+> ℓ
+
+d
+
+ bRℓ(I; k), O
+
+
+
+− ρ. (4) An interval passes the clearance test only when g(I; k) > 0. A non-positive value leaves the interval inconclusive because the outer envelope may intersect an obstacle even when the link does not. A trajectory is certified when passing leaf intervals cover its entire duration. IV. L AZY ADAPTIVE REACHABILITY CERTIFICATION 
+
+A. Hermite Trajectories and Speed Bounds 
+
+We reconstruct each MoveIt trajectory as a piecewise-cubic Hermite curve using the recorded joint positions and velocities. Within each segment, qj (t) is cubic, so its derivative ˙qj (t) is quadratic. The maximum of | ˙qj (t)| lies at a clipped-segment endpoint or an interior root of ¨qj (t). Evaluating these candidates on every segment intersecting I gives the bound 
+
+¯ωj (I) = max  
+
+> t∈I
+
+| ˙qj (t)|. (5) This bound is exact for the reconstructed polynomial used in certification. Tracking error and deviations from that polyno-mial are outside the present model. 
+
+B. Midpoint Capsules and Motion Inflation 
+
+The geometric model uses eleven capsules fitted to enclose the official PIPER collision meshes. Its configuration records 1 mm of numerical padding, the resolved URDF hash, and the model revision. For I = [ tm − h, t m + h], let Cℓ(q(tm)) denote the capsule transformed to the interval midpoint. For ancestor joint j, the calibrated constant aℓj bounds the distance from the joint axis to any capsule point. The resulting rigid-body speed bound gives the interval motion radius 
+
+bℓ(I) = h
+
+> n
+
+X
+
+> j=1
+
+aℓj ¯ωj (I). (6) Inflating the midpoint capsule by this radius gives the occu-pancy envelope 
+
+bRℓ(I; k) = Cℓ(q(tm)) ⊕ B(0 , b ℓ(I)) . (7) Here ⊕ denotes the Minkowski sum and B(0 , b ) a ball of radius 
+
+b. The implementation compares segment–AABB distance with the capsule radius plus bℓ(I) + ρ, giving the same pass/fail test as (4). The motion radius bounds occupancy, whereas ρ
+
+specifies the required clearance and is applied once. 
+
+C. Adaptive Certificate Tree 
+
+The tree is traversed depth first from the root interval 
+
+[0 , T h]. A node with positive clearance becomes a certified leaf; otherwise, it is bisected up to depth dmax = 9 . An inconclusive leaf at that depth makes the trajectory U NCERTIFIED . Both child 3 
+
+> Fig. 2. Global workspace sampling and local occupancy certification. (a) An RViz-style rendering of the recorded shelf trajectory from Fig. 1(a), not an original screenshot or photograph. (b) End-effector-base positions from 6000 joint configurations sampled uniformly within the six official joint limits (seed 20270823). All samples are shown. The dashed projected convex hull is a visual guide, not a certified workspace boundary. (c) The occupancy enclosure for the terminal interval with the smallest certificate clearance on the same trajectory. Only the local capsule enclosure enters the certificate; the global point cloud does not.
+
+Algorithm 1 Lazy adaptive certification of one trajectory 
+
+Require: Trajectory k, horizon [0 , T h], obstacles O, margin ρ,maximum depth dmax  
+
+> 1:
+
+function CERTIFY (I, d ) 
+
+> 2:
+
+construct bRℓ(I; k) and evaluate g(I; k) 
+
+> 3:
+
+if g(I; k) > 0 then  
+
+> 4:
+
+record certified leaf I; return TRUE  
+
+> 5:
+
+else if d = dmax then  
+
+> 6:
+
+record inconclusive leaf I; return FALSE  
+
+> 7:
+
+else  
+
+> 8:
+
+split I into IL, I R 
+
+> 9:
+
+cL ← CERTIFY (IL, d + 1)  
+
+> 10:
+
+cR ← CERTIFY (IR, d + 1)  
+
+> 11:
+
+return cL ∧ cR 
+
+> 12:
+
+return CERTIFY ([0 , T h], 0)
+
+branches are visited before combining their results, retaining a complete leaf cover for every trajectory. The offline certifier does not replan the trajectory or provide braking logic. 
+
+D. Fixed-Resolution Baselines 
+
+The three methods use identical trajectories, capsules, speed bounds, obstacles, distance evaluation, and a 10 mm clearance margin. Fixed-coarse evaluates all 16 uniform intervals, and fixed-fine evaluates all 512 intervals. LARC can reach the same depth as fixed-fine but stops refining intervals once they pass. This comparison measures the cost of temporal allocation under a shared certificate model; fixed-fine does not supply collision ground truth. V. C ONDITIONAL SAFETY ANALYSIS 
+
+The guarantee rests on four assumptions about the enclosure and scene. A1 : The static capsules contain the link geometry, and the motion bounds establish (2). A2 : The external obstacles remain fixed over the certified horizon. A3 : The clearance margin ρ is fixed in model space and applied once. A4 : The certificate concerns link-obstacle separation; continuous-time self-collision is outside its scope. 
+
+Theorem 1 (continuous-time external-obstacle clearance). 
+
+Suppose the leaf intervals {Ir } cover [0 , T h] and satisfy the containment condition for every link. If g(Ir ; k) > 0 on every leaf, each link remains more than ρ from the static obstacles 
+
+O throughout the horizon. 
+
+Proof. Choose any time t ∈ [0 , T h] and a leaf in-terval Ir containing it. For each link, containment gives 
+
+Vℓ(q(t; k)) ⊆ bRℓ(Ir ; k). The positive certificate implies that 
+
+d( bRℓ(Ir ; k), O) > ρ for every link. Distance to O cannot decrease when the enclosing set is replaced by its subset, so 
+
+d(Vℓ(q(t; k)) , O) > ρ . The argument applies to every link and every time in the horizon. Positive clearance of the collision meshes alone does not ensure that refinement will eventually certify a trajectory. Although bℓ(I) tends to zero as |I| → 0, the gap between a mesh and its enclosing capsule remains. A finite-depth guarantee would require positive clearance relative to the capsule model, or a mesh-clearance bound that also accounts for this enclosure error. The present analysis does not provide 4           
+
+> TABLE I SIMULATION PROTOCOL FOR THE FIXED TRAJECTORY DATASET .Item Frozen setting Primary comparison LARC versus fixed depth 9 Simple control Fixed depth 4 Scenes Open, easy window, medium window, easy shelf Independent unit One scene–start/goal pair; 80 total Paired variants ompl_planned ,direct_smoothstep ;160 paths Timing repeats Three per path and method; not independent samples Sampled audit MoveIt/FCL at 250 Hz plus original waypoints Outcomes Certification, audit false-safe, evaluations, runtime, rejection
+
+a computable maximum refinement depth. VI. S IMULATION STUDY 
+
+A. Simulation Model and Trajectory Pipeline 
+
+We used the six-degree-of-freedom AgileX PIPER model with its official electric gripper. Offline trajectory generation and replay ran on Ubuntu 22.04/WSL2 with ROS 2 Humble, MoveIt 2, and the PIPER URDF/SRDF model files. MoveIt’s va-lidity service checked endpoints for self-collision and collision with the scene. The default geometric::RRTConnect 
+
+planner from the Open Motion Planning Library (OMPL) generated paths, which were then time-parameterized. Each OMPL trajectory was reconstructed by piecewise-cubic Hermite interpolation and checked on a 50 Hz grid before acceptance. 
+
+B. Dataset, Pairing, and Generation Failures 
+
+The fixed dataset, recorded as Stage B, comprised four scenes: open, easy window, medium window, and easy shelf. Each scene contained 20 independent start–goal pairs, giv-ing 80 independent units in total. Each pair produced an 
+
+ompl_planned trajectory and a direct_smoothstep 
+
+trajectory with the same endpoints and duration. The direct trajectory used zero endpoint velocities and served as a control. The 115 generation attempts included nine invalid starts, 16 invalid goals, six planning failures, and four Hermite recheck failures. All 35 failures remain in the records; certification rates use the 160 trajectories from the 80 accepted pairs (Table I). 
+
+C. Sampled MoveIt/FCL Audit and Computational Timing 
+
+We audited the trajectories separately with MoveIt and the Flexible Collision Library (FCL), using the official collision geometry instead of the capsule model. The audit checked a 250 Hz time grid and all original waypoints, totaling 158051 states across the 160 trajectories. A trajectory was sampled-clear if no collision was detected at those states. An FCL-detected false-safe was a trajectory certified by LARC despite an audit-detected collision. A conservative rejection was a sampled-clear trajectory that LARC did not certify. These definitions are relative to sampled checks, which cannot exclude collisions between audit states. The three certifiers ran in a randomized order with seed 20270824. We timed each method three times per trajectory and used its within-trajectory median runtime. Paired speedup                       
+
+> TABLE II OVERALL RESULTS ON THE FIXED TRAJECTORY DATASET .
+> Metric Value Comparison or boundary Independent pairs 80 Two trajectories per pair Trajectories 160 40 per scene Certified 112 Fine 112; coarse 70 Disagreement with fine 0/160 Same certificate model FCL-detected collision 21 Direct controls only FCL-detected false-safe 0/21 158051 audited states Conservative rejection 27/139 (19.4%) Relative to the sampled audit Interval evaluations 20328 Fine 81920; ratio 0.248 Marginal median runtime 81.8 ms Fine 801.4 ms Median paired speedup 10 .28 ×Median trajectory-level ratio
+
+was the fixed-fine runtime divided by the LARC runtime for that same trajectory. The reported speedup is the median of these 160 ratios, rather than the ratio of the two methods’ marginal medians. Timing repeats were technical measurements and did not increase the sample size. All comparisons are descriptive; we did not compute cluster-based confidence intervals or significance tests for the 80 start-goal pairs. VII. R ESULTS 
+
+A. Decision Agreement and Sampled Audit 
+
+LARC, fixed-fine, and fixed-coarse certified 112, 112, and 70 trajectories, respectively (Table II). LARC and fixed-fine agreed on all 160 decisions under the shared certificate model. This observed agreement concerns the two certifiers, rather than an independently known continuous-time collision status. The audit detected collisions in 21 direct-control trajectories and none of the 80 OMPL trajectories. LARC certified none of those 21 controls, yielding zero FCL-detected false-safe trajectories in this dataset. Among the 139 sampled-clear trajectories, 27 remained uncertified, giving a conservative-rejection rate of 19.4%. The rates were 22/80 (27.5%) for OMPL trajectories and 5/59 (8.5%) for sampled-clear direct trajectories. 
+
+B. Interval Work and Runtime 
+
+Fixed-fine evaluated 512 intervals per trajectory, totaling 81920 interval evaluations. LARC required 20328 evaluations, a ratio of 0.248 and a 75.2% reduction (Fig. 4). The marginal median runtimes were 81.8 ms for LARC and 801.4 ms for fixed-fine; the median paired speedup was 10 .28 ×. Absolute times apply to the current Python implementation and experi-mental workstation. 
+
+C. Scene Dependence 
+
+The computational savings varied across the four scenes (Table III; Fig. 3). All 40 open-scene trajectories passed at the root, giving an evaluation ratio of 0.002 and a median paired speedup of 260 .31 ×. The three scenes with obstacles required more refinement, with evaluation ratios from 0.223 to 0.392. Their median paired speedups ranged from 3.14 × for the medium window to 11 .58 × for the easy window. 5
+
+Fig. 3. Recorded trajectories in the four simulation scenes. For each scene, the displayed trajectory has the adaptive evaluation count closest to the median of its 40 trajectories; ties are resolved by trajectory ID. Each panel shows capsule poses at t = 0 , T h/2, T h, the gripper-base path, world axes, and static AABBs. These pose snapshots omit interval motion inflation. The orthographic views are deterministic renderings of recorded data, not RViz screenshots. TABLE III RESULTS BY SCENE . FCL: AUDIT -DETECTED COLLISIONS ; C ERT .: 
+
+> CERTIFIED
+
+; R EJ .: CONSERVATIVE REJECTIONS ; E VAL .: EVALUATION RATIO TO FIXED -FINE ; S PEED : MEDIAN PAIRED SPEEDUP . E ACH COUNT REFERS TO TRAJECTORIES .                             
+
+> Scene NFCL Cert. Rej. Eval. Speed Open 40 040 0 0.002 260 .31 ×
+> Easy window 40 529 6 0.223 11 .58 ×
+> Medium window 40 820 12 0.376 3.14 ×
+> Easy shelf 40 823 9 0.392 4.18 ×
+> Overall 160 21 112 27 0.248 10 .28 ×
+
+VIII. D ISCUSSION 
+
+Stopping refinement at passing intervals reduced computation without changing the geometric model. This comparison isolates temporal allocation; it does not rank occupancy rep-resentations or end-to-end planners. The obstacle-free control passed at the root and produced the largest speedup. The medium-window and easy-shelf speedups of 3.14 × and 4.18 ×
+
+better represent the tested cluttered settings. The 27 conservative rejections expose limitations shared by both fine-resolution certifiers. Capsule fitting, ancestor-joint bounds, and the 10 mm margin can prevent certification of sampled-clear trajectories. Collisions between audit samples are another possible cause of non-certification. These effects were not separated, so the 19.4% rejection rate is not a true false-negative rate. OMPL and direct subgroup comparisons are also descriptive because their paths differ despite matched endpoints and duration. The continuous-time guarantee remains conditional on mesh containment, valid motion bounds, and a static obstacle model. The sampled audit tests the implemen-tation at discrete states but cannot validate those conditions over the full trajectory. Extending the certificate to tracking error, moving obstacles, or continuous-time self-collision would require additional bounds beyond those evaluated here. 6Open Window easy Window medium Shelf easy 0510 15 20 25 30 35 40           
+
+> Trajectories (n=40 per scene)
+> 40 29 20 23 612 9588
+> (a) Outcomes vs sampled FCL audit
+> Open Window easy Window medium Shelf easy 0.0 0.2 0.4 0.6 0.8 1.0
+> Interval-evaluation ratio
+> 0.002 0.223 0.376 0.392 overall 0.248
+> (b) Adaptive / fixed-fine work
+> Open Window easy Window medium Shelf easy 100
+> 101
+> 102
+> Fixed-fine / LARC time (log scale)
+> open circles: trajectories orange diamonds: medians
+> (c) Paired runtime speedup
+> Sampled clear / certified Sampled clear / uncertified Sampled collision / uncertified Sampled collision / certified
+
+Fig. 4. Results for all 160 PIPER trajectories. (a) Outcomes relative to the 250 Hz sampled MoveIt/FCL audit. (b) LARC-to-fixed-fine interval-evaluation ratio. (c) Paired fixed-fine-to-LARC runtime ratio on a logarithmic axis; circles denote trajectories and diamonds scene medians. “Sampled clear” denotes no collision detected by the audit; “uncertified” denotes failure to obtain a LARC certificate. All trajectories are included at their measured values. 
+
+IX. C ONCLUSION 
+
+LARC checks planned manipulator trajectories by refining only intervals whose clearance tests are inconclusive. Midpoint capsule enclosures and exact Hermite speed bounds provide continuous-time external-obstacle clearance under the stated containment and static-scene assumptions. On 160 PIPER trajectories from 80 start-goal pairs, LARC matched all fixed-fine decisions using 24.8% of the interval evaluations, with a median paired speedup of 10 .28 ×. LARC certified none of the 21 direct controls with audit-detected collisions, but left 27 of 139 sampled-clear trajectories uncertified. These results show that adaptive refinement reduces certification work while retaining the limitations of the shared geometric model. Tighter link enclosures and bounds for tracking error, moving obstacles, and continuous-time self-collision are needed to extend the present method. REFERENCES [1] G. Mengaldo, F. Renda, S. L. Brunton, M. B¨ acher, M. Calisti, C. Duriez, G. S. Chirikjian, and C. Laschi, “A concise guide to modelling the physics of embodied intelligence in soft robotics,” Nature Reviews Physics , vol. 4, pp. 595–610, 2022. [2] Z. Kappassov, J.-A. Corrales, and V. Perdereau, “Tactile sensing in dexterous robot hands—review,” Robotics and Autonomous Systems ,vol. 74, pp. 195–220, 2015. [3] I. Andrussow, H. Sun, K. J. Kuchenbecker, and G. Martius, “Minsight: A fingertip-sized vision-based tactile sensor for robotic manipulation,” 
+
+Advanced Intelligent Systems , vol. 5, no. 8, p. 2300042, 2023. [4] Y. Feng, Q. Wang, Y. Liu, J. Li, S. Hou, X. Yang, Z. Li, Y. Yi, M. Chen, G. Zhang, H. Sun, and W. J. Li, “A soft mechanoluminescent skin for high-resolution optical tactile sensing in human–machine interaction,” 
+
+Advanced Science , vol. 13, no. 42, p. e75507, 2026. [5] Y. Feng, Y. Zhang, Y. Liu, G. Zhang, X. Yu, J. Zhou, and W. J. Li, “A bioinspired soft magnetociliary tactile sensor for direction-sensitive interaction sensing,” IEEE Trans. Instrum. Meas. , vol. 75, p. 9531313, 2026. [6] R. Deimel and O. Brock, “A novel type of compliant and underactuated robotic hand for dexterous grasping,” The International Journal of Robotics Research , vol. 35, no. 1–3, pp. 161–185, 2016. [7] H. Wu, Y. Wang, Y. Feng, J. Liu, J. Li, J. Zhou, and H. Dong, “DexLink hand: A compact, affordable, 16-DOF linkage-driven hand with human-like dexterity,” 2026, arXiv preprint arXiv:2606.17418. [8] H. Wu, Y. Wang, Y. Feng, Y. Li, J. Guo, J. Liu, and J. Zhou, “SyLink hand: A synergy-inspired linkage-driven anthropomorphic hand for human-like dexterity,” 2026, arXiv preprint arXiv:2606.14250. [9] J. Zhou, J. Shu, T. Pan, P. Zhu, J. An, H. Zhang, J. Huang, U. Kaur, X. Ma, and M. Tomizuka, “Everything-grasping gripper: A universal gripper with synergistic suction–grasping capabilities for cross-scale and cross-state manipulation,” Soft Robotics , vol. 13, no. 2, pp. 178–189, 2026. [10] J. Zhou, J. Huang, Q. Dou, P. Abbeel, and Y. Liu, “A dexterous and compliant (DexCo) hand based on soft hydraulic actuation for human-inspired fine in-hand manipulation,” IEEE Trans. Robot. , vol. 41, pp. 666–686, 2025. [11] P. Holmes, S. Kousik, B. Zhang, D. Raz, C. Barbalata, M. Johnson-Roberson, and R. Vasudevan, “Reachable sets for safe, real-time manipulator trajectory design,” 2020. [12] J. Michaux, A. Li, Q. Chen, C. Chen, B. Zhang, and R. Vasudevan, “Safe planning for articulated robots using reachability-based obstacle avoidance with spheres,” 2024. [13] Y. Kwon, J. Michaux, S. Isaacson, B. Zhang, M. Ejakov, K. A. Skinner, and R. Vasudevan, “Conformalized reachable sets for obstacle avoidance with spheres,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) , 2025, pp. 12 877–12 884. [14] F. Stulp, A. Fedrizzi, F. Zacharias, M. Tenorth, J. Bandouch, and M. Beetz, “Combining analysis, imitation, and experience-based learning to acquire a concept of reachability in robot mobile manipulation,” in Proc. IEEE-RAS Int. Conf. Humanoid Robots , 2009, pp. 161–167. [15] F. Zacharias, W. Sepp, C. Borst, and G. Hirzinger, “Using a model of the reachable workspace to position mobile manipulators for 3-d trajectories,” in Proc. IEEE-RAS Int. Conf. Humanoid Robots , 2009, pp. 55–61. [16] A. Makhal and A. K. Goins, “Reuleaux: Robot base placement by reachability analysis,” in 2018 Second IEEE International Conference on Robotic Computing (IRC) , 2018, pp. 137–142. [17] S. Kim and J. Perez, “Learning reachable manifold and inverse map-ping for a redundant robot manipulator,” in 2021 IEEE International Conference on Robotics and Automation (ICRA) , 2021, pp. 4731–4737. [18] M. Rudorfer, “RM4D: A combined reachability and inverse reachability map for common 6-/7-axis robot arms by dimensionality reduction to 4d,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) , 2025, pp. 7689–7695. [19] R. F. Cavelli, P. D. C. Cheng, and M. Indri, “Modeling the reachability space of robotic manipulators through ellipsoid equations,” Journal of Intelligent & Robotic Systems , vol. 111, p. 90, 2025. [20] X. Zhu, H. Liu, Q. Li, Z. Cai, X. Chen, Z. Yu, Q. Huang, and A. Kheddar, “Structural analysis and design of humanoid arms from human arm reachable workspace,” IEEE Robot. Autom. Lett. , vol. 10, no. 2, pp. 1233–1240, 2025. [21] X. Lou, Y. Yang, and C. Choi, “Learning to generate 6-DoF grasp poses with reachability awareness,” in Proc. IEEE Int. Conf. Robot. Autom. ,2020, pp. 1532–1538. [22] I. Akinola, J. Xu, S. Song, and P. K. Allen, “Dynamic grasping with reachability and motion awareness,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. , 2021, pp. 9422–9429. [23] X. Feng, T. Horii, and T. Nagai, “Predictive reachability for embodiment selection in mobile manipulation behaviors,” IEEE Robot. Autom. Lett. ,vol. 10, no. 3, pp. 2966–2973, 2025.

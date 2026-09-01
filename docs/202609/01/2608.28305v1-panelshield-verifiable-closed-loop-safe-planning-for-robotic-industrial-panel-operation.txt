@@ -1,0 +1,270 @@
+Title: PanelShield: Verifiable Closed-Loop Safe Planning for Robotic Industrial Panel Operation
+
+URL Source: https://arxiv.org/pdf/2608.28305v1
+
+Published Time: Mon, 31 Aug 2026 00:59:24 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# PanelShield: Verifiable Closed-Loop Safe Planning for Robotic Industrial Panel Operation 
+
+Guipeng Xin, Jiahe Xu, Chenhui Wan, Jie Liu, Youmin Hu, and Zhongxu Hu* 
+
+School of Mechanical Science and Engineering Huazhong University of Science and Technology 
+
+Wuhan, China 
+
+{xinguipeng, jiahe xu, wanchenhui, jie liu, youmhwh, zhongxu hu }@hust.edu.cn 
+
+Abstract —Industrial panel operation is knowledge-intensive and safety-critical. Beyond control recognition and action gen-eration, execution must satisfy constraints in operation manuals and safety regulations. While foundation-model-based planners show strong semantic capability, they typically lack computable, localizable, and reproducible mechanisms for violation detection and repair. To address this, we propose PanelShield , a verifiable closed-loop safety planning framework for manual-guided indus-trial panel operation. The framework generates parameterized action primitive sequences from task-relevant manual evidence 
+
+and applies dual formal verification with LTL and a Safety FSM to enforce cross-step temporal correctness and local transition legality. When violations occur, it outputs a structured coun-terexample with the earliest violating step and cause, enabling targeted repair and re-verification. We build a multi-level long-horizon planning benchmark covering three representative industrial device panels, and eval-uate the framework in simulation and real-world robotic ex-periments. Results show that PanelShield improves complex safety-constrained task performance over foundation-model-only planning baselines while reducing the violation rate to 2.7%, with 4.1 s total latency. Real-world experiments demonstrate end-to-end feasibility. Overall, PanelShield offers a verifiable approach to robotic panel operation that balances flexibility, safety, and auditability. 
+
+Index Terms —Industrial panel operation, Robotic manipula-tion, Task planning 
+
+I. I NTRODUCTION 
+
+Many critical devices in industrial production use operation panels as the primary human–machine interface (HMI). Op-erators monitor and control devices through knobs, buttons, and indicator signals, directly affecting process stability and safety [1]. In high-risk scenarios such as energized mainte-nance, fault recovery, and hazardous-area inspection, enabling robots to perform panel interaction has clear practical value. However, industrial panel operation is not merely a control-detection problem. Its core difficulty is the strong coupling between procedures and device states: the same control may require different action orders, allowable ranges, and interlock conditions under different modes or stages, while operations must satisfy strict preconditions, prohibitions, temporal depen-dencies, and threshold constraints specified in manuals and safety regulations [2]. Because these constraints are scattered across long documents, raw-text planning context struggles 
+
+*Corresponding Author (Email: zhongxu hu@hust.edu.cn) 
+
+Fig. 1. Core challenge of industrial panel operation. Dispersed procedures and safety constraints jointly form a procedural constraint barrier that is difficult to handle directly. Traditional script-based methods are safe but rigid, while foundation-model-based planning is flexible but prone to violations. Our goal is to preserve flexibility while enabling verifiable safety planning with closed-loop error correction. 
+
+to maintain long-horizon consistency and traceability, falling short of industrial requirements for verifiability , auditability ,and correctability .Existing approaches face a trade-off. Expert workflows and rule scripts are auditable but tightly coupled to specific devices, leading to high migration and maintenance cost [3]. Foundation-model-based methods (e.g., VLM/LLM/VLA) offer semantic understanding and long-horizon reasoning [4]– [8], but generated plans may violate interlocks, omit state checks, and fail to indicate which step violates which rule .A deployable system therefore needs computable procedural constraints and localizable feedback for closed-loop correc-tion. To address this, we propose PanelShield , a verifiable closed-loop safety planning mechanism for manual-guided indus-trial panel operation. PanelShield generates a parameterized action-primitive sequence from task-relevant manual evidence ,constructs a computable execution trace, and performs dual formal verification: LTL checks global temporal correctness, while a Safety FSM checks local transition legality (e.g., modes and interlocks). When verification fails, the system outputs a localizable violation report with the rule identi-fier and earliest violating step, which is converted into a repair instruction for targeted revision and re-verification. This yields a counterexample-driven “generate–verify–repair– arXiv:2608.28305v1 [cs.RO] 28 Aug 2026 re-verify” loop, turning safety from post-hoc judgment into an executable pre-action gate. The main contributions of this work are as follows: 1) Verifiable closed-loop safety planning paradigm: 
+
+We propose PanelShield, a plan-level safety assurance framework that grounds manual procedures into com-putable constraints. 2) Dual formal verification with localizable counterex-amples: We combine LTL and Safety FSM for com-plementary checking and produce rule- and step-level violation reports to enable targeted repair. 3) Validation on industrial long-horizon tasks: We val-idate the method on a multi-level long-horizon bench-mark and a real robotic arm platform, showing improved task success and reduced safety violations under accept-able latency. II. R ELATED WORK 
+
+A. Foundation Models for Long-Horizon Planning 
+
+VLM/LLM-driven high-level planning has lowered the bar-rier to task modeling by decomposing natural-language goals into multi-step action structures and showing semantic gener-alization in open environments [9], [10]. To improve long-horizon reliability, prior work has explored self-correction, structured plan representations, and task-and-motion planning (TAMP) integration [6], [11], [12]. However, industrial panel operation has strong procedural constraints and strong state dependency ; the challenge is not only generating steps, but ensuring they are executable under rules. In generative frameworks, constraints are often prompt preferences or implicit priors, producing coherent but unverifiable plans. The central question is therefore: how to transform procedural knowledge from textual reminders into computable objects, so that plan compliance can be explicitly decided? B. Task-Level Safety for LLM Agents 
+
+Compared with motion-level collision risks, task-level safety issues more often stem from incorrect operation orders, unsatisfied preconditions, and violations of procedural prohi-bitions. Existing work on task-level safety for LLM agents can be roughly grouped into three directions: (i) formalizing safety requirements and checking them during planning/execution [13]–[15]; (ii) using safety critics or multi-model collaboration to evaluate and revise plans; and (iii) applying semantic filtering or refusal mechanisms before generation to block high-risk goals [16]. These approaches provide useful tools for injecting safety into LLM-based agents, but important gaps remain in industrial procedural settings. First, many methods can identify that a plan is unsafe, but cannot reliably provide a localizable counterexample 
+
+(i.e., which step violates which rule), making targeted local repair difficult. Second, industrial panel operation requires both global cross-step temporal constraints and local legality checks for mode/interlock transitions, which are often not well covered by a single formalism. III. M ETHODOLOGY 
+
+We propose PanelShield , a formal-verification-based safety assurance mechanism that converts key procedural constraints in task-relevant manual evidence into computable LTL/FSM rules and produces a final executable safe plan through a closed-loop process. The rule base is compiled for each panel family from manuals and expert-audited templates; online planning only activates task-relevant clauses, reducing but not eliminating manual adaptation effort for new devices. Through dual checking and counterexample-guided repair, PanelShield captures procedural dependencies and transition boundaries, reducing risks from missing safety clauses or incorrect mode transitions while providing auditable and reproducible safety guarantees. At each planning step, PanelShield takes a user instruction 
+
+q, an observable device snapshot zt (e.g., mode bits, interlock flags, alarms, and key readings), and task-relevant manual evidence Mt (procedure snippets and safety clauses relevant to the task), and outputs a verified safe plan π⋆. To avoid verifica-tion degenerating into re-interpreting natural-language plans, it represents each candidate plan as a sequence of parameterized action primitives and constructs a computable execution run for verification. It then performs two complementary checks: temporal constraint checking and automaton legality checking, and generates structured counterexamples when violations are detected to drive targeted repair. 
+
+A. Evidence-Conditioned Planning 
+
+A central difficulty in verifying industrial procedures is that natural-language plans lack stable decidable semantics, caus-ing “verification” to rely on re-interpreting text with another model and making step-level localization unreliable. Formal safety verification, however, requires inputs with consistent parsable semantics. To directly bind violation localization and repair constraints to plan steps, PanelShield first generates a candidate plan conditioned on (q, z t, M t):
+
+π(0) = Plan( q, z t, M t). (1) The candidate plan at the r-th iteration is uniformly repre-sented as a sequence of parameterized action primitives: 
+
+π(r) =
+
+h
+
+η(r)1 , η (r)2 , . . . , η (r)
+
+> Tr
+
+i
+
+, (2) where 
+
+η(r) 
+
+> i
+
+=
+
+
+
+u(r) 
+
+> i
+
+, θ (r)
+
+> i
+
+
+
+, u(r) 
+
+> i
+
+∈ U . (3) Here, U denotes the primitive set (e.g., mode-switch ,
+
+safety-check , control-trigger ), and θ(r) 
+
+> i
+
+denotes primitive-specific parameters (e.g., target state/setpoint, di-rection, duration). This representation provides explicit step boundaries, which serve as anchors for stable back-references to the earliest violating step .To connect the action sequence and procedural constraints to a decidable carrier, we abstract the device snapshot zt into a discrete symbolic configuration s ∈ S and use a conservative Fig. 2. PanelShield core loop for verifiable closed-loop planning in industrial panel operation. A VLM-based planner generates a candidate plan from instruction, device state, and task-relevant manual evidence; the plan is then converted into a computable run and checked by complementary LTL-based temporal verification and Safety-FSM-based legality verification. Violations trigger structured counterexample generation and feedback-guided repair, and the loop repeats until a final safe executable plan is obtained. 
+
+or approximate transition operator to model state evolution after primitive execution: 
+
+s(r)0 = Abs( zt), (4) 
+
+s(r) 
+
+> i+1
+
+= Trans 
+
+
+
+s(r) 
+
+> i
+
+, η (r)
+
+> i+1
+
+
+
+, i = 0 , . . . , T r − 1. (5) We then construct the execution run 
+
+R(r) =
+
+D
+
+s(r)0 , η (r)1 , s (r)1 , . . . , η (r) 
+
+> Tr
+
+, s (r)
+
+> Tr
+
+E
+
+. (6) Here, Abs( ·) maps observations to semantic quantities such as modes, interlocks, alarms, and key parameter intervals, while Trans( ·) provides consistent and decidable transition semantics. This run is not intended to certify continuous dynamics or perception correctness; ambiguous observations are conservatively treated as failed checks or trigger re-observation. It therefore supports procedural checking and violation localization while avoiding unsafe approval under uncertain symbolic states. 
+
+B. Dual Formal Checking 
+
+Safety requirements in industrial procedures can generally be divided into two types. The first type is global temporal properties across steps, such as preconditions that must be sat-isfied before an operation, or operations that become forbidden after certain states occur. The second type is local transition legality under modes/interlocks, such as actions disallowed under a given mode or transitions that must pass through intermediate states. To cover both, PanelShield executes a temporal checker and an automaton checker in parallel on 
+
+R(r), respectively enforcing global temporal correctness and local transition legality, so that violations can be explicitly represented in the form of rule–location–cause .For global temporal properties, let P be the set of atomic propositions and define a labeling function 
+
+Λ : S → 2P , (7) which maps symbolic configurations in the run to proposition sets. This yields a proposition sequence 
+
+y(r) =
+
+h
+
+Λ( s(r)0 ), Λ( s(r)1 ), . . . , Λ( s(r) 
+
+> Tr
+
+)
+
+i
+
+. (8) Let G denote the set of global temporal constraints induced and compiled from task-relevant manual evidence. The temporal checker returns 
+
+TempCheck 
+
+
+
+y(r), G
+
+
+
+=
+
+(
+
+OK , y(r) |= G,
+
+(g⋆, j ⋆), otherwise , (9) where g⋆ identifies the violated constraint and j⋆ gives the earliest violation index, enabling direct formal localization of 
+
+which rule is violated and around which step the violation occurs. For local transition legality, we use a safety automaton A
+
+to represent allowable action triggers and transition structures under modes/interlocks, and check whether each step in R(r)
+
+is legal: 
+
+AutoCheck 
+
+
+
+R(r), A
+
+
+
+=
+
+(
+
+OK , if all steps are legal ,
+
+(j†, c †), otherwise ,
+
+(10) where j† returns the first illegal step and c† provides a human-readable cause (e.g., missing intermediate mode or action forbidden under interlock ), which directly supports subsequent repair. The dual-checking design gives the verification output a structured rule–location–cause form and lays the foundation for closed-loop repair. C. Counterexample-Guided Repair Loop 
+
+A one-shot verdict on a candidate plan is insufficient for knowledge-intensive long-horizon tasks. When a violation occurs, the system must convert verification results into action-able repair signals so that replanning becomes a constrained local modification process rather than unconstrained rewriting. To this end, PanelShield uniformly packages failures from the temporal checker and automaton checker into a structured counterexample and uses it to constrain the next planning iteration, improving convergence and plan stability through minimal local edits. When either TempCheck or AutoCheck fails, PanelShield merges the failure outputs into a structured counterexample 
+
+Ω(r) = {tag , idx , rule , cause , support , edit }, (11) where idx points to the earliest violating step, rule cor-responds to g⋆ or an automaton constraint, cause is the explanation, support links back to the relevant clause frag-ments in Mt, and edit specifies the direction of minimal local modification (e.g., inserting a required check/transition, reordering steps, or replacing an illegal primitive). Conditioned on the counterexample, the planner generates the next candidate plan: 
+
+π(r+1) = Plan( q, z t, M t, Ω(r)). (12) PanelShield then repeats the loop of run construction → dual checking → counterexample generation → targeted repair 
+
+until both checks return OK or the iteration budget is reached, and finally outputs π⋆.Through this counterexample-guided closed loop, Pan-elShield upgrades task-level safety from one-shot prompt-ing/filtering to a localizable, reproducible, and convergent error-correction mechanism, thereby reducing high-risk ex-ecution errors caused by incorrect task ordering, missing preconditions, or illegal transitions. IV. E XPERIMENTS 
+
+A. Benchmark Setup 
+
+For evaluation, we build an industrial panel operation plan-ning benchmark covering three representative device panels: a Variable Frequency Drive (VFD) controller, a Power Manage-ment System, and a Hydraulic Control Unit. For each device category, we provide a complete operation manual, safety regulations, and technical specification documents. To evaluate retrieval and planning under realistic document conditions, we additionally define task-relevant manual evidence : for each task instruction, we annotate the document content directly relevant to planning, and use it to assess the consistency between retrieved evidence and generated plans. To reflect task complexity, we design a three-level natural-language instruction set: Level-1 (single-step adjustment), 
+
+Level-2 (multi-step sequential operation), and Level-3 (com-posite tasks with explicit safety constraints). The final bench-mark contains 300 rigorously validated user instructions, each 
+
+> Fig. 3. Example of counterexample-guided closed-loop repair in PanelShield.
+
+paired with an expert-defined reference task plan sequence as ground truth. For real-world experiments, we use a motor drive controller simulator as the physical target device, which provides ob-servable responses and state feedback for typical control com-mands. The robotic system is implemented with a ROS 2 ar-chitecture and includes three modules: visual perception, task planning, and motion control. The perception module uses a RealSense D435i depth camera for control detection and pose estimation. The planning module receives user instructions and generates task plans using online-retrieved safety constraints and operational evidence. The motion control module uses the official UR3 controller for trajectory planning and precise interaction with target controls. In simulation, Success Rate measures task completion within a maximum reasoning budget, while Violation Rate 
+
+/ Compliance Rate assess execution safety. We also re-port average repair iterations ( Repair ) and runtime overhead (Latency ) to evaluate convergence and online usability. Real-world experiments validate end-to-end deployability, focusing on reasoning and execution time in chained tasks. 
+
+B. Experimental Results Analysis 1) Simulation Planning Baselines: As illustrated in Fig. 3, the case study uses the instruction “low-speed forward cold start in local mode” . The system first retrieves task-relevant 
+
+manual evidence , reads the current device state, and generates an initial task sequence with a VLM. Before execution, LTL checking and Safety FSM verification detect a violation of the rule “direction switching must return to OFF first” , so the plan is rejected. The system then enters a closed-loop repair stage: it feeds back the violation cause and relevant rules to the VLM, re-generates the plan, and re-verifies it until a safe plan is obtained. Fig. 4 reports the simulation planning baseline results. We compare four representative methods: LLM-only , which directly generates and executes an action sequence from the instruction and manual context; Prompt-Safety , which en-codes key procedural rules as soft prompt constraints; Post-hoc Judge , which checks compliance after planning using an LLM/rule-based reviewer; and Ours (PanelShield) , which uses dual checking with LTL and a Safety FSM, and outputs the earliest violating step and cause to drive targeted repair. PanelShield achieves the best overall performance on complex-task success and safety. Its success rates on L1/L2/L3 Fig. 4. Simulation planning baseline results on industrial panel operation tasks. 
+
+are 93.0% / 84.0% / 43.0% . In particular, on L3 tasks, it reaches the highest success rate (43.0% ), improving over LLM-only (22.0%), Prompt-Safety (33.0%), and Post-hoc Judge (39.0%) by 21.0 , 10.0 , and 4.0 percentage points, respectively. It also achieves the lowest violation rate ( 2.7% ), outperforming Prompt-Safety (8.3%) and Post-hoc Judge (3.5%). This residual rate is not acceptable for unattended safety-critical deployment, but it highlights the need to further strengthen rule coverage, perception grounding, and repair robustness. Overall, computable constraints with counterexample-guided repair improve success while reducing violations in complex panel planning. 
+
+TABLE I REPAIR ITERATIONS AND PLANNING TIME OVERHEAD RESULTS .Method Repair ↓ Total Latency ↓ Planning Time ↓ Verification Time ↓                   
+
+> (avg. iters) (s) (s) (s) LLM-only -1.7 1.7 -Prompt-Safety -2.2 2.2 -Post-hoc Judge 3.9 4.5 3.4 1.1
+> Ours (PanelShield) 3.6 4.1 3.5 0.6
+
+2) Repair Iterations and Planning Time Overhead: As shown in Table I, only Post-hoc Judge and our method 
+
+provide explicit repair. Post-hoc Judge requires more iterations because, without the earliest violating step and violation cause , it often rewrites the whole plan. In contrast, our LTL and Safety FSM checks produce structured counterexamples and restrict repair to local revisions near the violation, yielding fewer iterations and more stable convergence. For time overhead, LLM-only and Prompt-Safety are fastest because they omit formal verification. Post-hoc Judge 
+
+is slowest due to extra review and repeated rewrites. Although our method introduces dual verification (LTL + Safety FSM), the checkers are lightweight and faster than LLM-based judg-ing, keeping latency acceptable while improving safety. Overall, the computation cost of formal verification is con-trollable, and structured counterexample-guided repair reduces unnecessary regeneration, yielding a better safety trade-off. 
+
+3) Ablation on Verification and Repair Modules: Table II presents an ablation study of the verification and repair modules from three aspects: violation localization, violation-source decomposition, and repair locality. Earliest-violation Step denotes the first action index where a formal constraint violation is triggered, reflecting how early the system can 
+
+TABLE II ABLATION RESULTS ON VIOLATION LOCALIZATION , VIOLATION DECOMPOSITION , AND REPAIR LOCALITY .Method Earliest-violation Step ↓ LTL Violations ↓ FSM Violations ↓ Avg Edit Size / Repair ↓                       
+
+> (steps) (%) (%) (steps) Full (LTL + FSM + Repair) 2.1 2.0 0.7 1.3
+> w/o LTL (FSM + Repair) 2.4 -1.6 1.8 w/o FSM (LTL + Repair) 2.5 2.8 -1.9 w/o Repair (LTL + FSM, no repair) 2.0 2.1 0.8 -Post-hoc Judge 3.6 2.4 1.1 3.0
+
+Fig. 5. Real-world chained-task execution example. 
+
+expose errors in the execution chain. LTL/FSM Violations (%) 
+
+report the proportions of violations detected by LTL and Safety FSM, respectively. Avg Edit Size / Repair measures the average number of action-level edits per repair iteration. The full method ( Full ) achieves the lowest violation rates under both checkers, showing that joint LTL + Safety FSM verification can constrain complementary sources of unsafe plans. Removing either verifier increases the burden on the other and leads to higher violation rates. For example, the 
+
+Earliest-violation Step rises to 2.4 and 2.5 for w/o LTL and 
+
+w/o FSM , indicating weaker ability to consistently truncate unsafe plans at early stages. Meanwhile, w/o Repair can still detect violations relatively early through dual verification, but cannot form a localization– repair–verification closed loop because counterexample-guided repair is disabled. Post-hoc Judge shows a much later 
+
+Earliest-violation Step and the largest average repair edit size, indicating a tendency toward late holistic review and plan rewriting rather than targeted local repair. In contrast, the full method yields the smallest average edit size, consistent with the repair-iteration and latency results, confirming that structured localization improves convergence and repair efficiency. 
+
+4) Real-World End-to-End Experiments: In real-world ex-periments, we evaluate the end-to-end deployability of the proposed method on an actual device, focusing on execution efficiency and long-horizon stability. Before critical transi-tions, state feedback is re-read; ambiguous readings are treated as failed checks rather than trusted inputs. As reported in Table III, inference time is 3.5–5.6 s and execution time is 4.2–10.7 s using GPT-4o as the planner, indicating practical responsiveness for chained execution. As shown in Fig. 5, in the task “Switch source from PANEL to VFD, set speed, then start” , the system demonstrates effective task understanding and decomposition. It identifies the required operation steps, determines execution conditions from the current device state, reuses operation parameters from the previous task, and performs subtask-level checks on critical states. This verifies key states at each stage and helps avoid operation errors. 
+
+TABLE III REAL -WORLD RESULTS ON LONG -HORIZON CHAINED TASKS .Task Inference Time (s) ↓ Execution Time (s) ↓          
+
+> 1. Turn on main power 3.5 5.8 2. Switch low speed under PANEL 4.2 5.8 3. Change the direction to REV 3.8 6.1 4. Perform a jog operation 3.7 4.2 5. Verify READY, then START 5.6 10.7
+
+V. C ONCLUSION 
+
+To address key challenges in industrial panel operation, including dispersed procedural knowledge, strong state cou-pling, and high error cost, we propose PanelShield , a verifiable closed-loop safety planning framework, and validate it in both simulation and real-world robotic execution. Results show that the framework largely preserves performance on low-complexity tasks while significantly improving success rates on high-complexity tasks and reducing violation rates. Real-world case studies further demonstrate that the method can generate procedure-compliant operation sequences and verify critical steps through feedback such as indicator lights and display values, enabling stable chained-task execution on real devices. For deployment in more complex industrial scenarios, three limitations remain. First, new panel families still require expert-audited compilation of manual clauses into LTL/FSM templates; future work should automate evidence extraction while retaining human approval for safety rules. Second, ver-ification is only as reliable as the symbolic state derived from perception, so confidence thresholds, repeated observation, and fail-safe stops are needed under noise or localization errors. Third, residual violations may arise from incomplete rule coverage, planner hallucination, or physical/perception mismatch; in safety-critical operation these cases should block execution rather than be treated as acceptable errors. ACKNOWLEDGMENT 
+
+This work was supported in part by the National Major Sci-ence and Technology Projects of China (No.2025ZD1606204), National Natural Science Foundation of China (No.52575572, No.52575115), National Key R&D Program of China (2024YFE03140003), Science and Technology Program of Hubei Province (2024BEB025), Joint Research Project of the Yangtze River Delta Science and Technology Innovation Com-munity (2024CSJGG1400), UNSW-HUST Global Research & Impact Program (5003100202). REFERENCES [1] D. Mourtzis, J. Angelopoulos, and N. Panopoulos, “The future of the human–machine interface (hmi) in society 5.0,” Future Internet , vol. 15, no. 5, p. 162, 2023. [2] L. Ren, J. Dong, S. Liu, L. Zhang, and L. Wang, “Embodied intelligence toward future smart manufacturing in the era of ai foundation model,” 
+
+IEEE/ASME transactions on mechatronics , vol. 30, no. 4, pp. 2632– 2642, 2024. [3] Z. Pan, J. Polden, N. Larkin, S. Van Duin, and J. Norrish, “Recent progress on programming methods for industrial robots,” Robotics and computer-integrated manufacturing , vol. 28, no. 2, pp. 87–94, 2012. [4] J. Liang, W. Huang, F. Xia, P. Xu, K. Hausman, B. Ichter, P. Florence, and A. Zeng, “Code as policies: Language model programs for embodied control,” arXiv preprint arXiv:2209.07753 , 2022. [5] W. Huang, C. Wang, R. Zhang, Y. Li, J. Wu, and L. Fei-Fei, “Voxposer: Composable 3d value maps for robotic manipulation with language models,” arXiv preprint arXiv:2307.05973 , 2023. [6] Z. Yang, C. Garrett, D. Fox, T. Lozano-P´ erez, and L. P. Kaelbling, “Guiding long-horizon task and motion planning with vision language models,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 16 847–16 853. [7] Y. Hu, F. Lin, T. Zhang, L. Yi, and Y. Gao, “Look before you leap: Unveiling the power of gpt-4v in robotic vision-language planning,” 
+
+arXiv preprint arXiv:2311.17842 , 2023. [8] R. Mon-Williams, G. Li, R. Long, W. Du, and C. G. Lucas, “Embodied large language models enable robots to complete complex tasks in unpredictable environments,” Nature Machine Intelligence , vol. 7, no. 4, pp. 592–601, 2025. [9] X. Fu, M. Zhang, P. Han, H. Zhang, L. Shi, H. Tang et al. , “What can vlms do for zero-shot embodied task planning?” in ICML 2024 Workshop on LLMs and Cognition , 2024. [10] K. Shirai, C. C. Beltran-Hernandez, M. Hamaya, A. Hashimoto, S. Tanaka, K. Kawaharazuka, K. Tanaka, Y. Ushiku, and S. Mori, “Vision-language interpreter for robot task planning,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2024, pp. 2051–2058. [11] S. Wang, M. Han, Z. Jiao, Z. Zhang, Y. N. Wu, S.-C. Zhu, and H. Liu, “Llmˆ 3: Large language model-based task and motion planning with motion failure reasoning,” in 2024 IEEE/RSJ international conference on intelligent robots and systems (IROS) . IEEE, 2024, pp. 12 086–12 092. [12] J. Ao, F. Wu, Y. Wu, A. Swiki, and S. Haddadin, “Llm-as-bt-planner: Leveraging llms for behavior tree generation in robot task planning,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 1233–1239. [13] Z. Yang, S. S. Raman, A. Shah, and S. Tellex, “Plug in the safety chip: Enforcing constraints for llm-driven robot agents,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2024, pp. 14 435–14 442. [14] Y. Wu, Z. Xiong, Y. Hu, S. S. Iyengar, N. Jiang, A. Bera, L. Tan, and S. Jagannathan, “Selp: Generating safe and efficient task plans for robot agents with large language models,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2025, pp. 2599–2605. [15] A. A. Khan, M. Andrev, M. A. Murtaza, S. Aguilera, R. Zhang, J. Ding, S. Hutchinson, and A. Anwar, “Safety aware task planning via large language models in robotics,” in 2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2025, pp. 21 024–21 031. [16] S. Yin, X. Pang, Y. Ding, M. Chen, Y. Bi, Y. Xiong, W. Huang, Z. Xiang, J. Shao, and S. Chen, “Safeagentbench: A benchmark for safe task planning of embodied llm agents,” arXiv preprint arXiv:2412.13178 ,2024.
