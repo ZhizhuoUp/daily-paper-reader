@@ -6,73 +6,67 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-01
-- 运行时间：2026-09-01 21:43:39 UTC
+- 最新运行日期：2026-09-02
+- 运行时间：2026-09-02 21:40:23 UTC
 - 运行状态：成功
-- 本次总论文数：17
-- 精读区：6
+- 本次总论文数：15
+- 精读区：4
 - 速读区：11
 
 ### 今日简报（AI）
-今日聚焦17篇机器人前沿进展，重点突破机械臂轨迹安全认证与伺服系统实时整形技术。
-推荐关注LARC算法带来的高效可达性验证，以及结合约束型LLM提升复杂操作安全性的新范式。
-建议优先研读高分轨迹规划与在线强化学习论文，掌握构建高精度、高可靠机器人系统的核心方法。
-- 详情：[/202609/01/README](/202609/01/README)
+今日精选 15 篇论文聚焦物理人机交互与强化学习，重点攻克受限环境下的协作安全与非抓取式投掷难题。
+“行为-实现分离”框架与非抓取投掷的 RL 视角为复杂操纵提供了新思路，两项核心研究评分均达 8.0。
+建议关注物理启发模型在柔性物体动力学及异步在线强化学习中的前沿应用。
+- 详情：[/202609/02/README](/202609/02/README)
 
 ### 精读区论文标签
-1. [LARC: Lazy Adaptive Reachability Certification of Robot Manipulator Trajectories](/202609/01/2608.29767v1-larc-lazy-adaptive-reachability-certification-of-robot-manipulator-trajectories)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：机械臂轨迹的连续时间碰撞认证
-2. [Real-Time Reference Shaping for Servo Systems](/202609/01/2608.30825v1-real-time-reference-shaping-for-servo-systems)  
-   标签：评分：9.0/10、query:q8
-   evidence：伺服系统的实时运动规划与轨迹补偿
-3. [Distributed Model-Based Diffusion: Finite Horizon Contraction under Bounded Delay](/202609/01/2608.27685v1-distributed-model-based-diffusion-finite-horizon-contraction-under-bounded-delay)  
+1. [Behavior--Realization Separation for Constrained Physical Human--Robot Interaction](/202609/02/2609.00669v1-behavior--realization-separation-for-constrained-physical-human--robot-interaction)  
+   标签：评分：8.0/10、query:q2
+   evidence：用于受限机器人指令的收缩时界二次规划
+2. [Non-Prehensile Throwing: A Reinforcement Learning Perspective](/202609/02/2609.00771v1-non-prehensile-throwing-a-reinforcement-learning-perspective)  
    标签：评分：8.0/10、query:q3
-   evidence：多智能体系统轨迹优化的采样MPC
-4. [DREAM: Deployment-Time Demonstration Generation via Real-to-Sim for Scalable Policy Adaptation](/202609/01/2608.29078v1-dream-deployment-time-demonstration-generation-via-real-to-sim-for-scalable-policy-adaptation)  
+   evidence：优化机器人操作的关节空间轨迹
+3. [Real-Time Model Predictive Control Algorithms for Autonomous Spacecraft Guidance](/202609/02/2609.00927v1-real-time-model-predictive-control-algorithms-for-autonomous-spacecraft-guidance)  
    标签：评分：8.0/10、query:profile-1
-   evidence：机器人操作的任务与运动规划
-5. [Stochastic Nonlinear Model Predictive Control with Gaussian Mixture Uncertainty Propagation](/202609/01/2608.29272v1-stochastic-nonlinear-model-predictive-control-with-gaussian-mixture-uncertainty-propagation)  
-   标签：评分：8.0/10、query:q2
-   evidence：随机非线性模型预测控制
-6. [Provably Safe Decentralized Contingency MPC under State-Only Information and Limited Sensing for Nonlinear Multi-agent Systems](/202609/01/2608.30874v1-provably-safe-decentralized-contingency-mpc-under-state-only-information-and-limited-sensing-for-nonlinear-multi-agent-systems)  
-   标签：评分：8.0/10、query:q2
-   evidence：多智能体控制的分散式应急MPC
+   evidence：用于航天器引导和交会的实时模型预测控制
+4. [Facet-0: A Robotic Foundation Model for Contact-Rich Precise Manipulation](/202609/02/2609.01596v1-facet-0-a-robotic-foundation-model-for-contact-rich-precise-manipulation)  
+   标签：评分：8.0/10、query:q6
+   evidence：用于高接触精密操作的机器人基础模型
 
 ### 速读区论文标签
-1. [From Multi-Modal Paths to Executable Trajectories: A Trajectory Planning Framework for 4WIS Robots](/202609/01/2608.29108v1-from-multi-modal-paths-to-executable-trajectories-a-trajectory-planning-framework-for-4wis-robots)  
-   标签：评分：8.0/10、query:q3
-   evidence：移动机器人的分段轨迹优化
-2. [Bridging Semantics and Physics with Constrained LLMs for Safe and Trustworthy Robotic Manipulation](/202609/01/2608.29379v1-bridging-semantics-and-physics-with-constrained-llms-for-safe-and-trustworthy-robotic-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：机器人操作中的避障场景模型
-3. [GRAFT: Grounded and Efficient Online Reinforcement Adaptation for Fine-Grained Robot Manipulation](/202609/01/2608.27079v1-graft-grounded-and-efficient-online-reinforcement-adaptation-for-fine-grained-robot-manipulation)  
+1. [ChainSplat: A Physics-Inspired Screw-Theoretic Model for Learning Deformable Linear Object Dynamics from Multi-View RGB Videos](/202609/02/2608.28570v1-chainsplat-a-physics-inspired-screw-theoretic-model-for-learning-deformable-linear-object-dynamics-from-multi-view-rgb-videos)  
    标签：评分：7.0/10、query:q6
-   evidence：细粒度机器人操作的在线强化学习自适应
-4. [GRAFT: Grounded and Efficient Online Reinforcement Adaptation for Fine-Grained Robot Manipulation](/202609/01/2608.27079v2-graft-grounded-and-efficient-online-reinforcement-adaptation-for-fine-grained-robot-manipulation)  
+   evidence：可变形线性对象的机器人操作
+2. [Learning neural controllers for nonlinear systems from data](/202609/02/2608.29303v1-learning-neural-controllers-for-nonlinear-systems-from-data)  
+   标签：评分：7.0/10、query:q2
+   evidence：非线性系统的神经反馈控制器
+3. [SmoothRL: Online Reinforcement Learning During Asynchronous Execution](/202609/02/2608.29768v1-smoothrl-online-reinforcement-learning-during-asynchronous-execution)  
+   标签：评分：7.0/10、query:q5
+   evidence：机器人策略的实时执行与异步控制
+4. [SymVD: Symmetric Vision Language Action Distillation for Robot Manipulation](/202609/02/2608.29828v1-symvd-symmetric-vision-language-action-distillation-for-robot-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：细粒度机器人操作的在线自适应
-5. [PHR-VLA: Planning Horizon Reasoning for Vision-Language-Action Models](/202609/01/2608.27609v1-phr-vla-planning-horizon-reasoning-for-vision-language-action-models)  
+   evidence：机器人操作的VLA蒸馏
+5. [Projection-Free Bandit Online Optimization for Multi-Agent Systems with Dynamic Regret](/202609/02/2608.30159v1-projection-free-bandit-online-optimization-for-multi-agent-systems-with-dynamic-regret)  
+   标签：评分：7.0/10、query:q2
+   evidence：具有输入约束的多智能体系统分布式在线优化
+6. [Motus2: A Self-Evolving General World Model for Dexterous Manipulation](/202609/02/2608.30237v1-motus2-a-self-evolving-general-world-model-for-dexterous-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：用于机器人操作的视觉-语言-动作模型
-6. [PanelShield: Verifiable Closed-Loop Safe Planning for Robotic Industrial Panel Operation](/202609/01/2608.28305v1-panelshield-verifiable-closed-loop-safe-planning-for-robotic-industrial-panel-operation)  
-   标签：评分：7.0/10、query:q4
-   evidence：工业面板操作的机器人安全规划
-7. [Cooperative Risk-Aware Exploration in Heterogeneous Multi-Robot Systems Using Algorithmic Altruism](/202609/01/2608.28409v1-cooperative-risk-aware-exploration-in-heterogeneous-multi-robot-systems-using-algorithmic-altruism)  
-   标签：评分：7.0/10、query:q4
-   evidence：多机器人探索的有限时界轨迹选择
-8. [GHOST in the Robots: Real-Time Exocentric Dual-Robot VR Teleoperation from Onboard Cameras](/202609/01/2608.29080v1-ghost-in-the-robots-real-time-exocentric-dual-robot-vr-teleoperation-from-onboard-cameras)  
-   标签：评分：7.0/10、query:q6
-   evidence：通过遥操作对两个移动机械臂进行实时控制
-9. [Latent Action as Intention Enables Efficient Future Imagination for World Action Models](/202609/01/2608.24882v1-latent-action-as-intention-enables-efficient-future-imagination-for-world-action-models)  
+   evidence：用于灵巧操作和策略改进的世界模型
+7. [GaussianDream++: Efficient 3D Gaussian World Modeling for Robotic Manipulation](/202609/02/2608.25659v1-gaussiandream-efficient-3d-gaussian-world-modeling-for-robotic-manipulation)  
    标签：评分：6.0/10、query:q6
-   evidence：用于操作控制的高效未来想象
-10. [One Policy, Many Embodiments: Unified Camera-Centric Action Geometry Pre-training for Heterogeneous Embodied Manipulation](/202609/01/2608.26058v1-one-policy-many-embodiments-unified-camera-centric-action-geometry-pre-training-for-heterogeneous-embodied-manipulation)  
-   标签：评分：6.0/10、query:q6
-   evidence：异构机器人操作的统一动作几何
-11. [Dynamic Haven Selection for Multi-Agent Pickup and Delivery in Constrained Warehouses](/202609/01/2608.26939v1-dynamic-haven-selection-for-multi-agent-pickup-and-delivery-in-constrained-warehouses)  
+   evidence：机器人操作的3D世界建模
+8. [MaCoPlanner: LLM-Assisted Manual-Compiled Task Planning with Proactive Safety Verification for Robotic Industrial Panel Operation](/202609/02/2608.28300v1-macoplanner-llm-assisted-manual-compiled-task-planning-with-proactive-safety-verification-for-robotic-industrial-panel-operation)  
+   标签：评分：6.0/10、query:q4
+   evidence：具有安全验证的工业面板操作任务规划框架
+9. [Hydra: A Navigation World Action Model with Discrete Latent Planning and Continuous Flow-Matching Execution](/202609/02/2608.28995v1-hydra-a-navigation-world-action-model-with-discrete-latent-planning-and-continuous-flow-matching-execution)  
+   标签：评分：6.0/10、query:q5
+   evidence：用于实时控制的离散潜空间规划
+10. [Agri-Sim: Agricultural Simulation Platform for Embodied Intelligence Evaluation in Greenhouse Robotics](/202609/02/2608.29100v1-agri-sim-agricultural-simulation-platform-for-embodied-intelligence-evaluation-in-greenhouse-robotics)  
+   标签：评分：6.0/10、query:q4
+   evidence：自主导航与运动规划仿真平台
+11. [SGE: Semantically-Guided Exploration for Unstructured Environments via Image-Space Waypoint Sampling](/202609/02/2608.29315v1-sge-semantically-guided-exploration-for-unstructured-environments-via-image-space-waypoint-sampling)  
    标签：评分：6.0/10、query:q1
-   evidence：带有验证回退路径的规划以保留等待位置
+   evidence：收缩时域路径优化与障碍物邻近评估
 
 
 <div class="dpr-home-promo-card">
