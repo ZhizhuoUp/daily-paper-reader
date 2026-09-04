@@ -6,71 +6,65 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-03
-- 运行时间：2026-09-03 23:06:36 UTC
+- 最新运行日期：2026-09-04
+- 运行时间：2026-09-04 22:32:52 UTC
 - 运行状态：成功
-- 本次总论文数：17
-- 精读区：6
+- 本次总论文数：15
+- 精读区：4
 - 速读区：11
 
 ### 今日简报（AI）
-本期日报精选 17 篇前沿论文（6 篇精读），聚焦语言引导机器人控制
-- 详情：[/202609/03/README](/202609/03/README)
+今日精选 15 篇机器人前沿论文，重点攻克多段软体臂实时控制与全向飞行器
+- 详情：[/202609/04/README](/202609/04/README)
 
 ### 精读区论文标签
-1. [SUN: Persistent Programs For Language-Grounded Control-to-Learning-to-Real Policies](/202609/03/2608.31167v1-sun-persistent-programs-for-language-grounded-control-to-learning-to-real-policies)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：从几何关系编译为操作的MPC代价函数
-2. [Real-Time Dynamics-Based Torque-Sampling MPPI for Compliant and Force Aware Manipulation](/202609/03/2609.02020v1-real-time-dynamics-based-torque-sampling-mppi-for-compliant-and-force-aware-manipulation)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：具有安全约束的机器人机械臂实时 MPC
-3. [Generalizable Multi-Agent Planning from Signal Temporal Logic Specifications via Diffusion](/202609/03/2608.29490v1-generalizable-multi-agent-planning-from-signal-temporal-logic-specifications-via-diffusion)  
-   标签：评分：8.0/10、query:q1
-   evidence：具有避障和时序逻辑的多智能体规划
-4. [AM-Bench: A Modular Simulation Suite and Benchmark for Aerial Manipulation Policy Learning](/202609/03/2609.00641v1-am-bench-a-modular-simulation-suite-and-benchmark-for-aerial-manipulation-policy-learning)  
+1. [Real-Time Shape Control of Multi-Segment Soft Robotic Arms Using Koopman Operators with Global and Local Observables](/202609/04/2609.03175v1-real-time-shape-control-of-multi-segment-soft-robotic-arms-using-koopman-operators-with-global-and-local-observables)  
+   标签：评分：9.0/10、query:q8
+   evidence：多段机器人手臂的实时形状控制
+2. [Local Path Planning and Obstacle Avoidance for an Omnicopter Platform](/202609/04/2609.03630v1-local-path-planning-and-obstacle-avoidance-for-an-omnicopter-platform)  
+   标签：评分：9.0/10、query:q1
+   evidence：实时局部规划与避障
+3. [Physics-based Online Adaptive Koopman Model Predictive Attitude Control for Combined Spacecraft with Dynamic Uncertainties](/202609/04/2609.02534v1-physics-based-online-adaptive-koopman-model-predictive-attitude-control-for-combined-spacecraft-with-dynamic-uncertainties)  
    标签：评分：8.0/10、query:profile-1
-   evidence：具有耦合动力学和浮动基座的空中操作
-5. [Dual Process Motion Planning](/202609/03/2609.01260v1-dual-process-motion-planning)  
-   标签：评分：8.0/10、query:q4
-   evidence：非线性运动规划的神经符号视角
-6. [Koopman-Based Robust Model Predictive Control for Nonlinear Systems with Stochastic Intermittent Measurements](/202609/03/2609.02079v1-koopman-based-robust-model-predictive-control-for-nonlinear-systems-with-stochastic-intermittent-measurements)  
-   标签：评分：8.0/10、query:q2
-   evidence：基于Koopman的随机MPC用于高效在线优化
+   evidence：用于航天器姿态控制的自适应Koopman MPC，具有实时辨识功能
+4. [GPU-Accelerated Astrodynamics World Models for Spacecraft Rendezvous and Proximity Operations](/202609/04/2609.03067v1-gpu-accelerated-astrodynamics-world-models-for-spacecraft-rendezvous-and-proximity-operations)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：空间领域多步规划与轨迹预测
 
 ### 速读区论文标签
-1. [Generative Action-Chunk Sampling for Adaptive Stiffness Control in Physical Human-Robot Collaboration](/202609/03/2608.25284v1-generative-action-chunk-sampling-for-adaptive-stiffness-control-in-physical-human-robot-collaboration)  
-   标签：评分：7.0/10、query:profile-1
-   evidence：机器人协作的自适应刚度控制和运动采样
-2. [The Space-Time Transform: Memory-Augmented Control Barrier Functions](/202609/03/2609.00079v1-the-space-time-transform-memory-augmented-control-barrier-functions)  
-   标签：评分：7.0/10、query:q5
-   evidence：使用控制屏障函数和二次规划的实时安全约束
-3. [A System for Fast, Resilient, and Adaptable Loco-Manipulation Behaviors on Humanoid Robots](/202609/03/2609.01518v1-a-system-for-fast-resilient-and-adaptable-loco-manipulation-behaviors-on-humanoid-robots)  
+1. [Learning to infer and manipulate through distributed whole-arm interaction in a soft robot](/202609/04/2608.30773v1-learning-to-infer-and-manipulate-through-distributed-whole-arm-interaction-in-a-soft-robot)  
    标签：评分：7.0/10、query:q6
-   evidence：类人机器人的移动操作行为
-4. [Generalized Semi-Infinite Programming for Robust Optimal Control with Decision-Dependent Uncertainty](/202609/03/2609.01538v1-generalized-semi-infinite-programming-for-robust-optimal-control-with-decision-dependent-uncertainty)  
+   evidence：组织软体机器人的操作行为
+2. [ProxPI: Proximal Prior Injection for Sampling-Based MPC under Learned-Prior Mismatch](/202609/04/2609.00941v1-proxpi-proximal-prior-injection-for-sampling-based-mpc-under-learned-prior-mismatch)  
    标签：评分：7.0/10、query:q2
-   evidence：带不确定性的鲁棒最优控制
-5. [One Demonstration, Many Objects: Generalizing Manipulation via Local Contact Geometry](/202609/03/2609.01938v1-one-demonstration-many-objects-generalizing-manipulation-via-local-contact-geometry)  
+   evidence：基于采样的MPC用于在线适应约束
+3. [On Global Regulatability of Robot Manipulators by Classical PID](/202609/04/2609.01207v2-on-global-regulatability-of-robot-manipulators-by-classical-pid)  
    标签：评分：7.0/10、query:q6
-   evidence：多指机器人手的灵巧操作
-6. [DiffuSearch: How Hybrid Trajectory Planning Benefits from Aligned Objectives in Diffusion and Action Space](/202609/03/2609.02252v1-diffusearch-how-hybrid-trajectory-planning-benefits-from-aligned-objectives-in-diffusion-and-action-space)  
-   标签：评分：7.0/10、query:q1
-   evidence：用于避障的混合轨迹规划
-7. [Trajectory-Initialized Neural Double Q-Routing for Large-Scale Overhead Hoist Transport Systems](/202609/03/2608.30512v1-trajectory-initialized-neural-double-q-routing-for-large-scale-overhead-hoist-transport-systems)  
+   evidence：机器人机械臂控制
+4. [Geometric Fixed-Time Sliding Mode Control for Constrained Attitude Tracking on $\mathrm{SO}(3)$](/202609/04/2609.01211v1-geometric-fixed-time-sliding-mode-control-for-constrained-attitude-tracking-on-mathrmso3)  
+   标签：评分：7.0/10、query:q7
+   evidence：具有指向约束的受限航天器姿态跟踪
+5. [Humanoid Safe Stop via Learned Stoppability Value](/202609/04/2609.02358v1-humanoid-safe-stop-via-learned-stoppability-value)  
+   标签：评分：7.0/10、query:q5
+   evidence：人形机器人的实时安全停止
+6. [RoboTok: An Internet-Scale Data Engine for Human Demonstration Retrieval and Dexterous Manipulation Learning](/202609/04/2609.03199v1-robotok-an-internet-scale-data-engine-for-human-demonstration-retrieval-and-dexterous-manipulation-learning)  
+   标签：评分：7.0/10、query:q6
+   evidence：检索人类演示用于灵巧操作学习
+7. [Pass the Bucket: Efficient, Robust, Local Load Balancing for Teams of Heterogeneous Robots](/202609/04/2608.27085v1-pass-the-bucket-efficient-robust-local-load-balancing-for-teams-of-heterogeneous-robots)  
    标签：评分：6.0/10、query:q4
-   evidence：工业机器人集群的运动规划
-8. [Peg-in-Bench: A Modular Benchmark for High-Precision Robotic Insertion](/202609/03/2609.00906v1-peg-in-bench-a-modular-benchmark-for-high-precision-robotic-insertion)  
+   evidence：机器人协调运动规划
+8. [PAVE: Predictive Alignment and Value-Guided Evolution for World-Action Policies](/202609/04/2608.30378v1-pave-predictive-alignment-and-value-guided-evolution-for-world-action-policies)  
+   标签：评分：6.0/10、query:q4
+   evidence：用于机器人动作的直接世界动作策略
+9. [Zeva: In-Context Causal Learning for Generalizable Embodied Manipulation](/202609/04/2608.30880v1-zeva-in-context-causal-learning-for-generalizable-embodied-manipulation)  
    标签：评分：6.0/10、query:q6
-   evidence：高精度机器人操作插入任务的基准测试
-9. [On Global Regulatability of Robot Manipulators by Classical PID](/202609/03/2609.01207v1-on-global-regulatability-of-robot-manipulators-by-classical-pid)  
-   标签：评分：6.0/10、query:q2
-   evidence：使用扩展PID对机器人操作臂进行控制
-10. [Scalable Rao-Blackwellized Online Planning for High-Dimensional POMDPs](/202609/03/2609.01351v1-scalable-rao-blackwellized-online-planning-for-high-dimensional-pomdps)  
+   evidence：具身操纵的上下文学习
+10. [Learning Action Models with Conditional and Quantified Effects via Uncertainty-Guided Exploration](/202609/04/2608.30955v1-learning-action-models-with-conditional-and-quantified-effects-via-uncertainty-guided-exploration)  
    标签：评分：6.0/10、query:q4
-   evidence：高维空间中机器人系统的在线规划
-11. [World-Coherent Decoding: Self-Verifying Test-Time Planning for World Action Models](/202609/03/2609.02159v1-world-coherent-decoding-self-verifying-test-time-planning-for-world-action-models)  
-   标签：评分：6.0/10、query:q4
-   evidence：使用世界动作模型进行机器人控制的测试时规划
+   evidence：用于有效规划的动作模型在线学习方法
+11. [Autonomously Acquiring Robot Manipulation Skills with Language-Driven Quality-Diversity](/202609/04/2608.30983v1-autonomously-acquiring-robot-manipulation-skills-with-language-driven-quality-diversity)  
+   标签：评分：6.0/10、query:q6
+   evidence：机器人操作技能与运动基元
 
 
 <div class="dpr-home-promo-card">
