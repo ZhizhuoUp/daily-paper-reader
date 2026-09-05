@@ -6,65 +6,56 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-04
-- 运行时间：2026-09-04 22:32:52 UTC
+- 最新运行日期：2026-09-05
+- 运行时间：2026-09-05 22:14:57 UTC
 - 运行状态：成功
-- 本次总论文数：15
-- 精读区：4
+- 本次总论文数：12
+- 精读区：1
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 15 篇机器人前沿论文，重点攻克多段软体臂实时控制与全向飞行器
-- 详情：[/202609/04/README](/202609/04/README)
+今日精选 12 篇机器人前沿论文，涵盖户外自主导航、人形复杂地形穿越与机械臂泛化操作等核心领域
+- 详情：[/202609/05/README](/202609/05/README)
 
 ### 精读区论文标签
-1. [Real-Time Shape Control of Multi-Segment Soft Robotic Arms Using Koopman Operators with Global and Local Observables](/202609/04/2609.03175v1-real-time-shape-control-of-multi-segment-soft-robotic-arms-using-koopman-operators-with-global-and-local-observables)  
-   标签：评分：9.0/10、query:q8
-   evidence：多段机器人手臂的实时形状控制
-2. [Local Path Planning and Obstacle Avoidance for an Omnicopter Platform](/202609/04/2609.03630v1-local-path-planning-and-obstacle-avoidance-for-an-omnicopter-platform)  
-   标签：评分：9.0/10、query:q1
-   evidence：实时局部规划与避障
-3. [Physics-based Online Adaptive Koopman Model Predictive Attitude Control for Combined Spacecraft with Dynamic Uncertainties](/202609/04/2609.02534v1-physics-based-online-adaptive-koopman-model-predictive-attitude-control-for-combined-spacecraft-with-dynamic-uncertainties)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：用于航天器姿态控制的自适应Koopman MPC，具有实时辨识功能
-4. [GPU-Accelerated Astrodynamics World Models for Spacecraft Rendezvous and Proximity Operations](/202609/04/2609.03067v1-gpu-accelerated-astrodynamics-world-models-for-spacecraft-rendezvous-and-proximity-operations)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：空间领域多步规划与轨迹预测
+1. [Obstacle-Aware Autonomous Coverage and Navigation for Outdoor Robots](/202609/05/2609.01384v1-obstacle-aware-autonomous-coverage-and-navigation-for-outdoor-robots)  
+   标签：评分：8.0/10、query:q1
+   evidence：室外机器人的障碍物感知覆盖与导航
 
 ### 速读区论文标签
-1. [Learning to infer and manipulate through distributed whole-arm interaction in a soft robot](/202609/04/2608.30773v1-learning-to-infer-and-manipulate-through-distributed-whole-arm-interaction-in-a-soft-robot)  
+1. [Learning Agile Perceptive Traversal of Sparse 3D Structures for Humanoids](/202609/05/2608.29769v1-learning-agile-perceptive-traversal-of-sparse-3d-structures-for-humanoids)  
+   标签：评分：7.0/10、query:q4
+   evidence：类人机器人遍历的敏捷全身运动和感知控制
+2. [One Demonstration, Many Objects: Generalizing Manipulation via Local Contact Geometry](/202609/05/2609.01938v2-one-demonstration-many-objects-generalizing-manipulation-via-local-contact-geometry)  
    标签：评分：7.0/10、query:q6
-   evidence：组织软体机器人的操作行为
-2. [ProxPI: Proximal Prior Injection for Sampling-Based MPC under Learned-Prior Mismatch](/202609/04/2609.00941v1-proxpi-proximal-prior-injection-for-sampling-based-mpc-under-learned-prior-mismatch)  
+   evidence：多指机器人手的灵巧操作
+3. [Taylor-Informed Indirect Adaptive Predictive Control Using Jacobian-Frozen Affine Predictors](/202609/05/2609.03348v1-taylor-informed-indirect-adaptive-predictive-control-using-jacobian-frozen-affine-predictors)  
    标签：评分：7.0/10、query:q2
-   evidence：基于采样的MPC用于在线适应约束
-3. [On Global Regulatability of Robot Manipulators by Classical PID](/202609/04/2609.01207v2-on-global-regulatability-of-robot-manipulators-by-classical-pid)  
+   evidence：非线性采样数据系统的自适应预测控制框架
+4. [Programming and execution of skill-based human-robot-crane collaborative tasks](/202609/05/2609.03392v1-programming-and-execution-of-skill-based-human-robot-crane-collaborative-tasks)  
+   标签：评分：7.0/10、query:profile-1
+   evidence：基于技能的机械臂执行和协作任务
+5. [MINERVA: How Small Can a Manipulation Policy Be and Still Solve LIBERO?](/202609/05/2609.03715v1-minerva-how-small-can-a-manipulation-policy-be-and-still-solve-libero)  
    标签：评分：7.0/10、query:q6
-   evidence：机器人机械臂控制
-4. [Geometric Fixed-Time Sliding Mode Control for Constrained Attitude Tracking on $\mathrm{SO}(3)$](/202609/04/2609.01211v1-geometric-fixed-time-sliding-mode-control-for-constrained-attitude-tracking-on-mathrmso3)  
-   标签：评分：7.0/10、query:q7
-   evidence：具有指向约束的受限航天器姿态跟踪
-5. [Humanoid Safe Stop via Learned Stoppability Value](/202609/04/2609.02358v1-humanoid-safe-stop-via-learned-stoppability-value)  
-   标签：评分：7.0/10、query:q5
-   evidence：人形机器人的实时安全停止
-6. [RoboTok: An Internet-Scale Data Engine for Human Demonstration Retrieval and Dexterous Manipulation Learning](/202609/04/2609.03199v1-robotok-an-internet-scale-data-engine-for-human-demonstration-retrieval-and-dexterous-manipulation-learning)  
+   evidence：用于操作基准的高效机器人视觉-动作策略
+6. [FWBC-VLA: Force-Aware Whole-Body Compensation for Contact-Rich Loco-Manipulation](/202609/05/2609.03889v1-fwbc-vla-force-aware-whole-body-compensation-for-contact-rich-loco-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：检索人类演示用于灵巧操作学习
-7. [Pass the Bucket: Efficient, Robust, Local Load Balancing for Teams of Heterogeneous Robots](/202609/04/2608.27085v1-pass-the-bucket-efficient-robust-local-load-balancing-for-teams-of-heterogeneous-robots)  
-   标签：评分：6.0/10、query:q4
-   evidence：机器人协调运动规划
-8. [PAVE: Predictive Alignment and Value-Guided Evolution for World-Action Policies](/202609/04/2608.30378v1-pave-predictive-alignment-and-value-guided-evolution-for-world-action-policies)  
-   标签：评分：6.0/10、query:q4
-   evidence：用于机器人动作的直接世界动作策略
-9. [Zeva: In-Context Causal Learning for Generalizable Embodied Manipulation](/202609/04/2608.30880v1-zeva-in-context-causal-learning-for-generalizable-embodied-manipulation)  
+   evidence：针对丰富接触操作任务的全身控制
+7. [Blind Dexterity: Whole-Body Humanoid Manipulation via Pure Proprioception](/202609/05/2608.29487v1-blind-dexterity-whole-body-humanoid-manipulation-via-pure-proprioception)  
    标签：评分：6.0/10、query:q6
-   evidence：具身操纵的上下文学习
-10. [Learning Action Models with Conditional and Quantified Effects via Uncertainty-Guided Exploration](/202609/04/2608.30955v1-learning-action-models-with-conditional-and-quantified-effects-via-uncertainty-guided-exploration)  
-   标签：评分：6.0/10、query:q4
-   evidence：用于有效规划的动作模型在线学习方法
-11. [Autonomously Acquiring Robot Manipulation Skills with Language-Driven Quality-Diversity](/202609/04/2608.30983v1-autonomously-acquiring-robot-manipulation-skills-with-language-driven-quality-diversity)  
+   evidence：全身类人机器人操作
+8. [Adaptive Finite-Time Position-Force Control of Teleoperation Systems With Time-Varying Delays Using a Liquid State Machine Uncertainty Estimator](/202609/05/2608.29544v1-adaptive-finite-time-position-force-control-of-teleoperation-systems-with-time-varying-delays-using-a-liquid-state-machine-uncertainty-estimator)  
    标签：评分：6.0/10、query:q6
-   evidence：机器人操作技能与运动基元
+   evidence：具有时延的远程操作位置-力控制
+9. [Asynchronous Cooperative Online Learning for Multi-Robot Control under Computational Delays](/202609/05/2608.29562v1-asynchronous-cooperative-online-learning-for-multi-robot-control-under-computational-delays)  
+   标签：评分：6.0/10、query:q5
+   evidence：计算延迟和不确定环境下的多机器人控制
+10. [$\mathcal{N}_0$-Foundation: Towards the Age of Tactile Intelligence](/202609/05/2608.29601v1-mathcaln0-foundation-towards-the-age-of-tactile-intelligence)  
+   标签：评分：6.0/10、query:q6
+   evidence：触觉赋能的具身操作
+11. [A Study of Conditional Diffusion Models for Open-Loop Control under Dry Friction and Stiction](/202609/05/2609.01756v1-a-study-of-conditional-diffusion-models-for-open-loop-control-under-dry-friction-and-stiction)  
+   标签：评分：6.0/10、query:q3
+   evidence：用于规划和控制动作序列的扩散模型
 
 
 <div class="dpr-home-promo-card">
