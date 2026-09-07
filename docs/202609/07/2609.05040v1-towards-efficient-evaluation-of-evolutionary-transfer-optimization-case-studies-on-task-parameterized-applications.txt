@@ -1,0 +1,562 @@
+Title: Towards Efficient Evaluation of Evolutionary Transfer Optimization: Case Studies on Task-Parameterized Applications
+
+URL Source: https://arxiv.org/pdf/2609.05040v1
+
+Published Time: Mon, 07 Sep 2026 01:05:59 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Towards Efficient Evaluation of Evolutionary Transfer Optimization: Case Studies on Task-Parameterized Applications 
+
+Yanchen Li 1 , Xiaoming Xue 2 , and Kay Chen Tan 1
+
+> 1
+
+Department of Data Science and Artificial Intelligence, The Hong Kong Polytechnic University, Hong Kong SAR, China 
+
+> 2
+
+School of Petroleum Engineering, China University of Petroleum (East China), Qingdao, China Emails: yanchen.li@connect.polyu.hk, xuexm@upc.edu.cn, kctan@polyu.edu.hk (corresponding author: Kay Chen Tan) 
+
+Abstract —As evolutionary transfer optimization (ETO) scales to larger collections of related tasks, problem evaluation can become a major source of runtime growth. This work studies problem-side evaluation scaling in task-parameterized applica-tions and reformulates application-specific serial computations into forms suitable for parallel execution. We organize evaluation scaling into two levels: the number of evaluated tasks and the workload within each task. In multi-task optimization, matrix-recursive kinematic-arm evaluation is reformulated using an accumulation-matrix representation of cumulative link direc-tions. In sequential transfer optimization, pointwise B-spline trajectory evaluation is reformulated using a blending-matrix representation for trajectory and collision computations. Both reformulations maintain close numerical agreement with their reference evaluations and substantially reduce runtime, yielding 
+
+256 .72 × and 93 .91 × end-to-end speedups, respectively. These results demonstrate problem-side reformulation as a practical route toward scalable ETO. Both application implementations and experimental scripts are released as open source to support reproducibility and reuse. 
+
+Index Terms —evolutionary computation, evolutionary transfer optimization, multi-task optimization, sequential transfer opti-mization, parallel computing. 
+
+I. I NTRODUCTION 
+
+# EVOLUTIONARY computation has established a versa-tile population-based foundation for solving optimization problems across a wide range of scientific and engineering domains [1], [2]. As optimization research expanded from single-task search to settings involving multiple related tasks, the transfer of knowledge across tasks became a natural exten-sion of evolutionary search. Cross-task evolutionary research has since been explored through representative paradigms such as multi-task optimization (MTO) and sequential transfer optimization (STO), with notable studies spanning both set-tings [3]–[5]. With continued advances in cross-task optimiza-tion, evolutionary transfer optimization (ETO) has emerged as a broader and increasingly systematic framework for studying knowledge transfer across optimization tasks [6]–[8]. As ETO has progressed toward many-task and large-scale settings, scalability with respect to the number of tasks has received increasing attention [9]–[12]. At such scales, run-time growth can arise not only from optimization operations, but also from the repeated evaluation of application prob-lems across populations and tasks. Meanwhile, application-
+
+fk (x) := E
+
+
+
+x; θk
+
+|{z} 
+
+> task-defining parameters
+
+, η
+
+|{z} 
+
+> evaluation-workload parameters
+
+
+
+,Teval ∝ K
+
+|{z} 
+
+> number of tasks
+
+× N
+
+|{z} 
+
+> individuals per task
+
+× C(θk , η)
+
+| {z }
+
+> per-individual evaluation cost
+
+.
+
+Fig. 1. Conceptual formulation of evaluation scaling in task-parameterized applications. For task k, x denotes a candidate solution and fk (x) is evaluated through the shared evaluator structure E, instantiated by the parameters θk
+
+and η. The total evaluation time Teval is further amplified by the number of evaluated tasks K and the number of individuals per task N , while C(θk , η)
+
+denotes the cost of evaluating one individual on task k.
+
+oriented ETO increasingly involves task-parameterized prob-lems, where related tasks share the same evaluation pro-cedure while differing in task-specific parameters [13]. In these settings, increasing the number of tasks or the internal workload of each evaluation can make application evaluation itself a substantial source of runtime growth. This motivates a practical question: Can the internal structure of some task-parameterized evaluations be reformulated so that increasing workload does not translate directly into increasing wall-clock time on parallel hardware? 
+
+To characterize this scaling, we consider task-parameterized applications through the shared evaluation form illustrated in Fig. 1. For task k, the parameters θk deterministically define the task, while η denotes application-dependent evaluation-workload parameters, e.g., evaluation resolution or internal sample count used within one evaluation. The cost of eval-uating a candidate solution is then repeatedly incurred over a population of size N and, when multiple tasks are evalu-ated, across the task count K. This characterization helps us separate two scaling regimes. Cross-task evaluation scaling 
+
+arises as the number of tasks K increases, whereas within-task evaluation scaling arises when the evaluation workload increases at a fixed task count. In both cases, application-level computation can become increasingly expensive when repeatedly applied throughout population-based optimization. These two scaling regimes suggest a practical guideline for identifying suitable applications: evaluation cost increases un-der either cross-task or within-task scaling, and the evaluation procedure contains repeated serial calculations that can be reformulated into a mathematically equivalent form suitable for parallel execution. Following this guideline, this paper arXiv:2609.05040v1 [cs.AI] 4 Sep 2026 xy                  
+
+> ®1
+> LD
+> Step 1: Rotate by joint angle ®1,then extend by link length LD.
+> Step 1
+> Target
+> xy
+> ®2
+> LD
+> Step 2: Rotate by joint angle ®2,then extend by link length LD.
+> Step 2
+> Target
+> xy
+> ®3
+> LD
+> Step 3: Rotate by joint angle ®3,then extend by link length LD.
+> Fitness
+> Step 3
+> Target
+> xy
+> Direct Computation
+> LDcos(
+> 1X
+> j= 1
+> ®j)
+> LDsin
+> Ã1X
+> j= 1
+> ®j
+> !
+> LDcos(
+> 2X
+> j= 1
+> ®j)
+> LDsin
+> Ã2X
+> j= 1
+> ®j
+> !
+> LDcos(
+> 3X
+> j= 1
+> ®j)
+> LDsin
+> Ã3X
+> j= 1
+> ®j
+> !
+> Fitness Target
+
+(a) Matrix-recursive evaluation (b) Accumulation-matrix reformulation Fig. 2. Illustration and comparison of kinematic-arm evaluation for a single task with three joints. The joint angles α1, α2, and α3 are the decision variables, giving a decision dimension of D = 3 ; the three links have equal length L/D , where L is the total arm length. The target position is marked by the star, and the fitness is determined by the distance between the target and the end point of the final link. (a) Matrix-recursive evaluation, which computes the arm configuration joint by joint: at step i, the current orientation is rotated by αi and then extended by one link of length L/D . (b) Accumulation-matrix reformulation, which obtains the link directions from the cumulative joint angles and their horizontal and vertical link projections, eliminating the joint-wise recursive traversal regardless of the number of joints. 
+
+considers two representative task-parameterized ETO cases:  
+
+> •
+
+For cross-task evaluation scaling , we study kinematic-arm MTO, where the same type of evaluation is re-peatedly performed across a large number of parameter-ized tasks. We derive an equivalent accumulation-matrix reformulation that reduces the serial work within each evaluation and consequently limits the runtime growth as the task count increases.  
+
+> •
+
+For within-task evaluation scaling , we study B-spline trajectory STO, where online optimization focuses on a target task while increasing the number of trajectory samples raises the workload within each evaluation. We derive an equivalent blending-matrix reformulation that reduces the sample-wise serial workload. In both cases, we verify close numerical agreement between the reformulations and their corresponding reference evalua-tion forms and evaluate the runtime reduction achieved through parallel execution as the relevant evaluation scale increases. II. C ASE STUDY I: C ROSS -T ASK EVALUATION SCALING IN 
+
+KINEMATIC -A RM OPTIMIZATION 
+
+In multi-task optimization (MTO), multiple optimization tasks are solved simultaneously, making the number of tasks 
+
+K a natural source of evaluation scaling in ETO. We study this cross-task scaling through kinematic-arm optimization, where the evaluation of candidate joint configurations is repeatedly performed across different tasks and can become increasingly costly as K grows. We first formulate the kinematic-arm problem and its matrix-recursive evaluation, then derive an accumulation-matrix reformulation that enables parallel eval-uation across tasks, and finally validate the reformulation through evaluation and end-to-end MTO experiments. 
+
+A. Problem Formulation and Matrix-Recursive Evaluation 
+
+Inspired by the parametrized planar-arm setting in [14], we consider a kinematic-arm optimization problem in which the joint angles are optimized to bring the end point of the final link as close as possible to a fixed target t = [1 , 1] T. Each task 
+
+k is distinguished by the task parameters θk = [ Lk, α max ,k ]T,where Lk specifies the total arm length and αmax ,k controls the joint-angle range. The arm contains D rotational joints and D
+
+equal-length links, while a candidate x ∈ [0 , 1] D encodes the joint angles. For task k, its i-th joint angle is 
+
+αi := 2πα max ,k 
+
+D ·
+
+
+
+xi − 12
+
+
+
+. (1) Each link consequently has length Lk/D . Therefore, all tasks share the same evaluation procedure and differ only through the task parameters θk.As illustrated in Fig. 2(a), the matrix-recursive evaluation constructs the arm joint by joint. For i = 1 , . . . , D , step i
+
+first rotates the current orientation by αi and then extends the arm by one link of length Lk/D . Using planar homogeneous coordinates, this recursion is written as 
+
+
+
+M0 := I3,
+
+Mi := Mi−1 ·
+
+
+
+cos( αi) − sin( αi) Lk 
+
+> D
+
+cos( αi)sin( αi) cos( αi) Lk 
+
+> D
+
+sin( αi)0 0 1
+
+ ,
+
+ri
+
+1
+
+
+
+:= Mi · 0 0 1T .
+
+(2) Here, I3 denotes the 3 × 3 identity matrix, and ri ∈ R2 is the end point after the i-th link is added. Consistent with the maximization formulation adopted in previous kinematic-arm work [14], the fitness of task k is defined as 
+
+fk(x) := − ∥ rD − t∥2 . (3) Since each Mi depends on Mi−1, the evaluation follows a sequential path over the D joints. This joint-wise recursion is repeated for every individual in a population, so its evaluation cost is first amplified by the population size N and further amplified in MTO as the number of tasks K increases. 60 200 600 2000 6000                          
+
+> Number of arm joints D
+> 10 −1
+> 10 0
+> Runtime (second)
+> (a)
+> Matrix-Recursive Form Accumulation-Matrix Form
+> 50 150 500 1500 5000
+> Number of tasks K
+> 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> Runtime (second)
+> (b)
+> Matrix-Recursive Form Accumulation-Matrix Form
+> 50 150 500 1500 5000
+> Number of tasks K
+> 10 −1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> Runtime (second)  256.72 £
+> (c)
+> Matrix-Recursive Form Accumulation-Matrix Form Fig. 3. Evaluation and end-to-end runtime results for the kinematic-arm optimization case study. All runtime values are reported as the mean over three repeated measurements, with error bars indicating the standard deviation. (a) Evaluation runtime for one individual under increasing arm joint counts D,comparing the matrix-recursive evaluation with its accumulation-matrix reformulation. (b) Evaluation runtime under increasing task counts K, where K
+> denotes the number of evaluated tasks, comparing the same two forms at a fixed joint count. (c) One-generation end-to-end runtime of MA-MTO under increasing K; the annotated multiplier denotes the runtime speedup obtained by the accumulation-matrix reformulation over the matrix-recursive evaluation at the largest tested task count.
+
+B. Accumulation-Matrix Reformulation 
+
+The matrix-recursive evaluation requires each transforma-tion Mi to depend on Mi−1. However, the absolute orientation of the i-th link is simply the cumulative angle α1 + · · · + αi.Therefore, the recursive transformation chain can be removed by computing all cumulative link directions jointly, as illus-trated in Fig. 2(b). Let α = [ α1, . . . , α D ]T collect the relative joint angles and 
+
+ϕ = [ ϕ1, . . . , ϕ D ]T collect the resulting link directions. Their relation can be expressed by the fixed prefix-sum matrix 
+
+
+
+ϕ1
+
+ϕ2
+
+...
+
+ϕD
+
+| {z } 
+
+> ϕ
+
+:= 
+
+
+
+1 0 · · · 01 1 . . . ...... ... . . . 01 1 · · · 1
+
+·
+
+
+
+α1
+
+α2
+
+...
+
+αD
+
+| {z } 
+
+> α
+
+. (4) This replaces the joint-wise transformation recursion in Eq. (2) with a bulk cumulative-sum operation. Once the cumulative directions are obtained, each link con-tributes directly through its horizontal and vertical projections. The final end point is therefore computed as 
+
+rD := Lk
+
+D ·
+
+" DX
+
+> i=1
+
+cos( ϕi)
+
+> D
+
+X
+
+> i=1
+
+sin( ϕi)
+
+#T
+
+. (5) This expression directly produces the same final position used in Eq. (3), without constructing the intermediate trans-formation matrices M1, . . . , MD . The cumulative directions, trigonometric projections, and reductions can consequently be performed as joint operations that are well suited to modern parallel processors. For population-based MTO, additional candidate and task axes can be introduced directly to the same operations, allowing the N candidates across K tasks to be evaluated jointly without restoring the joint-wise recursion. 
+
+C. Experimental Validation 
+
+We construct a reproducible task-parameterized kinematic-arm testbed, where task parameters [Lk, α max ,k ]T are gen-erated using a scrambled Sobol sequence [15], [16]. All experiments are conducted on a single NVIDIA GeForce RTX 3090 GPU with an Intel(R) Xeon(R) Platinum 8350C CPU @ 2.60 GHz. We first verify the numerical agreement between the accumulation-matrix reformulation and the matrix-recursive evaluation using identical candidate solutions. Across 10 ran-dom seeds with K = 5000 , N = 16 , and D = 60 , the two evaluation forms achieved a mean absolute fitness discrepancy of 2.561 × 10 −8 ± 1.600 × 10 −10 , where each seed-level value equally averages the task-wise discrepancies over all 5000 tasks. The maximum absolute discrepancy over all seeds, tasks, and individuals was 3.576 × 10 −7.We then isolate the two primary scaling factors in Fig. 3(a) and Fig. 3(b). Fig. 3(a) evaluates one individual on one task while increasing the number of joints D. The runtime of the matrix-recursive evaluation grows markedly with D, whereas the accumulation-matrix reformulation remains low and nearly constant over the tested range. Fig. 3(b) fixes N = 16 and 
+
+D = 60 while increasing the number of evaluated tasks K.A similar trend is observed across tasks: the matrix-recursive evaluation scales rapidly with K, while the accumulation-matrix reformulation shows little runtime growth over the tested task counts, demonstrating the benefit of exposing the evaluation to parallel execution. For the end-to-end validation, we use mean alignment multi-task optimization (MA-MTO), which adopts a mean-aligned elite-injection strategy inspired by previous transfer work [17] and is implemented with EvoX [18] for population-level parallel computation while retaining task-wise execution. Each task evolves through GA-based evolution, while transferred elites are aligned to the mean of the receiving population before injection. As shown in Fig. 3(c), the runtime advantage of the accumulation-matrix reformulation is retained within the complete optimization process, reaching a 256 .72 × speedup at K = 5000 . Across 10 independent runs with K = 5000 ,
+
+N = 16 , D = 60 , and a 100-generation budget, MA-MTO achieved a median final fitness of −0.985 ± 3.368 × 10 −4 and a 95th-percentile final fitness of −0.541 ± 3.948 × 10 −4. For each run, the median and 95th percentile are computed across the 5000 tasks, while the reported mean and standard deviation summarize the 10 independent runs. III. C ASE STUDY II: W ITHIN -T ASK EVALUATION 
+
+SCALING IN B-S PLINE TRAJECTORY OPTIMIZATION 
+
+In sequential transfer optimization (STO), optimization of a target task reuses knowledge accumulated from previously solved source tasks, while online evaluation primarily focuses on the current target task. Nevertheless, a single target task can still incur substantial evaluation cost when the application requires an increasingly high evaluation resolution. We study this setting through trajectory optimization parameterized by a B-spline, i.e., a smooth trajectory curve whose shape is controlled by a compact set of control points and whose evaluation resolution can be increased independently of the decision dimension. We first formulate the trajectory problem and its direct pointwise evaluation, then derive a blending-matrix reformulation that enables parallel computation, and finally validate the reformulation through standalone evalua-tion and end-to-end STO experiments. 
+
+A. Problem Formulation and Pointwise Evaluation 
+
+We consider a continuous-variable trajectory optimization problem in a normalized two-dimensional workspace. For task 
+
+k, the start and goal positions are fixed at (0 , 0) and (1 , 1) ,respectively, while the task is distinguished by M axis-aligned square obstacles {O k,m }Mm=1 . The objective is to generate a short trajectory from the start to the goal without intersecting these obstacles. A candidate solution y = [ y1, . . . , y D ]T ∈
+
+[0 , 1] D determines the vertical coordinates of D internal con-trol points, while their horizontal coordinates are uniformly fixed. Together with the two endpoints, the C = D + 2 control points are 
+
+pi := 
+
+
+
+[0 , 0] T, i = 0 ,
+
+[i/ (D + 1) , y i]T , 1 ≤ i ≤ D, 
+
+[1 , 1] T, i = D + 1 .
+
+(6) A B-spline forms a smooth trajectory by assigning position-dependent coefficients to neighboring control points and com-bining them according to these coefficients. We use a cubic B-spline with degree δ = 3 . For a normalized curve parameter ranging from 0 at the start to 1 at the goal, the coefficient 
+
+bi,δ (·) specifies the contribution of control point pi and is computed using the Cox–de Boor recursion [19], [20]. The recursion uses a fixed sequence over [0 , 1] : the two boundary values 0 and 1 are each repeated δ + 1 times, while the intermediate values are uniformly placed at j/ (C − δ) for 
+
+j = 1 , . . . , C − δ − 1. This configuration makes the resulting curve pass through the prescribed start and goal points. Using R equally spaced sampling positions along the tra-jectory, the pointwise evaluation moves a local window along the control points and forms each trajectory sample as 
+
+qr := 
+
+r(C−δ)
+
+> R−1
+
++δ
+
+X
+
+> i=
+
+r(C−δ)
+
+> R−1
+
+bi,δ 
+
+ rR − 1
+
+
+
+· pi, 0 ≤ r ≤ R − 2,
+
+pC−1, r = R − 1.
+
+(7) Here, R instantiates the evaluation-workload parameter η
+
+introduced in Fig. 1: increasing R evaluates the same candidate using more trajectory samples without changing the decision dimension D. As r increases, the summation bounds move the local window along the control points. Each sampling position therefore combines only δ + 1 = 4 neighboring control points in the cubic case. The pointwise evaluation performs these local combinations sequentially over the R trajectory samples. Since the objective is to obtain a short trajectory while avoiding obstacles, its fitness combines the sampled path length with collision penalties. We regard Ok,m as the closed square region occupied by the m-th obstacle of task k.Accordingly, the fitness is defined by 
+
+fk(y) := 
+
+> R−2
+
+X
+
+> r=0
+
+∥qr+1 − qr ∥2
+
++ ρ ·
+
+> M
+
+X
+
+> m=1
+
+1[∃ r : qr qr+1 ∩ O k,m ̸ = ∅] .
+
+(8) Here, ρ denotes the penalty assigned to each collided obstacle, and 1[·] denotes the indicator function. The line segment 
+
+qr qr+1 connects two consecutive trajectory samples. An ob-stacle contributes the penalty once if any trajectory segment intersects its square region, and boundary contact is also treated as an intersection. The pointwise evaluation follows this construction directly. For each candidate, the R trajectory samples are formed sequentially, and each newly formed segment is tested jointly against all M obstacles. Although the local control-point combination and the obstacle checks at each sampling position are already performed jointly, traversal over the R trajectory samples remains sequential. Consequently, increasing R en-larges the serial within-task evaluation workload and can lead to substantially higher evaluation time. 
+
+B. Blending-Matrix Reformulation 
+
+The pointwise evaluation retains a sequential traversal over the R trajectory samples because each sampling position operates on a different local window of control points. To remove this traversal, we first align the local coefficients of all sampling positions to a common control-point axis. Specifically, the coefficient matrix B ∈ RR×C is defined element-wise as 
+
+Br,i := 
+
+
+
+bi,δ 
+
+ rR − 1
+
+
+
+,
+
+jr(C−δ)
+
+> R−1
+
+k
+
+≤ i ≤
+
+jr(C−δ)
+
+> R−1
+
+k
+
++δ
+
+0 ≤ r ≤ R − 2,
+
+1, i = C − 1, r = R − 1,
+
+0, otherwise .
+
+(9) Each of the first R − 1 rows therefore places the δ + 1 
+
+coefficients of one local control-point window into their cor-responding columns, with all remaining entries set to zero. The final row selects the prescribed goal point. In this way, the moving local windows of the pointwise evaluation are represented within a common matrix structure. 60 200 600 2000 6000                                     
+
+> Number of trajectory sample points R
+> 10 −1
+> 10 0
+> Runtime (second)
+> (a)
+> Pointwise Form Blending-Matrix Form
+> 60 200 600 2000 6000
+> Number of trajectory sample points R
+> 10 0
+> 10 1
+> Runtime (second)
+> 93.91 £
+> (b)
+> Pointwise Form Blending-Matrix Form
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> x
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> y
+> (c)
+> Start Goal Obstacles Trajectory Fig. 4. Evaluation and end-to-end results for the B-spline trajectory optimization case study. Runtime values in (a) and (b) are reported as the mean over three repeated measurements, with error bars indicating the standard deviation. (a) Evaluation runtime under increasing numbers of trajectory sample points R,where Rdenotes the number of points used to discretize each B-spline trajectory for evaluation, comparing the pointwise evaluation with its blending-matrix reformulation. (b) One-generation end-to-end runtime of MS-STO under increasing R; the annotated multiplier denotes the runtime speedup obtained by the blending-matrix reformulation over the pointwise evaluation at the largest tested R.(c) Best feasible trajectory obtained over ten independent MS-STO runs under the fixed 100-generation budget, where xand ydenote the normalized horizontal and vertical spatial coordinates, respectively.
+
+Stacking the control points and trajectory samples by rows then allows the complete trajectory to be obtained through a single matrix multiplication, schematically written as 
+
+
+
+qT
+
+> 0
+
+...
+
+qT
+
+> R−2
+
+qT
+
+> R−1
+
+| {z }
+
+> Q
+
+:= 
+
+
+
+b0,δ · · · bδ,δ 0 0
+
+0 . . . ... . . . 0
+
+0 · · · bC−δ−1,δ · · · bC−1,δ 
+
+0 0 0 0 1
+
+| {z }
+
+> B
+
+·
+
+
+
+pT
+
+> 0
+
+...
+
+pT
+
+> C−1
+
+| {z }
+
+> P
+
+.
+
+(10) For readability, the sampling-position arguments are omitted from the schematic coefficients; their exact values and po-sitions are given by Eq. (9). Each of the first R − 1 rows contains only δ + 1 consecutive nonzero coefficients, while 0
+
+denotes an all-zero block. Compared with processing the local windows sample by sample, this form replaces the sequential traversal over the R sampling positions with a unified matrix computation that is well suited to modern parallel processors. The path-length term in Eq. (8) can also be computed from the complete trajectory matrix Q without a pointwise traversal. All consecutive-point differences are formed jointly through 
+
+
+
+(q1 − q0)T
+
+(q2 − q1)T
+
+...
+
+(qR−1 − qR−2)T
+
+ =
+
+
+
+−1 1 0 · · · 00 −1 1 . . . ...... . . . . . . . . . 00 · · · 0 −1 1
+
+· Q. (11) The Euclidean norms of the resulting rows are then computed jointly and summed to obtain the complete path length. For collision evaluation, the pointwise form already eval-uates the current trajectory segment against all M obstacles jointly. Its sequential execution therefore arises from traversing the R − 1 trajectory segments. We remove this traversal by organizing all segment–obstacle relations into 
+
+Hk := 
+
+h
+
+1Qr, :Qr+1 ,: ∩ O k,m ̸ = ∅i 
+
+> 0≤r≤R−2,1≤m≤M
+
+∈ { 0, 1}(R−1) ×M . (12) This form evaluates the segment–obstacle relations for all 
+
+R − 1 trajectory segments jointly while preserving the exist-ing joint computation over the M obstacles. A column-wise logical reduction then determines whether each obstacle is intersected by any trajectory segment, yielding the collision term in Eq. (8). Although the reformulation above is described for one candidate on one task, its matrix structure extends naturally to population-based evaluation. Multiple candidates can be handled jointly by introducing an additional candidate axis to the same matrix operations. These extensions are natural for modern parallel processors and do not change the underlying evaluation formulation. Consequently, reducing the sequential workload of a single evaluation is particularly important because this cost is repeatedly amplified by the population size and, where applicable, by the number of evaluated tasks. 
+
+C. Experimental Validation 
+
+Inspired by the B-spline trajectory optimization settings in prior evolutionary transfer optimization studies [17], [21], we construct a reproducible task-parameterized trajectory opti-mization testbed with explicitly specified spline, obstacle, and evaluation configurations. Each task uses D = 60 decision variables and M = 20 square obstacles of side length 
+
+0.05 , with the collision penalty set to ρ = 20 . To examine within-task evaluation scaling independently of the decision dimension, we vary the number of trajectory sample points as 
+
+R ∈ { 60 , 200 , 600 , 2000 , 6000 } while keeping D fixed. For re-producibility and to avoid trivial or infeasible layouts, obstacle centers are generated using a scrambled Sobol sequence [15], [16] and retained only when the obstacles stay away from the start and goal, remain separated from one another, block the straight start–goal path, and still leave at least one collision-free route verified by a simple grid search. All experiments are conducted on a single NVIDIA GeForce RTX 3090 GPU with an Intel(R) Xeon(R) Platinum 8350C CPU @ 2.60 GHz. We first verify the numerical agreement between the matrix reformulation and the pointwise evaluation using identical candidate solutions. Across 10 random seeds with K = 1 
+
+task, population size N = 16 , D = 60 , and R = 6000 , the pointwise evaluation and its matrix reformulation achieved a mean absolute fitness discrepancy of 1.101 × 10 −5 ± 3.011 ×
+
+10 −6, where each seed-level value averages the 16 paired individual discrepancies. The maximum absolute discrepancy over all seeds and individuals was 3.052 × 10 −5. We then isolate the effect of R through single-individual evaluation on a single task, as shown in Fig. 4(a). The runtime of the pointwise evaluation increases markedly with R, whereas the matrix reformulation remains low and nearly constant over the tested range. This behavior reflects the parallel execution exposed along the sampling-point dimension: while sufficient parallel processing capacity is available, increasing R need not translate into a comparable increase in wall-clock time. For the end-to-end validation, we adopt mean similarity sequential transfer optimization (MS-STO) [5], which reuses source solutions according to their mean-based similarity to the target population and is implemented with EvoX [18] for population-level parallel computation. GA-based evolution is used for both offline source-knowledge construction and online target optimization. The experiment uses a target population size of N = 16 and a knowledge database constructed from 
+
+K = 5000 previously solved source tasks; the offline source construction is excluded from the reported online runtime. As shown in Fig. 4(b), the pointwise end-to-end runtime grows rapidly with R, while the matrix reformulation remains nearly unchanged, yielding a 93 .91 × speedup at R = 6000 . Across 10 independent runs with D = 60 , R = 6000 , and a 100-generation budget, MS-STO obtained collision-free trajectories in 4/10 runs. Among the feasible runs, the final trajectory length was 3.365 ±0.587 , with a best feasible length of 2.586 ,as illustrated in Fig. 4(c). IV. C ONCLUSION 
+
+This paper studied problem-side evaluation scaling in task-parameterized evolutionary transfer optimization. The two case studies have exposed two key scaling regimes: cross-task scaling in kinematic-arm optimization and within-task scaling in B-spline trajectory optimization. In both cases, mathemati-cally equivalent reformulations replace recursive or sample-wise serial computation with structured matrix forms suit-able for parallel execution, while maintaining close numerical agreement and substantially reducing isolated evaluation and end-to-end runtime. The results have shown that application evaluation itself provides a practical opportunity for improving ETO efficiency at increasing task scales. The present study is limited to two continuous task-parameterized applications, and the reformulations remain application-specific. Some matrix forms may also trade addi-tional intermediate storage for lower runtime, making memory another consideration at larger scales. Future work should identify reusable evaluation-reformulation principles across broader problem classes and further address algorithm-side scaling in transfer, variation, selection, and other optimiza-tion operations. Combining efficient problem evaluation with scalable algorithmic execution is supposed to ultimately enable ETO systems to handle substantially larger collections of tasks. CODE AVAILABILITY 
+
+The implementations of both application case studies and all experimental scripts used in this paper are publicly available at https://github.com/liyc5929/task-parameterized-eto-evaluation. REFERENCES [1] T. B¨ ack and H. Schwefel, “An overview of evolutionary algorithms for parameter optimization,” Evol. Comput. , vol. 1, no. 1, pp. 1–23, 1993. [2] T. B¨ ack, U. Hammel, and H. Schwefel, “Evolutionary computation: Comments on the history and current state,” IEEE Trans. Evol. Comput. ,vol. 1, no. 1, pp. 3–17, 1997. [3] A. Gupta, Y. Ong, and L. Feng, “Multifactorial evolution: Toward evolutionary multitasking,” IEEE Trans. Evol. Comput. , vol. 20, no. 3, pp. 343–357, 2016. [4] L. Feng, L. Zhou, J. Zhong, A. Gupta, Y. Ong, K. C. Tan, and A. K. Qin, “Evolutionary multitasking via explicit autoencoding,” IEEE Trans. Cybern. , vol. 49, no. 9, pp. 3457–3470, 2019. [5] X. Xue, C. Yang, L. Feng, K. Zhang, L. Song, and K. C. Tan, “Solution transfer in evolutionary optimization: An empirical study on sequential transfer,” IEEE Trans. Evol. Comput. , vol. 28, no. 6, pp. 1776–1793, 2024. [6] K. C. Tan, L. Feng, and M. Jiang, “Evolutionary transfer optimization - A new frontier in evolutionary computation research,” IEEE Comput. Intell. Mag. , vol. 16, no. 1, pp. 22–33, 2021. [7] A. Gupta, Y. Ong, and L. Feng, “Insights on transfer optimization: Because experience is the best teacher,” IEEE Trans. Emerg. Top. Comput. Intell. , vol. 2, no. 1, pp. 51–64, 2018. [8] X. Xue, L. Feng, Y. Feng, R. Liu, K. Zhang, and K. C. Tan, “A theoretical analysis of analogy-based evolutionary transfer optimization,” in IEEE Congress on Evolutionary Computation, CEC . IEEE, 2025, pp. 1–8. [9] A. Gupta, L. Zhou, Y. Ong, Z. Chen, and Y. Hou, “Half a dozen real-world applications of evolutionary multitasking, and more,” IEEE Comput. Intell. Mag. , vol. 17, no. 2, pp. 49–66, 2022. [10] Y. Huang, L. Feng, A. K. Qin, M. Chen, and K. C. Tan, “Toward large-scale evolutionary multitasking: A GPU-based paradigm,” IEEE Trans. Evol. Comput. , vol. 26, no. 3, pp. 585–598, 2022. [11] X. Xue, C. Yang, L. Feng, K. Zhang, L. Song, and K. C. Tan, “A scalable test problem generator for sequential transfer optimization,” IEEE Trans. Cybern. , vol. 55, no. 5, pp. 2110–2123, 2025. [12] J. Zhao, X. Chen, and L. Feng, “An efficient index-based source task selection approach for large-scale evolutionary sequential transfer optimization,” in International Conference on Machine Intelligence and Nature-Inspired Computing (MIND) , 2025, pp. 229–230. [13] T. Wei, J. Liu, A. Gupta, P. S. Tan, and Y. Ong, “ (θl,θu)-parametric multitask optimization: Joint search in solution and infinite task spaces,” 
+
+IEEE Trans. Evol. Comput. , vol. 30, no. 3, pp. 1270–1283, 2026. [14] J. Mouret and G. Maguire, “Quality diversity for multi-task optimiza-tion,” in Genetic and Evolutionary Computation Conference, GECCO .ACM, 2020, pp. 121–129. [15] I. Sobol’, “On the distribution of points in a cube and the approximate evaluation of integrals,” USSR Computational Mathematics and Mathe-matical Physics , vol. 7, no. 4, pp. 86–112, 1967. [16] A. B. Owen, “Scrambling Sobol’ and Niederreiter–Xing points,” Journal of Complexity , vol. 14, no. 4, pp. 466–489, 1998. [17] J. Li, Z. Zhan, K. C. Tan, and J. Zhang, “A meta-knowledge transfer-based differential evolution for multitask optimization,” IEEE Trans. Evol. Comput. , vol. 26, no. 4, pp. 719–734, 2022. [18] B. Huang, R. Cheng, Z. Li, Y. Jin, and K. C. Tan, “EvoX: A distributed GPU-accelerated framework for scalable evolutionary computation,” 
+
+IEEE Trans. Evol. Comput. , vol. 29, no. 5, pp. 1649–1662, 2025. [19] M. G. COX, “The numerical evaluation of B-splines,” IMA Journal of Applied Mathematics , vol. 10, no. 2, pp. 134–149, 10 1972. [20] C. de Boor, “On calculating with B-splines,” Journal of Approximation Theory , vol. 6, no. 1, pp. 50–62, 1972. [21] W. Lin, Q. Lin, X. Xue, and K. C. Tan, “Sequential transfer via clustering-based similarity measurement for faster trajectory optimiza-tion,” in IEEE Conference on Artificial Intelligence, CAI . IEEE, 2024, pp. 1296–1301.
