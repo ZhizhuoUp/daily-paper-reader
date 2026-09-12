@@ -1,0 +1,1166 @@
+Title: Global Optimization Framework for Automated Low-Thrust Gravity-Assist Trajectory Design
+
+URL Source: https://arxiv.org/pdf/2609.09515v1
+
+Published Time: Thu, 10 Sep 2026 00:30:35 GMT
+
+Number of Pages: 40
+
+Markdown Content:
+# Global Optimization Framework for Automated Low-Thrust Gravity-Assist Trajectory Design 
+
+Ryo Iijima ∗
+
+Tohoku University, Sendai, Miyagi 980-8579, Japan 
+
+Kenshiro Oguri †
+
+Purdue University, West Lafayette, Indiana 47907, USA 
+
+Toshinori Kuwahara ‡
+
+Tohoku University, Sendai, Miyagi 980-8579, Japan 
+
+Gravity-assist trajectory design requires searching numerous leg combinations, but applying nonlinear programming (NLP) for low-thrust trajectory optimization to all combinations is computationally prohibitive. Therefore, conventional frameworks first perform broad search using lightweight trajectory models such as Lambert-based calculation and simplified deep-space maneuver models, while pruning infeasible candidates. However, to maintain efficiency, conventional approaches handle only low-dimensional formulations with limited constraints such as up to a couple of impulse maneuvers per leg. Consequently, they cannot accommodate the constrained multivariable optimization required for low-thrust design, running the risk of prematurely pruning viable trajectories. To address this, this paper introduces a convex pruning approach capable of solving constrained multivariable problems directly within broad search while retaining the computational efficiency. We then augment the broad search stage with a robust local low-thrust optimization algorithm based on thrust regularization, which together enable global exploration and optimization in an automated fashion. We apply the proposed framework in a BepiColombo-inspired scenario involving nine gravity assists, successfully demonstrating its broad search capability to discover a far greater number of solutions (36,335) compared to a conventional approach (4,664) while identifying a wider feasible launch window by one year. 
+
+# I. Introduction 
+
+Interplanetary trajectory design involving multiple gravity assists and low-thrust propulsion must determine not only combinations of multiple trajectory legs, but also nonlinear dynamics, lengthy low-thrust control histories [1, 2]. 
+
+> ∗
+
+Ph.D. Candidate, Department of Aerospace Engineering; also a Visiting Scholar at the School of Aeronautics and Astronautics, Purdue University. Student Member AIAA. Corresponding Author. Email: iijima.ryo.p4@dc.tohoku.ac.jp 
+
+> †
+
+Assistant Professor, School of Aeronautics and Astronautics. Senior Member AIAA. 
+
+> ‡
+
+Professor, Research Center for Green X-Tech, Green Goals Initiative; Department of Aerospace Engineering, Graduate School of Engineering; and Research Center for Space Cross-Tech, Green Goals Initiative. Member AIAA. arXiv:2609.09515v1 [math.OC] 8 Sep 2026 Therefore, the resulting design space contains strong nonlinearity and a vast number of possible trajectory patterns [3]. Since optimizing such strongly nonlinear problems is computationally expensive, designers cannot realistically explore the entire design space densely within practical computation time [4, 5]. For this reason, practical trajectory design requires a framework that prunes infeasible solutions before applying local optimization to promising candidates [1, 4]. As a representative conventional framework, the Satellite Tour Design Program (STOUR) conducts a broad search in its initial stage to obtain feasible candidates in the design space [6]. In this stage, STOUR explores combinations of trajectory legs using lightweight trajectory models, such as Lambert-based models, while pruning infeasible candidates [7]. However, for the broad search of low-thrust trajectories, two critical issues arise if one were to use models that cannot adequately represent the distribution of continuous thrust. First, a candidate that appears infeasible due to the excessive 
+
+Δ𝑣 under a Lambert-based or impulsive model may become feasible when continuous thrust is distributed along the trajectory leg[8–10]. Second, if the broad search generates an initial candidate that lies too far from the low-thrust feasible region, the local optimizer may fail to converge or may converge to an undesirable local solution [11, 12]. To address this issue, previous studies introduced fast and low-dimensional low-thrust trajectory generation based on shape-based methods into STOUR as STOUR-LTGA [8, 11, 13]. Shape-based methods are useful because they provide approximate low-thrust initial solutions before local optimization. However, shape-based methods may generate unnecessarily large Δ𝑣 because discrepancies can arise between the prescribed geometric model and the actual equations of motion. This property becomes problematic in pruning-based broad search because the framework may reject candidates because of geometric-model error rather than true low-thrust infeasibility. Another representative approach uses a hybrid optimal control problem (HOCP) framework, as implemented in tools such as the Evolutionary Mission Trajectory Generator (EMTG) [5]. These frameworks directly search for low-thrust trajectories by combining stochastic search methods, such as monotonic basin hopping, with inner-loop trajectory optimization. However, local low-thrust optimization in the inner loop requires very high computational cost. Therefore, this type of approach cannot practically perform exhaustive or deterministic broad search over the enormous combinatorial design space (in the order of tens of thousands of solutions), and it inherently risks overlooking promising optimal solutions. To address this challenge within a deterministic framework, Landau proposed the Efficient Maneuver Placement method in 2018 [14]. This method expands the design space through a fast pruning process that optimizes the trajectory modification caused by a small intermediate impulsive maneuver while satisfying the boundary conditions at the encounter points in a dynamically consistent manner. This result demonstrates the effectiveness of introducing intermediate-maneuver trajectory optimization into the broad search stage. Landau et al. have also incorporated this method into the deterministic broad search system Star [15]. On the other hand, Efficient Maneuver Placement achieves high computational efficiency through a Newton-method-based formulation, and this structure makes the method essentially suited to low-dimensional correction problems. Therefore, it does not readily extend to problems involving 2multiple design variables and multiple constraints. For low-thrust missions, the correction should not be represented as a single impulsive maneuver, but as a bounded continuous-thrust profile distributed along the leg. Therefore, broad search requires a pruning model that handles low-thrust dynamics while retaining computational efficiency. To address this requirement, this study proposes convex pruning (CP) for the broad search stage. The proposed method linearizes the low-thrust dynamics and solves a convex-programming problem. CP enables deterministic solution of multivariable and multi-constraint problems by approximately formulating them as convex optimization problems [16–18]. In contrast to general nonlinear programming, whose convergence and solution quality may depend on the initial guess and the nonconvexity of the problem, convex programming guarantees that any local optimum of the formulated convex problem is also a global optimum, and standard convex optimization problems can be solved deterministically in polynomial time under appropriate assumptions [16, 17]. In the proposed framework, we apply CP to near-feasible Lambert legs that conventional pruning would otherwise remove. The CP computes a bounded continuous-thrust correction and evaluates whether the leg can satisfy the prescribed terminal conditions under the linearized low-thrust dynamics. In addition, when no feasible solution exists, the CP step terminates infeasible cases with very small computation time. This property makes the proposed pruning suitable for broad search, where many infeasible candidates exist in the entire design space. Furthermore, in the subsequent local-optimization phase, conventional low-thrust formulations can suffer from a singularity in the gradient of the control norm, which deteriorates the conditioning of the NLP problem and destabilizes convergence [19]. To address this issue, this study introduces thrust regularization, which analytically removes this singularity, into the Sims–Flanagan transcription, a trajectory model commonly used for local optimization after global search [5, 20]. This formulation enables the framework to converge the candidates more robustly and obtain optimized solutions. We can also pass the low-thrust control history obtained from the CP to the local optimization as an initial control estimate. This connection improves the transition from broad search candidate generation to low-thrust trajectory optimization. The contributions of this paper are twofold. First, we embed the CP into a Star -based broad search. This pruning discovers some legs that are deemed infeasible via impulsive models but are feasible via low-thrust propulsion. As a result, the broad search stage can retain low-thrust-feasible trajectory regions that purely impulsive models or endpoint-correction models cannot capture. Furthermore, the CP provides not only low-thrust-feasible trajectory legs but also physically meaningful low-thrust control histories. We pass these control histories to the subsequent local-optimization stage as initial control estimates, thereby improving the connection between candidate generation in broad search and low-thrust trajectory optimization. Second, we add a robust local-optimization process based on a thrust-regularized Sims–Flanagan transcription (SFT) in the subsequent stage, thereby constructing a unified framework for automated low-thrust multi-flyby trajectory design. Through the overall flow, the proposed framework enables broader and more robust exploration of the highly nonlinear mission design space. We demonstrate the performance of 3the proposed framework using a BepiColombo-inspired Mercury transfer case involving nine flybys and low-thrust propulsion [2]. The remainder of this paper is organized as follows. Section II reviews the background of this study, including the dynamical model and the Star overview. Section III presents the proposed framework, with emphasis on the CP embedded in the Star -based broad search. This section also describes the local optimization model, including the thrust-regularized SFT used for local optimization. Section IV applies the proposed framework to a representative Mercury transfer mission and evaluates its performance. Section V discusses the numerical implications, methodological contribution, and future work. Finally, Section VI concludes the paper. 
+
+# II. Background 
+
+A. Dynamical Model 
+
+This study expresses the general equations of motion for the controlled two-body problem as follows, where 𝒙 
+
+denotes the orbital state vector and 𝑡 denotes the time [21]: 
+
+¤𝒙 = 𝒇 (𝒙 , 𝑚, 𝒖 , 𝑡 ) = 𝒇 kep (𝒙 ) + 𝑭 (𝒙 ) 𝒂 acc (𝑚, 𝒖 , 𝑡 ) (1) Here, 𝒇 kep (𝒙 ) represents the equations of motion for the Keplerian dynamics, and 𝑭 (𝒙 ) denotes the control matrix. In this study, 𝒂 acc represents the acceleration generated by low-thrust propulsion. 𝑚 is the spacecraft mass, and 𝒖 
+
+denotes the dimensionless throttle-direction vector. Unless otherwise specified, ∥ · ∥ denotes the Euclidean norm. The thrust-induced acceleration ( 𝒂 acc ) and the spacecraft mass decrease due to propellant consumption are given by [22]: 
+
+𝒂 acc (𝑚, 𝒖 , 𝑡 ) = 𝐷𝑁 EP 𝑇 thrust (𝑡 )𝒖 
+
+𝑚 , ¤𝑚 (𝒖 , 𝑡 ) = − 𝐷𝑁 EP 𝑇 thrust (𝑡 )∥ 𝒖 ∥
+
+𝑔 0 𝐼 sp (𝑡 ) , ∥𝒖 ∥ ≤ 1 (2) where 𝐷 is the duty cycle, 𝑁 EP is the number of operating electric-propulsion units, 𝑇 thrust (𝑡 ) is the available thrust magnitude at time 𝑡 , 𝑔 0 is the standard acceleration due to gravity, and 𝐼 sp (𝑡 ) is the specific impulse of the thruster. The convex-pruning formulation in Section III.C treats 𝑇 thrust (𝑡 ) and 𝐼 sp (𝑡 ) as constant parameters, whereas the local-optimization formulation in Section III.D evaluates them as functions of the power supplied to the propulsion system, as defined in Section II.C. In addition, in this paper, we generally express the equations in Cartesian coordinates. We use Modified Equinoctial Elements (MEE) only in the CP formulation presented in Section III.C, where their definitions and corresponding equations of motion are introduced. Quantities expressed in Cartesian coordinates and MEE are denoted 4by the subscripts C and M, respectively. In Cartesian coordinates, the equations of motion in Eq. (1) are defined as 
+
+𝒙 C =
+
+
+
+𝒓 𝒗 
+
+
+
+, 𝒇 kep , C (𝒙 C ) =
+
+
+
+𝒗 
+
+− 𝜇 
+
+|𝒓 |3 𝒓 
+
+
+
+, 𝑭 C (𝒙 C ) =
+
+
+
+03×3
+
+𝑰 3×3
+
+
+
+(3) where 𝒓 and 𝒗 denote the spacecraft position and velocity vectors, respectively, and 𝜇 is the gravitational parameter of the central body. For the MEE representation, the control matrix, 𝑭 M (𝒙 M ), is given by the Gauss variational equations. 
+
+B. Gravity-Assist Model 
+
+This study models gravity assist using the zero-sphere-of-influence (ZSOI) patched-conic approximation to reduce the computational cost in the optimization [23]. First, the formulation must ensure that the flyby occurs above a prescribed minimum altitude around the celestial body. Therefore, the periapsis altitude is approximately computed from the direction components and magnitudes of the incoming and outgoing velocity vectors, and the condition that this altitude exceeds the limiting altitude is imposed as follows [21]. 
+
+𝜃 = arccos 
+
+ 𝒗 −∞ · 𝒗 +∞
+
+∥𝒗 −∞ ∥∥ 𝒗 +∞ ∥
+
+
+
+, (4) 
+
+𝑟 min − 𝜇 𝑣 2
+
+> ∞
+
+"
+
+1sin ( 𝛿  
+
+> 2
+
+) − 1
+
+#
+
+≤ 0, 𝑟 min = 𝑟 body + 𝑎 min (5) 
+
+𝛽 = max (0, 𝜃 − 𝛿 ) (6) where 𝜃 is the angle between the incoming and outgoing hyperbolic-excess velocity vectors, 𝑟 min is the minimum allowable periapsis radius, 𝑟 body is the radius of the flyby body, 𝑎 min is the minimum allowable altitude above the body’s surface, and 𝜇 is the gravitational parameter of the flyby body. The superscripts − and + denote quantities immediately before and after the gravity assist, respectively. Accordingly, 𝒗 −∞ and 𝒗 +∞ are the incoming and outgoing hyperbolic excess velocity vectors, respectively. The angle 𝛿 denotes the turning angle achievable through the planetary gravity assist, while 𝛽 = max (0, 𝜃 − 𝛿 ) represents the turning-angle violation. The local-optimization formulation assumes an unpowered ballistic flyby. Under this assumption, the required turning angle determined by the incoming and outgoing hyperbolic excess velocity vectors equals the gravity-assist turning angle, such that 𝛿 = 𝜃 . The flyby inequality can be rewritten in a numerically more convenient form by eliminating the reciprocal dependence on sin (𝜃 /2) and 𝑣 2
+
+> ∞
+
+, where 
+
+𝑣 ∞ = min (∥ 𝒗 −∞ ∥, ∥𝒗 +∞ ∥) . Using sin 2 (𝜃 /2) = (1 − cos 𝜃 )/ 2 and cos 𝜃 = (𝒗 +∞ · 𝒗 −∞)/ 𝑣 2
+
+> ∞
+
+, Eq. (5) is transformed into 
+
+ 𝑟 min 𝑣 2
+
+> ∞
+
+𝜇 + 1
+
+2 
+
+𝑣 2 
+
+> ∞
+
+− 𝒗 +∞ · 𝒗 −∞
+
+
+
+− 2𝑣 2 
+
+> ∞
+
+≤ 0 (7) 5In the local-optimization formulation described in Section III.D, this formulation reduces the magnitude of the constraint Jacobian and improves the numerical scaling of the flyby constraints in the local optimization. Although the exact values depend on the specific trajectory case, the reformulated constraints generally keep the Jacobian entries smaller and suppress excessively large sensitivities, including those associated with the intermediate patch constraints in the SFT. In addition, the local-optimization formulation assumes unpowered flybys and enforces this assumption by equating the magnitudes of the incoming and outgoing hyperbolic excess velocities: 
+
+𝑣 ∞ = ∥𝒗 −∞ ∥ = ∥𝒗 +∞ ∥ (8) 
+
+C. Ephemeris Model, Launch Constraint Model, and Spacecraft Propulsion Model 
+
+In the local optimization performed in this study, automatic differentiation provides all gradients of the computational model, including those associated with the ephemeris model. However, direct ephemeris evaluations from SPICE do not directly support the construction of an automatic-differentiation computational graph. To address this issue, a differentiable ephemeris model is constructed from SPICE data using interpolation. Cubic spline interpolation, such as that used in the FIRE system, can provide fast ephemeris output [24]. However, the branching operations and piecewise interpolation inherent in this method can complicate the symbolic computational graph and reduce the efficiency and robustness of automatic differentiation in gradient-based optimization. Therefore, this study employs Chebyshev polynomial interpolation, where all coefficients are stored in a single coefficient matrix, to avoid branching structures in the ephemeris evaluation. The implementation first obtains ephemeris data over the search time interval and computes the Chebyshev coefficients for the sampled data. It then stores these coefficients in the coefficient matrix. During evaluation, the model computes the ephemeris state as a matrix-vector product between the coefficient matrix and the Chebyshev basis vector. The interpolation parameters are tuned so that the position error remains below 1 m and the velocity error remains below 0.1 m/s. To formulate the optimization problem presented, this study introduces empirical models for launch vehicle performance, SEP engine characteristics, and solar power generation. Table 1 presents the values for the polynomial coefficients of the launch-vehicle and SEP-engine models, while Table 2 summarizes the input parameters used for broad search and local optimization. 
+
+Table 1 Polynomial coefficients for the representative models of launch-vehicle (Falcon Heavy Recovery) and solar electric propulsion (QinetiQ T6) Model 𝜂 1 𝜂 2 𝜂 3 𝜂 4 𝜂 5 𝜂 6
+
+𝑚 delivered (𝐶 3) −6.05318 ×10 −6 9.71071 ×10 −4 −6.08631 ×10 −2 2.64628 −177 .347 6706 .42 
+
+𝑇 thrust (𝑃 ) −8.70819 ×10 −17 1.41849 ×10 −12 −8.68767 ×10 −09 2.45217 ×10 −05 0 –
+
+𝐼 sp (𝑃 ) −7.03998 ×10 −5 7.23576 ×10 −1 2.22634 ×10 3 0 0 –6The launch constraint uses an inverse correlation curve between 𝐶 3 and deliverable mass, based on the capability of a real launch vehicle. This curve defines the upper bound on the allowable launch performance. To construct the curve, the model interpolates launch vehicle performance data and applies the specific values for the coefficients ( 𝜂 LV ,1, . . . , 𝜂 LV ,6)and a user-defined launch performance margin ( 𝜎 LV ). The source data for this curve come from NASA’s Launch Vehicle Performance website[25]. The polynomial approximation represents the interpolated data in the following form[26]: 
+
+𝑚 delivered (𝐶 3) = (1 − 𝜎 LV )
+
+
+
+𝜂 LV ,1𝐶 53 𝜂 LV ,2𝐶 43 + 𝜂 LV ,3𝐶 33 + 𝜂 LV ,4𝐶 23 + 𝜂 LV ,5𝐶 3 + 𝜂 LV ,6
+
+
+
+, 𝐶 3 = 𝑣 2 
+
+> ∞
+
+(9) This study assumes a solar electric propulsion (SEP) system for the spacecraft and models both the engine performance as a function of supplied power and the power-supply process from the Sun-dependent available power to the power delivered to the propulsion system. First, the model constructs correlation curves for the thrust ( 𝑇 ) and specific impulse ( 𝐼 sp ) as functions of the supplied power from experimental data for a specific engine. Following previous studies [5, 27], this study interpolates these data using the following fourth-order polynomials and introduces them into the optimization as differentiable functions: 
+
+𝑇 thrust (𝑃 ) = 𝜂 𝑇 , 1 𝑃 4 + 𝜂 𝑇 , 2 𝑃 3 + 𝜂 𝑇 , 3 𝑃 2 + 𝜂 𝑇 , 4 𝑃 + 𝜂 𝑇 , 5 (10) 
+
+𝐼 sp (𝑃 ) = 𝜂 𝐼 sp ,1 𝑃 4 + 𝜂 𝐼 sp ,2 𝑃 3 + 𝜂 𝐼 sp ,3 𝑃 2 + 𝜂 𝐼 sp ,4 𝑃 + 𝜂 𝐼 sp ,5 (11) where 𝜂 T,1, . . . , 𝜂 T,5 are the polynomial coefficients for the thrust model, and 𝜂 𝐼 sp ,1, . . . , 𝜂 𝐼 sp ,5 are those for the specific-impulse model. The values of these coefficients are summarized in Table 1. The power model computes the supplied power ( 𝑃 ) by subtracting the spacecraft bus power consumption from the generated power and then applying a user-defined power margin ( 𝛿 power ) as follows: 
+
+𝑃 (𝑟, 𝑡 ) = (1 − 𝛿 power )𝑃 generated (𝑟, 𝑡 ) (12) For solar power generation, the generated power depends on the distance from the Sun. In general, it is inversely proportional to the square of the heliocentric distance. As a simple model, Topputo et al. introduced the following formulation, where 𝑃 0 represents the generated power at 1 astronomical unit (AU) [27]: 
+
+𝑃 generated (𝑟, 𝑡 ) = 𝑃 0 (𝑡 )
+
+𝑟 2 (13) Here, 𝑟 is expressed in AU. The power model also accounts for time-dependent degradation of the solar arrays. Let 
+
+𝜏 deg denote the degradation rate, and let 𝑃 0−BOL denote the beginning-of-life (BOL) power at departure. The model 7computes the reference power as 
+
+𝑃 0 (𝑡 ) = 𝑃 0−BOL (1 − 𝜏 deg ) 𝑡 −𝑡 1365 ×24 ×3600 , (14) where 𝑡 1 denotes the launch epoch in seconds, so that 𝑡 − 𝑡 1 represents the elapsed time since launch. This formulation shows that, in solar electric propulsion, the available power scales with the inverse square of the distance from the Sun. Since the thrust 𝑇 is proportional to 𝑃 , the Sun-spacecraft distance affects the thrust in the same manner. 
+
+D. Star 
+
+Star is a mission design tool developed by Landau et al. at the Jet Propulsion Laboratory (JPL) for the global search of patched-conic trajectories [15]. Based on user-defined constraints, such as time windows and allowable Δ𝑣 ,
+
+Star progressively prunes candidates that do not satisfy the prescribed conditions and rapidly narrows the enormous design space to feasible trajectory candidates. Star supports variable-sequence searches, recovery of near-feasible solutions through intermediate-maneuver optimization based on Efficient Maneuver Placement, and searches for resonant trajectories [14]. These capabilities substantially expand the explored design space and allow the tool to retain candidates that conventional pruning would otherwise remove. Although Star cannot directly handle trajectories in extremely weak-gravity environments or trajectories driven by low-thrust propulsion, its comprehensive search can provide high-quality initial guesses for subsequent local optimization, where the model accounts for these higher-fidelity physical effects. 
+
+# III. Proposed Optimization Framework 
+
+A. System Architecture 
+
+The proposed framework integrates CP into the Star -based broad search, abstracts the resulting candidates by clustering and ranking, and then connects representative candidates to thrust-regularized local optimization, as shown in Fig. 1. The upper part of the figure corresponds to the broad search stage, where trajectory-leg combinations are generated and pruned, while the lower part corresponds to the local-optimization stage, where representative candidates are refined using a higher-fidelity low-thrust model. The key features of the proposed architecture are the CP inserted into the Leg Module and the thrust-regularized SFT used in the local-optimization stage; together, these components allow the framework to recover near-feasible Lambert legs before pruning and to robustly refine the selected candidates afterward. The broad search algorithm is based on the Star system [15]. The user first defines the input parameters, including the sequence of celestial bodies to be visited and the time window for each encounter. Details of the input parameters used in the original Star formulation can be found in the previous literature [15]. In addition to these parameters, the 8Fig. 1 System flow chart of the proposed trajectory design framework integrating CP and thrust-regularized local optimization. 
+
+present framework requires the user to define parameters associated with the CP introduced in this study, such as the maximum thrust magnitude and the near-feasible range in which the pruning is applied. The broad search consists of four modules: the Body Module , Leg Module , Flyby Module , and Combo Module .Each module generates its corresponding data structure and progressively prunes infeasible candidates according to the user-defined constraints. In particular, the Leg Module generates trajectory legs that connect adjacent encounter points. In this module, the framework first generates each candidate leg by solving a Lambert problem. It then applies the proposed CP only when the Lambert-generated candidate is infeasible, is not identified as a resonant-transfer case, and remains within the user-defined recovery range described in Section III.C. By applying the pruning only to candidates that actually require low-thrust correction, the framework reduces the additional computational cost. Furthermore, this selective application avoids unnecessary thrust usage on trajectory legs that are already feasible or are not appropriate for low-thrust correction, thereby reducing the deviation of the generated initial guess from the low-thrust optimal solution. After the broad search, the framework clusters the obtained trajectory candidates according to a specified quantity and ranks them within each cluster. In the numerical example presented in Section IV, the framework clusters the candidates by launch epoch, where each cluster corresponds to a one-week launch-time interval. Within each cluster, it ranks the candidates in ascending order of the total velocity increment, Δ𝑣 total . This clustering and ranking process corresponds to the solution-abstraction step shown in Fig. 1. Finally, the framework performs local optimization using the candidate with the smallest Δ𝑣 total in each cluster as the representative solution. The local optimization employs the thrust-regularized SFT introduced in Section III.D. 9For gravity assists, the model uses an approximate formulation compatible with the zero-sphere-of-influence (ZSOI) assumption. The resulting nonlinear programming problem is solved using IPOPT, and automatic differentiation with CasADi provides the derivatives of the computational model [28, 29]. The representative solution selected from the broad search provides the initial trajectory guess. When the CP provides a low-thrust initial solution, the corresponding thrust history serves as the initial control guess. Otherwise, the control variables are initialized with a small constant value of 1 × 10 −7.After attempting local optimization for the representative solution of each cluster, the framework processes the non-converged clusters again. For each non-converged cluster, it selects the candidate with the next smallest Δ𝑣 total as a new representative solution and performs local optimization again. This process is repeated until a converged solution is obtained for each cluster or until all candidates in the cluster have been tested. If no candidate in a cluster converges, the framework regards the launch-time region represented by that cluster as containing no feasible solution within the prescribed design space. 
+
+B. Star -based broad search 
+
+The user defines the mission through several parameters, such as the sequence of celestial bodies and mission constraints. In the Star framework, three types of elements describe the trajectory: encounters, legs, and flybys. The departure body has index 1, and the final destination has index 𝑛 𝑖 .Encounter : 𝑖 = 1, 2, . . . , 𝑛 𝑖 
+
+Leg : 𝑖 = 1, 2, . . . , 𝑛 𝑖 − 1Flyby : 𝑖 = 2, . . . , 𝑛 𝑖 − 1(15) The Star -based broad search organizes its computation into four modules: the Body Module , Leg Module , Flyby Module ,and Combo Module . Each module plays a specific role in the trajectory generation process and stores the intermediate solutions in structured databases with predefined data types. 
+
+1. Body Module 
+
+Using the time constraints defined by the user, the Body Module formulates and solves a linear programming problem to determine the bounds of the encounter times and the time-of-flight (TOF), denoted by 𝑡 and 𝜏 in seconds, for each leg. First, it computes the encounter-time bounds as 
+
+𝒕 ∗ 
+
+> min
+
+= arg min 
+
+> 𝒕
+
+∑︁ 𝑖 
+
+𝑡 𝑖 , 𝒕 ∗ 
+
+> max
+
+= arg max 
+
+> 𝒕
+
+∑︁ 𝑖 
+
+𝑡 𝑖 (16) 10 Algorithm 1 Broad Search Framework with Convex Pruning 
+
+Require: User configurations 𝐼 user (Time bounds, TOF bounds, 𝑣 ∞,max , 𝑁 rev , 𝜁 , 𝑢 max , Δ𝑣 leg ,max , Δ𝑣 flyby ,max )
+
+Ensure: Feasible Trajectory Database (TD) 1: ED ← BodyModule (𝐼 user ) ⊲ Generate Encounter Data 2: for 𝑖 = 1 to 𝑛 − 1 do 
+
+3: LD 𝑖 ← ∅ 
+
+4: for each valid pair ( 𝑝, 𝑞 ) in (ED 𝑖 , ED 𝑖 +1 ) do 
+
+5: for each 𝑁 rev ∈ 𝐼 user do 
+
+6: [𝒗 D , 𝒗 A ] ← LambertSolver (𝑟 D , 𝑟 A , TOF , 𝑁 rev )
+
+7: Calculate 𝒗 ∞D and 𝒗 ∞A
+
+8: Δ𝜃 ←
+
+(
+
+2 𝜋 𝑁 rev + 𝜃 , short 2 𝜋 𝑁 rev + ( 2 𝜋 − 𝜃 ), long 9: if ∃ 𝑁 ∈ Z+ s.t. |Δ𝜃 − 𝑁 𝜋 | < 4◦ then 
+
+10: [𝒗 ∞D , 𝒗 ∞A ] ← ResonantTransfer (𝒓 D , 𝒗 D , 𝐼 user , 𝒓 A , 𝒗 A , ED 𝑖 , ED 𝑖 +1 )
+
+11: end if 
+
+12: if ( | | 𝒗 ∞𝐷 | | ≤ 𝒗 ∞,max ,𝑖 ) and ( | | 𝒗 ∞𝐴 | | ≤ 𝒗 ∞,max ,𝑖 +1 ) then ⊲ Lambert or Resonant Trajectory Accepted 13: Add Leg to LD 𝑖 
+
+14: else if (Not Resonant) and (max ( | | 𝒗 ∞D | | , | | 𝒗 ∞A | | ) ≤ 𝜁 × 𝒗 ∞,max ) then 
+
+15: ⊲ Proposed Convex Pruning 
+
+16: [𝒗 cp  
+
+> ∞D
+
+, 𝒗 cp  
+
+> ∞A
+
+, Δ𝑣 leg ] ← ConvexPruning (𝐼 user , 𝒓 D , 𝒗 D , 𝒓 A , 𝒗 A , TOF , ED 𝑖 , ED 𝑖 +1 )
+
+17: if (CP converges) and ( Δ𝑣 leg ≤ Δ𝑣 leg ,max ) then 
+
+18: Add refined Leg( 𝒗 cp  
+
+> ∞D
+
+, 𝒗 cp 
+
+> ∞A
+
+) to LD 𝑖 
+
+19: end if 
+
+20: end if 
+
+21: end for 
+
+22: end for 
+
+23: Apply EncounterFilter (ED , LD 𝑖 )
+
+24: if 𝑖 > 1 then 
+
+25: FD 𝑖 ← FlybyModule (𝐼 user , ED , LD , Δ𝑣 flyby ,max )
+
+26: Apply Incoming/OutgoingLegFilters (ED , LD , FD )
+
+27: end if 
+
+28: end for 
+
+29: TD ← ComboModule (𝐼 user , ED , LD , FD )
+
+30: return TD 
+
+subject to 
+
+𝒕 min ≤ 𝒕 ≤ 𝒕 max , (17) 
+
+𝝉 min ≤ 𝒕 𝐴 LP ≤ 𝝉 max . (18) Here, the matrix 𝐴 LP maps the encounter-time variables 𝒕 = [𝑡 1, . . . , 𝑡 𝑛 𝑖 ] to the corresponding TOF constraints 𝝉 .Second, using the obtained encounter-time bounds, the Body Module computes the TOF bounds as 
+
+𝝉 ∗
+
+𝑖 = arg max 
+
+𝝉 
+
+𝑛 𝑖 ∑︁ 
+
+𝑘 =1
+
+𝜏 𝑖,𝑘 , (19) subject to 
+
+𝑡 min ,𝑞 − 𝑡 max , 𝑝 ≤ 𝜏 𝑖,𝑞 − 𝜏 𝑖, 𝑝 ≤ 𝑡 max ,𝑞 − 𝑡 min , 𝑝 , ∀𝑖 ∈ Z𝑛 𝑖 −11 (20) The formulation defines the TOF bounds not only for adjacent encounters but also for all encounter pairs. The indices 𝑝 
+
+and 𝑞 denote the encounter indices satisfying 𝑝 < 𝑞 . Z𝑏 𝑎 denotes the set of integers from 𝑎 to 𝑏 .Next, the Body Module generates encounter data (ED) for each encounter based on the defined time bounds and the 11 number of discretization steps. For each encounter, the module generates a time mesh independently, without using data from other encounters. Therefore, the number of data points can differ among encounters. The identifier 𝐼 E is assigned to each data entry in the Body Module , while 𝐸 identifies the celestial body associated with that entry. In the Star framework, the model does not consider the sphere of influence and treats celestial bodies as point locations. Therefore, the departure and arrival positions share the same position vector 𝒓 .ED 𝑖, 𝑗 = [𝐼 E,𝑖, 𝑗 , 𝑡 𝑖, 𝑗 , 𝐸 𝑖, 𝑗 , 𝒓 𝑖, 𝑗 , 𝜇 𝑖, 𝑗 , 𝑟 min ,𝑖, 𝑗 ],
+
+Number of encounters : 𝑖 = 1, . . . , 𝑛 𝑖 ,
+
+Number of data in each encounter : 𝑗 = 1, . . . , 𝑛 𝑗 
+
+(21) 
+
+2. Leg Module 
+
+In the Leg Module , the module generates leg data (LD) for each trajectory segment by solving Lambert problems using adjacent encounter data obtained from the Body Module . Each LD entry stores the encounter IDs of the adjacent departure and arrival encounters, denoted by 𝐼 D,𝑖, 𝑗 and 𝐼 A,𝑖, 𝑗 , respectively. Here, D represents departure and A represents arrival. The quantity 𝑣 ∞, known as the hyperbolic excess velocity, represents the difference between the spacecraft velocity and the velocity of the celestial body. The order in which the module generates legs is arbitrary. However, the computation becomes most efficient when the module first processes the combinations with the largest number of adjacent encounter data. LD 𝑖, 𝑗 = [𝐼 L,𝑖, 𝑗 , 𝐼 D,𝑖, 𝑗 , 𝐼 A,𝑖, 𝑗 , 𝑣 ∞D,𝑖, 𝑗 , 𝑣 ∞A,𝑖, 𝑗 , 𝐻 leg ,𝑖, 𝑗 , 𝑁 rev ,𝑖, 𝑗 ],
+
+Number of legs : 𝑖 = 1, . . . , 𝑛 𝑖 − 1,
+
+Number of data in each leg : 𝑗 = 1, . . . , 𝑛 𝑗 
+
+(22) In addition, Lambert solutions can become numerically unstable for transfers near 180 ◦ or 360 ◦. In such cases, the Leg Module first determines the magnitude of the Lambert departure velocity as 
+
+𝑣 res = |𝒗 D,Lambert |. (23) The module then keeps this magnitude fixed and analytically computes nearby trajectories to avoid missing feasible solutions. Since infinitely many orbital planes are possible, the departure hyperbolic excess velocity 𝒗 ∞,D is expressed using two angles, 𝜅 and 𝛼 , relative to the orbital plane of the departure body as 
+
+𝑣 D = 𝑣 res (cos (𝛼 )𝒆 1 + sin (𝛼 ) sin (𝜅 )𝒆 2 + sin (𝛼 ) cos (𝜅 )𝒆 3) , (𝒆 1, 𝒆 2, 𝒆 3) =
+
+ 𝒗 B
+
+𝑣 B
+
+, 𝒓 D × 𝒆 1
+
+∥ 𝒓 D × 𝒆 1 ∥ , 𝒆 1 × 𝒆 2
+
+
+
+(24) 12 The angle 𝛼 , which represents the angle between the celestial-body velocity and the Lambert velocity vector, is sampled within the velocity limits defined by the user with step size Δ𝑣 ∞. For full-revolution transfers, namely transfers close to 360 ◦, the Leg Module also treats the crank angle 𝜅 as a user-defined free parameter. cos 𝛼 = 𝑣 2res + 𝑣 2B − 𝑣 2
+
+> ∞
+
+2𝑣 res 𝑣 B
+
+. (25) On the other hand, for transfers near 180 ◦, referred to as 𝜋 transfers, the module computes the crank angle 𝜅 so that the radial velocity obtained from the Lambert solution is preserved. The same physical constraint also applies to transfers between different celestial bodies. 
+
+𝒓 ⊺
+
+> D
+
+𝒗 D = 𝒓 ⊺
+
+> D
+
+𝒗 D,Lambert (26) cos 𝜅 = 𝒓 ⊺ 
+
+> D
+
+(𝒓 D − 𝑣 res cos (𝛼 )𝒆 1)
+
+𝒓 ⊺ 
+
+> D
+
+𝒆 3 sin (𝛼 ) (27) The arrival velocity 𝒗 A is computed as 
+
+𝒉 = 𝒓 D × 𝒗 D (28) 
+
+𝒗 A = (𝒓 ⊺
+
+> A
+
+𝑣 A,Lambert ) 𝒓 A + ( 𝒉 × 𝒓 A)
+
+𝒓 ⊺ 
+
+> A
+
+𝒓 A
+
+(29) The remaining position mismatch after this near-resonant construction is corrected using the resonance-targeting maneuver-placement procedure described in the reference [15]. During the generation of leg data, three filters are applied to remove infeasible solutions. The indices 𝑝, 𝑞 represent the indices of adjacent encounter data combinations. The first filter removes leg candidates whose time of flight does not satisfy the predefined bounds before solving the Lambert problem. 
+
+𝜏 min ,𝑖, 𝑗 ≤ 𝑡 𝑖 +1,𝑞 − 𝑡 𝑖, 𝑝 ≤ 𝜏 max ,𝑖, 𝑗 , ∀𝑖 ∈ Z𝑛 𝑖 −11 , ∀ 𝑗 ∈ Z𝑛 𝑗  
+
+> 1
+
+(30) The second filter removes legs whose 𝑣 ∞ values fall outside the predefined bounds after solving the Lambert problem. 
+
+𝑣 ∞,min ,𝑖 ≤𝑣 ∞D,𝑖, 𝑝 ≤ 𝑣 ∞,max ,𝑖 , ∀𝑖 ∈ Z𝑛 𝑖 −11 (31) 
+
+𝑣 ∞,min ,𝑖 +1 ≤𝑣 ∞A,𝑖,𝑞 ≤ 𝑣 ∞,max ,𝑖 +1, ∀𝑖 ∈ Z𝑛 𝑖 −11 (32) The third filter removes encounter data (ED) entries that are no longer used by any leg after the preceding filters have been applied. In this filter, the algorithm searches for encounter IDs that are not referenced by any remaining leg 13 in each segment and removes the corresponding ED entries. In addition, during the generation of the next segment, the algorithm does not compute legs involving those removed ED entries. Through these operations, the algorithm gradually reduces the number of ED entries that do not contribute to any connection between adjacent segments, thereby decreasing the number of legs that must be computed. Since only a small portion of all possible combinations forms feasible legs in each segment, this pruning process is important for avoiding combinatorial explosion. 
+
+3. Flyby Module 
+
+The Flyby Module connects adjacent leg data to generate flyby data (FD). Each FD entry contains its own ID, the IDs of the incoming and outgoing legs, and the Δ𝑣 associated with the flyby corresponding to the combination of those two legs. FD 𝑖, 𝑗 = [𝐼 F,𝑖, 𝑗 , 𝐼 I,𝑖, 𝑗 , 𝐼 O,𝑖, 𝑗 , Δ𝑣 𝑖, 𝑗 ],
+
+Number of flybys : 𝑖 = 2, . . . , 𝑛 𝑖 − 1,
+
+Number of data in each flyby : 𝑗 = 1, . . . , 𝑛 𝑗 
+
+(33) The module examines combinations of adjacent leg data exhaustively. During this process, the module applies filters and generates flyby data only when a combination satisfies the user-defined constraints. The indices 𝑝 and 𝑞 denote the indices of the adjacent leg data being combined. The first filter enforces the time constraint. The two legs correspond to the incoming and outgoing legs with respect to the flyby body. If the endpoints of these legs do not fall within the allowable time range, the module removes the combination. The module obtains the encounter times from the encounter data stored in the leg data. Here, 𝐼 D, 𝑝 = 𝐼 E,𝑖 −1
+
+and 𝐼 A,𝑞 = 𝐼 E,𝑖 +1.
+
+𝜏 min ,𝑖 −1,𝑖 +1 ≤ 𝑡 𝑖 +1 (𝐼 E,𝑖 +1) − 𝑡 𝑖 (𝐼 E,𝑖 −1) ≤ 𝜏 max ,𝑖 −1,𝑖 +1, ∀𝑖 ∈ Z𝑛 𝑖 −12 (34) Second, the Flyby Module applies the Δ𝑣 Mismatch constraint using the flyby geometry defined in Eqs. (4),(5), and (6). For flyby 𝑖 , the incoming and outgoing hyperbolic excess velocity vectors are given by 𝒗 −∞ = 𝒗 ∞A,𝑖 −1 and 𝒗 +∞ = 𝒗 ∞D,𝑖 ,respectively. The total Δ𝑣 required during the flyby consists of the velocity change associated with the difference between the incoming and outgoing hyperbolic excess speeds and the additional maneuver required to achieve the remaining bending. Using the law of cosines, 
+
+Δ𝑣 2Mismatch = (∥ 𝒗 −∞ ∥ − ∥ 𝒗 +∞ ∥) 2 + 2∥𝒗 −∞ ∥∥ 𝒗 +∞ ∥ sin 2 𝛽 
+
+1 + cos 𝛽 (35) If this Δ𝑣 Mismatch exceeds the allowable value defined by the user, the module removes the corresponding leg combination. Finally, the module removes legs that exceed the allowable range for all flyby combinations. When the module removes such legs, encounter data, leg data, and flyby data that cannot be connected to the current encounter 𝑖 may appear in both 14 directions. Therefore, the module sequentially removes data that cannot be connected in the incoming direction using the Incoming Leg Filter and also removes data that cannot be connected in the outgoing direction using the Outgoing Leg Filter. Because the Leg Module and the Flyby Module interact with each other, the framework does not process them independently. Instead, as the Leg Module generates leg data, the Flyby Module processes them whenever adjacent legs become available. 
+
+4. Combo Module 
+
+The Combo Module constructs complete trajectories by connecting flyby data. Each flyby data entry consists of three encounter data entries: the flyby body and the two encounters before and after it. This structure is referred to as a triplet. A combination of triplets defines one trajectory. Each unit data element TD 𝑖, 𝑗 stores only the ID of the flyby data. From this ID, the module obtains the corresponding leg data IDs, and from the leg data, it retrieves the three encounter IDs. TD 𝑗 = [TD 2, 𝑗 , TD 3, 𝑗 , . . . , TD 𝑖, 𝑗 , TD 𝑖 +1, 𝑗 , . . . , TD 𝑛 −1, 𝑗 ],
+
+Number of triplets : 𝑖 = 2, . . . , 𝑛 𝑖 − 1,
+
+Number of data in a trajectory : 𝑗 = 1, . . . , 𝑛 𝑗 
+
+(36) The process in the Combo Module begins by combining triplets at two specific encounter points. During this process, the module applies filters to remove triplets that cannot be connected. Since the number of triplets differs at each encounter, the computation becomes more efficient when the module starts from the encounter pair with the largest number of triplets. The Combo Module applies two filters in this process. The first filter enforces the time constraint. For adjacent triplets, the module estimates the maximum time of flight from the endpoint times 𝑡 𝑖 −1 and 𝑡 𝑖 +2. If this value exceeds the allowable range defined by the user, the module removes the Triplet combination. The second filter enforces the Δ𝑣 
+
+constraint. Each triplet contains the Δ𝑣 value of the flyby, and the module obtains the total Δ𝑣 by summing these values. If the total exceeds the allowable value Δ𝑣 total defined by the user, the module removes the Triplet combination. Starting from this initial pair, the module sequentially expands the sequence by connecting adjacent triplets. At each step, it prioritizes the direction—either forward or backward—from the current endpoints that offers a larger number of triplet combinations. This sequential connection continues until a continuous, end-to-end TD set spanning all encounter points is successfully generated. 
+
+Δ𝑣 𝑗 = Δ 𝑣 𝑖, 𝑗 (TD 𝑖, 𝑗 ) + Δ𝑣 𝑖 +1, 𝑗 (TD 𝑖 +1, 𝑗 ), ∀𝑖 ∈ Z𝑛 𝑖 −12 , ∀ 𝑗 ∈ Z𝑛 𝑗  
+
+> 1
+
+(37) The algorithm sequentially generates combinations of triplets at adjacent encounters using the previously obtained 15 two-encounter combinations. It prioritizes adjacent encounters with a large number of combinations when determining the processing order. Similarly, the algorithm estimates the maximum TOF from the endpoint times and prunes combinations based on the allowable range defined by the user. At the same time, it accumulates the Δ𝑣 values and also prunes a trajectory if the total Δ𝑣 exceeds the allowable upper limit Δ𝑣 total . Finally, all obtained TD 𝑗 are converted into the output format 𝑂 𝑗 .
+
+𝑂 𝑗 = [𝑡 1, 𝑗 , 𝐸 1, 𝑗 , 𝑣 ∞D,1, 𝑗 , 𝑣 ∞A,1, 𝑗 , Δ𝑣 1, 𝑗 , 𝑡 𝑖, 𝑗 , 𝐸 𝑖, 𝑗 , 𝑣 ∞D,𝑖, 𝑗 , 𝑣 ∞A,𝑖, 𝑗 , 𝑡 𝑛, 𝑗 , 𝐸 𝑛, 𝑗 ],
+
+Number of triplets : 𝑖 = 2, . . . , 𝑛 𝑖 − 1,
+
+Number of data in a trajectory : 𝑗 = 1, . . . , 𝑛 𝑗 
+
+(38) 
+
+C. Convex Pruning for Broad Search 
+
+Convex programming is an optimization approach for finding an optimal solution to a design problem formulated as a convex problem. Solving such a convex optimization problem enables fast and deterministic computation and guarantees global optimality within the convexified problem. A convex formulation also allows flexible definition of decision variables, objective functions, and constraints. For constrained multivariable problems such as low-thrust transfer trajectory design, previous studies have reported that even a single convex programming iteration can be sufficient to obtain a physically plausible optimized solution when the linearized trajectory propagation is formulated as equality constraints [18]. In the Broad Search stage of this framework, we introduce convex pruning (CP) into the Leg Module of the trajectory generation process. CP applies convex programming to near-feasible trajectory legs in order to evaluate whether bounded continuous thrust can recover them before the broad-search algorithm discards them. Specifically, when a Lambert solution does not involve a resonant transfer and either of the terminal hyperbolic excess velocities, 𝑣 D,∞ or 
+
+𝑣 A,∞, exceeds the prescribed allowable range, the corresponding leg is refined using CP. In this pruning, the objective function is defined as the total magnitude of continuous thrust over the trajectory, while the constraints include the linearized equations of motion, the maximum hyperbolic excess velocity at the flyby points, and the upper thrust bound 
+
+𝑢 max . To reduce computational cost, the computation is restricted to cases where the departure and arrival hyperbolic excess velocities, 𝑣 ∞, satisfy the user-defined boundary ratio 𝜁 . This restriction avoids evaluating a large number of infeasible solutions. 16 1. Overall Computational Procedure 
+
+Although the CP formulation is applicable to arbitrary state representations, this study adopts MEE and formulates the equations of motion based on Eqs. (1) and (2) as 
+
+¤𝒙 M = 𝒇 kep ,M (𝒙 M ) + e𝑭 M (𝒙 M )𝒖 M
+
+where ∥𝒖 M ∥ ≤ 1, e𝑭 M (𝒙 M ) = 𝑎 acc ,max 𝑭 M (𝒙 M )
+
+(39) Here, 𝑎 acc ,max denotes the fixed upper bound on the perturbing-acceleration magnitude used in the CP formulation and is defined as 𝑎 acc ,max = (𝐷𝑁 EP 𝑇 thrust ,max )/ 𝑚 ref , where 𝑇 thrust ,max is the maximum thrust produced by each unit, and 𝑚 ref is a prescribed reference spacecraft mass. We define these quantities before the broad-search phase, and their combination provides a constant acceleration bound for CP. The state and control variables are defined as 
+
+𝒙 M = [ 𝑝, 𝑓 , 𝑔, ℎ, 𝑘, 𝐿 ]⊤, 𝒖 M = [𝑢 𝑅 , 𝑢 𝑇 , 𝑢 𝑁 ]⊤ (40) where 𝑢 𝑅 , 𝑢 𝑇 , and 𝑢 𝑁 denote the radial, transverse, and normal components of the dimensionless control vector in the local RTN frame, respectively. Under unperturbed Keplerian motion, the MEE components ( 𝑝, 𝑓 , 𝑔, ℎ, 𝑘 ) remain constant, while only the longitude 𝐿 evolves [30]. In addition, MEE avoid the singularities of classical orbital elements associated with circular and equatorial orbits [31, 32]. The control influence matrix 𝑭 M (𝒙 M ) and the drift term 
+
+𝒇 kep ,M (𝒙 M ) in the MEE formulation are given by 
+
+𝒇 kep ,M (𝒙 M ) =
+
+
+
+0 0 0 0 0 √𝜇𝑝 
+
+ 𝑞 𝑝 
+
+2
+
+⊤
+
+(41) 
+
+𝑭 M (𝒙 M ) =
+
+
+
+0 2 𝑝 𝑞 √︃ 𝑝 𝜇 0√︃  
+
+> 𝑝 𝜇
+
+sin 𝐿 √︃ 𝑝 𝜇  
+
+> 1
+> 𝑞
+
+[( 𝑞 + 1) cos 𝐿 + 𝑓 ] −√︃ 𝑝 𝜇 𝑔 𝑞 [ℎ sin 𝐿 − 𝑘 cos 𝐿 ]−√︃ 𝑝 𝜇 cos 𝐿 √︃ 𝑝 𝜇  
+
+> 1
+> 𝑞
+
+[( 𝑞 + 1) sin 𝐿 + 𝑔 ]√︃ 𝑝 𝜇 𝑓 𝑞 [ℎ sin 𝐿 − 𝑘 cos 𝐿 ]
+
+0 0√︃ 𝑝 𝜇 𝑠 2 cos 𝐿 
+
+> 2𝑞
+
+0 0√︃ 𝑝 𝜇 𝑠 2 sin 𝐿 
+
+> 2𝑞
+
+0 0√︃ 𝑝 𝜇  
+
+> 1
+> 𝑞
+
+[ℎ sin 𝐿 − 𝑘 cos 𝐿 ]
+
+
+
+(42) where the auxiliary variables are defined as 
+
+𝑞 = 1 + 𝑓 cos 𝐿 + 𝑔 sin 𝐿, 𝑠 2 = 1 + ℎ2 + 𝑘 2 (43) 17 For notational simplicity, the state dependence is suppressed hereafter, such that 𝑭 M (𝑡 ) := 𝑭 M (𝒙 M (𝑡 )) , e𝑭 M (𝑡 ) :=
+
+e𝑭 M (𝒙 M (𝑡 )) , and 𝒇 kep ,M (𝑡 ) := 𝒇 kep ,M (𝒙 M (𝑡 )) . Linearizing the MEE dynamics in Eq. (39) about the reference trajectory 
+
+( ¯𝒙 M (𝑡 ), ¯𝒖 M (𝑡 )) yields: 
+
+¤𝒙 M (𝑡 ) = 𝐴 M (𝑡 )𝒙 M (𝑡 ) + 𝐵 M (𝑡 )𝒖 M (𝑡 ) + 𝒄 M (𝑡 ), (44) 
+
+𝐴 M (𝑡 ) = 𝜕 ( e𝑭 M (𝑡 )𝒖 M (𝑡 ) + 𝒇 kep ,M (𝑡 )) 
+
+𝜕 𝒙 M (𝑡 ) ¯𝒙 M (𝑡 ), ¯𝒖 M
+
+= 𝜕 e𝑭 M (𝑡 )
+
+𝜕 𝒙 M (𝑡 ) ¯𝒖 M (𝑡 ) + 𝜕 𝒇 kep ,M (𝑡 )
+
+𝜕 𝒙 M (𝑡 ) , (45) 
+
+𝐵 M (𝑡 ) = 𝜕 ( e𝑭 M (𝑡 )𝒖 M (𝑡 ) + 𝒇 kep ,M (𝑡 )) 
+
+𝜕 𝒖 M (𝑡 ) ¯𝒙 M (𝑡 ), ¯𝒖 M (𝑡 )
+
+= e𝑭 M (𝑡 ), (46) 
+
+𝒄 M (𝑡 ) = 𝒇 kep ,M (𝑡 )( ¯𝒙 M (𝑡 ), ¯𝒖 M (𝑡 )) − 𝐴 M (𝑡 ) ¯𝒙 M (𝑡 ) − 𝐵 M (𝑡 ) ¯𝒖 M (𝑡 ) (47) Following [33], the state transition matrix (STM) is approximated by multiplying the instantaneous sensitivity by the time step, 𝜏 .
+
+ΦM (𝑡 𝑗 +1, 𝑡 𝑗 ) = 𝛿 𝒙 M (𝑡 𝑗 +1)
+
+𝛿 𝒙 M (𝑡 𝑗 ) ≈ 𝐼 6×6 + 𝐴 M (𝑡 𝑗 )𝜏 𝑗 , 𝜏 𝑗 = 𝑡 𝑗 +1 − 𝑡 𝑗 , ∀ 𝑗 ∈ Z𝑁 𝑗 −11 (48) Here, this study uses the zero-order hold (ZOH) approximation, in which the control components are assumed to be constant within each segment. 𝑁 𝑗 denotes the number of discretization nodes along the leg. Using these approximations, the linearized dynamics are discretized over each time segment [𝑡 𝑗 , 𝑡 𝑗 +1] as 
+
+𝒙 M, 𝑗 +1 = 𝐴 M, 𝑗 𝒙 M, 𝑗 + 𝐵 M, 𝑗 𝒖 M, 𝑗 + 𝒄 M, 𝑗 , ∀ 𝑗 ∈ Z𝑁 𝑗 −11
+
+𝐴 M, 𝑗 = Φ M (𝑡 𝑗 +1, 𝑡 𝑗 ) ≈ 𝐼 6×6 + 𝜕 e𝑭 M (𝑡 𝑗 )
+
+𝜕 𝒙 M (𝑡 𝑗 ) ¯𝒖 M, 𝑗 + 𝜕 𝒇 kep ,M (𝑡 𝑗 )
+
+𝜕 𝒙 M (𝑡 𝑗 )
+
+!
+
+𝜏 𝑗 
+
+𝐵 M, 𝑗 =
+
+∫ 𝑡 𝑗 +1
+
+> 𝑡 𝑗
+
+ΦM (𝑡 𝑗 +1, 𝑡 )𝐵 M (𝑡 ) 𝑑𝑡 ≈ e𝑭 M (𝑡 𝑗 )𝜏 𝑗 ,
+
+𝒄 M, 𝑗 = ¯𝒙 M, 𝑗 +1 − 𝐴 M, 𝑗 ¯𝒙 M, 𝑗 − 𝐵 M, 𝑗 ¯𝒖 M, 𝑗 
+
+(49) At each encounter point, the spacecraft boundary state can be expressed by adding the spacecraft hyperbolic excess velocity vector to the velocity component of the encounter-body state. However, in the MEE formulation, the position and velocity components are not explicitly separated. Here, the instantaneous sensitivity matrix makes it possible to incorporate the velocity components separately. At the boundary points, the formulation uses the same matrix to map an instantaneous RTN velocity increment, rather than an acceleration, to the corresponding variation in the MEE state. The boundary conditions are written as 
+
+𝒙 M,1 = 𝒙 M,𝐸 (𝑡 D) + ∥ 𝒗 ∞D,max ∥𝑭 M (𝑡 D)𝒖 M,D (50) 
+
+𝒙 M, 𝑁 𝐽 = 𝒙 M,𝐸 (𝑡 A) + ∥ 𝒗 ∞A,max ∥𝑭 M (𝑡 A)𝒖 M,A (51) 18 Here, the subscripts D and A denote the departure and arrival encounter points of the trajectory leg, respectively. The vector 𝒙 M,𝐸 denotes the MEE state of the encounter body. ∥𝒗 ∞D,max ∥ and ∥𝒗 ∞A,max ∥ denote the user-specified upper bounds on the hyperbolic excess velocities at the departure and arrival encounters, respectively. The products 
+
+∥𝒗 ∞D,max ∥𝒖 M,D and ∥𝒗 ∞A,max ∥𝒖 M,A represent the allowable departure and arrival hyperbolic excess velocity vectors, respectively, expressed in the local RTN frame. The matrix 𝑭 M (𝑡 ) provides the instantaneous first-order mapping from the RTN velocity increment to the corresponding variation in the MEE state. In addition, the formulation constrains the thrust-control vector and the boundary hyperbolic-excess-velocity direction vectors as 
+
+∥𝒖 M,D ∥ ≤ 1, ∥𝒖 M,A ∥ ≤ 1, ∥𝒖 M, 𝑗 ∥ ≤ 1, ∀ 𝑗 ∈ Z𝑁 𝑗 −11 (52) Finally, the CP formulates the convex optimization problem by combining the objective function and all constraints: min             
+
+> 𝒙 M, 𝑗 ,∀𝑗 ∈Z𝑁 𝑗
+> 1,𝒖 M, 𝑗 ,∀𝑗 ∈Z𝑁 𝑗 −11,
+> 𝒖 M,D,𝒖 M,A
+> 𝑁 𝑗 −1
+
+∑︁ 
+
+> 𝑗 =1
+
+∥𝒖 M, 𝑗 ∥𝜏 𝑗 
+
+subject to 𝒙 M, 𝑗 +1 = 𝐴 M, 𝑗 𝒙 M, 𝑗 + 𝐵 M, 𝑗 𝒖 M, 𝑗 + 𝒄 M, 𝑗 , ∀ 𝑗 ∈ Z𝑁 𝑗 −11
+
+𝒙 M,1 = 𝒙 M,𝐸 (𝑡 D) + ∥ 𝒗 ∞D,max ∥𝑭 M (𝑡 D)𝒖 M,D
+
+𝒙 M, 𝑁 𝑗 = 𝒙 M,𝐸 (𝑡 A) + ∥ 𝒗 ∞A,max ∥𝑭 M (𝑡 A)𝒖 M,A
+
+∥𝒖 M,D ∥ ≤ 1, ∥𝒖 M,A ∥ ≤ 1, ∥𝒖 M, 𝑗 ∥ ≤ 1, ∀ 𝑗 ∈ Z𝑁 𝑗 −11
+
+(53) where 𝑡 D and 𝑡 A denote the fixed departure and arrival epochs, respectively. The quantities 𝒙 M,𝐸 (𝑡 D), 𝒙 M,𝐸 (𝑡 A),
+
+∥𝒗 ∞D,max ∥, ∥𝒗 ∞A,max ∥, 𝑭 M (𝑡 D), and 𝑭 M (𝑡 A) are fixed parameters in the convex subproblem. The linearized dynamics matrices 𝐴 M, 𝑗 , 𝐵 M, 𝑗 , and 𝒄 M, 𝑗 are also constant for each 𝑗 during each convex-programming solve. 
+
+2. Convex Pruning Accuracy 
+
+To evaluate the accuracy of the proposed CP formulation, this study compares the CP-based trajectory against a trajectory propagated using the solution obtained by CP via conventional ordinary differential equation (ODE) integration. As an example, one trajectory leg is selected for detailed analysis from the initial solution associated with the minimum-time-of-flight representative trajectory presented in Section IV.D, namely the solution obtained with CP and labeled ID 10. This leg corresponds to the transfer from event 3, a Venus flyby, to event 4, another Venus flyby, in the mission sequence. For this analysis, we discretize the selected trajectory leg into 𝑁 𝑗 = 31 nodes. Additionally, for this calculation, Eq. (53) sets the hyperbolic excess velocity bounds at both the departure and arrival encounters to 
+
+∥Δ𝒗 ∞D,max ∥ = ∥Δ𝒗 ∞A,max ∥ = 9 [km /s].Fig. 2 presents a three-dimensional comparison between the CP solution and the nonlinearly propagated trajectory, 19 together with the associated low-thrust control profile. As shown in Fig. 2, the optimized control profile exhibits a predominantly bang–bang-like structure, with the thrust acceleration operating mainly near either zero or its prescribed upper limit. This behavior is consistent with the thrust-saturation structure expected from Pontryagin’s maximum principle for a minimum-fuel low-thrust trajectory problem. The result suggests that the convex program captures a physically meaningful control structure that approaches the theoretical structure of an optimal low-thrust solution. Additionally, CP satisfies the encounter constraints of the hyperbolic excess velocity bounds by introducing approximately 0.8 km/s of total low-thrust. Before applying CP, the Lambert solution yields a hyperbolic excess velocity of 12 .3 km /sat the first encounter, which exceeds the prescribed upper bound value of 9 .0 km /s by 3 .3 km /s. The CP result demonstrates that the trajectory can satisfy the encounter-velocity constraint with a substantially smaller accumulated low-thrust than this initial excess-velocity difference. The discrepancy between the CP solution and the trajectory obtained through nonlinear ODE propagation depends on the magnitude of the correction required for CP to reduce the Lambert-solution hyperbolic excess velocity to the prescribed bounds, ∥𝒗 ∞D,max ∥ and ∥𝒗 ∞A,max ∥. Fig. 3 compares the position and velocity state components for the trajectory. In this relatively demanding recovery case, the propagation discrepancy reaches approximately 10% of the characteristic trajectory scale. By contrast, when CP requires a correction of approximately 2 .0 km /s or less to bring the hyperbolic excess velocity of the Lambert solution within the prescribed encounter bounds, the discrepancy between the CP solution and nonlinear ODE propagation remains below 1%. These results indicate that the approximation accuracy of the CP solution depends strongly on the magnitude of the required velocity correction. Therefore, the single-iteration CP solution is not intended to serve directly as a high-fidelity propagated trajectory; rather, it identifies promising regions of the broad-search space and provides initial estimates for the subsequent nonlinear programming (NLP) stage. Even for the case shown in Fig. 3, which exhibits a propagation discrepancy of approximately 10%, the subsequent NLP process eliminates the state mismatch and converges to a feasible solution while largely preserving the structure of the low-thrust control profile generated by the CP stage. These results indicate that the proposed CP approach achieves sufficient dynamical consistency for broad-search pruning while generating physically reasonable control structures at a substantially lower computational cost than a full nonlinear programming solve. The proposed method is implemented in MATLAB. In its baseline implementation, the method requires approximately 0.3 sec per solve. Most of the computational cost comes from constructing the linearized dynamical constraints, whereas the optimization itself converges in approximately 0.2 sec. The implementation further accelerates the computation by applying code generation (MEX) to the linearized dynamical constraints and by compiling the YALMIP setup into C programming language using the optimizer interface. With these improvements, the total computation time decreases to approximately 0.05 sec. In the current implementation, the proposed CP typically required 𝑂 (10 −2) sec per solve, depending on the transfer geometry and solver behavior. When the constraints are overly restrictive and no feasible solution exists, the solver terminates rapidly, allowing the 20 Fig. 2 (Left) Comparison of the CP-optimized trajectory and the nonlinear ODE propagation. (Right) The corresponding optimized thrust profile. 
+
+search process to proceed without stagnation. This property is particularly advantageous when the method is integrated into a broad search framework such as Star , because the framework can efficiently discard infeasible candidates and immediately proceed to the next candidate solution. 
+
+D. Local Optimization with Thrust Regularization 
+
+1. Overall Optimization Procedure 
+
+The Sims–Flanagan transcription (SFT), introduced by Sims and Flanagan in 1997, is a direct transcription method for low-thrust gravity-assist trajectory optimization [20]. Because SFT replaces continuous low-thrust propagation with a sequence of Keplerian arcs connected by impulsive velocity increments, it avoids the numerical integration of the low-thrust equations of motion and therefore offers relatively low computational cost. This feature has led to its widespread use in preliminary trajectory design and optimization [26]. SFT divides each trajectory leg into a prescribed number of segments. Within each segment, the spacecraft follows an unperturbed Keplerian arc, and an impulsive velocity increment is applied at the segment midpoint to approximate the effect of continuous thrust. Forward propagation from the departure boundary and backward propagation from the arrival boundary generate two half-trajectories, which are matched at an interior patch point. In conventional SFT formulations, the Cartesian components of Δ𝒗 C serve directly as optimization variables. For problems whose optimal thrust profile contains coast arcs, however, this parameterization can introduce a singularity into the objective-function and constraint gradient, 𝜕 ∥Δ𝒗 C ∥/ 𝜕 Δ𝒗 C = Δ 𝒗 ⊤C /∥ Δ𝒗 C ∥, where the denominator approaches zero for coast segments as the optimization converges toward the optimal solution [19, 34, 35]. To address this issue, this study introduces a thrust-regularization method inspired by [19] that removes the singularity analytically without requiring an artificial tuning parameter. In this method, the velocity increment is reformulated 21 Fig. 3 Comparison of state vector components between the CP solution and ODE-based propagation for a representative trajectory leg in the Broad Search. 
+
+using a variable 𝑼 , and the formulation defines Δ𝒗 C so that its norm is equal to the squared norm of 𝑼 . The formulation of this thrust regularization is as follows: 
+
+𝑼 :=
+
+
+
+𝑈 𝑥 
+
+𝑈 𝑦 
+
+𝑈 𝑧 
+
+
+
+, Δ𝒗 C :=
+
+
+
+Δ𝑣 𝑥 
+
+Δ𝑣 𝑦 
+
+Δ𝑣 𝑧 
+
+
+
+=
+
+
+
+𝑈 2 
+
+> 𝑥
+
+− 𝑈 2 
+
+> 𝑦
+
+− 𝑈 2
+
+> 𝑧
+
+2𝑈 𝑥 𝑈 𝑦 
+
+2𝑈 𝑥 𝑈 𝑧 
+
+
+
+, ∥Δ𝒗 C ∥ = ∥𝑼 ∥2,𝜕 ∥Δ𝒗 C ∥
+
+𝜕 𝑼 = 𝜕 ∥𝑼 ∥2
+
+𝜕 𝑼 = 2𝑼 ⊤
+
+(54) Thus, the gradient no longer contains the velocity-increment norm in the denominator and remains well defined at 
+
+𝑈 = 0, thereby removing the singularity associated with coast segments. 
+
+2. Interfacing CP Results with Thrust-Regularized SFT 
+
+Before local optimization, a refinement procedure maps the CP-derived control history onto the SFT discretization and improves its consistency with the nonlinear propagation model. The procedure first resamples the CP-derived control history when the CP and SFT discretizations differ, assigning the control corresponding to the same epoch to each SFT segment. The departure state obtained from CP is then transformed from MEE to Cartesian coordinates and propagated forward using the Keplerian propagation employed in SFT. At the midpoint of each segment, the CP-derived 22 control is transformed into the Cartesian frame using the propagated state and applied as the corresponding velocity increment. The resulting Cartesian state and control histories then define an updated reference trajectory for a second CP solve on the SFT discretization. For this solve, the propagated Cartesian states and control vectors are transformed back into the MEE and RTN representations, respectively, and used as the reference histories ¯ 𝒙 M and ¯ 𝒖 M . Section III.C discusses the resulting improvement in the CP. After the second CP solve, the refined low-thrust control history is propagated once more using the same Keplerian propagation procedure to obtain the Cartesian velocity increments Δ𝑣 C
+
+at the SFT segment midpoints. The resulting Cartesian velocity increments provide the control initial guess for local optimization and are converted into the intermediate parameter vector 𝑼 . Expressing the Cartesian velocity increment in spherical coordinates gives 
+
+
+
+Δ𝑣 𝑥 
+
+Δ𝑣 𝑦 
+
+Δ𝑣 𝑧 
+
+
+
+= ∥Δ𝒗 C ∥
+
+
+
+cos 𝜓 
+
+sin 𝜓 cos 𝜙 
+
+sin 𝜓 sin 𝜙 
+
+
+
+, 𝜓 = cos −1
+
+ Δ𝑣 𝑥 
+
+∥Δ𝒗 C ∥
+
+
+
+, 𝜙 = tan −1
+
+ Δ𝑣 𝑧 
+
+Δ𝑣 𝑦 
+
+
+
+(55) Here, the angular coordinate 𝜙 is evaluated using the two-argument arctangent function, atan2 (𝑌 , 𝑋 ), which avoids the undefined form associated with tan −1 (0/0), with tan −1 (0, 0) = 0 following the MATLAB convention. Even when both 
+
+Δ𝒗 𝑦 = 0 and Δ𝒗 𝑧 = 0, this implementation returns a finite value for 𝜙 and prevents numerical failure. In addition, the implementation includes a fail-safe for zero-length vectors by replacing a zero norm with a small positive value before evaluating 𝜓 with the inverse cosine. This treatment prevents division by zero in the computation of 𝜓 and further improves numerical robustness. This representation gives the parameters 𝑈 𝑥 , 𝑈 𝑦 , and 𝑈 𝑧 as 
+
+
+
+𝑈 𝑥 
+
+𝑈 𝑦 
+
+𝑈 𝑧 
+
+
+
+=√︁ ∥Δ𝒗 C ∥
+
+
+
+cos 𝜓 
+
+> 2
+
+sin 𝜓  
+
+> 2
+
+cos 𝜙 
+
+sin 𝜓  
+
+> 2
+
+sin 𝜙 
+
+
+
+(56) 
+
+3. Thrust-Regularized SFT Formulation 
+
+During local optimization, the SFT divides each trajectory leg into a prescribed number of segments. For leg 𝑖 , the method propagates the trajectory forward from the departure boundary and backward from the arrival boundary through analytical two-body Keplerian arcs. An impulsive velocity increment is applied at the midpoint of each segment, and the forward and backward trajectories are matched at an interior patch point. For segment 𝑗 of trajectory leg 𝑖 , the transcription divides each leg into uniformly spaced segments. Therefore, the time interval between consecutive impulse epochs remains constant within leg 𝑖 : 𝑡 − 
+
+> 𝑖, 𝑗 +1
+
+− 𝑡 + 
+
+> 𝑖, 𝑗
+
+= 𝜏 𝑖, 𝑗 = (𝑡 𝑖, 𝑁 𝑗 − 𝑡 𝑖, 1)/( 𝑁 𝑗 − 1), where 𝑁 𝑗 denotes the number of 23 nodes in each leg. Because SFT models each thrust maneuver as an instantaneous impulse, the epochs immediately before and after the impulse coincide: 𝑡 − 
+
+> 𝑖, 𝑗
+
+= 𝑡 + 
+
+> 𝑖, 𝑗
+
+= 𝑡 𝑖, 𝑗 . The forward and backward propagation based on the Cartesian formulation introduced in Eq. 3 can be expressed as Forward: 
+
+
+
+𝒙 −C,𝑖, 𝑗 = KC
+
+
+
+𝒙 +C,𝑖, 𝑗 −1, 12 𝜏 𝑖, 𝑗 
+
+
+
+,
+
+𝒙 +C,𝑖, 𝑗 = 𝒙 −C,𝑖, 𝑗 +
+
+
+
+03×1
+
+Δ𝒗 C,𝑖, 𝑗 (𝑼 𝑖, 𝑗 )
+
+
+
+, 𝑚 + 
+
+> 𝑖, 𝑗
+
+= 𝑚 − 
+
+> 𝑖, 𝑗
+
+exp 
+
+
+
+− ∥𝑼 𝑖, 𝑗 ∥2   
+
+> 𝑔 0𝐼 sp (𝑡 𝑖, 𝑗 )
+
+
+
+, ∀𝑖 ∈ Z𝑁 𝑖  
+
+> 1
+
+, ∀ 𝑗 ∈ Z𝑁 𝑗 −11
+
+𝒙 −C,𝑖, 𝑗 +1 = KC
+
+
+
+𝒙 +C,𝑖, 𝑗 , 12 𝜏 𝑖, 𝑗 
+
+
+
+(57) Backward: 
+
+
+
+𝒙 +C,𝑖, 𝑗 = KC
+
+
+
+𝒙 −C,𝑖, 𝑗 +1, − 12 𝜏 𝑖, 𝑗 
+
+
+
+,
+
+𝒙 −C,𝑖, 𝑗 = 𝒙 +C,𝑖, 𝑗 −
+
+
+
+03×1
+
+Δ𝒗 C,𝑖, 𝑗 (𝑼 𝑖, 𝑗 )
+
+
+
+, 𝑚 − 
+
+> 𝑖, 𝑗
+
+= 𝑚 + 
+
+> 𝑖, 𝑗
+
+exp 
+
+ ∥𝑼 𝑖, 𝑗 ∥2   
+
+> 𝑔 0𝐼 sp (𝑡 𝑖, 𝑗 )
+
+
+
+, ∀𝑖 ∈ Z𝑁 𝑖  
+
+> 1
+
+, ∀ 𝑗 ∈ Z𝑁 𝑗 −11
+
+𝒙 +C,𝑖, 𝑗 −1 = KC
+
+
+
+𝒙 −C,𝑖, 𝑗 , − 12 𝜏 𝑖, 𝑗 
+
+
+
+(58) where KC (𝒙 C , ± 12 𝜏 𝑖, 𝑗 ) denotes the analytical two-body Keplerian propagation over the time interval ± 12 𝜏 𝑖, 𝑗 for forward and backward propagation, under the gravitational parameter 𝜇 , using a universal-variable formulation based on Stumpff functions [36]. The impulsive maneuver updates the spacecraft mass according to the Tsiolkovsky rocket equation. Based on the maximum low-thrust acceleration magnitude, ∥ 𝒂 acc ∥ = 𝐷𝑁 EP 𝑇 thrust (𝑡 )/ 𝑚 , given by Eq. (2), the thrust-regularization formulation constrains the segmentwise velocity increment during forward and backward propagation using the control variable 𝑼 𝑖, 𝑗 as Forward: ∥𝑼 𝑖, 𝑗 ∥2 ≤ 𝐷𝑁 EP 𝑇 thrust (𝑡 𝑖, 𝑗 )𝜏 𝑖, 𝑗 
+
+𝑚 +
+
+> 𝑖, 𝑗
+
+, ∀𝑖 ∈ Z𝑁 𝑖  
+
+> 1
+
+, ∀ 𝑗 ∈ Z𝑁 𝑗 −11 (59) Backward: ∥𝑼 𝑖, 𝑗 ∥2 ≤ 𝐷𝑁 EP 𝑇 thrust (𝑡 𝑖, 𝑗 )𝜏 𝑖, 𝑗 
+
+𝑚 −
+
+> 𝑖, 𝑗
+
+, ∀𝑖 ∈ Z𝑁 𝑖  
+
+> 1
+
+, ∀ 𝑗 ∈ Z𝑁 𝑗 −11 (60) In addition, the midpoint defect constraints for position, velocity, and mass are defined as follows: 
+
+
+
+𝒙 +C,𝑖, mid − 𝒙 −C,𝑖, mid 
+
+𝑚 + 
+
+> 𝑖, mid
+
+− 𝑚 −
+
+> 𝑖, mid
+
+
+
+= 07×1, ∀𝑖 ∈ Z𝑁 𝑖  
+
+> 1
+
+(61) where "mid" denotes the common interior patch point of leg 𝑖 , located at the interface between the forward and backward-propagated branches. The local optimization formulates the trajectory-design problem by combining the SFT with thrust regularization 24 and the gravity-assist constraints introduced in Section II.B. The resulting nonlinear programming problem is defined as follows to maximize the final spacecraft mass while enforcing the forward and backward-propagation equations, impulsive velocity and mass updates, center-patch continuity conditions, gravity-assist feasibility conditions, time-of-flight bounds, and thrust constraints: max 
+
+> 𝒙 opt
+
+𝑚 𝑁 𝑖 , 𝑁 𝑗 = 𝑚 1,1 −
+
+> 𝑁 𝑖
+
+∑︁ 
+
+> 𝑖 =1
+
+(𝑚 𝑖, 1 − 𝑚 𝑖, 𝑁 𝑗 )
+
+subject to Dynamics: Eqs. (57) and (58) for forward and backward propagation ,
+
+Thrust constraints: Eqs. (59) and (60) for forward and backward propagation ,
+
+Patch-point continuity constraints: Eq. (61) ,
+
+Gravity-assist constraints: Eqs. (7) and (8) ,
+
+Launch constraints: 𝑚 1,1 ≤ 𝑚 delivered (𝐶 31 ,1), 𝐶 31 ,1 ≤ 𝐶 3max ,
+
+Time-of-flight constraint: 
+
+> 𝑁 𝑖
+
+∑︁ 
+
+> 𝑖 =1
+
+(𝑡 𝑖 +1 − 𝑡 𝑖 ) ≤ 𝜏 total ,max ,
+
+where 𝒙 opt = {𝑡 𝑖, 1, 𝒗 +∞,𝑖, 1, 𝑚 +
+
+> 𝑖, 1
+
+, 𝒗 −∞,𝑖, 𝑁 𝑗 , 𝑚 −  
+
+> 𝑖, 𝑁 𝑗
+
+, 𝑡 𝑁 𝑖 , 𝑁 𝑗 , 𝑼 𝑖, 𝑗 },
+
+Number of Legs: 𝑖 = 1, 2, ..., 𝑁 𝑖 
+
+Number of Nodes for Each Leg: 𝑗 = 1, 2, ..., 𝑁 𝑗 
+
+(62) Here, 𝐶 3max denotes the maximum launch characteristic energy, while 𝜏 total ,max represents the maximum time-of-flight. 
+
+4. Thrust-Regularization Validation 
+
+To evaluate the effect of introducing thrust regularization into the SFT, we compare the proposed formulation with a conventional SFT formulation that does not employ thrust regularization. For detailed analysis, we select the maximum-final-mass representative trajectory presented in Section IV, which corresponds to the w/ CP solution with ID 12. Fig. 4 compares the iteration histories of the optimizations with and without thrust regularization. The plotted quantities include the objective function value, the spectral norm of the full constraint Jacobian, 𝜎 max , and the minimum control magnitude over the trajectory at each NLP iteration. The two formulations show clear differences. With thrust regularization, the objective function value largely converges by approximately 800 iterations and then remains nearly constant until around 1100 iterations. At the same time, 𝜎 max remains bounded and exhibits only small oscillations. The minimum control magnitude stays close to zero during most of the optimization process. These behaviors indicate that the optimization algorithm can maintain properly scaled search directions. In contrast, the formulation without thrust regularization exhibits strong oscillatory behavior throughout the optimization. Although the objective function value occasionally decreases, it does not converge to a 25 stable value even after many iterations. The maximum singular value of the Jacobian matrix also shows large fluctuations. These behaviors indicate that the search direction is frequently damped and suggest poor local conditioning of the NLP problem. Furthermore, with thrust regularization, the minimum thrust norm value represented as log 10 (min 𝑖, 𝑗 ∥Δ𝑣 𝑖, 𝑗 ∥) 
+
+shows a trend where, as iterations progress, it smoothly and stably goes down to effectively zero. This indicates that portions of the trajectory stably settle into the optimal coasting condition. Conversely, without thrust regularization, the minimum thrust norm tends to repeatedly approach zero and then spike again. These results clearly demonstrate that the regularization approach successfully mitigates the impact of singularities associated with bang-bang control, thereby enabling robust convergence even when the optimal solution contains zero-thrust arcs. These comparison results are consistent with the intended effect of thrust regularization. By removing the singular behavior associated with the thrust-norm representation, the regularized formulation prevents the gradient conditioning from deteriorating when the optimal solution contains near-zero-thrust arcs. As a result, the optimization algorithm can maintain stable step acceptance and convergence behavior. In contrast, the unregularized formulation remains sensitive to near-zero thrust magnitudes, which causes large variations in the conditioning of the Jacobian matrix. 
+
+# IV. Numerical Results 
+
+A. Problem Setting: Mercury transfer mission inspired by the BepiColombo mission 
+
+This study demonstrates the proposed framework using the transfer trajectory of a Mercury exploration mission inspired by BepiColombo, which employs low-thrust propulsion and nine flybys. BepiColombo is a joint ESA–JAXA mission designed to comprehensively explore Mercury and its environment using two scientific orbiters, MPO and Mio [2, 37]. The BepiColombo-inspired mission considered here includes one Earth flyby, two Venus flybys, and six Mercury flybys, together with solar electric propulsion [2, 37]. Because the spacecraft must reduce its relative velocity to an extremely low level to enable Mercury capture, this mission requires advanced trajectory optimization techniques involving both multiple flybys and low-thrust propulsion. Therefore, it provides an appropriate benchmark problem for demonstrating the proposed framework. The problem setting in this study partially reflects information from actual spacecraft and launch systems. This study models the solar electric propulsion (SEP) system based on the QinetiQ T6 thruster and computes its thrust and specific impulse by interpolating publicly available performance data [38]. This study assumes Falcon Heavy Recovery as the launch vehicle [25]. Although the actual BepiColombo mission used an Ariane 5 launch vehicle, the 𝐶 3–payload mass capability of Falcon Heavy Recovery agrees closely with that of Ariane 5 in the energy range required for this mission. Therefore, Falcon Heavy Recovery provides a suitable substitute launch vehicle for this benchmark problem. Table 1 summarizes the coefficient sets (𝜂 LV ,1, . . . , 𝜂 LV ,6), (𝜂 𝑇 , 1, . . . , 𝜂 𝑇 , 5), and (𝜂 𝐼 sp ,1 , . . . , 𝜂 𝐼 sp ,5 ) with correspond to Eqs. (9), (10), and (11), respectively. On the other hand, detailed spacecraft engineering constraints, such as thermal 26 Fig. 4 Comparison of optimization convergence characteristics with and without thrust regularization for the test case, corresponding to the w/ CP solution with ID 12, described in Section IV. 
+
+conditions, navigation requirements, communication constraints, attitude constraints, and operational limitations during flybys, are not explicitly considered. Table 2 summarizes the input parameters used for the trajectory search and local optimization in this example. In the local optimization, the maximum number of iterations is set to 4000 for all candidates. For each candidate, the maximum allowable total time of flight, 𝜏 total ,max , is set to 1.5 times the time of flight of the corresponding initial solution. The broad-search computations are performed on a Windows PC equipped with 32 GB of RAM and a 13th Gen Intel Core i7-13620H processor, using six CPU cores. The local-optimization computations are performed on a Mac Studio equipped with 48 GB of RAM and an Apple M4 Max processor, using three CPU cores. 27 Table 2 Input parameters for the trajectory search Input Value Comment For Star -based broad search 
+
+𝐸 1−2 Earth Departure body 
+
+𝐸 3−4 Venus Inner-planet flybys 
+
+𝐸 5−11 Mercury Final target sequence 
+
+𝑡 1 (2015, 2020) Launch window 
+
+𝜏 1,11 (1461, 2735) days Total time of flight 
+
+𝜏 1,2 (0, 549) days Earth–Earth transfer 
+
+𝜏 𝑖,𝑖 +1 (0, 484) days Adjacent legs 
+
+𝜏 𝑖,𝑖 +2 (0, 836) days Two-leg transfers 
+
+𝛿𝑡 𝑖 [2,2,2,2,2,2,3,4,3,3,2] days Time mesh per encounter 
+
+𝑎 min ,𝑖 200 km Minimum periapsis altitude 
+
+Δ𝑣 enc ,𝑖 2.1 km/s Encounter Δ𝑣 allowance 
+
+Δ𝑣 total 35 km/s Total Δ𝑣 constraint 
+
+𝑣 ∞,min 0.3 km/s Flyby lower bound 
+
+𝑣 ∞,max [4,9,9,9,9,9,5,4,3,0.6] km/s Per-encounter upper bounds 
+
+Δ𝑣 ∞ 0.05 km/s Resonant sampling step 
+
+𝑁 rev ,1−2 {0, ±1} Low-rev transfers 
+
+𝑁 rev ,3−10 {0, ±1, ±2, ±3, ±4, ±5} Multi-rev transfers 
+
+𝜅 [0, 𝜋 ] Crank angle candidates 
+
+Δ𝑣 leg ,max 1.0 km/s Maximum allowable continuous thrust Δ𝑣 per leg 
+
+𝜁 1.5 Threshold ratio for triggering convex pruning 
+
+𝑁 𝑗 31 Number of control nodes within the linearized MEE grid 
+
+𝑎 acc ,max 6.525 × 10 −8 km /s2 Maximum thrust acceleration limit ( 𝐷 · 𝑁 EP 𝑇 thrust ,max /𝑚 ref with 𝑚 ref = 4000 kg) 
+
+For Local Optimization 
+
+𝜎 LV 0.1 Launch performance margin 
+
+𝐶 3max 12.1 km 2/s2 Max launch 𝐶 3
+
+𝐷 0.9 Duty cycle 
+
+𝑚 dry 3305.5 kg Dry mass 
+
+𝑚 max 4043.2 kg Maximum initial mass 
+
+𝑃 BOL 14 kW Beginning-of-life power 
+
+𝛿 power 0.15 Power margin 
+
+𝜏 deg 0.01 Degradation factor 
+
+𝑁 EP 2 Number of thrusters 
+
+𝑇 thrust ,max 145 mN Maximum thrust performance per engine unit 
+
+𝐼 sp ,max 4300 s Maximum engine specific impulse capability 
+
+𝑁 𝑗 21 (| 𝑁 rev ,𝑖 | + 1) Number of SFT nodes for leg 𝑖 
+
+28 Fig. 5 (a) Launch-year–flight-time solution space; final-mass trade-offs with (b) launch year and (c) total flight time before and after optimization, with and without convex pruning. B. Broad Search 
+
+To assess the effect of the CP, this study performs the broad search both with and without CP and compares the resulting solution sets after local optimization. Without CP, hereafter denoted as w/o CP, the broad search requires 1578.563 sec, of which 584.579 sec is spent in the Leg Module, and generates 4,664 feasible candidate solutions. The framework clusters the candidates obtained from the broad search into one-week launch-date intervals and ranks them according to Δ𝑣 total . The differences in computation time and the number of obtained candidate solutions are examined first. These candidates are classified into six clusters corresponding to one-week launch windows. The fractions of the total runtime spent in the Body , Leg , Flyby , and Combo modules were 0.20%, 37.92%, 55.00%, and 6.88%, respectively. With CP, hereafter denoted as w/ CP, the total runtime increased to 4915.74 sec, of which 3113.623 sec is spent in the 
+
+Leg Module. However, the number of feasible candidate solutions increases to 36335, and the number of launch-window clusters increases to 15. In this case, the fractions of the total runtime spent in the Body , Leg , Flyby , and Combo modules are 0.06%, 63.93%, 21.42%, and 14.59%, respectively. These results show that, although CP introduces an additional computational cost, it substantially expands the candidate-solution search space within a practical computational range. The broad search results in Fig. 5 (a) provide a visual comparison of the candidate solutions obtained in the w/ CP and w/o CP cases in terms of launch year and total flight time. The distribution of the candidate solutions shows that the w/ CP candidates cover the design space obtained in the w/o CP case while increasing both the number of candidates and the number of clusters. In particular, the proposed method obtains families of initial solutions in the departure periods around mid-2017 and early 2018, which are not found in the w/o CP case. In addition, it identifies a larger number of candidate families for departure periods around late 2018, which corresponds to the actual BepiColombo launch period, and from mid- to late 2019. These results indicate that CP recovers candidates that would otherwise be 29 discarded and substantially expands the feasible design space. 
+
+C. Local Optimization 
+
+The differences in computation time for local optimization are examined using the broad search candidate solutions obtained with and without CP. The local optimization is performed on the same computer using three CPU cores. For converged cases, the computation time is generally about 300–800 sec per case. Non-converged cases terminate after reaching the maximum number of iterations and require about 800–900 s. For the candidates obtained without CP, all six selected clusters yield converged solutions, with an average computation time of 3 .024 h per cluster. For the candidates obtained with CP, 12 of the 15 clusters yield converged solutions, with an average computation time of 1 .349 h per cluster. The average time required for convergence or for testing all candidates in each cluster is 55.4% lower than that for the candidates obtained without CP. The three non-converged clusters contain only 8, 12, and 12 representative candidates, respectively, so all available candidates are exhausted before a converged solution can be obtained. Table 3 evaluates the effect of the initial control histories generated by CP on this reduction in computation time for local optimization. Of the 12 converged clusters, eight encounter at least one candidate with a CP-generated initial control history before convergence, whereas the remaining four converge before any such candidate is evaluated. Additional convergence tests therefore examine these eight clusters. For each cluster, the table compares the computation time required for convergence between cases with and without the CP-generated initial control histories. The CP-generated initial control histories reduce the mean computation time from 2.68 h to 1.48 h, corresponding to a reduction of approximately 44.8%. They also reduce the total computation time from 21.45 h to 11.85 h. These results suggest that the control histories generated by CP improve the convergence behavior of low-thrust trajectory optimization by providing favorable initial search directions and thereby shorten the computation time required to obtain converged solutions. However, the improvement is not observed for all trajectory candidates. In some clusters, the cases without initial control histories converge more quickly. This behavior suggests that, in some cases, an almost ballistic control profile may be closer to the local optimal solution. 
+
+Table 3 Summary of single-core computation times for successfully converged clusters, comparing cases with and without the CP-based initial control guess. 
+
+w/ Initial Control Guess w/o Initial Control Guess Mean Time [h] 1.48 2.68 Total Computation Time [h] 11.85 21.45 Fig. 5 (b) and (c) show that the use of CP expands the design space covered by the final locally optimized trajectories. A particularly notable result appears in the departure window around early 2018. This region is not identified by the broad search without CP, but it produces the optimized trajectory with the shortest total flight time among the obtained solutions. As a result, the proposed framework expands the departure-epoch range of the optimized solutions by more 30 than one year. The relationship between final mass and total flight time also shows an important trend. Although the trade-off is not strictly monotonic, longer transfer times generally tend to produce larger final masses. This tendency is consistent with the characteristics of low-thrust propulsion, because a longer flight time provides more opportunities to use low-thrust acceleration efficiently and reduce propellant consumption. These local-optimization results show that the proposed pruning method captures practically important trajectory families that could be missed by conventional broad search without low-thrust effects and expands the search space of optimized solutions. 
+
+D. Representative Optimized Trajectories 
+
+Table 4 provides more detailed information on the optimized solutions obtained with and without CP. The table identifies each optimized solution by its ID and lists its performance metrics, including the heliocentric speed gain or loss induced by each gravity assist ( Δ𝑣 GA ,i), where 𝑖 denotes the gravity-assist index, the final mass, the departure and arrival epochs, and the total time of flight. In this comparison, all optimized solutions reach the prescribed launch-energy upper bound, 𝐶 3 = 12 .1 km 2/s2, and therefore also reach the allowable upper bound on the initial mass. The table shows that both solution sets contain trajectories with relatively large final mass and short flight time. For example, the w/ CP solution with ID 12 and the w/o CP solution with ID 2 correspond to the almost identical trajectory and achieve the largest final mass among the listed solutions. This result indicates that trajectories requiring relatively small low-thrust corrections can already be identified by the broad search without CP. This tendency is consistent with the fact that, when a solution requires less low-thrust acceleration, each leg tends to contain longer coast arcs and can therefore be approximated sufficiently well by a search that does not explicitly account for low-thrust effects. On the other hand, the w/ CP solution with ID 10 achieves the shortest total flight time among all listed solutions. Its total flight time is 6.37 yr, which is approximately 0.75 yr shorter than the shortest solution obtained without CP. This result suggests that, when the feasible time of flight around the initial trajectory is short, the trajectory requires a larger contribution from low-thrust acceleration to satisfy the prescribed transfer time. Such solutions may not appear in the local-optimization stage unless the broad search identifies suitable local optima basins from the combinatorial solution space while accounting for low-thrust corrections through CP. Tables 5 and 6 summarize the detailed mission itineraries of the maximum-final-mass representative solution, corresponding to the w/ CP solution with ID 12, and the minimum-time-of-flight representative solution, corresponding to the w/ CP solution with ID 10, respectively. For every encounter, the tables report the encounter epoch, hyperbolic-excess velocity ( 𝑣 ∞), flyby altitude, spacecraft mass, the flyby-mismatch Δ𝑣 (Δ𝑣 mismatch ), and low-thrust expenditure over the subsequent leg ( Δ𝑣 Leg ) in the initial and optimized solutions. Figures 6 and 7 present the corresponding trajectory and time-history results. The top left panel compares the initial and optimized trajectories, the top right panel shows the optimized trajectory together with the low-thrust vectors, and bottom panel provides the histories of the orbital elements 
+
+𝑎 , 𝑒 , and 𝑖 , low-thrust control, and spacecraft mass. The numbers in the top panel indicate the encounter sequence. 31 Table 4  Summary of optimal solutions for the BepiColombo-inspired scenario mission with and without convex pruning. 
+
+> Group  ID  Δ𝑉 GA ,1 Δ𝑉 GA ,2 Δ𝑉 GA ,3 Δ𝑉 GA ,4 Δ𝑉 GA ,5 Δ𝑉 GA ,6 Δ𝑉 GA ,7 Δ𝑉 GA ,8 Δ𝑉 GA ,9 Final Mass [kg]  Launch Date  Arrival Date  TOF [yr] Optimal Trajectory (w/ CP)  1 -3.00  -1.71  -6.85  -1.36  -1.38  -0.80  -2.86  -0.10  -0.19  3393.1  12/23/2017  05/07/2025  7.37 2 -2.98  -1.73  -6.96  -1.27  -2.08  -2.49  -0.26  -0.02  -0.01  3306.6  01/12/2019  09/25/2026  7.70 3 -3.00  -1.71  -6.85  -1.36  0.02  -0.03  -1.94  -2.74  -0.04  3457.1  07/02/2017  07/07/2025  8.01 4 -2.46  -1.74  -7.14  -1.20  -1.37  -3.53  -0.22  -0.03  -0.02  3511.3  10/21/2019  04/24/2026  6.51 5 -3.00  -1.71  -6.85  -1.36  0.00  -2.05  -2.61  0.07  -0.17  3416.8  08/05/2018  07/12/2026  7.93 6 -2.98  -1.72  -6.85  -1.36  -1.37  -0.78  -2.93  0.19  -0.19  3817.6  10/31/2018  06/08/2026  7.60 7 -2.46  -1.74  -7.14  -1.22  -2.25  0.70  -3.47  0.13  -0.16  3733.6  10/21/2019  03/14/2027  7.39 8 -2.48  -1.71  -6.85  -1.36  -1.38  -0.00  -0.80  -3.05  -0.01  3409.3  04/08/2019  10/23/2026  7.54 9 -3.00  -1.71  -6.85  -1.36  -1.37  -0.78  -2.93  0.19  -0.19  3491.0  12/18/2017  07/22/2025  7.59 10  -2.98  -1.73  -6.96  -1.27  -2.08  -2.49  -0.30  0.01  -0.02  3323.0  12/23/2017  05/08/2024  6.37 11  -3.00  -1.71  -6.85  -1.36  -1.35  -0.02  -3.27  0.02  -0.15  3454.9  12/19/2017  03/17/2026  8.24 12  -2.46  -1.74  -7.14  -1.22  -1.41  -0.01  -3.88  0.16  -0.21  3833.4  10/20/2019  12/01/2026  7.12 Optimal Trajectory (w/o CP)  1 -2.46  -1.74  -7.14  -1.17  -0.04  -1.97  -2.78  0.17  -0.19  3733.6  10/21/2019  03/14/2027  7.39 2 -2.46  -1.74  -7.14  -0.06  -2.54  -0.76  -2.77  0.17  -0.16  3833.4  10/20/2019  12/01/2026  7.12 3 -2.48  -1.71  -6.85  -1.36  -1.38  -0.00  -0.80  -3.05  -0.01  3409.3  04/08/2019  10/23/2026  7.54 4 -2.98  -1.72  -6.92  -1.32  -1.36  -3.52  -0.22  -0.03  -0.02  3796.5  10/31/2018  04/19/2026  7.47 5 -3.00  -1.71  -6.77  -1.41  -0.03  -2.04  -2.61  0.07  -0.17  3416.8  08/05/2018  07/12/2026  7.93 6 -2.98  -1.72  -6.92  -1.32  -1.36  -0.77  -2.72  0.10  -0.21  3515.4  11/23/2018  01/01/2027  8.11
+
+32 Fig. 6 Optimized trajectory, thrust vectors, and time-history profiles for the maximum-final-mass representative solution, corresponding to the w/ CP solution with ID 12. 
+
+This analysis first examines the maximum-final-mass solution. As shown in Table 4, the spacecraft reaches Mercury with a final mass of 3833 .4 kg, which corresponds to approximately 28% of the propellant consumed from the original mission. The time of flight is 7 .12 yr, which is approximately 0 .97 yr shorter than the reference transfer duration of BepiColombo. The thrust profile in Fig. 6 exhibits a bang-bang-like control structure consistent with the optimality condition from Pontryagin’s maximum principle, while many legs also contain coast arcs. This behavior is consistent with the tendency that such a solution can be identified as feasible even without a CP-generated initial control history shown in Table 5, because low-thrust acceleration plays a relatively limited role. In addition, the top left panel of 33 Table 5 Mission itinerary and event details for the maximum-final-mass solution obtained with CP, ID 12: where the locally optimized solutions are shown in bold.                                                                                                                                                                                                                
+
+> Event Date 𝑣 ∞(km/s) Altitude (km) Mass (kg) Δ𝑣 Mismatch (km/s) Δ𝑣 Leg (km/s) 1 Earth 10/07/2019 |10/21/2019 3.550 |3.475 –|––|4043 –|–0.000 |0.004
+> 2 Earth 03/31/2020 |04/17/2020 3.550 |3.451 37330 |4568 –|4043 2.066 |0.000 0.000 |0.099
+> 3 Venus 08/18/2020 |10/12/2020 6.666 |7.408 200 |12041 –|4033 1.581 |0.000 0.000 |0.164
+> 4 Venus 07/14/2021 |08/08/2021 8.247 |7.652 533 |200 –|4016 1.290 |0.000 0.000 |0.163
+> 5 Mercury 09/26/2021 |10/01/2021 6.350 |6.556 706 |200 –|4000 0.969 |0.000 0.000 |0.000
+> 6 Mercury 06/25/2022 |07/03/2022 5.124 |6.073 200 |36309 –|4000 1.129 |0.000 0.000 |0.110
+> 7 Mercury 03/17/2023 |03/15/2023 3.921 |5.705 3773 |200 –|3989 0.811 |0.000 0.000 |0.289
+> 8 Mercury 03/07/2024 |03/09/2024 2.920 |3.616 4262 |200 –|3960 2.015 |0.000 0.000 |0.275
+> 9 Mercury 05/24/2025 |05/31/2025 0.809 |2.861 10069 |200 –|3933 0.204 |0.000 0.000 |0.137
+> 10 Mercury 09/25/2025 |08/28/2025 0.437 |2.598 14651 |66542 –|3920 0.204 |0.000 0.000 |0.893
+> 11 Mercury 04/28/2026 |12/02/2026 0.432 |0.500 –|––|3833 –|––|–
+
+Fig. 6 shows a relatively large deviation between the initial and optimized trajectories for ID 12, which does not have a CP-generated initial control history. By contrast, the top left panel of Fig. 7 shows a much smaller deviation for ID 10, whose initial solution includes a control history generated by CP. This contrast suggests that the CP provides an initial trajectory and a control guess that is closer to the locally optimized low-thrust solution. The histories of the orbital elements 𝑎 , 𝑒 , and 𝑖 show large variations at the flyby epochs. This behavior indicates that gravity assists produce most of the trajectory changes, whereas low thrust mainly provides fine adjustments. Therefore, compared with the reference mission, this trajectory efficiently uses gravity assists, preserves most of the propellant mass, and achieves an earlier arrival at Mercury. This analysis next examines the minimum-time-of-flight solution. As shown in Table 4, this solution reaches Mercury in 6 .37 yr with a final mass of 3323 .0 kg. The corresponding propellant consumption is approximately 98% of the reference mission’s propellant capacity, 737 .7 kg, and the transfer duration is shortened by approximately 1 .72 yr. The thrust profile of the minimum-time-of-flight solution also shows a bang-bang-like control structure. However, the active thrusting periods are much longer than those of the maximum-final-mass solution. The low-thrust distribution before 2020 indicates that the final optimized control history retains key features of the initial control history generated by CP. As shown in Table 6, the legs associated with encounter 2 at Earth, encounter 3 at Venus, and encounter 4 at Venus require relatively large values of Δ𝑣 leg in both the initial and optimized solutions. This persistence suggests that the subsequent nonlinear optimization preserves the principal thrusting phases introduced by CP. In addition, the optimized hyperbolic-excess velocity 𝑣 ∞ increases sharply from 3.973 km/s at encounter 2 with Earth to 8.356 km/s and 9.387 km/s at encounters 3 and 4 with Venus, respectively. This rapid increase indicates a substantial change in 34 Fig. 7 Optimized trajectory, thrust vectors, and time-history profiles for the minimum-time representative solution, corresponding to the w/ CP solution with ID 10. 
+
+the heliocentric transfer energy during this phase of the trajectory. These changes occur during a phase of prolonged low-thrust operation and coincide with pronounced variations in the orbital elements 𝑎 , 𝑒 , and 𝑖 between successive legs. Because such drastic orbital shaping requires substantial energy, purely impulsive transfer models inevitably yield excessive Δ𝑣 requirements, which would normally cause these candidates to be pruned during the broad search. These observations are consistent with the intended role of CP in the broad search: CP recovers near-feasible candidate trajectories by introducing the minimum low-thrust correction required by the convexified model and provides an initial control history that remains informative during the subsequent nonlinear optimization. It also suggests that the CP can 35 Table 6 Mission itinerary and event details for the minimum-time solution obtained with CP, ID 10: where the locally optimized solutions are shown in bold.                                                                                                                                                                                                                
+
+> Event Date 𝑣 ∞(km/s) Altitude (km) Mass (kg) Δ𝑣 Mismatch (km/s) Δ𝑣 Leg (km/s) 1 Earth 01/13/2018 |12/23/2017 3.950 |3.475 –|––|4043 –|–0.000 |0.820
+> 2 Earth 07/12/2018 |06/23/2018 4.950 |3.973 1080 |581 –|3961 0.017 |0.000 0.621 |1.387
+> 3 Venus 05/22/2019 |05/20/2019 9.009 |8.356 51404 |22080 –|3826 1.287 |0.000 0.800 |1.718
+> 4 Venus 04/28/2020 |04/30/2020 10.069 |9.387 200 |200 –|3666 0.755 |0.000 0.000 |0.507
+> 5 Mercury 07/21/2020 |07/21/2020 5.911 |6.388 200 |200 –|3620 2.069 |0.000 0.000 |0.184
+> 6 Mercury 04/19/2021 |04/15/2021 3.444 |5.072 2208 |200 –|3603 1.384 |0.000 0.000 |1.453
+> 7 Mercury 04/06/2022 |04/05/2022 2.064 |3.624 200 |200 –|3475 1.647 |0.000 0.000 |0.487
+> 8 Mercury 08/09/2022 |08/09/2022 0.426 |3.009 200 |44395 –|3433 0.107 |0.000 0.000 |1.293
+> 9 Mercury 03/12/2023 |05/22/2023 0.318 |0.509 200 |33093 –|3324 0.029 |0.000 0.000 |0.000
+> 10 Mercury 07/14/2023 |09/27/2023 0.326 |0.749 200 |25182951 –|3324 0.029 |0.000 0.000 |0.009
+> 11 Mercury 02/14/2024 |05/08/2024 0.330 |0.500 –|––|3323 –|––|–
+
+generate an initial control history whose qualitative trend is similar to that of the final optimized solution. This solution represents a fast transfer trajectory obtained by fully exploiting both low-thrust propulsion and gravity assists. The result suggests that, for finding such trajectories and obtaining stable locally optimized solutions, the proposed framework is effective because it incorporates the CP-based recovery process into the broad search stage and uses the resulting low-thrust profile in the local optimization. 
+
+# V. Discussion 
+
+This study applies the proposed design framework to a BepiColombo-inspired Mercury transfer mission involving low-thrust propulsion and multiple flybys and demonstrates its performance. The results show that CP discovers trajectory candidates that cannot be captured by a lightweight broad-search model alone and expands the searchable design space. They also show that the initial trajectory guesses obtained from the broad search and the CP-generated initial control histories improve the convergence behavior of the subsequent trajectory optimization when they are combined with the thrust-regularized local-optimization model. Although the broad-search stage in this study handles a specific constrained multivariable problem associated with low-thrust optimization, evaluating the robustness of the proposed framework under different transfer strategies and constraint sets remains an important research topic. The flexibility of the convex formulation suggests that the proposed method can be extended beyond the specific low-thrust optimization problem considered in this study. If the corresponding correction problem can be formulated or approximated as a convex problem, the same concept is applicable to multiple deep-space maneuvers [23], solar-sail trajectories [39], boundary-velocity constraints, and 36 thrust-direction or thrust-magnitude constraints. Applying the framework to such problems would clarify how robustly CP works under different types of trajectory corrections and mission constraints. Reducing the computational cost of broad search with CP is another important future direction. In the BepiColombo-inspired application, the implementation with CP requires more computation time, and the CP-related process accounts for a large fraction of the total broad-search cost. In multi-flyby trajectory design, the computational burden can increase rapidly as the number of flyby sequences grows, which may limit the range of practical applications within realistic computation time. Therefore, future work should improve the computational efficiency of the framework from both algorithmic and architectural viewpoints. Possible directions include reducing the cost of the CP solve itself and optimizing when CP is applied during broad search. Such improvements would allow the framework to process more near-feasible candidates and recover feasible solutions more robustly within practical computation time. Improving the convergence rate of the subsequent NLP is also an important future direction. In the present application, three clusters fail to converge despite containing candidates with CP-generated initial control histories, although these clusters contain relatively few representative candidates. One possible cause is that the current framework does not always provide initial guesses sufficiently close to feasible solutions of the full multi-flyby optimization problem. The broad search generates trajectory candidates on a leg-by-leg basis, and CP likewise computes the corresponding low-thrust control histories for individual legs. In contrast, the subsequent NLP optimizes the entire multi-leg trajectory simultaneously while enforcing the flyby constraints between successive legs. This difference leaves room to improve the initial guesses from the viewpoint of the complete trajectory. One possible approach is to introduce a computationally efficient convex-optimization stage between the broad search and local optimization that treats all legs simultaneously and incorporates the flyby constraints. Such an intermediate stage could screen broad-search candidates according to their likelihood of yielding feasible locally optimized solutions and generate higher-quality initial state and control histories. These improvements could increase the convergence robustness of the subsequent NLP. 
+
+# VI. Conclusions 
+
+This paper proposes an integrated deterministic trajectory optimization framework for low-thrust gravity-assist mission design that automatically searches for optimal solutions over a global design space using only mission-sequence information and spacecraft specifications as inputs. The framework integrates a Star -based broad search with Convex Pruning (CP) and local optimization using a thrust-regularized Sims-Flanagan Transcription (SFT). This paper demonstrates the effectiveness of the proposed framework using a BepiColombo-inspired Mercury transfer mission involving nine gravity assists and low-thrust propulsion. The results show two main effects of this study. First, the CP in the broad-search stage discovers trajectory candidates that cannot be captured by a lightweight model alone and thereby expands the searchable design space. Second, the framework connects the initial trajectory guesses obtained from the broad search and the CP-generated initial control histories to the thrust-regularized local-optimization model, improving 37 the convergence behavior of the subsequent trajectory optimization. Overall, the developed framework provides a new capability to optimize complex gravity-assist low-thrust trajectories in an automated manner with minimal user inputs. 
+
+# Acknowledgments 
+
+This work was conducted during R. Iijima’s tenure as a visiting scholar at the School of Aeronautics and Astronautics, Purdue University. R. Iijima received support from the GP-Mech International Joint Graduate Program at Tohoku University. During the preparation of this manuscript, generative AI tools were used in part to identify more readable sentences. 
+
+# References 
+
+[1] Chai, R., Savvaris, A., Tsourdos, A., Chai, S., and Xia, Y., “A review of optimization techniques in spacecraft flight trajectory design,” Progress in aerospace sciences , Vol. 109, 2019, p. 100543. [2] Benkhoff, J., Murakami, G., Baumjohann, W., Besse, S., Bunce, E., Casale, M., Cremosese, G., Glassmeier, K.-H., Hayakawa, H., Heyner, D., Hiesinger, H., Huovelin, J., Hussmann, H., Iafolla, V., Iess, L., Kasaba, Y., Kobayashi, M., Milillo, A., Mitrofanov, I. G., Montagnon, E., Novara, M., Orsini, S., Quemerais, E., Reininghaus, U., Saito, Y., Santoli, F., Stramaccioni, D., Sutherland, O., Thomas, N., Yoshikawa, I., and Zender, J., “BepiColombo - mission overview and science goals,” Space Sci. Rev. , Vol. 217, No. 8, 2021. [3] McCarty, S. L., Burke, L. M., and McGuire, M., “Parallel monotonic basin hopping for low thrust trajectory optimization,” 
+
+2018 Space Flight Mechanics Meeting , 2018, p. 1452. [4] Conway, B. A., Spacecraft trajectory optimization , Vol. 29, Cambridge University Press, 2010. [5] Englander, J. A., and Conway, B. A., “Automated solution of the low-thrust interplanetary trajectory problem,” Journal of Guidance, Control, and Dynamics , Vol. 40, No. 1, 2017, pp. 15–27. [6] Longuski, J., and Williams, S. N., “Automated design of multiple encounter gravity-assist trajectories,” Astrodynamics 1989 ,1990, pp. 985–994. [7] Alemany, K., and Braun, R. D., “Survey of global optimization methods for low-thrust, multiple asteroid tour missions,” 2007. [8] Petropoulos, A. E., and Longuski, J. M., “Shape-based algorithm for the automated design of low-thrust, gravity assist trajectories,” J. Spacecr. Rockets , Vol. 41, No. 5, 2004, pp. 787–796. [9] McConaghy, T., and Longuski, J., “Parameterization effects on convergence when optimizing a low-thrust trajectory with gravity assists,” AIAA/AAS Astrodynamics Specialist Conference and Exhibit , American Institute of Aeronautics and Astronautics, Reston, Virigina, 2004. [10] Mereta, A., and Izzo, D., “Target selection for a small low-thrust mission to near-Earth asteroids,” Astrodynamics , Vol. 2, No. 3, 2018, pp. 249–263. 
+
+38 [11] Petropoulos, A., and Longuski, J., “Automated design of low-thrust gravity-assist trajectories,” Astrodynamics Specialist Conference , American Institute of Aeronautics and Astronautics, Reston, Virigina, 2000. [12] Wall, B. J., and Conway, B. A., “Shape-based approach to low-thrust rendezvous trajectory design,” J. Guid. Control Dyn. ,Vol. 32, No. 1, 2009, pp. 95–101. [13] Petropoulos, A. E., “Simple control laws for low-thrust orbit transfers,” AAS/AIAA Spaceflight Mechanics Meeting , Vol. 114, Ponce, Puerto Rico, 2003, pp. 1–14. [14] Landau, D., “Efficient maneuver placement for automated trajectory design,” J. Guid. Control Dyn. , Vol. 41, No. 7, 2018, pp. 1531–1541. [15] Landau, D., Campagnola, S., and Pellegrini, E., “Star searches for patched-conic trajectories,” J. Astronaut. Sci. , Vol. 69, No. 6, 2022, pp. 1613–1648. [16] Boyd, S., and Vandenberghe, L., “Convex optimization,” 2004. [17] Acikmese, B., and Ploen, S. R., “Convex programming approach to powered descent guidance for mars landing,” J. Guid. Control Dyn. , Vol. 30, No. 5, 2007, pp. 1353–1366. [18] Ozaki, N., Oguri, K., and Funase, R., “PROCYON mission reanalysis: Low-thrust asteroid flyby trajectory design leveraging convex programming,” J. Astronaut. Sci. , Vol. 69, No. 1, 2022, pp. 1–27. [19] Oshima, K., “Regularized direct method for low–thrust trajectory optimization: Minimum–fuel transfer between cislunar periodic orbits,” Adv. Space Res. , Vol. 72, No. 6, 2023, pp. 2051–2063. [20] Sims, J. A., and Flanagan, S. N., “Preliminary design of low-thrust interplanetary missions,” 1997. [21] Battin, R. H., An introduction to the mathematics and methods of astrodynamics , Aiaa, 1999. [22] Maggi, F., “Space propulsion,” , 2022. [23] Vavrina, M., Englander, J., and Ellison, D. H., “Global optimization of N-maneuver, high-thrust trajectories using direct multiple shooting,” 2016. [24] Arora, N., and Russell, R. P., “A fast, accurate, and smooth planetary ephemeris retrieval system,” Celest. Mech. Dyn. Astron. ,Vol. 108, No. 2, 2010, pp. 107–124. [25] NASA Launch Services Program, “Launch Vehicle Performance Website,” URL: https://elvperf.ksc.nasa.gov/, 2024. [26] Englander, J. A., and Conway, B. A., “An automated solution of the low-thrust interplanetary trajectory problem,” J. Guid. Control Dyn. , Vol. 40, No. 1, 2017, pp. 15–27. [27] Topputo, F., Wang, Y., Giordano, C., Franzese, V., Goldberg, H., Perez-Lissi, F., and Walker, R., “Envelop of reachable asteroids by M-ARGO CubeSat,” Adv. Space Res. , Vol. 67, No. 12, 2021, pp. 4193–4221. 
+
+39 [28] Andersson, J. A. E., Gillis, J., Horn, G., Rawlings, J. B., and Diehl, M., “CasADi – A software framework for nonlinear optimization and optimal control,” Mathematical Programming Computation , 2018. [29] Wächter, A., and Biegler, L. T., “On the implementation of an interior-point filter line-search algorithm for large-scale nonlinear programming,” Math. Program. , Vol. 106, No. 1, 2006, pp. 25–57. [30] Walker, M. J. H., Ireland, B., and Owens, J., “A set modified equinoctial orbit elements,” Celestial Mechanics , Vol. 36, No. 4, 1985, pp. 409–419. [31] Oguri, K., and McMahon, J. W., “Stochastic primer vector for robust low-thrust trajectory design under uncertainty,” Journal of Guidance, Control, and Dynamics , Vol. 45, No. 1, 2022, pp. 84–102. [32] Oguri, K., Lantoine, G., and McMahon, J. W., “Solar sailing primer vector theory: Indirect trajectory optimization with practical mission considerations,” J. Guid. Control Dyn. , Vol. 45, No. 1, 2022, pp. 153–161. [33] Aziz, J. D., and Scheeres, D. J., “Sundman-transformed differential dynamic programming with modified equinoctial elements,” 
+
+J. Astronaut. Sci. , Vol. 66, No. 4, 2019, pp. 419–445. [34] Ottesen, D., and Russell, R. P., “Unconstrained direct optimization of spacecraft trajectories using many embedded Lambert problems,” J. Optim. Theory Appl. , Vol. 191, No. 2-3, 2021, pp. 634–674. [35] Varghese, J., and Oguri, K., “Trajectory optimization under uncertainty with nonlinear programming and forward–backward shooting,” J. Guid. Control Dyn. , Vol. 49, No. 1, 2026, pp. 59–77. [36] Shepperd, S. W., “Universal Keplerian state transition matrix,” Celestial Mechanics , Vol. 35, No. 2, 1985, pp. 129–144. [37] Arianespace, “Flight VA245: Arianespace to Deliver BepiColombo, Europe’s First Mission to Mercury, for ESA and JAXA,” Launch Kit, Oct 2018. https://www.arianespace.com [retrieved May 2026]. [38] Hutchins, M., and Simpson, H., “QinetiQ’s T6 and T5 Ion Thruster Electric Propulsion System Architectures and Performances,” 2015. [39] Oguri, K., and Lantoine, G., “Lossless control-convex formulation for solar-sail trajectory optimization via sequential convex programming,” J. Guid. Control Dyn. , Vol. 48, No. 2, 2025, pp. 311–326. 
+
+40

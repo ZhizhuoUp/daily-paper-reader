@@ -6,73 +6,58 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-11
-- 运行时间：2026-09-11 21:52:21 UTC
+- 最新运行日期：2026-09-12
+- 运行时间：2026-09-12 21:28:50 UTC
 - 运行状态：成功
-- 本次总论文数：17
-- 精读区：6
+- 本次总论文数：12
+- 精读区：1
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 17 篇机器人前沿论文，重点解析约束流形规划与空中机械臂控制技术。
-核心推荐关注可微约束规划与接触感知模型预测控制，这两项技术在复杂任务执行中表现卓越。
-建议优先研读这两篇高分论文，深入理解机器人如何在动态约束下实现精准作业。
-- 详情：[/202609/11/README](/202609/11/README)
+今日聚焦机器人形态计算与多智能体协同，精选 12 篇前沿论文。
+重点推荐 GeoTrussRover 的接触语义控制，其形态计算思路为复杂环境下的机器人操控提供了新范式。
+建议关注具身智能在非结构化环境中的适应性，通过速读了解多智能体安全强化学习的最新进展。
+- 详情：[/202609/12/README](/202609/12/README)
 
 ### 精读区论文标签
-1. [Planning along Differentiable Charts of Constraint Manifolds with General-Purpose IK Solvers](/202609/11/2609.10905v1-planning-along-differentiable-charts-of-constraint-manifolds-with-general-purpose-ik-solvers)  
-   标签：评分：9.0/10、query:q3
-   evidence：受约束机械臂的基于梯度的轨迹优化
-2. [Contact-Aware Incremental Model Predictive Control for an Underactuated Aerial Manipulator](/202609/11/2609.11661v1-contact-aware-incremental-model-predictive-control-for-an-underactuated-aerial-manipulator)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：具有接触感知的空中机械臂非线性模型预测控制
-3. [Future-Aware Flow Planning for Safe UAV Target Following](/202609/11/2609.10166v1-future-aware-flow-planning-for-safe-uav-target-following)  
-   标签：评分：8.0/10、query:q1
-   evidence：用于无人机安全目标跟踪的预测性轨迹生成
-4. [DUET-DINO: Simultaneous Cross-View World Modeling for Latent Planning in Robot Manipulation](/202609/11/2609.10506v1-duet-dino-simultaneous-cross-view-world-modeling-for-latent-planning-in-robot-manipulation)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：用于7自由度机器人操作控制的潜空间规划
-5. [ObstaDiff: Generalizable Diffusion Policy Learning via Obstacle-aware Representations](/202609/11/2609.10918v1-obstadiff-generalizable-diffusion-policy-learning-via-obstacle-aware-representations)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：机器人操作的障碍物感知运动生成
-6. [Rapid Learning of Dexterous In-Hand Pen Writing through Real-Time Jacobian Estimation](/202609/11/2609.11775v1-rapid-learning-of-dexterous-in-hand-pen-writing-through-real-time-jacobian-estimation)  
-   标签：评分：8.0/10、query:q8
-   evidence：灵巧操作的实时具身控制
+1. [GeoTrussRover: Morphological Computation with Contact-Semantic Control Primitives](/202609/12/2609.11361v1-geotrussrover-morphological-computation-with-contact-semantic-control-primitives)  
+   标签：评分：8.0/10、query:q4
+   evidence：可重构机器人应对障碍物的形态规划与控制
 
 ### 速读区论文标签
-1. [ActSafeGuard: Differentiable and Training-Aligned Constraint Enforcement for Flow-Matching Policies](/202609/11/2609.11697v1-actsafeguard-differentiable-and-training-aligned-constraint-enforcement-for-flow-matching-policies)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：机器人操作策略的约束强制执行
-2. [Eventually Optimal and Scalable Multi-Agent Planning for Block Cave Mining](/202609/11/2609.07109v1-eventually-optimal-and-scalable-multi-agent-planning-for-block-cave-mining)  
-   标签：评分：7.0/10、query:q1
-   evidence：采矿自动化中自主车辆车队的路径规划与优化
-3. [Conditional Timed Partial Orders: An Expressive and Interpretable Framework for Robot Task Specification and Planning](/202609/11/2609.07905v1-conditional-timed-partial-orders-an-expressive-and-interpretable-framework-for-robot-task-specification-and-planning)  
+1. [CAVEAT: Recurrent Multimodal Diffusion Planning for Mapless Aerial Exploration](/202609/12/2609.06623v1-caveat-recurrent-multimodal-diffusion-planning-for-mapless-aerial-exploration)  
    标签：评分：7.0/10、query:q4
-   evidence：使用混合整数线性规划的机器人任务规范与规划
-4. [Ostrich: Taking Large Strides Through Stiff Contact in Differentiable Dynamics](/202609/11/2609.08800v1-ostrich-taking-large-strides-through-stiff-contact-in-differentiable-dynamics)  
+   evidence：带有障碍物引导的空中探索扩散规划
+2. [Decentralized Safe Multi-Agent Reinforcement Learning via Predictive Shielding](/202609/12/2609.07618v1-decentralized-safe-multi-agent-reinforcement-learning-via-predictive-shielding)  
+   标签：评分：7.0/10、query:q4
+   evidence：具有预测屏蔽功能的分布式多智能体安全运动规划
+3. [FOCI Policy: Focus on Object-Centric Interactions for Relational Manipulation Policies](/202609/12/2609.08743v1-foci-policy-focus-on-object-centric-interactions-for-relational-manipulation-policies)  
+   标签：评分：7.0/10、query:q6
+   evidence：关系操纵策略的以物体为中心的交互建模
+4. [Global Optimization Framework for Automated Low-Thrust Gravity-Assist Trajectory Design](/202609/12/2609.09515v1-global-optimization-framework-for-automated-low-thrust-gravity-assist-trajectory-design)  
    标签：评分：7.0/10、query:q3
-   evidence：用于接触过程梯度优化的可微动力学
-5. [A Decade of Bayesian Optimization for Controller Tuning and Robot Learning: Tutorial, Review, and Future Prospects](/202609/11/2609.09403v1-a-decade-of-bayesian-optimization-for-controller-tuning-and-robot-learning-tutorial-review-and-future-prospects)  
-   标签：评分：7.0/10、query:q2
-   evidence：用于控制器调优和机器人学习的贝叶斯优化
-6. [GTA-2: A Multi-VLM Framework for Synthesizing Robot Manipulation Skills via Grounded Task Axes](/202609/11/2609.09808v1-gta-2-a-multi-vlm-framework-for-synthesizing-robot-manipulation-skills-via-grounded-task-axes)  
+   evidence：低推力轨迹优化与非线性规划
+5. [LTLDiff: Finite Linear Temporal Logic-Guided Data Generation and Diffusion Policies for Multi-agent Robotic Manipulation](/202609/12/2609.11043v1-ltldiff-finite-linear-temporal-logic-guided-data-generation-and-diffusion-policies-for-multi-agent-robotic-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：通过地面任务轴合成机器人操作技能
-7. [HaWMPO: Hallucination-Aware World Model-based Policy Optimization for Generalist Robot Policy](/202609/11/2609.09941v1-hawmpo-hallucination-aware-world-model-based-policy-optimization-for-generalist-robot-policy)  
-   标签：评分：7.0/10、query:q6
-   evidence：机器人操作的策略优化
-8. [Grounding Generated Video Plans in Simulation Towards Versatile Dexterous Controllers](/202609/11/2609.10050v1-grounding-generated-video-plans-in-simulation-towards-versatile-dexterous-controllers)  
-   标签：评分：7.0/10、query:q6
-   evidence：手物交互的操纵运动与底层控制
-9. [Policy Iteration for Domain Randomized Linear Quadratic Systems](/202609/11/2609.04794v2-policy-iteration-for-domain-randomized-linear-quadratic-systems)  
+   evidence：具有安全约束的多智能体机器人操作
+6. [Time-optimal elevator control with higher-order state constraints: analysis and computation of boundary contacts](/202609/12/2609.11348v1-time-optimal-elevator-control-with-higher-order-state-constraints-analysis-and-computation-of-boundary-contacts)  
+   标签：评分：7.0/10、query:q3
+   evidence：带状态约束的时间最优轨迹计算
+7. [Knowledge-Guided Hierarchical Policy Learning for High-Precision Cylindrical Assembly under Tight Tolerances](/202609/12/2609.06522v1-knowledge-guided-hierarchical-policy-learning-for-high-precision-cylindrical-assembly-under-tight-tolerances)  
+   标签：评分：6.0/10、query:q6
+   evidence：高精度装配与分层策略学习
+8. [Dex-X: Learning Visual-Tactile Dexterous Manipulation From Human Videos with Simulated Interaction](/202609/12/2609.07747v2-dex-x-learning-visual-tactile-dexterous-manipulation-from-human-videos-with-simulated-interaction)  
+   标签：评分：6.0/10、query:q6
+   evidence：基于人类视频的视触觉灵巧操纵
+9. [Proactive Context-Forecasted Safety Constraints for Nonstationary Reinforcement Learning](/202609/12/2609.08080v1-proactive-context-forecasted-safety-constraints-for-nonstationary-reinforcement-learning)  
+   标签：评分：6.0/10、query:q1
+   evidence：用于避障的主动安全约束生成
+10. [3DWay: Generalizing Robot Manipulation via 3D Consistent Waypoints](/202609/12/2609.08224v1-3dway-generalizing-robot-manipulation-via-3d-consistent-waypoints)  
+   标签：评分：6.0/10、query:q6
+   evidence：机器人操作的3D一致路点
+11. [McCormick relaxations for PDE-constrained optimization on multi-dimensional domains](/202609/12/2609.08614v1-mccormick-relaxations-for-pde-constrained-optimization-on-multi-dimensional-domains)  
    标签：评分：6.0/10、query:q2
-   evidence：线性二次控制系统的策略迭代
-10. [Benchmarking Dexterity of Multifingered Robot Hands: A Review and Perspective](/202609/11/2609.05585v1-benchmarking-dexterity-of-multifingered-robot-hands-a-review-and-perspective)  
-   标签：评分：6.0/10、query:q6
-   evidence：多指机器人操作灵巧性的基准测试
-11. [CosmoH2G: A Hand-to-Gripper Transfer Dataset and Baseline Method for Object Manipulation with Complex Spatial Movements](/202609/11/2609.07498v1-cosmoh2g-a-hand-to-gripper-transfer-dataset-and-baseline-method-for-object-manipulation-with-complex-spatial-movements)  
-   标签：评分：6.0/10、query:q6
-   evidence：具有复杂空间运动的物体操作
+   evidence：非凸最优控制的基于优化的边界收紧
 
 
 <div class="dpr-home-promo-card">

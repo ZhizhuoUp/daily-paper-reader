@@ -1,0 +1,2826 @@
+Title: McCormick relaxations for PDE-constrained optimization on multi-dimensional domains
+
+URL Source: https://arxiv.org/pdf/2609.08614v1
+
+Published Time: Wed, 09 Sep 2026 04:01:20 GMT
+
+Number of Pages: 38
+
+Markdown Content:
+# McCormick relaxations for PDE-constrained optimization on multi-dimensional domains 
+
+Mariia Pokotylo 1 and Paul Manns 21 Department of Mathematics, TU Dortmund University, Dortmund, Germany 
+
+mariia.pokotylo@tu-dortmund.de, paul.manns@tu-dortmund.de 
+
+September 9, 2026 
+
+Abstract 
+
+We are interested in computing approximate dual bounds for nonconvex optimal control problems using McCormick inequalities. To handle the numerical burden con-cerned with the tightening of these inequalities, we locally average the bilinear term in the PDE constraint. We extend recent theory in this area to elliptic PDEs on mul-tidimensional domains that involve bilinear terms. As an additional result, we also generalize the necessary assumptions to allow for more flexibility in the choice of the discretization for the total variation penalty term from the underlying control prob-lem. Furthermore, we prove the existence of valid bounds on the state variable, which are crucial to enable the optimization-based bound-tightening (OBBT) procedure to tighten the McCormick inequalities. Since theoretical bounds on the state variable are rather conservative, OBBT is both crucial and the main computational bottleneck for deriving a sharp approximate dual bound. We show how the sequence of LPs arising during OBBT may sensibly be warmstarted, allowing us to successfully scale the numerical experiments to finer discretizations than what was possible before. 
+
+# 1 Introduction 
+
+While there is vast literature about local optimization, first- and second-order algorithms, and their convergence to stationary points and local minimizers in optimal control of PDEs, literature on global optimization of such problems is scarce if it is addressed at all with [11] being a notable exception. In this work, we contribute to this compute-intensive challenge and concern ourselves with the task of computing approximate dual bounds for nonconvex optimal control problems. Dual bounds are crucial for global optimization algorithms like (spatial) branch-&-bound [17, 28] to certify the (approximate) global optimality of a computed solution and prune parts of the decision space. To this end, we apply and extend the theory presented in [15, 19] to elliptic control problems on multi-dimensional domains and provide some computational results that demonstrate advantages as well 
+
+Mariia Pokotylo and Paul Manns acknowledge funding by Deutsche Forschungsgemeinschaft (DFG) under project no. 540198933. The authors thank Julian Hall for support with HiGHS and providing feedback on our instances in particular with respect to numerical difficulties of the solvers. 
+
+1arXiv:2609.08614v1 [math.OC] 8 Sep 2026 as persisting challenges of our approach. Specifically, we carry out our analysis for two nonconvex model optimal control problems that are governed by elliptic PDEs that involve bilinear terms and have a total variation penalty term in the objective. Our first model problem is a multi-dimensional generalization of the one-dimensional academic model problem from [19, §3] and reads min  
+
+> u,w
+
+j(u, w ) + α TV( w)s.t. 
+
+Z
+
+> Ω
+
+A∇u · ∇ v +
+
+Z
+
+> Ω
+
+uwv =
+
+Z
+
+> Ω
+
+f v for all v ∈ H10 (Ω) 
+
+w ∈ Wad , u ∈ H10 (Ω) ,
+
+(OCP E )where Ω is a bounded domain with a polygonal boundary of dimension n ∈ { 1, 2, 3} and the set of admissible controls is Wad := {w ∈ L∞(Ω) : wℓ ≤ w ≤ wu a.e. }. The objective functional j is Lipschitz continuous on bounded sets, the source term f ∈ L2(Ω) is fixed, the operator A := ( aij )1≤i≤n, 1≤j≤n is coercive with a positive coercivity constant β and bounded entries, that is 
+
+β|v|2 ≤ Av · v for all v ∈ Rn and a.e. in Ω , (1) 
+
+aij ∈ L∞(Ω) for all i, j ∈ { 1, . . . , n }. (2) In order to ensure ellipticity, we assume that β satisfies − βc2
+
+> p
+
+< w ℓ < w u < βc2
+
+> p
+
+, where cp
+
+is a Poincar´ e constant depending on Ω and wℓ, wu are some real fixed constants. The constant α > 0 scales the regularization term TV( w), which denotes the total variation of the control function w.The second model problem we consider leans on the topology optimization prob-lem from [12, 20]. The underlying PDE is a Helmholtz equation on a two-dimensional square with Robin boundary conditions. It has a complex state space, the Sobolev space 
+
+H1(Ω , C). Specifically, the problem reads min  
+
+> u,w
+
+j(u, w ) + α TV( w)s.t. 
+
+Z
+
+> Ω
+
+∇u · ∇ ¯v − k20
+
+Z
+
+> Ω
+
+(1 + qw )u¯v − ik 0
+
+Z
+
+> ∂Ω
+
+u¯v
+
+= k20
+
+Z
+
+> Ω
+
+qwu 0 ¯v for all v ∈ H1(Ω , C)
+
+w ∈ C, u ∈ H1(Ω , C)(OCP H )with u0 = exp( ik 0d · x), d ∈ R2, w ∈ L∞(Ω), q = ˜ q1˜Ω with ˜ q > 0 and 1 ˜Ω being the 
+
+{0, 1}-valued indicator function of ˜Ω ⊂ Ω, and a small enough wave number k0 > 0. Asufficient condition for k0 is given later in Proposition 4.7. Note that with a slight abuse of notation we apply the necessary trace operators in boundary integrals. To obtain dual bounds, that is lower bounds, on (OCP E ) and (OCP H ), a convexi-fication of the non-linear PDE is necessary. A widely-used tool from finite-dimensional optimization are McCormick relaxations [23] that replace the bilinear term uw by a linear one that itself is constrained by further linear McCormick inequalities which in turn depend on L∞(Ω)-bounds of u and w. The resulting convex problem with only linear constraints is the so-called the McCormick relaxation. Importantly, the tightness of the McCormick 2relaxation hinges on the L∞-bounds on u and w. While bounds on the control w are generally given, bounds on u must be verified for the PDE at hand and estimates involve embedding and Poincar´ e–Friedrichs-type constants, where often only very conservative estimates are available if at all. A common means to improve such bounds and tighten the McCormick relaxation is optimization-based bound-tightening (OBBT) [25, 26] but this may be deemed to be computationally intractable due to, at first infinitely many, additional mixed control-state constraints with infinitely many bounds to be tightened. This problem generally persists after discretization due to the high number of bounds to be tightened at, e.g., every node of a nodal basis. For this reason, we reduce the number of constraints by performing a local averaging of the bilinear term and thus also the McCormick inequalities. The resulting approximation is a system of finitely many linear inequalities whose number can be controlled indepen-dently thus chosen much coarser than of the underlying mesh, on which the PDE is solved. This allows to deal with much fewer bounds to tighten and a much lower computational load. The second means to further reduce the computational load is to also make a coarser ansatz for the control discretization, thereby reducing the number of variables, the opti-mization has to deal with in a reduced formulation. Clearly, these discretizations involve errors that need to be quantified and subtracted if one wants to use these approximate McCormick relaxations for dual bounds in global optimization algorithms. In [19], this procedure was analyzed for a general class of PDE control problems and showed that the derived problem provides an approximate dual bound on the original problem up to an a priori error estimate under a set of assumptions on the PDE and the involved discretiza-tions. They provide a simple one-dimensional example that satisfies these assumptions by using embeddings that are only available in 1D. We show that these assumptions and a priori error estimates can be actually be verified for the multi-dimensional model prob-lems (OCP E ) and (OCP H ) using two different proof strategies so that our verification shall serve as a guidance for future research. We take additional care to include a suitable discretization of the TV-term in our analysis, thereby settling an open problem from [27]. While the verification of the assumptions of our model problems is our focus, we also provide computational results that build on the two-dimensional teasing example from [19], which is structurally similar to (OCP E ). In [19], it was demonstrated that the OBBT procedure consumes very high compute times already for a relatively coarse local averaging grid. We show how different warm start techniques and a deliberate order of grid cells can accelerate the OBBT procedure substantially. The remainder of this article is structured as follows. We first briefly introduce our notation below. Then, in Section 3, we introduce the McCormick relaxations and present how and under which assumptions we approximate the model problems. Since the neces-sary assumptions are nontrivial for the problems considered, we extensively verify them in Section 4. In the course of this, we first verify the assumptions concerning the Laplace-type PDE governing (OCP E ) and Helmholtz equation constraining (OCP H ) in Section 4.1 and Section 4.2 respectively. Then, in Section 4.3, we address the approximation of the total variation for our domain. We describe our computational experiments and present and discuss their results in Section 5. We conclude the findings of this paper in Section 6. 32 Notation and Constants 
+
+Our estimations will involve constants which depend on the parameters of the initial problem. We will introduce the constants with respect to these parameters and then abbreviate them in the remainder omitting the initial problem parameters in order to avoid notational bloat; e.g., we will abbreviate cp(Ω), denoting the squared Poincar´ e constant, by cp. We list the constants and operators that are frequently used in the remainder. 
+
+Operators. We denote by meas the Lebesgue measure. We introduce notation for the projection operator to piecewise constant functions on partitions of Ω, which will perform the local averaging of the bilinear term.Let Qh =
+
+{Q1
+
+> h
+
+, . . . , Q Nh 
+
+> h
+
+} be a disjoint partition of Ω for Nh ∈ N with mesh size h. Then, we denote the projection from the space of integrable functions to the piecewise constant functions defined on {Q h} by Ph, which reads 
+
+Phg = X
+
+> Qih∈Q h
+
+1Qih
+
+1meas Qih
+
+Z
+
+> Qih
+
+g
+
+| {z }
+
+> =:( Phg)i
+
+for g ∈ L1(Ω) .
+
+Vector spaces. For K ∈ { R, C}, Lp(Ω , Kn) denotes the Lebesgue space of p-integrable functions for 1 ≤ p < ∞; in case n = 1 we simplify this notation to Lp(Ω , K). L∞(Ω , K)denotes the space of essentially bounded functions. We will use H1(Ω , K) for the Sobolev space of L2(Ω , K)-functions having L2(Ω , K)-integrable partial derivatives endowed with the norm 
+
+∥y∥H1(Ω ,K) := 
+
+q
+
+∥y∥2 
+
+> L2(Ω ,K)
+
++ ∥∇ y∥2
+
+> L2(Ω ,Kn)
+
+,
+
+which is equivalent to 
+
+q
+
+∥y∥2 
+
+> L2(∂Ω,K)
+
++ ∥∇ y∥2 
+
+> L2(Ω ,Kn)
+
+for some λ > 0 such that 
+
+√λ∥y∥H1(Ω ,K) ≤
+
+q
+
+∥y∥2 
+
+> L2(∂Ω,K)
+
++ ∥∇ y∥2
+
+> L2(Ω ,Kn)
+
+,
+
+where tr : H1(Ω , K) → H1/2(∂Ω) is the trace operator. We observe that H1(Ω , K) is a Hilbert space. We denote the space of H1(Ω , K)-functions vanishing at the boundary of Ω by H10 (Ω , K), which may be equipped with the norm ∥∇ y∥L2(Ω ,Kn).We use Hdiv 0 (Ω) for the space of L2(Ω , Kn)-integrable functions with L2(Ω)-integrable divergence and vanishing normal trace. 
+
+Order relation between C-valued functions. We will often require inequalities for real and imaginary part of complex-valued functions u, v ∈ L1(Ω , C). With a slight abuse of notation and in the interest of a clear presentation, we write u ≤ v a.e. to state that both ℜu ≤ ℜ v and ℑu ≤ ℑ v hold a.e., that is, they hold component-wise. 
+
+# 3 Relaxation with OBBT and local averaging. 
+
+Leyffer and Manns proposed a three-stage approximation of nonconvex optimal control problems with bilinear terms in the state equation in [19]: 4Stage 1: Replacing the bilinear term uw by a convex superset described by linear inequalities (so-called McCormick inequalities). Stage 2: Partial approximation of state and control variables in the McCormick inequalities by local averaging. Stage 3: Combined discretization of the control variable and total variation term. The resulting approximating problem gives an approximate (up to an a priori estimate) lower bound on (OCP E ). In addition, the feasible set of this problem is tightened towards its convex hull with OBBT (Algorithm 1 in the same paper). We now apply the proce-dure to an abstract PDE system that covers both the constraining PDEs in (OCP E ) and (OCP H ). In addition, we generalize the procedure. While one discretization grid is used for both the bilinearity and the control variable in [19], we use two separate grids, which provides flexibility for balancing accuracy and performance; see also [15]. We go through each of the approximation stages to derive the final approximating problem (McC hτ ). 
+
+Stage 1. The general idea for deriving the McCormick relaxations is to (a) replace the bilinear term uw by a new variable z and (b) introduce new linear so-called McCormick inequalities in z, u, w . These linear inequalities convexify z = uw and thus the feasible set. We state a setting that covers both model problems (OCP E ) and (OCP H ). To this end, let K ∈ { R, C}. Abstracting from the specific PDE, we seek for a weak solution 
+
+u ∈ H1(Ω , K) to 
+
+− div( ˜A∇u) + f1u + f2wu = f0 in Ω ,u = g0 on Γ 1,∂u ∂n = g1(u) on Γ 2,
+
+(3) where ˜A is a coercive operator with bounded entries, f0 ∈ L2(Ω), f1 and f2 are smooth functions such that ellipticity estimates can be made on u, g0 = 0 corresponds the Dirichlet boundary condition, and g1 = ik 0u corresponds the Robin boundary condition. We have Γ1 = ∂Ω, Γ 2 = ∅ for (OCP E ) and Γ 1 = ∅, Γ 2 = ∂Ω for (OCP H ). We follow Example 1 from [23] to derive the McCormick relaxations of uw ∈ L2(Ω , K)under uniform bounds uℓ ≤ u ≤ uu with uℓ, uu ∈ L2(Ω , K); see Assumption 3.4 below. We will argue the existence of L∞-bounds at a later point. Then, the convex lower bound (see [23] and Fig. 1a for a visualization) and the concave upper bound [2] of the function uw are a.e. given by 
+
+wu ≤ max {wuu + uuw − uuwu, w ℓu + uℓw − uℓwℓ},wu ≥ min {wuu + uℓw − uℓwu, w ℓu + uuw − uuwℓ}, (4) where, if K = C, we define the operators max and min component-wise over the real and imaginary part such that max {a, b } := max {ℜ a, ℜb} + i max {ℑ a, ℑb} and min {a, b } := min {ℜ a, ℜb} + i min {ℑ a, ℑb} for complex-valued functions a, b. We also recall that we use the symbols ≤, ≥ component-wise for the real and imaginary part; see also Section 2. Due to (4), uw can be bounded (component-wise for K = C) by two linear expressions from below and two from above. 5−2 0 2 −2 0 2−10                              
+
+> −50510
+> xyz
+> (a) Convex piecewise linear underestimator (gray) for the term xy (blue) with the choices
+> −xℓ=xu=−yℓ=yu= 3.
+> −202−2 02−10
+> −50510
+> xyz
+> (b) McCormick envelope for the term xy (in blue) before (gray) and after OBBT (orange) with initial bounds −xℓ=xu=−yℓ=yu=3 and tight bounds ¯ xℓ= ¯ xu= ¯ yℓ= ¯ yu= 2.
+
+Figure 1: McCormick envelope for a real finite-dimensional biliniarity z = xy in [ −2, 2] 2 ×
+
+[−4, 4] (blue) for xℓ ≤ x ≤ xu, y ℓ ≤ y ≤ yu.In the real case, this gives 4 pointwise a.e. inequalities and in the complex case, we have 8 pointwise a.e. inequalities, which we write as 4 component-wise inequalities in the notation from Section 2. Replace uw by a new variable z ∈ L2(Ω , K) that is constrained by the inequalities (4) yields: 
+
+− div( ˜A∇u) + f1u + f2z = f0 in Ω ,u = g0 on Γ 1,∂u ∂n = g1(u) on Γ 2,z ≥ uℓw + uw ℓ − uℓwℓ a.e. ,z ≥ uuw + uw u − uuwu a.e. ,z ≤ uuw + uw ℓ − uuwℓ a.e. ,z ≤ uℓw + uw u − uℓwu a.e. ,uℓ ≤ u ≤ uu a.e. ,wℓ ≤ w ≤ wu a.e. (5) The tightness of the McCormick envelope and in turn the McCormick relaxation depends on the derived bounds uℓ, uu on u. We highlight again that such bounds can be obtained analytically but involve Sobolev embedding and Poincar´ e–Friedrichs-type constants, which are often not known precisely and may be very large or too conservative in general. The disadvantage of the family of inequalities in (5) is that they add pointwise linear mixed state-control constraints to the problem, which results in many additional inequal-ities after discritization. This becomes more aggravated if one decides to improve the approximation by tightening the bounds on u (see Remarks 2.3, 2.6 in [19]). For this rea-son, the next stage performs a partial discretization of the bilinear term uw on an—ideally relatively coarse—grid before the derivation of the McCormick inequalities. 
+
+Remark 3.1 . Here, one has a choice for the McCormick inequalities, specifically one can 6choose between the following three options (O1) z := uw ,(O2) z := f2uw ,(O3) z := f1u + f2uw .Since the arguments are completely analogous and all McCormick inequalities that are valid for (O2) and (O3) are also valid for (O1), we consider only (O1) in this work. 
+
+Stage 2. We define the abstract PDE with locally averaged bilinear term as 
+
+− div( ˜A∇u) + f1u + f2(Phu)( Phw) = f0 in Ω 
+
+u = g0 on Γ 1,∂u ∂n = g1(u) on Γ 2.
+
+(6) The operator Ph maps to a constant value per grid cell of the partition of Ω so that the locally averaged bilinear term reads (Phu)( Phw) = X
+
+> i∈{ 1,...,N h}
+
+ 1meas Qih
+
+Z
+
+> Qih
+
+u
+
+ 1meas Qih
+
+Z
+
+> Qih
+
+w
+
+
+
+1Qih , (7) where Qh = {Q1
+
+> h
+
+, . . . , Q Nh 
+
+> h
+
+} with mesh size h for some Nh ∈ N is a partition of Ω. Applying the McCormick relaxation approach from Stage 1 on each summand in (7) yields the following approximation of the linear inequality system (5): 
+
+− div( ˜A∇u) + f1u + f2z = f0 in Ω ,u = g0 on Γ 1,∂u ∂n = g1(u) on Γ 2,z =
+
+> Nh
+
+X
+
+> i=1
+
+zi1Qih ,zi ≥ uiℓ(Phw) + ( Phu)wiℓ − uiℓwiℓ on Qih for all i ∈ { 1, . . . , N h},zi ≥ uiu(Phw) + ( Phu)wiu − uiuwiu on Qih for all i ∈ { 1, . . . , N h},zi ≤ uiu(Phw) + ( Phu)wiℓ − uiuwiℓ on Qih for all i ∈ { 1, . . . , N h},zi ≤ uiℓ(Phw) + ( Phu)wiu − uiℓwiu on Qih for all i ∈ { 1, . . . , N h},uiℓ ≤ Phu ≤ uiu on Qih for all i ∈ { 1, . . . , N h},wℓ ≤ w ≤ wu a.e. (8) The McCormick inequalities are defined per cell Qih and thus their number remains con-stant during a subsequent discretization of the PDE. We note that the bound constraints on w remain valid for Phw, but we now require bounds on Phu per cell Qih.While it is already computationally meaningful to perform OBBT on Phu at this point, we proceed with an approximation of the control variable w, which may be used to balance accuracy and approximation quality [15]. 7Stage 3. We discretize w as piecewise constant functions on a further partition ˜Qτ =
+
+{ ˜Q1 
+
+> τ
+
+, . . . , ˜QNτ 
+
+> τ
+
+} with mesh size τ for some Nτ ∈ N, that is, we choose the ansatz 
+
+w =
+
+> Nτ
+
+X
+
+> j=1
+
+1 ˜Qjτ wj , wj ∈ [wℓ, w u] for j ∈ { 1, . . . , N τ }.
+
+We assume that ˜Qτ is embedded into Qh. Specifically, each grid cell Qih is the finite union of grid cells ˜Qjτ . The resulting approximation of (8) reads 
+
+− div( ˜A∇u) + f1u + f2z = f0 in Ω ,u = g0 on Γ 1,∂u ∂n = g1(u) on Γ 2,w =
+
+> Nτ
+
+X
+
+> j=1
+
+wj 1 ˜Qjh
+
+, z =
+
+> Nh
+
+X
+
+> i=1
+
+zi1Qih ,zi ≥ uiℓ(Phw) + ( Phu)wiℓ − uiℓwiℓ on Qih for all i ∈ { 1, . . . , N h},zi ≥ uiu(Phw) + ( Phu)wiu − uiuwiu on Qih for all i ∈ { 1, . . . , N h},zi ≤ uiu(Phw) + ( Phu)wiℓ − uiuwiℓ on Qih for all i ∈ { 1, . . . , N h},zi ≤ uiℓ(Phw) + ( Phu)wiu − uiℓwiu on Qih for all i ∈ { 1, . . . , N h},uiℓ ≤ Phu ≤ uiu on Qih for all i ∈ { 1, . . . , N h},wℓ ≤ w ≤ wu a.e. ,
+
+(9) where we observe that Phw = Pτ w = wi on Qih holds for all i ∈ { 1, . . . , N h} if the partitions 
+
+{Qih} and { ˜Qjτ } coincide, that is, if the same discretization grids are used for the bilinearity and w. If this is not the case, Phw is a finite sum on Qih.While this ansatz implies w = Pτ w, we now have to take extra care of the total variation term since, for a given w ∈ L1(Ω), TV( Pτ w) → TV( w) does not necessarily hold as τ → 0; see, e.g., Example 2.10 in [27]. Consequently, we require a discretization, which we denote by TV τ , of the TV-functional that does not have this problem; see [5, 7] or, in the case of additional discreteness or integer restrictions on w, [27] for such discretizations. The resulting optimization problem reads min u,w 1,...,w Nτ 
+
+> z1,...,z Nh
+
+j(u, w ) + αTV τ (w)s.t. u, w, z satisfy (9) 
+
+u ∈ H1(Ω , K), z 1, . . . , z Nh ∈ K, w 1, . . . , w Nτ ∈ R.
+
+(McC hτ )
+
+Remark 3.2 . The assumption that the grid with mesh size τ is embedded into the grid with mesh size h is not necessary for most of our arguments. but we use it here for simplicity of the argument and to provide a more intuitive understanding. This assumption has also been made to derive the approximation results in [15]. 
+
+OBBT and Approximate Lower Bounds. We can apply the OBBT Algorithm 1 from [19] on (McC hτ ) to reduce its feasible set. The idea of the algorithm is to solve a 8sequence of linear problems ˜uiℓ/˜uiu ← min / max (Phuh)|Qih : ( uh, w τ , z h) is feasible for (McC hτ ) (OBBT ℓ/u (i)) over all partitions Qih. As in the approximation stage 1, in the case K = C, we define the operators max and min component-wise over the real and imaginary part such that max {a, b } = max {ℜ a, ℜb} + i max {ℑ a, ℑb} and min {a, b } = min {ℜ a, ℜb} + i min {ℑ a, ℑb}
+
+for complex-valued functions a, b . In such a way we actually need to (repeatedly) solve 4Nh problems in the complex case. Subsequently, the bounds uil , u iu on ( Phuh) are being updated with the obtained values ˜ uℓ, ˜uu and the bound-tightening procedure is being repeated. The values of ˜ uℓ, ˜uu are well defined; see Lemma 2.17 in [19]. Let us denote the new feasible set obtained after the n-th round of bound-tightening by Fn. Then, the sequence of induced approximate McCormick relaxations min u,w 1,...,w Nτ 
+
+> z1,...,z Nh
+
+j(u, w ) + α TV  
+
+> τ
+
+(w) s.t. (u, w 1, . . . , w Nτ , z 1, . . . , z Nh ) ∈ F n, (McC nhτ )provides approximate lower bounds on (OCP E ) that satisfy 
+
+m(OCP E ) ≥ m(McC nhτ ) − Lnu∥¯u − ¯uh∥L2(Ω ,K) − Lw
+
+p(wu − wℓ)n 14 TV( ¯ w) 12 τ 12 , (10) where m(OCP E ) is the infimum of (OCP E ), (¯ u, ¯w) is a minimizer of (OCP E ), Lnu and 
+
+Lw are the Lipschitz constants of j with respect to its first and second argument on 
+
+Fn ∪ arg min (OCP E ) and Wad resp. [19, Theorem 2.11] (note that U therein can be replaced by L2(Ω , K) without changing the proof). The error term can be estimated a priori; see (20). 
+
+Assumptions. In order to apply OBBT to (McC hτ ) and to estimate the approximation error, the original problem (OCP E ) and its approximation (McC hτ ) have to satisfy several assumptions, which we split into three blocks. The first block concerns the partitions Qh.
+
+Assumption 3.3 (Assumptions on grid cells, Assumption 2.7 from [19]) . We assume the following. 1. {Q h}h is a sequence of partitions of the domain Ω with mesh sizes h,2. {Q h}h satisfies a bounded eccentricity condition, that is, there exists C > 0 such that for each Qih there is a closed ball Bih such that Qih ⊂ Bih and meas Bih ≤ C meas Qih.
+
+The next block of assumptions ensures the existence, boundedness, and approximabil-ity of the solutions of the original and locally averaged PDEs. 
+
+Assumption 3.4 (Assumptions on PDEs under assumptions on grid cells) . In addition to Assumption 3.4, we assume the following. 1. There are bounds uℓ, uu ∈ L∞(Ω , K) such that uℓ ≤ u ≤ uu a.e. holds for solutions 
+
+u to (3) uniformly over all w ∈ Wad .2. The PDE and the one with locally averaged bilinear term (3) and (6) admit unique solutions for all w ∈ Wad .
+
+93. For fixed h and all Qih ∈ Q h, the bounds uiℓ, uiu ∈ K satisfy uiℓ ≤ (Phuh)|Qih ≤ uiu for all uh that solve (6) for w ∈ Wad .4. uℓ,h := PNh 
+
+> i=1
+
+uiℓ1Qih and uu,h := PNh 
+
+> i=1
+
+uiu1Qih satisfies uℓ,h → uℓ in L2(Ω , K) and 
+
+uu,h → uu in L2(Ω , K).5. Let u solve (3) for some w ∈ Wad . Then uh → u in H1(Ω , K) holds for the solutions 
+
+uh to (6) for w for h ↘ 0.
+
+The last block of assumptions concerns the correct approximation of the total variation. We give a more general assumption than Assumption 2.12 in [19] that allows us to cover all of the three aforementioned discretizations of TV from [5, 27]. 
+
+Assumption 3.5 (Assumptions on the approximation of TV) . We assume that there exists a sequence of approximations (TV τ )τ of TV in the following sense: 1. For all τ , TV τ : Wad → [0 , ∞] is lower semicontinuous with respect to L1-convergence, 
+
+TV τ ◦Pτ ≤ TV , and TV τ ◦Pτ ≤ TV τ ,2. sup τ ↘0 TV τ (wτ ) ≤ C and sup τ ↘0 ∥wτ ∥L1(Ω) ≤ C for some C > 0 with wτ = Pτ wτ
+
+imply a subsequence {wτk }k and w ∈ BV(Ω) such that wτk → w in L1(Ω) ,3. TV τ ◦Pτ Γ-converges to TV on Wad for τ ↘ 0 with respect to L1-convergence. Remark 3.6 . If Wad is of the form Wad = {w ∈ L1(Ω) : w(x) ∈ { ω1, . . . , ω M } a.e. }
+
+for finitely many ω1, . . . , ωM ∈ R, one may adapt the discretization from [27]. Then Assumption 3.5 can still be satisfied if one defines TV τ := max { 1 
+
+> c
+
+TV , TV σ} with TV σ
+
+defined in [27] (use h = σ therein) when τ /σ ↘ 0 as σ ↘ 0 and τ ↘ 0; see the results in 
+
+§3 in [27]. 
+
+# 4 Verification of the assumptions for the model problems 
+
+We now verify the remaining required assumptions. We start with the verification of Assumption 3.4 for (OCP E ), for which we derive the L∞-bounds on the state variable such that we can observe, which constants enter the this global estimate. For (OCP H )we build on higher regularity, that is, H2-regularity, from existing literature and use a bootstrapping argument and do not elaborate on the constants with the same level of detail. While it is of course also possible to derive them, we note that they become very cumbersome and we thus leave it to the interested reader. 
+
+4.1 Verification of the assumptions for (OCP E )
+
+We recall the constraining elliptic PDE in the weak form 
+
+Z
+
+> Ω
+
+A∇u · ∇ v +
+
+Z
+
+> Ω
+
+uwv =
+
+Z
+
+> Ω
+
+f v for all v ∈ H10 (Ω) . (11) and observe that it admits a unique solution for all w ∈ Wad .Specifically, it holds that R 
+
+> Ω
+
+A∇u · ∇ u + R 
+
+> Ω
+
+wu 2 ≥ (β + min {c2
+
+> p
+
+wℓ, 0})∥∇ u∥2
+
+> L2(Ω)
+
+, where 
+
+β + min {c2
+
+> p
+
+wℓ, 0} ≥ 0 holds by assumption so that we can apply the Lax–Milgram lemma. This also yields the estimation ∥∇ u∥L2(Ω) ≤ c1(cp, w ℓ, β )−1∥f ∥L2(Ω) for c1(cp, w ℓ, β )−1 := 
+
+cp/(β + min {c2
+
+> p
+
+wℓ, 0}). 10 Assumption 3.4 1. We show that Assumption 3.4 1 is satisfied for all choices uℓ, uu
+
+such that 
+
+uℓ ≤ uℓ := −c2(cp, w ℓ, β, Ω) −1∥f ∥L2(Ω) ∈ R (12) and 
+
+uu ≥ uu := c2(cp, w ℓ, β, Ω) −1∥f ∥L2(Ω) ∈ R, (13) where 
+
+c2(cp, w ℓ, β, Ω) −1 := 1min c2
+
+> p
+
+wℓ, 0 + β ·
+
+ 
+
+> 12
+
+if n = 1 ,
+
+8Cimb  
+
+> 0
+
+(6) Cimb  
+
+> 0
+
+(4)(meas Ω) 112 if n ∈ { 2, 3}.
+
+The bounds for the one-dimensional case can be obtained directly from the imbedding 
+
+H10 (Ω) ,→ L∞(Ω) and the H10 (Ω)-estimate on u due to the Lax–Milgram lemma [19]. The multidimensional case requires another approach since the imbedding H10 (Ω) ,→
+
+L∞(Ω) exists only in the one-dimensional case. We follow an argument due to Stampacchia and Kinderlehrer, specifically [16, Lemma B.2] and [29, Theorem 4.5]. Because their settings do not cover the case wℓ < 0, we briefly extend their argument below. 
+
+Theorem 4.1. Let − βc2
+
+> p
+
+< w ℓ < w u. Then, for all w ∈ L∞(Ω) with wℓ ≤ w ≤ wu a.e., the solution u to (11) satisfies uℓ ≤ u ≤ uu for uℓ, uu above. Proof. In case u ≡ 0, the estimation is trivial. Therefore, we assume u̸ ≡ 0. First, we define the auxiliary variables and describe the idea. Let k > 0 be fix. We modify the test function from [16, Lemma B.2] by scaling it with M := min  cpwℓ 
+
+> β
+
+, 0 + 1: 
+
+ζM := M sgn( u) max( |u| − k, 0) = 
+
+
+
+M (u − k) for u ≥ k, 
+
+0 for |u| < k, M (u + k) for u > −k. 
+
+We note that the scalar M is positive due to the assumption wℓ > −β/c p. We denote by 
+
+E(k) the set on which the test function attains a non-zero value: 
+
+E(k) := {x ∈ Ω : |u(x)| ≥ k}.
+
+The derivative of ζM is the M -fold derivative of u on the set E(k) and zero elsewhere: 
+
+∇ζM =
+
+
+
+M ∇u on E(k)0 else |u| < k. . (14) Our aim is to show that E(k) is a null set for a sufficiently large k > 0. We will employ to this end the similarity of ∇ζM and ∇u to show 
+
+M 2
+
+(Cimb  
+
+> 0
+
+(6)) 2 (h − k)2[meas E(h)] 13 ≤ ∥∇ ζM ∥2 
+
+> L2(Ω ,Rn)
+
+≤ (Cimb  
+
+> 0
+
+(4)) 2
+
+β2 ∥f ∥2
+
+> L2(Ω)
+
+[meas E(k)] 12
+
+(15) for all positive h, k with h > k > 0, where the map meas( ·) and the constants Cimb  
+
+> 0
+
+(·) are defined in (2). Then, the inequality (15) can be brought into the form required by [16, 11 Lemma B.1], which implies meas E(h) = 0 for all large enough h and the claimed bounds on u.
+
+Estimation of ∥∇ ζM ∥2 
+
+> L2(Ω ,Rn)
+
+from below. This estimation is based on the construc-tion of ζM and the Sobolev imbedding theorem ([29, Theorem 4.5]; choose c := (Cimb    
+
+> 0(6)) 2
+> M2
+
+,
+
+p := 6 therein and the modified test function ζM , which causes the factor M 2 in (15)). 
+
+Estimation from ∥∇ ζM ∥2 
+
+> L2(Ω ,Rn)
+
+above. First we show the following estimation 
+
+β∥∇ ζM ∥2 
+
+> L2(Ω ,Rn)
+
+≤
+
+Z
+
+> E(k)
+
+f ζ M ,
+
+which corresponds in [29, (7.8)] but must be obtained differently than in the steps (ii), (iii) therein. Then, the rest of the proof coincides with steps (iv) and (v) in [29] using our modified test function. To this end, we show 
+
+β∥∇ ζM ∥2 
+
+> L2(Ω ,Rn)
+
+≤
+
+Z
+
+> E(k)
+
+A∇u · ∇ ζM +
+
+Z
+
+> E(k)
+
+wuζ M . (16) Because of the ellipticity of the PDE and due to the construction of ∇ζM (see (14)), we can estimate β∥∇ ζM ∥2 
+
+> L2(Ω ,Rn)
+
+as: 
+
+β∥∇ ζM ∥2 
+
+> L2(Ω ,Rn)
+
+≤
+
+Z
+
+> Ω
+
+A∇ζM · ∇ ζM =
+
+Z
+
+> E(k)
+
+A(M ∇u) · ∇ ζM .
+
+As the constant M attains values depending on the sign of wℓ, we distinguish between the following subcases: 
+
+wℓ is nonnegative. We can overestimate the right-hand side by the left-hand side of the PDE (11) with wℓ instead of w. It holds M = 1 in the considered case and thus we obtain 
+
+β∥∇ ζM ∥2 
+
+> L2(Ω ,Rn)
+
+≤
+
+Z
+
+> E(k)
+
+A∇u · ∇ ζM +
+
+Z
+
+> E(k)
+
+wℓuζ Mwℓ≤w a.e. 
+
+≤
+
+Z
+
+> E(k)
+
+A∇u · ∇ ζM +
+
+Z
+
+> E(k)
+
+wuζ M .wℓ is negative. We use the construction of M to obtain the following sequence of estimations 
+
+β∥∇ ζM ∥2 
+
+> L2(Ω ,Rn)
+
+=
+
+Z
+
+> E(k)
+
+A∇u · ∇ ζM + ( M − 1) 
+
+Z
+
+> E(k)
+
+A∇u · ∇ ζM M =M +1 
+
+≤
+
+Z
+
+> E(k)
+
+A∇u · ∇ ζM + c2
+
+> p
+
+wℓ
+
+β
+
+Z
+
+> E(k)
+
+A∇u · ∇ ζM M =c2
+
+> pwℓ+1
+
+=
+
+Z
+
+> E(k)
+
+A∇u · ∇ ζM + c2
+
+> p
+
+wℓ
+
+β M
+
+Z
+
+> E(k)
+
+A∇u · ∇ u. ∇ζM =M ∇u on E(k)
+
+Because of the negative sign of wℓ, we need to find a lower bound on the second summand. For this reason, we use here the elliptic properties of the operator A, Poincar´ e inequality with a constant cp, and an auxiliary estimation in Lemma A.1 to transform the second 12 summand, 
+
+β∥∇ ζM ∥2 
+
+> L2(Ω ,Rn)
+
+≤
+
+Z
+
+> E(k)
+
+A∇u · ∇ ζM + c2
+
+> p
+
+wℓM
+
+Z
+
+> E(k)
+
+∥∇ u∥2 
+
+> Rnwℓ<0 by assumption ⇒
+> Elliptic cond. has the reverse ineq. sign
+
+≤
+
+Z
+
+> E(k)
+
+A∇u · ∇ ζM + wℓM
+
+Z
+
+> E(k)
+
+u2 wℓ<0 by assumption ⇒
+
+> Poincar´ e ineq. has the reverse ineq. sign
+
+≤
+
+Z
+
+> E(k)
+
+A∇u · ∇ ζM + wℓ
+
+Z
+
+> E(k)
+
+uζ M Lemma A.1 
+
+≤
+
+Z
+
+> E(k)
+
+A∇u · ∇ ζM +
+
+Z
+
+> E(k)
+
+wuζ M , wℓ≤w a.e. 
+
+yielding (16). Having now established (16) for both (that is all) cases, we obtain 
+
+β∥∇ ζM ∥2
+
+> L2(Ω ,Rn)PDE (11)
+
+≤
+
+Z
+
+> E(k)
+
+f ζ M .
+
+Further we use the estimations from (iv), (v) from the proof of [29, Theorem 4.5.]. Combination of these two steps yields 
+
+∥∇ ζM ∥2 
+
+> L2(Ω ,Rn)
+
+≤ (Cimb  
+
+> 0
+
+(4)) 2
+
+β2 ∥f ∥2
+
+> L2(Ω)
+
+[meas E(k)] 12 .
+
+Application of Lemma B.1 from [16]. We multiply the right- and the left-hand sides of the double-inequality (15) by an appropriate constant and evaluate them to the power of 3 /2 to obtain for all h > k > 0[meas E(h)] ≤
+
+ (Cimb  
+
+> 0
+
+(6)) 2(Cimb  
+
+> 0
+
+(4)) 2
+
+β2M 2 ∥f ∥2
+
+> L2(Ω)
+
+3 1(h − k)6 [meas E(k)] 64 .
+
+This estimation corresponds to the first estimation in [29, p. 363] and allows to apply [16, Lemma B.1.]. Observing that meas Ω = 1, we obtain the desired estimation meas E(d) = 0 for d = 8 Cimb  
+
+> 0
+
+(6) Cimb  
+
+> 0
+
+(4) 
+
+βM ∥f ∥L2(Ω) .
+
+Remark 4.2 . It is possible to obtain L∞-bounds uℓ, uu on u in fewer steps via a boot-strapping approach and using the results from Theorem 4.5 in [29] directly. This results in the (weaker) bound: 
+
+∥u∥L∞(Ω) ≤ 8
+
+β Cimb  
+
+> 0
+
+(4) Cimb  
+
+> 0
+
+(6) 1 + max {− wℓ, w u}cp∥f0∥L2(Ω) 
+
+1min {c2
+
+> p
+
+wℓ, 0} + β
+
+!
+
+.
+
+We recall the locally averaged abstract PDE (6) for (OCP E )
+
+Z
+
+> Ω
+
+A∇u · ∇ v +
+
+Z
+
+> Ω
+
+(Phu)( Phw)v =
+
+Z
+
+> Ω
+
+f v for all v ∈ H10 (Ω) (17) 13 and verify the corresponding assumptions. 
+
+Assumption 3.4 2. We observe that Ph is non-expansive with respect to L1(Ω) , L 2(Ω), and L∞(Ω) meaning 
+
+∥Phuh∥Lt(Ω) ≤ ∥ uh∥Lt(Ω) for t = 1 , 2, ∞ (18) for all h ∈ { 1, . . . , N h} [19, §3.3]. Together with the boundedness of w, this implies the coercivity of the locally averaged bilinear form with the constant β − c2 
+
+> p
+
+max {| wu|, |wℓ|} .Consequently, the Lax–Milgram Lemma yields the existence of unique solutions to (17) for all w ∈ BV(Ω) with wℓ ≤ w ≤ wu a.e. 
+
+Remark 4.3 . We observe that the applications of the Cauchy–Schwarz and Poincar´ e in-equalities on the left-hand side yield 
+
+∥∇ uh∥L2(Ω ,Rn) ≤ cp
+
+(β − max {− wℓ, w u}c2
+
+> p
+
+) ∥f ∥L2(Ω ,Rn) =: 1
+
+c3(cp, w ℓ, w u, β ) ∥f ∥L2(Ω ,Rn).
+
+Assumption 3.4 3. The non-expansiveness of Ph also yields that it is sufficient to find the bounds on uh instead of Phuh. To this end, we use a bootstrapping argument together with [29, Theorem 4.5] and obtain 
+
+∥uh∥L∞(Ω) ≤ 8Cimb  
+
+> 0
+
+(4) Cimb  
+
+> 0
+
+(6) 
+
+β ∥f − (Phw)( Phuh)∥L2(Ω) .
+
+Further application of the H¨ older and Poincar´ e inequalities together with the H10 (Ω)-bound on uh and the L∞(Ω)-bounds on w (which also hold for Phw because of the non-expansiveness of Ph) yield 
+
+∥uh∥L∞(Ω) ≤ 8Cimb  
+
+> 0
+
+(4) Cimb  
+
+> 0
+
+(6) 
+
+β
+
+
+
+1 + max {− wℓ, w u} cp
+
+β − max {− wℓ, w u}c2
+
+> p
+
+| {z }
+
+> =:1 /c 4(cp,w ℓ,w u,β )
+
+∥f ∥L2(Ω) 
+
+| {z }
+
+> =: u∗
+> h
+
+.
+
+(19) 
+
+Assumption 3.4 4. Since Ph is non-expansive, ∥Phuh∥L∞ ≤ ∥ uh∥L∞ holds. Conse-quently, we can choose 
+
+uℓ,h = uℓ ≤ min {uℓ, −u∗
+
+> h
+
+} and uu,h = uu ≥ min {uu, u ∗
+
+> h
+
+}
+
+to certify the assumption while still complying with Assumption 3.4 1, 3. 
+
+Assumption 3.4 5. First we a priori estimate the PDE approximation error induced by local-averaging as 
+
+∥u − uh∥L2(Ω) ≤ Ca
+
+> 3/2
+
+(w)d3/2 
+
+> h
+
++ Cb
+
+> 3/2
+
+d2 
+
+> h
+
+(20) for some positive constants Ca
+
+> 3/2
+
+(w) := Ca
+
+> 3/2
+
+(n, w ℓ, w u, f, w, Ω), Cb 
+
+> 3/2
+
+:= Cb
+
+> 3/2
+
+(n, w ℓ, w u, f, Ω) and the diameter dh of the grid cells. Then, we show that this yields the following estimate 
+
+∥∇ (u−uh)∥2 
+
+> L2(Ω ,Rn)
+
+≤ β−1 max {− wℓ, w u}(c−11 +c−13 )∥f ∥L2(Ω) 
+
+ Ca
+
+> 3/2
+
+(w)d3/2 
+
+> h
+
++Cb
+
+> 3/2
+
+d2
+
+> h
+
+. (21) 14 Theorem 4.4. Let u solve (11) and uh solve (17) for the same w ∈ BV(Ω) with wℓ ≤
+
+w ≤ wu a.e. Then the apriori estimates (20) and (21) hold. Proof. We follow the proof from [19, Lemma 3.1]. As the proof covers only the case where Ω = (0 , 1) and A is an identity matrix, we comment on the modifications. We use [8, Theorem 3.1.4], specifically the estimations 
+
+∥g − Phg∥L2(Ω ,K) ≤ α(Ω) dh∥∇ g∥L2(Ω ,K) for all g ∈ H1(Ω , K) for K ∈ { R, C},
+
+∥w − Phw∥L1(Ω) ≤ α(Ω) dh TV( w) for all w ∈ L1(Ω) (22) hold for some α(Ω) > 0. Here, the case K = C is a direct corollary of the case K = R
+
+in the first estimate. The second estimate follows from the W 1,1-estimate in combination with the strict approximability of w ∈ L1(Ω) by smooth functions of bounded variation [3, §3.9]. Then the argument form [19, Lemma 3.1] yields 
+
+∥u − uh∥L2(Ω) ≤   1
+
+c2c3
+
++ 1
+
+c2c4
+
+λ(Ω) 32 d 32 
+
+> h
+
+|wu − wℓ| 12 TV( w) 12 ∥f ∥L2(Ω) 
+
++ λ(Ω) 2d2
+
+> h
+
+c2c3
+
+max {− wℓ, w u}∥ f ∥L2(Ω) ,
+
+which is (20). To obtain (21), we test (11) and (17) with v = u − uh and use coercivity, Poincar´ einequality, nonexpansiveness of Ph, and (20): 
+
+β∥∇ (u − uh)∥2 
+
+> L2(Ω ,Rn)
+
+≤
+
+Z
+
+> Ω
+
+A∇(u − uh) · ∇ (u − uh)=
+
+Z
+
+> Ω
+
+(Phuh)( Phw)( u − uh) −
+
+Z
+
+> Ω
+
+uw (u − uh)
+
+≤ max {− wℓ, w u}(∥uh∥L2(Ω) + ∥u∥L2(Ω) )∥u − uh∥L2(Ω) 
+
+≤ max {− wℓ, w u}(c−11 + c−13 )∥f ∥L2(Ω) 
+
+ Ca
+
+> 3/2
+
+(w)d3/2 
+
+> h
+
++ Cb
+
+> 3/2
+
+d2
+
+> h
+
+
+
+with c1 and c3 from the application of Lax–Milgram to (11) and (17) above. 
+
+Remark 4.5 . Since the diameter dh of {Q h}h is in Θ( h) if h is the mesh size, it holds 
+
+uh → u in H10 (Ω , R) as h ↘ 0. 
+
+Remark 4.6 . In Lemma 3.1 in [19], an asymptotically better error estimate ∥u−uh∥L2(Ω) =
+
+O(h2) is shown for the case Ω ⊂ R, that is, a one-dimensional domain. Their proof requires a uniform L∞-estimate on ∇uh, which is unavailable in our setting even if A is (smooth enough) such that uh admits H2-regularity. 
+
+4.2 Verification of the assumptions for (OCP H )
+
+The weak formulation of the PDE constraining (OCP H ) is that u ∈ H1(Ω , C) solves 
+
+a[u, v ] := 
+
+Z
+
+> Ω
+
+∇u · ∇ v − k20
+
+Z
+
+> Ω
+
+(1 + qw )uv − ik 0
+
+Z
+
+> ∂Ω
+
+uv 
+
+= k20
+
+Z
+
+> Ω
+
+qwu 0v for all v ∈ H1(Ω , C). (23) 15 Since q = ˜ q1˜Ω for some ˜Ω ⊂ Ω (see Section 1) and wℓ < w u, we have 1 + ˜ q min {0, w ℓ} ≤ 
+
+1 + qw ≤ 1 + ˜ q max {0, w u} a.e. for all w ∈ Wad . This implies that we can use standard elliptic PDE theory to deduce the existence of solutions under a sufficient condition on the values of wu, ˜ q, and k0.
+
+Proposition 4.7. Let the scalars wu ∈ R, ˜q > 0, k0 > 0 satisfy 
+
+min {1, k 0}√2 λ > k 20 (1 + ˜ q max {0, w u}) ⇔ λ − √2 max {k0, k 20 }√2˜ q max {k0, k 20 } > max {0, w u}, (24) 
+
+where λ is the norm equivalence constant from Section 2. Then (23) admits a unique solution for all w ∈ Wad with 
+
+∥u∥H1(Ω ,C) ≤ c(wu, ˜q, k 0)−1k20 ˜q max {− wℓ, w u}∥ u0∥L2(Ω ,C)
+
+with c(wu, ˜q, k 0) := λ min {1, k 0}/√2 − k20 (1 + ˜ q max {0, w u}).Condition (24) can be satisfied for all small enough k0 > 0 if ˜q and wu are given. Proof. We observe that our sesquilinear form a satisfies 
+
+|a[u, u ]| ≥ ∥∇ u∥2 
+
+> L2(Ω ,Cn)
+
+− ik 0∥u∥2 
+
+> L2(∂Ω,C)
+
+− k20
+
+Z
+
+> Ω
+
+(1 + qw )|u|2
+
+≥ min {1, k 0}√2
+
+ ∥∇ u∥2 
+
+> L2(Ω ,Cn)
+
++ ∥u∥2
+
+> L2(∂Ω,C)
+
+ − k20 (1 + ˜ q max {0, w u})∥u∥2
+
+> L2(Ω ,C)
+
+≥ λ min {1, k 0}√2 ∥u∥2 
+
+> H1(Ω ,C)
+
+− k20 (1 + ˜ q max {0, w u})∥u∥2
+
+> H1(Ω ,C)
+
+.
+
+(25) Moreover, a[u, v ] is bounded by the trace and the H¨ older theorems. Thus, the Lax– Milgram lemma for complex-valued forms [18, Theorem 6] is applicable. For the right-hand side of the norm estimate in the Lax–Milgram lemma, we observe 
+
+∥k20 qwu 0∥(H1(Ω ,C)) ∗ ≤ ∥ k20 qwu 0∥L2(Ω ,C) ≤ k20 ˜q max {− wℓ, w u}∥ u0∥L2(Ω ,C)
+
+by definition (1st inequality) and H¨ older inequality (2nd inequality). The satisfaction of (24) for all small enough k0 > 0 follows by inspection. 
+
+Remark 4.8 . Since the estimations (25) are independent of the sign of the boundary term in the Helmholtz PDE, the adjoint PDE satisfies (25). The considerations on the source term are also applicable for a more general source term g ∈ L2(Ω , C). Consequently, p,being the solution to the adjoint PDE 
+
+Z
+
+> Ω
+
+∇p · ∇ v − k20
+
+Z
+
+> Ω
+
+(1 + qw )pv + ik 0
+
+Z
+
+> ∂Ω
+
+pv =
+
+Z
+
+> Ω
+
+gv for all v ∈ H1(Ω , C), (26) satisfies 
+
+∥p∥H1(Ω ,C) ≤ c(wu, ˜q, k 0)−1
+
+| {z }
+
+> =: cp
+> 2
+
+∥g∥L2(Ω ,C).
+
+We now certify our assumptions one by one. 16 Assumption 3.4 1. To verify L∞-bounds on the solution to (23), we first show H2-regularity. To this end, we make a short bootstrapping argument building on the analysis in §8.1 in [24], where H2-regularity of a similar PDE is shown. Specifically, we can observe that the PDE (HeW) in [24] coincides with (23) when the adjoint of a is considered and make the choices g := 0, f := k20 qw (u + u0) in (HeW) in [24]. Here, we have f ∈ L2(Ω , C)because u, u0 ∈ L2(Ω , C) and q, w ∈ L∞(Ω) hold. We obtain the following corollary. 
+
+Corollary 4.9. Let the scalars wu ∈ R, ˜q > 0, k0 > 0 satisfy (24) . Let u solve (23) for 
+
+w ∈ Wad . Then, 
+
+|u|H2(Ω ,C) := 
+
+s X
+
+> 1≤i,j ≤n
+
+∥∂xi ∂xj u∥2
+
+> L2(Ω ,C)
+
+≤ c1(Ω , k 0, ˜q, w ℓ, w u)
+
+
+
+c2(k0, ˜q, w ℓ, w u) + 1 
+
+
+
+∥u0∥L2(Ω ,C) (27) 
+
+with 
+
+c1(Ω , k 0, ˜q, w ℓ, w u) := C(Ω)(1 + |k0|)k20 ˜q max {− wℓ, w u} and (28) 
+
+c2(k0, ˜q, w ℓ, w u) := c(wu, ˜q, k 0)−1k20 ˜q max {− wℓ, w u}, (29) 
+
+where C(Ω) > 0 is the constant in Proposition 8.1.4 in [24]. Proof. Due to uniqueness of the solution, the solution u to the (adjoint of the) PDE (HeW) in [24] for the choices above for g and f must coincide with the solution to (23). From the second estimate in Proposition 8.1.4 in [24], we obtain again with the choices above for g
+
+and f in (HeW) in [24] that 
+
+|u|H2(Ω ,C) ≤ C(Ω)(1 + |k0|)∥k20 qw (u + u0)∥L2(Ω ,C)
+
+≤ c1(Ω , k 0, ˜q, w ℓ, w u)∥u + u0∥L2(Ω ,C)
+
+≤ c1(Ω , k 0, ˜q, w ℓ, w u)
+
+
+
+c2(k0, ˜q, w ℓ, w u)∥u0∥(H1(Ω ,C)) ∗ + ∥u0∥L2(Ω ,C)
+
+
+
+holds with C(Ω) > 0 being the constant from Proposition 8.1.4 in [24] and c2(k0, ˜q, w ℓ, w u)due to Proposition 4.7. We thus obtain the following result that certifies Assumption 3.4 1. 
+
+Proposition 4.10. Let the scalars wu ∈ R, ˜q > 0, k0 > 0 satisfy (24) . Let u solve (23) 
+
+for w ∈ Wad . Then, 
+
+∥u∥L∞(Ω ,C) ≤ √2c3(Ω)( c1 + c1c2 + c2)∥u0∥L2(Ω ,C) =: u∗
+
+holds with c1 = c1(Ω , k 0, ˜q, w ℓ, w u), c2 = c2(k0, ˜q, w ℓ, w u) from Corollary 4.9, and c3(Ω) 
+
+being the embedding constant of H2(Ω , C) ,→ L∞(Ω , C).Proof. The claim follows from ∥u∥H2(Ω ,C) ≤ √2( ∥u∥H1(Ω ,C) + |u|H2(Ω ,C)), the estimates from Proposition 4.7 and Corollary 4.9 as well as the Sobolev embedding H2(Ω , C) ,→
+
+L∞(Ω), which follows, e.g., from Case A in Theorem 4.12 in [1]. Consequently, we can set ℑuu = ℜuu ≥ u∗ and ℑuℓ = ℜuℓ ≤ − u∗ to satisfy Assump-tion 3.4 1. 17 Remark 4.11 . Since Proposition 8.1.4 in [24] holds for the adjoint PDE (26), we similarly obtain 
+
+∥p∥L∞(Ω ,C) ≤ √2c3(Ω)( C(Ω)(1 + |k0|) + c1cp 
+
+> 2
+
++ cp
+
+> 2
+
+)∥g∥L2(Ω ,C).
+
+for c1 = c1(Ω , k 0, ˜q, w ℓ, w u) from Corollary 4.9, cp 
+
+> 2
+
+from Remark 4.8, and c3(Ω) being the embedding constant of H2(Ω , C) ,→ L∞(Ω , C). 
+
+Assumption 3.4 2. In the locally-averaged variant of (OCP H ), we seek uh ∈ H1(Ω , C)that solves 
+
+ah[uh, v ] := 
+
+Z
+
+> Ω
+
+∇uh · ∇ v − k20
+
+Z
+
+> Ω
+
+uhv − k20
+
+Z
+
+> Ω
+
+q(Phw)( Phuh)v − ik 0
+
+Z
+
+> ∂Ω
+
+uhv
+
+= k20
+
+Z
+
+> Ω
+
+qwu 0 ¯v for all v ∈ H1(Ω , C). (30) We assume the following compatibility between the discretization Qh and the subdomain ˜Ω: ˜Ω = [
+
+> i∈I
+
+Qih for some I ⊂ { 1, . . . , N h}. (31) Importantly, (31) implies Ph(qw ) = qP hw. Then, similar to above, since q = ˜ q1˜Ω for some ˜Ω ⊂ Ω (see Section 1) and wℓ < w u, we have ˜ q min {0, w ℓ} ≤ q(Phw) ≤ ˜q max {0, w u} a.e. for all w ∈ Wad . Again, we can use standard elliptic PDE theory to deduce the existence of solutions under a sufficient condition on wu, ˜ q, k0, and now also wℓ.
+
+Proposition 4.12. Let the scalars wℓ, wu ∈ R, ˜q > 0, k0 > 0 satisfy wℓ < w u and 
+
+min {k0, 1}√2 λ > k 20 (1 + ˜ q max {− wℓ, w u}) ⇔ λ − √2 max {k0, k 20 }√2˜ q max {k0, k 20 } > max {− wℓ, w u},
+
+(32) 
+
+where λ is the norm equivalence constant from Section 2. Then (30) admits a unique solution uh for all w ∈ Wad with 
+
+∥uh∥H1(Ω ,C) ≤ ¯c(wℓ, w u, ˜q, k 0)−1k20 ˜q max {− wℓ, w u}∥ u0∥(H1(Ω ,C)) ∗
+
+with ¯c(wℓ, w u, ˜q, k 0) := λ min {k0, 1}/√2 − k20 (1 + ˜ q max {− wℓ, w u}).Condition (32) can be satisfied for all small enough k0 > 0 if ˜q, wℓ, and wu are given. It implies (24) .Proof. With a similar argument as in Proposition 4.7, the sesquilinear form ah satisfies 
+
+|ah[uh, u h]| ≥ ∥∇ uh∥2 
+
+> L2(Ω ,Cn)
+
+− ik 0∥uh∥2 
+
+> L2(∂Ω,C)
+
+− k20
+
+Z
+
+> Ω
+
+|uh|2 +
+
+Z
+
+> Ω
+
+q(Phw)( Phuh)uh
+
+≥ λ min {1, k 0}√2 ∥uh∥2 
+
+> H1(Ω ,C)
+
+− k20 (1 + ˜ q max {− wℓ, w u})∥uh∥2
+
+> L2(Ω ,C)
+
+,
+
+(33) where we have used the nonexpansiveness of Ph : L2(Ω) → L2(Ω). The remainder of the proof works analogously to the one of Proposition 4.7. 18 As a corollary, we obtain the following result, which yields L∞-bounds on the solution to (30). 
+
+Proposition 4.13. Let the scalars wℓ < w u ∈ R, ˜q > 0, k0 > 0 satisfy (32) . Let uh solve 
+
+(30) for w ∈ Wad . Then, 
+
+∥uh∥L∞(Ω ,C) ≤ √2c3(Ω)( c1 + c1¯c2 + ¯ c2)∥u0∥L2(Ω ,C) =: u∗
+
+> h
+
+holds with c1 = c1(Ω , k 0, ˜q, w ℓ, w u) from Corollary 4.9, ¯c2 := ¯ c(wℓ, w u, ˜q, k 0)−1k20 ˜q max {− wℓ, w u}
+
+with ¯c(wℓ, w u, ˜q, k 0) from Proposition 4.12, and c3(Ω) being the embedding constant of 
+
+H2(Ω , C) ,→ L∞(Ω , C).Proof. Follows along the same lines as Corollary 4.9 and Proposition 4.10. 
+
+Assumption 3.4 3. The non-expansiveness of Ph : L∞(Ω , C) → L∞(Ω , C) yields that we can use bounds on ∥uh∥L∞(Ω ,C) for ∥Phuh∥L∞(Ω ,C). Consequently, by means of Propo-sition 4.13, we can set ℑuiu := ℜuiu ≥ u∗ 
+
+> h
+
+and uiℓ ≤ − u∗ 
+
+> h
+
+for all i ∈ { 1, . . . , N h} to obtain valid bounds. 
+
+Assumption 3.4 4. Since Ph is non-expansive, ∥Phuh∥L∞(Ω ,C) ≤ ∥ uh∥L∞(Ω ,C) holds. Consequently, we can choose 
+
+uℓ,h = uℓ ≤ min {− u∗, −u∗
+
+> h
+
+} and uu,h = uu ≥ min {u∗, u ∗
+
+> h
+
+}
+
+to certify the assumption while still complying with Assumption 3.4 1, 3. 
+
+Assumption 3.4 5. Let dh denote the maximal diameter of the grid cells of the h-grid. To this end, we use the a priori estimate on the local averaging error 
+
+∥u − uh∥L2(Ω ,C) ≤ ˜Ca
+
+> 3/2
+
+(w)d3/2 
+
+> h
+
++ ˜Cb
+
+> 3/2
+
+d2 
+
+> h
+
+(34) for some positive constants ˜Ca
+
+> 3/2
+
+(w) = ˜C3/2(Ω , k 0, ˜q, w ℓ, w u, u 0, w ), ˜Cb 
+
+> 3/2
+
+= ˜Cb
+
+> 3/2
+
+(Ω , k 0, ˜q, w ℓ, w u, u 0), which will be shown in Proposition 4.15. Using (34), the certification of Assumption 3.4 5 works as follows. First, we test (23) and (30) with ( u − uh): 
+
+Z
+
+> Ω
+
+∇(u − uh) · ∇ (u − uh) − ik 0
+
+Z
+
+> ∂Ω
+
+(u − uh)( u − uh) = k20
+
+Z
+
+> Ω
+
+u(1 + qw )( u − uh)+k20
+
+Z
+
+> Ω
+
+(Phuh)(1 + qP hw)( u − uh).
+
+Then, we estimate both hand sides separately. We estimate the left-hand side from below as in (25) to obtain 
+
+∥∇ (u − uh)∥2 
+
+> L2(Ω ,Cn)
+
+− ik 0∥u − uh∥2 
+
+> L2(∂Ω,C)
+
+(35) For the right-hand side, we use the H¨ older inequality together with the bounds on u from 19 Proposition 4.10 and Phuh from Proposition 4.13. We obtain 
+
+∥u − uh∥2 
+
+> H1(Ω ,C)
+
+≤ k20
+
+2
+
+λ min {1, k 0} c3(Ω)( c1 + c1¯c2 + c1c2 + c2 + ¯ c2)∥u0∥L2(Ω ,C)
+
+· 1 + ˜ q max {− wℓ, w u}∥u − uh∥L2(Ω ,C).
+
+Then the assertion follows from (34). 
+
+Remark 4.14 . Since the diameter dh of {Q h}h is in Θ( h) if h is the mesh size, it holds 
+
+uh → u in H1(Ω , C) as h ↘ 0. 
+
+Proposition 4.15. Let the scalars wℓ, wu ∈ R, ˜q > 0, k0 > 0 with wℓ < w u satisfy (32) .Let u and uh solve (23) and (30) for w ∈ Wad respectively. Then, the a priori estimate 
+
+(34) is satisfied with 
+
+˜Ca
+
+> 3/2
+
+(w) = k20 α(Ω) 32 ˜q∥u0∥L2(Ω ,C)|wu − wℓ| 12 TV( w) 12
+
+
+
+cp 
+
+> 2
+
++ √2c3
+
+ C(Ω)(1 + |k0|) + c1cp 
+
+> 2
+
++ cp
+
+> 2
+
+
+
+,
+
+˜Cb 
+
+> 3/2
+
+= α(Ω) 2c2cp
+
+> 2
+
+(1 + ˜ q max {− wℓ, w u})∥u0∥L2(Ω ,C)
+
+with c1, c 2 from Corollary 4.9, c3 being the embedding constant of H2(Ω , C) ,→ L∞(Ω , C),
+
+cuh 
+
+> 2
+
+from Proposition 4.13, cp 
+
+> 2
+
+from (26) , α(Ω) from (22) .Proof. Similar to Theorem 4.4, we use the use the Aubin–Nitsche duality argument and the identification 
+
+∥u − uh∥L2(Ω ,C) = sup  
+
+> g∈L2(Ω ,C),g ̸=0
+
+|(u − uh, g )L2(Ω ,C)|∥g∥L2(Ω ,C)
+
+.
+
+We estimate ( u − uh, g )L2(Ω ,C) for every 0 ̸ = g ∈ L2(Ω , R) with the help of the adjoint formulation for (23) and insertion of a suitable zero. In particular, we will use that 
+
+Z
+
+> Ω
+
+ρ(ϕ − Phϕ)( Phψ)( Phθ) = X
+
+> i∈I
+
+˜ρ 1meas Qih
+
+Z
+
+> Qih
+
+ψ
+
+!
+
+1meas Qih
+
+Z
+
+> Qih
+
+θ
+
+! Z
+
+> Qih
+
+ϕ − Phϕ
+
+| {z }
+
+> =0
+
+= 0 .
+
+(36) holds for all ϕ, ψ, θ ∈ L2(Ω) , ρ = ˜ ρ1˜Ω1 with ˜Ω1 satisfying the compatibility assumption (31) for some I ⊂ { 1, . . . , N h}. Our goal is to rewrite (˜ u − ˜uh, g )L2 as a sum of terms each containing multiple factors of a type 
+
+v − Phv for v ∈ L1(Ω) (37) so that we can apply (22) and deduce an estimate with respect to dh.Let p be the solution to the adjoint (26). We note that the adjoint (26) differs from the PDE (23) by the sign of the boundary term and the source term. We test (23) and (30) with p, subtract the latter from the former, and insert a suitable zero to obtain 
+
+Z
+
+> Ω
+
+∇(u−uh)·∇ p = k20
+
+Z
+
+> Ω
+
+(u−Phuh)(1+ qw )p+k20
+
+Z
+
+> Ω
+
+(Phuh)q(w −Phw)p+ik 0
+
+Z
+
+> ∂Ω
+
+(u−uh)p
+
+Next, we test (26) with u − uh and use the conjugation of the above equation to rewrite 20 the term R 
+
+> Ω
+
+∇(u − uh) · ∇ p and get (g, u − uh)L2(Ω ,C) = k20
+
+Z
+
+> Ω
+
+(u − Phuh)(1 + qw )p + k20
+
+Z
+
+> Ω
+
+(Phuh)q(w − Phw)p
+
+− ik 0
+
+Z
+
+> ∂Ω
+
+(u − uh)p
+
+!
+
+− k20
+
+Z
+
+> Ω
+
+p(1 + qw )( u − uh)+ ik 0
+
+Z
+
+> ∂Ω
+
+p(u − uh).
+
+Note that the conjugation implied the negative sign of the boundary term so that the boundary terms on the right-hand side vanish. This together with the combination of the first and the forth terms implies (g, u − uh)L2(Ω ,C) = k20
+
+Z
+
+> Ω
+
+(uh − Phuh)(1 + qw )p + k20
+
+Z
+
+> Ω
+
+(Phuh)q(w − Phw)p. 
+
+We now insert a suitable zero to obtain (g, u − uh)L2(Ω ,C) = k20
+
+Z
+
+> Ω
+
+(uh − Phuh)q(w − Phw)p + k20
+
+Z
+
+> Ω
+
+(uh − Phuh)(1 + qP hw)p
+
++k20
+
+Z
+
+> Ω
+
+(Phuh)q(w − Phw)p. 
+
+Inserting two zeros of the form (36) yields (g, u − uh)L2(Ω ,C) = k20
+
+Z
+
+> Ω
+
+(uh − Phuh)q(w − Phw)p + k20
+
+Z
+
+> Ω
+
+(uh − Phuh)(1 + qP hw)( p − Php)+k20
+
+Z
+
+> Ω
+
+(Phuh)q(w − Phw)( p − Php).
+
+Now we employ the H¨ older inequality together with (22) to estimate each of the factors and obtain (g, u − uh)L2(Ω ,C) ≤k20
+
+
+
+α(Ω) dh∥∇ uh∥L2(Ω ,Cn) ˜qpα(Ω) |wu − wℓ|dh TV( w)∥p∥L∞(Ω ,C)
+
++α(Ω) dh∥∇ uh∥L2(Ω ,Cn)(1 + ˜ q∥Phw∥L∞(Ω) )α(Ω) dh∥∇ p∥L2(Ω ,Cn)
+
++∥Phuh∥L∞(Ω ,C) ˜qpα(Ω) |wu − wℓ|dh TV( w)α(Ω) dh∥∇ p∥L2(Ω ,Cn)
+
+
+
+,
+
+where we have used ∥w − Phw∥L2(Ω) ≤
+
+q
+
+(wu − wℓ)∥w − Phw∥L1(Ω) .The usage of Proposition 4.7, Remark 4.8, Proposition 4.12, Proposition 4.10, Propo-sition 4.13, Remark 4.11 and division by ∥g∥L2(Ω ,C) on both hand sides yields the claimed bound. 
+
+4.3 Approximation of Total Variation 
+
+On one-dimensional domains Ω ⊂ R, the total variation of a given function can be ap-proximated by the total variation of approximating step functions, that is, the functionals TV ◦Pτ Γ-converge to the functional TV. This fact is used in [19]. On multi-dimensional domains Ω ⊂ Rn, n ≥ 2, a gap may persist between TV ◦Pτ and TV as τ ↘ 0; see, e.g., Example 2.10 in [27]. Consequently, we use a discretization of the dual formulation of TV 21 by means of a Raviart–Thomas finite-element ansatz as introduced in [6, (3.4)] for n ≥ 2. This choice will satisfy Assumption 3.5. In this section, we restrict to rectangular domains and make the more specific assumption (cf. Assumption 3.3) that the discretization grid for w is an axis-aligned grid of quadrilaterals and that a bounded eccentricity condition is satisfied when a sequence of these grids with vanishing mesh size is considered. This is formalized below. 
+
+Assumption 4.16. For the domain Ω and the discretization grids (partitions of Ω) ˜Qτ =
+
+{ ˜Q1 
+
+> τ
+
+, . . . , ˜QNτ 
+
+> τ
+
+} as introduced in Section 3, we assume the following. 1. Ω = ( a1, b 1) × . . . × (an, b n).2. For all ˜Qj ∈ ˜Qτ , it holds ˜Qj = I1 × . . . × In for bounded intervals I1, . . . , In ⊂ R.3. We assume that the grids ˜Qτ satisfy a bounded eccentricity condition analogously to Assumption 3.3 2 as τ ↘ 0.
+
+We define TV  
+
+> τ
+
+(w) := sup 
+
+Z 
+
+> Ω
+
+w div ϕ : ϕ ∈ τ
+
+RT0  
+
+> 0
+
+, ∥ϕ∥L∞(Ω) ≤ 1
+
+
+
+(38) for w ∈ L2(Ω), where RT 0τ 
+
+> 0
+
+⊂ Hdiv 0 (Ω) denotes the Raviart–Thomas fields of the lowest order with vanishing normal trace. 
+
+Assumption 3.5 1. To prove the claims, we use the smooth approximation property 
+
+C1 
+
+> C
+
+(Ω , Rn)Hdiv 0 = Hdiv 0 (Ω) , (39) which is proven in [13]. 
+
+Lemma 4.17. For all τ , the functional TV τ : L2(Ω) → [0 , ∞) is lower semi-continuous wrt. L1-convergence, TV τ ◦Pτ ≤ TV , and TV τ ◦Pτ ≤ TV τ .Proof. The lower semi-continuity follows analogously to the lower semi-continuity of TV as shown in Remark 3.5 and Proposition 3.6 in [3] with an approximation of the Raviart– Thomas field by a continuously differentiable field, which is possible by virtue of (39). For the second and third claim, we first observe that TV τ = TV τ ◦Pτ . Indeed, for 
+
+ϕ ∈ RT0 τ 
+
+> 0
+
+we have that div ϕ is constant per grid cell ˜Qjτ , j ∈ { 1, . . . , N τ }, which implies 
+
+Z
+
+> Ω
+
+w div ϕ =
+
+> Nτ
+
+X
+
+> j=1
+
+Z
+
+> ˜Qjτ
+
+w div ϕ =
+
+> Nτ
+
+X
+
+> j=1
+
+1meas( ˜Qjτ )
+
+Z
+
+> ˜Qi
+
+div ϕ
+
+Z
+
+> ˜Qi
+
+w
+
+=
+
+> Nτ
+
+X
+
+> j=1
+
+n 1meas( ˜Qjτ )
+
+Z
+
+> ˜Qjτ
+
+div ϕ(Pτ w) = 
+
+Z
+
+> Ω
+
+div ϕ(Pτ w),
+
+yielding TV τ = TV τ ◦Pτ . Then the second and third claim follow from TV  
+
+> τ
+
+(Pτ (w)) = TV  
+
+> τ
+
+(w) ≤ sup 
+
+Z 
+
+> Ω
+
+div ϕw : ϕ ∈ Hdiv 0 (Ω) , ∥ϕ∥L∞(Ω ,Rn) ≤ 1
+
+
+
+=
+
+> (39)
+
+sup 
+
+Z 
+
+> Ω
+
+div ϕw : ϕ ∈ C1 
+
+> C
+
+(Ω , Rn), ∥ϕ∥L∞(Ω ,Rn) ≤ 1
+
+
+
+= TV( w)22 for all w ∈ L2(Ω). 
+
+Assumption 3.5 3. The Γ-convergence is a straightforward consequence of existing results under Assumption 4.16. 
+
+Lemma 4.18. Let Assumption 4.16 hold. TV τ ◦Pτ Γ-converges to TV for τ ↘ 0 on 
+
+L2(Ω) with respect to L1-convergence. Proof. The lim sup-inequality follows from Assumption 3.5 1 with the choice fτ := f ,yielding TV τ (Pτ fτ ) = TV τ (Pτ f ) ≤ TV( f ). For the lim inf-inequality, let f ∈ L1(Ω) and 
+
+fτ → f in L1(Ω) for τ ↘ 0. Then Pτ (fτ ) → f in L1(Ω) by means of the non-expansiveness of Pτ and the Lebesgue’s differentiation theorem. Then, Theorem 2.9 in [27] implies the lim inf-inequality. 
+
+Assumption 3.5 2. We give a lengthy proof of Assumption 3.5 in several steps, where we settle an open question (see Remark 3.15 in [27]) as a corollary of our first auxiliary result. The first step is to overestimate the total variation of a piecewise constant function on the τ -grid ˜Qτ := { ˜Q1 
+
+> τ
+
+, . . . , ˜QNτ 
+
+> τ
+
+}.
+
+Lemma 4.19. Let Assumption 4.16 hold. Let n ∈ { 1, 2, 3}. Let w ∈ L2(Ω) be a piecewise constant function on the τ -grid, that is, w = PNτ 
+
+> j=1
+
+χ ˜Qjτ wj . Then 
+
+TV( w) ≤ √n TV  
+
+> τ
+
+(w).
+
+Proof. Our proof relies on a construction of a vector field ϕ ∈ RT0 τ 
+
+> 0
+
+such that TV( w) = 
+
+Z
+
+> Ω
+
+div ϕw and ∥ϕ∥L∞ ≤ √n (40) hold. Dividing by √n then implies 1
+
+√n TV( w) = 
+
+> (40)
+
+Z
+
+> Ω
+
+div 
+
+ ϕ
+
+√n
+
+
+
+w ≤
+
+> (38)
+
+TV  
+
+> τ
+
+(w),
+
+which proves the claim. We provide the construction of the field ϕ only for the case n = 3 but the claim can be shown in lower dimensions by following the same idea. We provide the detailed construction for our special case that Ω = ( a1, b 1)×. . . ×(an, b n)and that our τ -grid is a set of n-dimensional axis-aligned hyperrectangles. Consequently, we can write each ˜Qj ∈ ˜Qτ as the Cartesian product of n intervals, that is, ˜Qj = Ik1 
+
+> 1
+
+× . . . × Ikn 
+
+> n
+
+=: ˜ Qk1,...,k n
+
+for some ki ∈ { 1, . . . , N i}, Ni ∈ N, for i ∈ { 1, . . . , n } and where the disjoint intervals Iki
+
+are indexed in ascending order in the sense that sup Ik−1 
+
+> i
+
+= inf Iki for all k ∈ { 1, . . . , N i}
+
+for all i ∈ { 1, . . . , n }.
+
+Main idea. The main idea behind our construction is the following. Since w is piecewise constant, TV( w) is the sum of the facet areas between different level sets of w
+
+weighted by the respective jumps height between the level sets over them; see, for example, Lemma 2.1 in [21]. Moreover, the individual coordinate functions of RT0 τ 
+
+> 0
+
+-fields ϕ in our 23 rectangular setting are piecewise affine, globally continuous one-dimensional functions with trace zero, that is, sums of so-called hat functions. We thus construct a coordinate function 
+
+ϕi, i ∈ { 1, . . . , d } such that it is a sum of hat functions with values between −1 and 1 that capture all jumps of w along the i-th coordinate when the other coordinates are kept fixed. Then the coordinate functions that are constructed in this way are shown to yield a vector field ϕ in RT0 τ 
+
+> 0
+
+with ∥ϕ∥L∞ ≤ √n and satisfy (40). 
+
+Coordinate function construction. Since the construction works completely anal-ogous for all ϕi, i ∈ { 1, . . . , n }, we only perform the construction of ϕ1. To this end, we fix k2, . . . , k n and abbreviate the sets ˜Qm := ˜Qm,k 2,...,k n for m ∈ { 0, . . . , N 1 − 1},which form a tower of hyperrectangles along the first coordinate. We also abbreviate 
+
+wm := 1meas ˜Q
+
+R ˜Qm w ≡ w| ˜Qm because w is piecewise constant on ˜Qτ . We define ϕk2,...,k n 
+
+> 1
+
+:= 
+
+PN1−1 
+
+> m=1
+
+ψm, where ψm : Ω → R is a hat function along the first coordinate that captures the potential jump of w between ˜Qm and ˜Qm+1 ; see Fig. 2. Using that sgn( wm − wm+1 )reflects the change of w at the interface ˜Qm ∩ ˜Qm+1 for all m ∈ { 1, . . . , N 1 − 1}, ψm is defined by 
+
+ψm := sgn( wm − wm+1 ) 1 ˜Qm∩ ˜Qm+1 
+
++ z−xm 
+
+> ℓm
+
+1˚˜Qm
+
+− z−xm+2  
+
+> ℓm+1
+
+1˚˜Qm+1 
+
+,
+
+where xm := inf {y1 : ( y1, . . . , y n) ∈ ˜Qm} for all m ∈ { 1, . . . , N 1}, xN1 := sup {y1 :(y1, . . . , y n) ∈ ˜QN1 }, and ℓm = xm+1 − xm for all m ∈ { 1, . . . , N 1}. By construction, we have 
+
+∥ψm∥L∞(Ω) ≤ 1 (41) and, for the weak derivative (note that ψm ist not differentiable everywhere) in the first argument, 
+
+∂1ψm = sgn( wm − wm+1 ) ℓ−1 
+
+> m
+
+1˚˜Qm
+
+− ℓ−1
+
+> m+1
+
+1˚˜Qm+1 
+
+ a.e. in Ω . (42) Moreover, the support of each ψm is ˜Qm ∪ ˜Qm+1 and we obtain 
+
+ϕk2,...,k n 
+
+> 1
+
+=
+
+
+
+ψm−1 + ψm in ˜Qm for m ∈ { 2, . . . , N 1 − 1},
+
+ψ1 in ˚˜Q1,
+
+ψN1−1 in ˚˜QN1 ,0 otherwise. (43) Now, we define our function ϕ1 by 
+
+ϕ1 := 
+
+> N2
+
+X
+
+> k2=1
+
+· · · 
+
+> Nn
+
+X
+
+> kn=1
+
+ϕk2,...,k n 
+
+> 1
+
+,
+
+where we highlight that the supports of ϕka  
+
+> 2,...,k an
+> 1
+
+and ϕkb 
+
+> 2,...,k bn
+> 1
+
+have at most a trivial overlap for ( ka 
+
+> 2
+
+, . . . , k an)̸ = ( kb
+
+> 2
+
+, . . . , k bn) by construction. We construct ϕ2, . . . , ϕ n analogously to 
+
+ϕ1 and subsequently define our candidate vector field as ϕ := ( ϕ1, ϕ 2, ϕ 3)T . Next, we verify 
+
+> 1The LLM GPT-4o mini was used during the creation of the tikz code for this figure.
+
+24 x2 x3 x4 x5x1
+
+> 1
+> −1
+
+˜Q1 ˜Q2 ˜Q3 ˜Q4
+
+ψ3
+
+ψ1
+
+ψ2
+
+w1
+
+w2 w3 w4
+
+Figure 2: Construction of ψ1, . . . , ψ 3 for given w with partition ˜Q1, . . . , ˜Q4.1
+
+that ϕ ∈ RT0 τ 
+
+> 0
+
+and the satisfaction of (40). 
+
+Inclusion in RT0 τ 
+
+> 0
+
+. The divergence div ϕ is constant per hyperrectangle ˜Qk1,...,k n be-cause ∂j ϕi = 0 for j̸ = 0 and ∂j ϕj is piecewise constant as a derivative of a piecewise affine function for all j ∈ { 1, . . . , n }. We now consider the facets of the (closed) hyperrectangles and their outer normal vectors in order to show that the normal components of ϕ are continuous and constant per facet. Because the hyperrectangles ˜Qk1,...,k n are axis-aligned, the outer normal vectors are also axis-aligned where defined. We give the proof for the normal components along the first coordinate for fixed k2, . . . , k n being fixed and use the abbreviated notation introduced above. Again, the claim for other coordinates follows with the same argument. Let 
+
+Em denote the common facet of the hyperrectangles ˜Qm and ˜Qm+1 and nEm denote the corresponding unit outer normal vector pointing into the positive direction. Specifically, 
+
+nEm = e1, where e1 is the first standard basis vector in Rn. Consequently, 
+
+ϕ · nEm = ϕk1,...,k n 
+
+> 1
+
+= sgn( wm − wm+1 ) on (the relative interior of) Em (44) and thus ϕ · nEm is constant per facet after restricting to their relative interiors, Moreover, 
+
+ϕ · nEm is continuous for all m because, after extending to the boundary, ϕ1 is continuous on the tower SN1 
+
+> m=1
+
+˜Qm by construction. As a consequence, we obtain that ϕ is a Raviart– Thomas vector field of lowest order. We now show that ϕ’s normal trace vanishes at the boundary of Ω. To this end, we denote by E0,k 2,...,k n = {a1} × Ik2 × · · · × Ikn the facet of the hyperrectangle ˜Q1,k 2,...,k n
+
+that lies in ∂Ω and the x2, . . . , x n-plane shifted by a1 along the first coordinate and by 
+
+EN1,k 2,...,k n = {b1} × Ik2 × · · · × Ikn the facet of the hyperrectangle ˜QN1,k 2,...,k n that lies in ∂Ω and in the x2, . . . , x n-plane shifted by b1 along the first coordinate. We denote the corresponding outer unit normal vectors by n− 
+
+> E0,k 2,...,kn
+
+= −e1 and n+ 
+
+> EN1,k 2,...,kn
+
+= e1. Then, 
+
+ϕ · n− 
+
+> E0,k 2,...,kn
+
+= −ψ1 = 0 on E0,k 2,...,k n ,ϕ · n+ 
+
+> EN1,k 2,...,kn
+
+= ψN1−1 = 0 on EN1,k 2,...,k n .
+
+Again, the same arguments apply to the other towers of hyperrectangles and along the other coordinates so that ϕ ∈ RT0 τ 
+
+> 0
+
+follows. 25 Boundedness in L∞. Again, we use the abbreviated notation above and restrict to the first coordinates for several of our arguments since the others are completely analogous. For fixed k2, . . . , k n, we observe that ϕk2,...,k n 
+
+> 1
+
+∈ {− 1, 0, 1} holds on the relative interior of each facet Em according to (44). Since, ϕ1 is continuous on SN1 
+
+> m=1
+
+˜Qm after possibly extending to the boundary and affine between every pair of adjacent facets Em and Em+1 ,
+
+m ∈ { 1, . . . , N 1}, we deduce that |ϕ1| ≤ 1 holds in ˜Qm for all m ∈ N. Since this holds for all possible tuples ( k2, . . . , k n), we obtain |ϕ1| ≤ 1 a.e. in Ω. The same arguments imply 
+
+|ϕ1| ≤ 1 and |ϕ2| ≤ 1. Again, the same arguments apply for the other coordinates so that 
+
+∥ϕ∥L∞(Ω ,Rn) = ess sup 
+
+vuut nX
+
+> i=1
+
+|ϕi(x)|2 : x ∈ Ω
+
+ .
+
+Realization of TV( w). It remains to show that TV( w) = R 
+
+> Ω
+
+div ϕw holds. Again, we use the abbreviated notation above and restrict to the first coordinates for several of our arguments since the others are completely analogous. Due to the construction of ϕ,we have 
+
+Z
+
+> Ω
+
+div ϕw =
+
+> n
+
+X
+
+> i=1
+
+Z
+
+> Ω
+
+∂iϕiw
+
+=
+
+> N2
+
+X
+
+> k2=1
+
+· · · 
+
+> Nn
+
+X
+
+> kn=1
+
+Z
+
+> Ω
+
+∂1ϕk2,...,k n 
+
+> 1
+
+w + . . . +
+
+> N1
+
+X
+
+> k1=1
+
+· · · 
+
+> Nn−1
+
+X
+
+> kn−1=1
+
+Z
+
+> Ω
+
+∂nϕk1,...,k n−1 
+
+> n
+
+w. 
+
+We consider ϕk2,...,k n 
+
+> 1
+
+= PN1−1 
+
+> m=1
+
+ψm for arbitrary but fixed k2, . . . , k n. Because the support of ψm is ˜Qm ∪ ˜Qm+1 , it holds 
+
+Z
+
+> Ω
+
+∂1ψmw =
+
+Z
+
+> ˜Qm
+
+∂1ψmw +
+
+Z
+
+> ˜Qm+1
+
+∂1ψmw
+
+=
+
+Z
+
+> ˜Qm
+
+ℓ−1 
+
+> m
+
+sgn( wm − wm+1 )w −
+
+Z
+
+> ˜Qm+1
+
+ℓ−1 
+
+> m+1
+
+sgn( wm − wm+1 )w (42) 
+
+= meas ˜Qm
+
+ℓm
+
+sgn( wm − wm+1 )wm − meas ˜Qm+1 
+
+ℓm+1 
+
+sgn( wm − wm+1 )wm+1 w| ˜Qm ≡wm.
+
+Since the ˜Qm are hyperrectangles separated by the interfaces Em along the first coordinate, we have 
+
+Hn−1(Em) = meas ˜Qm
+
+ℓm
+
+= meas ˜Qm+1 
+
+ℓm+1 
+
+for all m ∈ { 1, . . . , N 1 − 1}. In turn, we obtain 
+
+Z
+
+> Ω
+
+∂1ψmw = Hn−1(Em) sgn( wm − wm+1 )( wm − wm+1 ) = Hn−1(Em)|wm − wm+1 |.
+
+Since this argument holds for all m ∈ { 1, . . . , N 1 − 1}, we obtain 
+
+Z
+
+> Ω
+
+∂ϕ k2,...,k n 
+
+> 1
+
+w =
+
+> N1−1
+
+X
+
+> m=1
+
+Hn−1(Em)|wm − wm+1 |.
+
+The right-hand side accumulates the differences of the level sets of w between neighboring hyperrectangles ˜Qm times the length of the interface between neighboring hyperrectangles 26 along the first coordinate. We extend the right-hand side to a sum between every pair m1, m2 ∈ { 1, . . . , N 1} using productive zeros that serve as jump heights between the non-neighboring hyperrectangles. Because the double sum counts each jump of w along the first coordinate twice, we correct it by the factor 1 /2 and obtain 
+
+Z
+
+> Ω
+
+∂ϕ k2,...,k n 
+
+> 1
+
+w = 12
+
+> N1
+
+X
+
+> m1=1
+> N1
+
+X
+
+> m2=1
+
+Hn−1(Emin {m1,m 2})|w ˜Qm1
+
+− w ˜Qm2
+
+|a1( ˜Qm1 , ˜Qm2 )where ai( ˜Qα, ˜Qβ ) = 1 if ˜Qα, ˜Qβ ∈ ˜Qτ are adjacent along the i-th coordinate and ai( ˜Qα, ˜Qβ ) = 0 else. 
+
+Z
+
+> Ω
+
+∂1ϕ1w =
+
+> N2
+
+X
+
+> k2=1
+
+· · · 
+
+> Nn
+
+X
+
+> kn=1
+
+Z
+
+> Ω
+
+∂ϕ k2,...,k n 
+
+> 1
+
+w =12
+
+> N1
+
+X
+
+> m1=1
+> N1
+
+X
+
+> m2=1
+> N2
+
+X
+
+> k2=1
+
+· · · 
+
+> Nn
+
+X
+
+> kn=1
+
+Hn−1(Emin {m1,m 2})|w ˜Qm1,k 2,...,kn −w ˜Qm2,k 2,...,kn |a1( ˜Qm1,k 2,...,k n , ˜Qm2,k 2,...,k n ).
+
+Extending this sum by further zeros and using that each Em is the intersection of the closures of the two incident cubes along the first coordinate except for a Hn−1-negligible set, we obtain 
+
+Z
+
+> Ω
+
+∂1ϕ1w = 12
+
+X
+
+> ˜Qi∈Q
+
+X 
+
+> ˜Qj∈Q
+
+Hn−1  ˜Qi ∩ ˜Qj |w ˜Qi − w ˜Qj |a1( ˜Qi, ˜Qj )and analogously for ∂2ϕ2, . . . , ∂ nϕn. Since at most one of a1( ˜Qi, ˜Qj ), . . . , a n( ˜Qi, ˜Qj ) is non-zero for all ˜Qi, ˜Qj ∈ Q and in case all of them are zero we have Hn−1( ˜Qi ∩ ˜Qj ) = 0, we obtain by summing from 1 to n that 
+
+Z
+
+> Ω
+
+div ϕw = 12
+
+X
+
+> ˜Qi∈Q
+
+X 
+
+> ˜Qj∈Q
+
+Hn−1  ˜Qi ∩ ˜Qj |w ˜Qi − w ˜Qj | = TV( w),
+
+where the second identity follows, for example, from Lemma 2.1 in [21] 2
+
+Remark 4.20 . While we are not aware of quadrilateral Raviart–Thomas finite-element theory or applications thereof for n ≥ 4, our provided argument is generic and translates to higher dimensions if quadrilateral Raviart–Thomas finite-element spaces are defined analogously to n ≤ 3. 
+
+Remark 4.21 . We believe that the results can be transferred to discretizations of bounded Lipschitz domains if, for example, ϕ is set to zero on quadrilaterals that are cut by ∂Ωwithin the supremization in (38). As a corollary, we close an open question from [27] what an asymptotically sharp (smallest possible) constant for relationship between TV( wτ ) and TV( w) is if wτ , w are integer-valued and the wτ defined on rectangular partitions. 
+
+> 2Lemma 2.1 in [21] assumes integer-valued functions. However, its proof requires only that the functions are piecewise constant.
+
+27 Corollary 4.22 (Tight variant of Theorem 3.12 and Theorem 3.13 in [27] for n ∈ { 1, 2, 3}).
+
+Let w ∈ BV(Ω) ∩ { w ∈ L1(Ω) : w(x) ∈ { w1, . . . , w M } for a.e. x ∈ Ω}, wi ∈ Z for all 
+
+i ∈ { 1, . . . , M }, M ∈ N. Then, there exists a sequence (wτ )τ ⊂ BV(Ω) ∩ { w ∈ L1(Ω) : 
+
+w(x) ∈ { w1, . . . , w M }} such that 
+
+lim sup  
+
+> τ↘0
+
+TV( wτ ) ≤ √n TV( w).
+
+Proof. The sequence ( wτ )τ is defined as wτ := R{w1,...,w M } 
+
+> στ
+
+(w), where the operator R is defined as in Definition 2.11 in [27], the h-grid in [27] corresponds to our τ -grids, a (third) sequence of στ -grids (corresponding to τh-grids in [27]) is embedded into the τ -grids so that Assumption 2.3 in [27] is satisfied, and we have στ τ −1 ↘ 0 as τ ↘ 0. The key observation is that the function wτ is piecewise constant per cell of the τ -grid by definition so that the assumption of Lemma 4.19 is satisfied and we obtain, incombination with the second lim sup-inequality in Theorem 3.13 in [27], that lim sup  
+
+> τ↘0
+
+TV( wτ ) ≤ lim sup  
+
+> τ↘0
+
+√n TV  
+
+> τ
+
+(wτ ) ≤ √n TV( w).
+
+Theorem 4.23. sup τ ↘0 TV τ (wτ ) ≤ C and sup τ ↘0 ∥wτ ∥L1(Ω) ≤ C for some C > 0 with 
+
+wτ = Pτ wτ implies that there exist a subsequence {wτ }τ and w ∈ BV(Ω) such that wτ → w
+
+in L1(Ω) 
+
+Proof. Lemma 4.19 implies that sup τ ↘0 TV( wτ ) ≤ √nC holds. In combination with sup τ ↘0 ∥wτ ∥L1(Ω) ≤ C, Theorem 3.23 from [3] yields the claim. 
+
+# 5 Computational Experiments 
+
+We consider a model example from the existing literature (see [19, §5]) which reads min 
+
+> u,w
+
+12 ∥u − ud∥2 
+
+> L2(Ω)
+
++ α TV( w)s.t. − ε∆u + c1 · ∇ u + c2uw = f in Ω 
+
+u = 0 on {0, 1} × (0 , 1) ∪ ((0 , 0.25) ∪ (0 .75 , 1)) × { 1}
+
+u = sin(2 π(x1 − 0.25)) on (0 .25 , 0.75) × { 1}
+
+∂nu = 0 on (0 , 1) × { 0},
+
+(OCP C )where α = 10 −5, ε = 0 .04, c2 = 4, c1(x) = (sin( πx 1) cos(2 πx 2)) T for x ∈ Ω, f (x) = sin(2 πx 1 +2 πx 2)+3 for x ∈ Ω. While it may be considered to be slightly more complicated than our model problems (OCP E ) and (OCP H ), it allows for a direct comparison with the results from [19, §5]. The verification of the assumptions for (OCP C ) can be established using the same strategies that we have used for (OCP E ) and (OCP H ) or, alternatively, the non-standard elliptic regularity from [9] that gives W 1,p -regularity of the state for p > 2and thus L∞-bounds since the domain is in 2D. 28 Key Insight for Acceleration of OBBT The key driver for both the quality / tight-ness and the compute time for McCormick relaxations is the OBBT procedure. In [19], the very expensive OBBT procedure was applied with relatively coarse grids (coinciding for local averaging and controls) with up to 48 × 48 square cells. In this work, we push this size further to grids of sizes 128 × 128. In order to do so, we have integrated several acceleration techniques into the OBBT Algorithm 1 from [19]. We briefly note that, in addition to the techniques described below, we have also assessed the effect of replacing the state variable in the McCormick inequalities and objective by the (discretized) solution operator of the PDE. This, however, has led to a dense system of linear inequalities instead to a sparse one, which has turned out to be much more compute-intensive to solve. Using an outer approximation strategy that adds the inequalities only when necessary, that is, violated, during the solution process has led to the quick inclusion of a massive amount of inequalities and driven up solution times even higher. We have therefore discontinued this approach. Instead, our acceleration approach is based on the key observation that when consid-ering the minimizer / maximizer of the average of the state variable in a specific cell, it is intuitive from the continuity properties of the state variable that the same or a very similar state vector is the solution to the minimization / maximization for nearby grid cells. Now, assuming a bound for a single cell was computed using primal simplex to solve the corresponding LP of the form (OBBT ℓ/u (i)), the simplex basis remains feasible when just the objective is changed, which is the case if the constraints are not updated after each bound optimization but only after the whole set of bounds were optimized one after another (one OBBT sweep). In addition, only four entries have to be changed in the constraint set when the information of one bound update is added. 
+
+Experimental Procedure In our experiments, we follow the Ritz–Galerkin ansatz de-scribed in [19, §4.2] for the PDE in (OCP C ) and use the following discretization scheme 
+
+• for u: first-order Lagrange elements on 4 × 128 × 128 triangles, 
+
+• for w: piecewise constant functions on 128 × 128 squares. Regarding the total variation, we use the same discretization as in [19], which in turn is based on [22]. While this discretization may give anisotropic effects, this is not impor-tant towards our main goal—the investigation of acceleration techniques for the OBBT Algorithm—but makes our setting comparable to [19]. Since we aim to accelerate the OBBT Algorithm 1 from [19], we conduct the computational experiments described in the following sections. We conducted all of the experiments on a node of the Linux HPC clus-ter LiDO3 with two AMD EPYC 7542 32-Core CPUs and 64 GB RAM. The computations were limited to 1 CPU. 
+
+5.1 First Experiment for Solver Configuration Determination 
+
+We use a fine square grid of Nh for the McCormick relaxation, where we choose the mesh size / side length of the squares as τ = h = 2 −7 so that Nh = 2 7 × 27 = 2 14 . We run one OBBT Algorithm sweep using two different solvers for the LPs (OBBT ℓ/u (i)), three 29 different warm start variants, and two cell ordering variants. Regarding the solvers, we use Gurobi [10] and HiGHS [14]. As warm start variants we compare 
+
+• cold We solve each iteration with an interior point method and start each OBBT sweep with updated bounds from the preceding sweep. No LP warm starting is used. 
+
+• semi-warm We solve the initial LP using an interior point method and then use primal simplex without updating the constraints. We also start each OBBT sweep with updated bounds from the preceding sweep. Since we only update the objective between subsequent iterations of the same OBBT sweep and use the optimal simplex basis from preceding iteration, the basis remains feasible for primal simplex. 
+
+• warm We solve the initial LP using an interior point method and then use dual simplex for subsequent iterations. The constraint set is updated with the computed bound after each LP solve. Here, we first optimize all of the lower bounds and then all of the upper bounds. As a consequence, we can expect that the bound improvement of the upper bounds is more pronounced than for the lower bounds, since more information is available in the warm start mode. In addition, we compare two different ways of ordering the grid cells, namely 
+
+• diagonal a bottom-up traversal of the grid cells using a typical ordering of grid cells for PDE computations (the default of dolfinx [4] that is used in our computations), 
+
+• snake a row-wise bottom-up traversal of the grid cells with high spatial locality of the grid cells in the resulting serialization; see Fig. 3 for a visualization of the two traversal variants. Regarding initialization, we set  
+
+> (a) Diagonal up-bottom traversal (b) Row-wise snake traversal
+
+Figure 3: Example of the assessed grid cell traversals on an 8 × 8 square grid. all upper bounds to 10 3 and all lower bounds to −10 3.30 Results The runs for the configurations HiGHS with cold , snake and Gurobi with cold ,
+
+snake were canceled after 48 hours as just around 10 % and 3 % of the LP solves for the sweep were completed at this time. Since the LP solves for the choices snake and 
+
+diagonal do not differ for cold (only their order differs), we omitted running HiGHS with 
+
+cold , diagonal and Gurobi with cold , diagonal . The runs for the configurations Gurobi 
+
+with warm , diagonal and Gurobi with warm , snake finished approximately within 12 and 8 hours so that the snake traversal option was able to reduce the running time by about one third in this case. The runs for the configurations Gurobi with semi-warm , diagonal 
+
+and Gurobi with warm , diagonal had comparable running times. The runs for the config-urations HiGHS with warm , snake were canceled after 48 hours as just around 25 % of the LP solves for the sweep were completed as this time and thus the performance was clearly inferior to Gurobi with warm , diagonal and Gurobi with warm , snake already. Since 
+
+snake did reliably outperform diagonal , the configuration HiGHS with warm , diagonal 
+
+was not run. The runs for the configurations HiGHS with semi-warm , diagonal and HiGHS 
+
+with semi-warm , snake finished approximately within 2.33 and 2.18 hours so that the 
+
+snake traversal option was able to reduce the running time by about 6 % in this case. The recorded running times are tabulated in Table 1 below. Because the constraint set is updated after every LP solve, the bounds obtained with one sweep in a warm configuration must be superior to the bounds computed with a 
+
+semi-warm configuration when all other settings are identical. As a consequence semi-warm 
+
+does not seem to be a promising approach when used in combination with Gurobi . Indeed, the bounds obtained with a warm sweep are much tighter (41 % on average after this one sweep) as one can observe in Fig. 5 further down below. By contrast, the 4-5 times lower running times of the configuration HiGHS with semi-warm allow for a much higher number of sweeps to be executed within the same time period so that it is not immediate if Gurobi 
+
+with warm or HiGHS with semi-warm is preferable. Table 1: Running times (in seconds) for one sweep of the OBBT Algorithm using different warm start configurations of Gurobi and HiGHS and different grid traversals on an 128 ×
+
+128 grid. 
+
+Gurobi HiGHS cold semi-warm warm cold semi-warm warm 
+
+snake ∗ 2.85 × 10 4 2.90 × 10 4 ∗∗ 7.88 × 10 3 ∗∗∗ 
+
+diagonal 4.47 × 10 4 4.33 × 10 4 8.42 × 10 3
+
+> ∗
+
+canceled after 1 .73 × 10 5 s; 3 121 of 32 768 LPs solved. 
+
+> ∗∗
+
+canceled after 1 .73 × 10 5 s; 194 of 32 768 LPs solved. 
+
+> ∗∗∗
+
+canceled after 1 .73 × 10 5 s; 8 304 of 32 768 LPs solved. 
+
+Outcome Due to their performance in this experiment, we choose HiGHS with semi-warm ,
+
+snake and Gurobi with warm , snake as the configurations for the next experiment. 
+
+5.2 Second Experiment for Solver Configuration Determination 
+
+We run the OBBT Algorithm 1 in [19] for 72 hours or until convergence for both HiGHS 
+
+with semi-warm , snake and Gurobi with warm , snake on the same grid. We use the same 31 initialization as before with all upper bounds set to 10 3 and all lower bounds set to −10 3.In order to avoid the numerical problems described in [19, §4.3], we add an offset of 10 −4
+
+to updates of upper bounds and subtract the same offset to updates of lower bounds. We determine OBBT Algorithm 1 as (numerically) converged once the maximum difference to the previous bound update is below 10 −2.In addition, HiGHS required additional numerical stabilization to be able to reliably solve the first iteration of a sweep using the interior point method. In particular, we did not improve corresponding upper and lower bounds uˆiℓ or uˆiu further if their difference 
+
+uˆiu − uˆiℓ fell below the termination tolerance of 10 −2. In addition, we did not accept the bound update when its absolute value fell below 10 −4.
+
+Results Within the prescribed time limit of 72 hours, Gurobi with warm , snake was able to complete four sweeps which took almost 61 hours and the time limit was reached during the fifth. In particular, the convergence criterion was not satisfied at this point. By contrast, HiGHS with semi-warm , snake did converge in 13 sweeps just short of 23 hours. For a cell in the center of the domain, the increase / decrease of the bounds over time is visualized in Fig. 4. All upper bounds after after one and four sweeps of Gurobi with         
+
+> (a) Log-scaled value of |u8319
+> ℓ|over time. Note that u8319
+> ℓflips its sign in sweep 9.
+> (b) Log-scaled value of |u8319
+> u|over time.
+
+Figure 4: Lower (left) and upper bound (right) bound for grid cell 8319 over the course of the OBBT Algorithm running time (in seconds) for a square 128 × 128 mesh of the size using Gurobi with warm , snake (orange) and HiGHS with semi-warm , snake , where the bullet points mark the time of a completed sweep. .
+
+warm , snake and after one and 13 sweeps of HiGHS with semi-warm , snake are visualized in a heatmap in Fig. 5. 
+
+Outcome Due to the superior performance in this experiment, we choose HiGHS with 
+
+semi-warm , snake as the configuration for the next experiment. 
+
+5.3 Qualitative Assessment of the Bounds 
+
+We execute the OBBT Algorithm using HiGHS with semi-warm , snake for h = τ and the choices h = 2 −2, . . . , 2 −7 until convergence, which yields variable bounds uiℓ, uiu. Then, we solve the convex problems (McC hτ ) by means of Gurobi using the sharpest variable bounds 32 Figure 5: Value of uiu on the mesh squares Qih after running 1 and 13 sweeps of HiGHS 
+
+with semi-warm , snake (bottom row) and after running 1 and 4 sweeps of Gurobi with the warm start (top row). obtained with the final sweep OBBT Algorithm for all of these values of h, which thus yields approximate lower bounds for (OCP C ). We note that we have observed numerical problems and suboptimal terminations of Gurobi when solving (McC hτ ), in particular for low values of h in the default setting. We were able to overcome these issues by setting the parameters ScaleFlag = 2, BarHomogeneous = 1, and NumericFocus = 2. To compare the obtained approximate lower bounds to an upper bound, we compute an upper bound for (OCP C ) by executing a local gradient-based NLP solver on it. Due to the small gap between the upper bound computed with the NLP-solver and the lower bound computed on the baseline discretization in [19], we expect the solution to be close to a global minimum. However, our new ability to scale the the OBBT Algorithm to finer meshes comes at the cost that we were not able to execute the OBBT Algorithm to convergence on a baseline discretization as in [19]. In this case, LPs with a substantial computational demand were generated during the OBBT Algorithm, thereby making the overall algorithm execution intractable since thousands of LPs have to be solved and we had to cancel it after 72 hours with zero completed sweeps. We have not figured out why this is the case yet and have observed this before and after transferring our acceleration techniques to the baseline discretization. Due to the finer meshes we allow now and the fact that we can run the OBBT Algorithm to convergence, we expect the solutions to (McC hτ ) be close to true lower bounds for the smaller values of h.
+
+Results We observe that the execution time of the OBBT Algorithm followed a mono-tonically increasing trend when h is decreased, ranging from 2 .6558 × 10 3 s for h = 2 −2
+
+to 8 .2032 × 10 4 s for h = 2 −7. Notably, for all values of h except h = 2 −2, the OBBT Algorithm did converge after 13 sweeps, indicating a very similar bound tightening be-33 havior that seems to be independent of the mesh size. For h = 2 −2, the OBBT Algorithm required only 12 sweeps. The approximate lower bounds on (OCP C ) that are achieved by solving (McC hτ ) afterwards also follow a monotonically decreasing trend and seems to converge to (approximately) 3 .2293 with the relative difference between the approximate lower bounds for h = 2 −4, h = 2 −5, h = 2 −6 and 3 .2293 (the value for h = 2 −7) being be-low or slightly above to 10 −4, which is a typical tolerance for relative duality gaps in many solvers. The compute times for solving (McC hτ ) lay between 2 .0920 × 10 1 s for h = 2 −5
+
+and 5 .2660 ×10 1 s for h = 2 −7. The execution of the NLP-based upper bound computation yielded an objective value of 3 .2294, which is slightly above the finest approximate lower bound. It took 4 .8000 × 10 1 s to execute this computation. For sake of completeness, we note that without executing the OBBT Algorithm, the initial variable bounds prescribed on (McC hτ ) yield an objective value that is numerically zero, which is a trivial bound on (OCP H ). The objective values and compute times are tabulated in Table 2. Since one can also compute approximate lower bounds with intermediate results of the OBBT Algorithm, we assess how the objective value of (McC hτ ) evolves over the different sweeps of the OBBT Algorithm for h = 2 −2, . . . , 2−7. For all of our mesh sizes, the induced lower bound settles after approximately 9 sweeps and barely increases afterwards. We have visualized this in Fig. 6. Table 2: Running times (in seconds) of the OBBT Algorithm for different mesh sizes as well as running times (in seconds) and achieved approximate lower bounds of the solution of (McC hτ ) with the tightened variable bounds in comparison to the NLP-based upper bound and its compute time. Approximate Lower Bound by Solving (McC hτ ) NLP-based Upper Bound                                                        
+
+> h=τ=2−22−32−42−52−62−7
+> Time OBBT [s] 2.6558 ×10 34.9871 ×10 38.1295 ×10 31.7320 ×10 41.7873 ×10 48.2032 ×10 4
+> Time for Solving [s] 2.4910 ×10 12.3800 ×10 12.8250 ×10 12.0920 ×10 12.8910 ×10 15.2660 ×10 14.8000 ×10 1
+> Objective value 3.2389 3.2328 3.2299 3.2295 3.2294 3.2293 3.2294
+
+Figure 6: Development of the value of (McC hτ ) over the sweeps of the OBBT Algorithm for different mesh sizes. 34 Interpretation The results show that the NLP-based upper bound is indeed (close to) a global minimum. In addition, the compute times for executing an NLP solver on (OCP C )or solving (McC hτ ) after variable bounds are determined is negligible compared to the bound tightening procedure. The bound tightening procedure on the other hand already gives high quality bounds even for relatively large values of h. For our example, if one is satisfied with a relative accuracy of 2 × 10 −4 for the approximate lower bound, it would have been possible to use the relatively coarse value of h = 2 −4 for (McC hτ ), thereby saving an order of magnitude in compute time compared to h = 2 −7. The compute time can be also saved by posing a less strict termination criteria for the OBBT Algorithm since the later OBBT sweeps do not improve the resulting approximate lower bound by much. For our example, there is no numerical difference in the optimal value of (McC hτ ) between the penultimate and the last sweeps for all the mesh sizes and the relative difference between the optimal value of (McC hτ ) for is below or slightly above 6 × 10 −5 for the sweeps 10 to 13 for all h = 2 −3, . . . , 2−7. Earlier termination after 9 sweeps allows to save up to 19% of the compute time for OBBT. 
+
+# 6 Conclusion 
+
+We have successfully demonstrated that the assumptions underlying the derivation of McCormick relaxations and their approximations in [19] can be verified for PDEs, in par-ticular elliptic ones, on multi-dimensional domains. On the computational side, we have been able to scale the approach to significantly finer meshes underlying the approximate McCormick relaxations than what has been possible before. The driver of the computa-tional burden is the OBBT Algorithm, which we were able to accelerate significantly by exploiting and combining the warm starting capabilities of the simplex algorithm and the continuity properties of the PDE solutions. Since the meshes we have used are still of academic size, further research is necessary to scale the approach towards more realistic and in particular non-academic settings and discretizations. 
+
+# References 
+
+[1] Robert A Adams and John JF Fournier. Sobolev spaces . Elsevier, 2003. [2] Faiz A Al-Khayyal and James E Falk. Jointly constrained biconvex programming. 
+
+Mathematics of Operations Research , 8(2):273–286, 1983. [3] Luigi Ambrosio, Nicola Fusco, and Diego Pallara. Functions of bounded variation and free discontinuity problems . Oxford university press, 2000. [4] Igor A. Baratta, Joseph P. Dean, Jørgen S. Dokken, Michal Habera, Jack S. Hale, Chris N. Richardson, Marie E. Rognes, Matthew W. Scroggs, Nathan Sime, and Garth N. Wells. DOLFINx: the next generation FEniCS problem solving environ-ment. preprint, 2023. [5] Corentin Caillaud and Antonin Chambolle. Error estimates for finite differences ap-proximations of the total variation. IMA Journal of Numerical Analysis , 43(2):692– 736, 2023. 35 [6] Corentin Caillaud and Antonin Chambolle. Error estimates for finite differences ap-proximations of the total variation. IMA Journal of Numerical Analysis , 43(2):692– 736, April 2023. [7] Antonin Chambolle, Pauline Tan, and Samuel Vaiter. Accelerated alternating descent methods for dykstra-like problems. Journal of Mathematical Imaging and Vision ,59(3):481–497, 2017. [8] Philippe G. Ciarlet. The Finite Element Method for Elliptic Problems . Society for Industrial and Applied Mathematics, 2002. [9] Konrad Gr¨ oger. Aw 1, p-estimate for solutions to mixed boundary value problems for second order elliptic differential equations. Mathematische Annalen , 283(4):679–687, 1989. [10] Gurobi Optimization, LLC. Gurobi Optimizer Reference Manual, 2026. [11] Oliver Habeck, Marc E Pfetsch, and Stefan Ulbrich. Global optimization of mixed-integer ode constrained network problems using the example of stationary gas trans-port. SIAM Journal on Optimization , 29(4):2949–2985, 2019. [12] Jaroslav Haslinger and Raino A. E. M¨ akinen. On a topology optimization problem governed by two-dimensional Helmholtz equation. Computational Optimization and Applications , 62(2):517–544, November 2015. [13] Michael Hinterm¨ uller and Carlos N Rautenberg. On the density of classes of closed convex sets with pointwise constraints in sobolev spaces. Journal of Mathematical Analysis and Applications , 426(1):585–593, 2015. [14] Q. Huangfu and J. A. J. Hall. Parallelizing the dual revised simplex method. Math-ematical Programming Computation , 10:119–142, 2018. [15] Barbara Kaltenbacher and Paul Manns. Locally-averaged mccormick relaxations for discretization-regularized inverse problems. Inverse Problems , 42(4):045015, 2026. [16] David Kinderlehrer and Guido Stampacchia. An introduction to variational inequal-ities and their applications . SIAM, 2000. [17] AH Land. Doig. ag,“an automatic method for solving discrete programming prob-lems”. Econometrica , 28(3):497–520, 1960. [18] Peter D. Lax. Hilbert space. In Functional Analysis , Pure and Applied Mathematics, page 508. Wiley-Interscience, New York, NY, 2002. [19] Sven Leyffer and Paul Manns. Mccormick envelopes in mixed-integer pde-constrained optimization. Mathematical Programming , pages 1–46, 2025. [20] Sven Leyffer, Paul Manns, and Malte Winckler. Convergence of sum-up rounding schemes for cloaking problems governed by the helmholtz equation. Computational Optimization and Applications , 79(1):193–221, 2021. 36 [21] Paul Manns and Annika Schiemann. On integer optimal control with total variation regularization on multidimensional domains. SIAM Journal on Control and Opti-mization , 61(6):3415–3441, 2023. [22] Paul Manns and Marvin Severitt. On discrete subproblems in integer optimal con-trol with total variation regularization in two dimensions. INFORMS Journal on Computing , 37(4):1121–1141, 2025. [23] Garth P. McCormick. Computability of global solutions to factorable nonconvex programs: Part i —convex underestimating problems. Mathematical Programming ,10(1):147–175, 1976. [24] Jens Markus Melenk. On generalized finite element methods . PhD thesis, University of Maryland, College Park, 1995. [25] Ignacio Quesada and Ignacio E Grossmann. Global optimization algorithm for heat exchanger networks. Industrial & engineering chemistry research , 32(3):487–499, 1993. [26] Ignacio Quesada and Ignacio E Grossmann. A global optimization algorithm for linear fractional and bilinear programs. Journal of Global Optimization , 6(1):39–76, 1995. [27] Annika Schiemann and Paul Manns. Discretization of total variation in optimization with integrality constraints. SIAM Journal on Numerical Analysis , 63(1):437–460, 2025. [28] Mohit Tawarmalani and Nikolaos V Sahinidis. Convexification and global optimization in continuous and mixed-integer nonlinear programming: theory, algorithms, soft-ware, and applications , volume 65. Springer Science & Business Media, 2013. [29] Fredi Tr¨ oltzsch. Optimal control of partial differential equations: theory, methods, and applications , volume 112. American Mathematical Soc., 2010. 37 A Appendix 
+
+Lemma A.1. Let (u, w ) be feasible for (OCP E ). Let the test function ζM , the constant 
+
+M , and the set E(k) for k > 0 be defined as in the proof of Theorem 4.1, then the following estimation holds: Z
+
+> A(k)
+
+uζ M ≤ M
+
+Z
+
+> A(k)
+
+uu. 
+
+Proof. Firstly, we split the integral into the sum of two terms depending on whether u ≥ k
+
+or u ≤ − k and, then, use the properties of the integral and the fact that A(k) = {x ∈
+
+Ω|u(x) ≥ k} ∪ { x ∈ Ω|u(x) ≤ − k}:
+
+Z
+
+> A(k)
+
+uζ M = M
+
+ Z 
+
+> u≥k
+
+u(u − k) + 
+
+Z
+
+> u≤− k
+
+u(u + k)
+
+
+
+= M
+
+ Z 
+
+> u≥k
+
+uu −
+
+Z
+
+> u≥k
+
+uk +
+
+Z
+
+> u≤− k
+
+uu +
+
+Z
+
+> u≤− k
+
+uk 
+
+
+
+= M
+
+ Z 
+
+> A(k)
+
+uu −
+
+Z
+
+> u≥k> 0
+
+uk |{z} 
+
+> >0
+
++
+
+Z
+
+> u≤− k< 0
+
+uk |{z} 
+
+> <0
+
+
+
+≤ M
+
+Z
+
+> A(k)
+
+uu. 
+
+38
