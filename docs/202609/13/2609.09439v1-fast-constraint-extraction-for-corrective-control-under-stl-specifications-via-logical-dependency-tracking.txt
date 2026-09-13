@@ -1,0 +1,578 @@
+Title: Fast Constraint Extraction for Corrective Control under STL Specifications via Logical Dependency Tracking
+
+URL Source: https://arxiv.org/pdf/2609.09439v1
+
+Published Time: Thu, 10 Sep 2026 00:25:27 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+# Fast Constraint Extraction for Corrective Control under STL Specifications via Logical Dependency Tracking 
+
+Antoine Besset a, Joris Tillet b, Chuchu Fan c and Julien Alexandre dit Sandretto a
+
+Abstract — Ensuring the satisfaction of Signal Tempo-ral Logic (STL) specifications under uncertainty is chal-lenging, as reachability-based monitoring provides guar-antees but does not indicate how to restore satisfaction when it becomes indeterminate. A key difficulty is identi-fying which uncertain components actually affect global satisfaction, especially for nested formulas. This paper introduces a logical dependency tracking framework that propagates uncertainty through the STL structure and captures the causal contribution of reachable sets to sat-isfaction. By associating markers to uncertain predicates and propagating them via three-valued semantics, we ex-tract in milliseconds a compact Disjunctive Normal Form (DNF) of sufficient constraints, avoiding combinatorial enumeration. As an application, we formulate control correction as a minimum-effort optimization problem. Using zonotopic reachability, the derived constraints are enforced via linear programming, yielding corrections that guarantee STL satisfaction under bounded uncer-tainty and provide certified probabilistic bounds in the stochastic case. We demonstrate the approach on anonlinear system with nested STL specifications, showing that dependency tracking enables efficient and formally guaranteed correction. The tracking implementation is available at https://github.com/Antoine-Bst/STL-Three-Valued-Clause-Filtering/. 
+
+I. I NTRODUCTION 
+
+Ensuring the reliability of cyber-physical systems under uncertainty is a central concern in domains such as autonomous systems, robotics, and industrial automation. In such settings, model inaccuracies and external disturbances lead to deviations from nominal behavior, requiring methods that provide formal guar-antees despite uncertainty. Reachability analysis [1]– [3] enables sound over-approximations of all possible trajectories, while Signal Temporal Logic (STL) [4] provides a rich formal language to specify temporal and state-dependent requirements. Their combination          
+
+> aU2IS, ENSTA, Institut Polytechnique de Paris, France; bUniv. Grenoble Alpes, CNRS, Grenoble INP, VERIMAG, France; c
+> REALM, AeroAstro, Massachusetts Institute of Technology, Cam-bridge, USA
+
+enables the verification of temporal properties over continuous-time nonlinear systems with formal guar-antees [5]–[7]. However, verification alone is not sufficient in safety-critical settings: when uncertainty leads to indeter-minate specifications, the system must be corrected. While recent works provide guaranteed monitoring of STL specifications under uncertainty [5], [7] or probabilistic assessment [8], they do not address how to compute corrective actions restoring satisfaction. Temporal implicants [9] explain a verdict on a trace, whereas under uncertainty satisfaction depends on a complex relation between temporal and logical opera-tors, and indeterminacy typically arises when reachable sets intersect predicate boundaries. Crucially, not all such local ambiguities contribute equally to the global satisfaction. In this paper, we assume the availability of a nominal trajectory already satisfying the specification, which must provide sufficient control margin for correction. Existing methods can compute such a trajectory, for instance via differentiable planning [10], learning-based methods [11], stochastic/tube-based optimization [12]– [16], robust control synthesis [17], or multi-agent syn-thesis [18]. These methods compute a nominal tra-jectory in seconds to hundreds of seconds [13], [15], [18], typically relying on discrete-time linear mod-els [13], [14], [16], [18] or distributional assumptions on uncertainty [12]. Planning such a trajectory under STL specifications with formal guarantees is intractable for continuous-time nonlinear systems: no closed-form solution is generally available for stochastic differential equations with nonlinear or hybrid dynamics. More-over, on long horizons, reachability methods [1]–[3] accumulate over-approximation, which can render the resulting enclosures unusable for planning. Rather than full replanning, we identify corrections online on top of a nominal controller, acting as a guar-anteed correction layer between the high-level planner and the low-level feedback. The core contribution of this work is a logical dependency tracking framework arXiv:2609.09439v1 [cs.LO] 8 Sep 2026 that identifies which reachable sets, among those cross-ing predicate boundaries, are actually responsible for formula-level indeterminacy. Instead of relying on a direct All-SAT formulation, which is intractable due to combinatorial enumeration, we exploit the structure of three-valued satisfaction propagation to extract these dependencies, yielding a compact Disjunctive Normal Form of sufficient correction clauses (Section V). As an application of this formulation, we instantiate a control correction using zonotopic control parameter-ization, which interfaces naturally with existing set-based monitoring methods [5], [7], [19], [20]. Here, we target safety-critical systems, which motivates the use of a fully guaranteed approach: continuous-time semantics, nonlinear dynamics, and continuous-time validated enclosures. 
+
+Related works. Several approaches exist for mon-itoring uncertain systems against STL specifications with formal guarantees, but none combines guaranteed satisfaction assessment with corrective control. Set-based methods evaluate STL formulas over reachable tubes using three-valued [7], [21] or four-valued [5] semantics, where indeterminate satisfaction arises when a reachable set intersects a predicate boundary. These methods provide sound verdicts but are limited to bounded disturbances. On the stochastic side, Monte-Carlo methods [22] and Conformal prediction [23] esti-mate satisfaction probabilities but offer only statistical guarantees and may miss rare events. ProbStarTL [8] tracks distributional dependencies through probabilistic zonotopes. For unbounded uncertainties such as Gaus-sian noise, we adopt a Potential Cloud approach [24] close to ProbReach [25], yielding a certified lower bound. However, none of these approaches provides a mechanism to identify which uncertain components must be corrected to restore satisfaction. On the control side, [19], [20] showed that zonotopic generators can parameterize guaranteed control correc-tions for constrained nonlinear systems, with the effect of each correction explicitly tracked through reachabil-ity. Funnel-based approaches [26] offer an alternative for controlling all states in tubes under disturbances. Since zonotopic reachability is already required for online monitoring, we build on [19], [20] and extend it to STL. The constraint identification method we develop is however independent of the control synthesis and applies to any approach capable of computing corrections under time-varying constraints. 
+
+Contributions. (i) Extending prior work [7], which identifies a conservative set of uncertain markers but not their logical dependencies, we extract these depen-dencies during signal propagation, yielding in millisec-onds a compact Disjunctive Normal Form (DNF) of sufficient clauses without combinatorial enumeration, and scaling to hundreds of markers. This approach is compared against an All-SAT and single enumeration evaluation strategy. (ii) We propose a guaranteed con-trol correction formulation based on zonotopic reach-able tubes [19], [20], where a single LP per clause yields a correction guaranteeing formula satisfaction. II. P RELIMINARIES 
+
+A. Reachability analysis 
+
+Let us consider a continuous dynamical system mod-eled by a differential equation of the form: 
+
+˙y(t) = f (y(t), p ), y(t) ∈ Rn, p ∈ P , (1) where y(t) denotes the system state, p is a vector of parameters of the system, P ⊂ Rw is a compact set. 
+
+f is a nonlinear function, such that for any initial state 
+
+y0 ∈ Rn and any fixed parameters p, the system admits a unique trajectory in Rn denoted by y(·, y 0, p ) [1], [2]. In the process of solving an Initial Value Problem for a differential equation using validated numerical integration methods [1], an enclosure [˜ yj ] of the solu-tion is computed for each time interval [tj , t j+1 ], where 
+
+tj+1 = tj + hj and hj is an adaptive step size. This continuous-time abstraction will be denoted as a Picard box. This enclosure satisfies: 
+
+Definition 1 (Reachable tube enclosure [1]–[3]): 
+
+Reach [tj ,t j+1 ](Y0, P) ⊆ [˜ yj ]P , 
+
+> N−1
+
+[
+
+> j=0
+
+[tj , t j+1 ] = [ t0, t N ],
+
+(2) where Reach t(Y0, P) = {y(t, y 0, p ) | y0 ∈ Y 0, p ∈P} , and t0 and tN denote the start and end times of the simulation, respectively. This continuous-time representation, referred to as a tube [˜ y]P (t) for t ∈ [t0, t N ], is essential to preserve system behavior that may be lost through sparse time sampling. 
+
+Notation: In the following sections, several set operations are used: the Minkowski sum, denoted ⊕,and the Pontryagin difference, denoted ⊖.
+
+B. Signal temporal logic 
+
+STL is an extension of Linear Temporal Logic de-signed to specify properties of continuous-time sys-tems [4]. The syntax of STL is defined recursively as follows: 
+
+ϕ := μ | T | ¬ ϕ | ϕ1 ∨ ϕ2 | ϕ1 U[a,b ] ϕ2, (3) where ϕ is an STL formula, T denotes the tautology, 
+
+¬ the negation, and μ is an atomic predicate specifying signal constraints (e.g., x > 0) [4]. A trace (s, t )
+
+satisfies a formula at t iff (s, t ) |= ϕ. Derived operators are defined as follows: 
+
+F[a,b ]ϕ = T U [a,b ]ϕ, G[a,b ]ϕ = ¬(F[a,b ]¬ϕ)
+
+ϕ1 ∧ ϕ2 ≡ ¬ (¬ϕ1 ∨ ¬ ϕ2), ϕ1 =⇒ ϕ2 ≡ ¬ ϕ1 ∨ ϕ2.
+
+(4) In this work, we consider the fragment of STL com-posed of arbitrarily nested F[a,b ] and G[a,b ] operators, which covers the specifications commonly encountered in robotic and control applications (reach-avoid, recur-rence, sequencing, . . . ). 
+
+C. Three-Valued STL on Tubes 
+
+We evaluate atomic predicates on reachable sets using Boolean intervals IB = {0, 1, [0 , 1] } [5], [7]: 
+
+([˜ y]P , t ) |= μ := 
+
+
+
+1, if [˜ y]P (t) ⊂ X μ,
+
+0, if [˜ y]P (t) ∩ X μ = ∅,
+
+[0 , 1] , otherwise ,
+
+(5) where X μ is the predicate set, represented as a hyper-box to facilitate the formulation as a linear optimization problem. Here [0 , 1] ∈ IB denotes the indeterminate value, not a real interval. Logical operations are ex-tended via Boolean interval arithmetic [27]: 
+
+Definition 2 (Boolean interval arithmetic [27]): 
+
+[a] ∨ [b] = {a ∨ b | a ∈ [a], b ∈ [b]}¬[a] = {¬ a | a ∈ [a]}. (6) i.e. 0 ∧ [0 , 1] = 0 , 0 ∨ [0 , 1] = [0 , 1] ,
+
+1 ∧ [0 , 1] = [0 , 1] , 1 ∨ [0 , 1] = 1 .
+
+Satisfaction signals [Sϕ]( t) are decomposed into certain and uncertain unitary signals, propagated bottom-up through the STL formula tree [7]. For a bounded parameter set P, the outcome is either: 
+
+([˜ y]P , t ) |= ϕ =
+
+
+
+1, all trajectories satisfy ϕ, 
+
+0, all trajectories violate ϕ, 
+
+[0 , 1] , indeterminate. (7) 
+
+D. Guaranteed probabilistic bound 
+
+Similarly to ProbReach [25], which provides abounded assessment of the probability of satisfaction, we propose: 
+
+Proposition 1: Let Sc ⊆ P be a measurable set of stationary independent parameters with probability 
+
+Pr(ˆ p ∈ S c) = c. Then the random trajectory from ˆp,
+
+ˆy(·) follows: 
+
+Sc is a validation set =⇒ Pr  (ˆ y, t ) |= ϕ ≥ c, 
+
+Sc is an invalidation set =⇒ Pr  (ˆ y, t )̸ |= ϕ ≥ c. 
+
+(8) 
+
+Proof : Let, Pϕ = { p | (y(p), t ) |= ϕ = 1 }, denote the set of parameter values satisfying the formula ϕ.We assume the existence of a certified validation subset 
+
+Sc ⊆ P ϕ with a probability measure c. By monotonicity of the measure, for a random parameter ˆp and ˆy(·) := 
+
+y(ˆ p, ·), it follows that: 
+
+Pr  ˆp ∈ S c
+
+ ≤ Pr  ˆp ∈ P ϕ
+
+ = Pr  (ˆ y, t ) |= ϕ. (9) Let ϕ′ = ¬ϕ. Since (y(p), t ) |= ϕ′ ⇐⇒ (y(p), t )̸ |= ϕ,the monotonicity property extends to the invalidation set. ■
+
+In other words, the probability of a validated param-eter set lower-bounds the satisfaction probability. 
+
+Probabilistic Notation: P(Sc) = c denotes the probability measure of a measurable set Sc ⊂ Ω, where 
+
+Ω is the sample space with its measure function P.
+
+E. Problem Formulation 
+
+Consider a nonlinear uncertain system 
+
+˙y(t) = f (y(t), u (t), p ), y(0) ∈ Y0, p ∈ P ⊂ Rw,
+
+(10) where the uncertain parameters pi follow known prob-ability distributions at t = 0 and are assumed indepen-dent and stationary. No assumption is made on the state distribution of ˆy at t > 0. The control input is piecewise constant over Nc intervals [tj , t j+1 ], j ∈ { 1, . . . , N c}:
+
+u(t) = Unom ,j +
+
+> m
+
+X
+
+> n=1
+
+δU j,n ·vj,n if t ∈ [tj , t j+1 ], (11) 
+
+Unom ,j = Uf f,j + Uf b,j (t) ∈ Rm is the nominal command composed of a feedforward and a feedback term linearized at each step j and designed to satisfy the specification at p = E[p] (or the center of a bounded parameter set). For each input, a correction is applied, using m orthogonal δU j,n ∈ Rm encoding an ampli-tude. A corresponding decision variable vj,n ∈ [−1, 1] 
+
+is also associated. All decision variables are flattened in a decision vector V ∈ Rm·Nc with coordinate v. The nominal trajectory computed from Unom is denoted yref .
+
+Problem 1: Given a nominal trajectory satisfying an STL specification ϕ and a target confidence level c ∈ [0 , 1] , find the minimum-effort control correction guaranteeing Pr((ˆ y, t ) |= ϕ) ≥ c:
+
+min  
+
+> v
+
+∥V ∥1
+
+s.t. Pr  (ˆ y, t ) |= ϕ ≥ cvj ∈ [−1, 1] , j ∈ { 1, . . . , m · Nc}
+
+(12) Hence for bounded uncertainties: s.t ( y, t ) |= ϕ, ∀p ∈P.The chance constraint Pr((ˆ y, t ) |= ϕ) ≥ c is not directly tractable. The next sections reduce it to inclu-sion conditions on the reachable tube at critical time intervals, which are then enforced as linear constraints. III. C RITICAL CONSTRAINTS IDENTIFICATION 
+
+Translating a temporal formula into constraints re-quires identifying where the system must satisfy strict inclusion or exclusion. This is non-trivial due to the infinite choice of satisfaction instants under quantifiers such as ∃t ∈ [a, b ], and the indeterminacy from pred-icate crossings. We formulate these critical constraints for any STL formula (Section II-B) by tracking logical dependencies in continuous time. 
+
+A. Mitigating Uncertainty over Subsets of Markers 
+
+When evaluating an STL formula on a reachable tube, atomic predicates are assessed over time intervals defined by Picard boxes. The goal is to identify where the corrected tube must satisfy strict predicate inclusion or exclusion. Following [7], we propagate three-valued satisfaction signals through the STL formula tree. Uncertain time intervals are annotated with markers pointing to the reachable sets responsible for indeterminate satisfaction as well as the associated predicates. We define the uncertainty mitigation clause Qj at atomic predicate level as follows: 
+
+Qj ⇐⇒  [˜ yj ]Sc ⊂ X μ ∨  [˜ yj ]Sc ∩ X μ = ∅. (13) 
+
+Definition 3 (Marker): A marker M over time in-terval I is a logical expression defined recursively as either:  
+
+> •
+
+a predicate clause Qj (leaf), or  
+
+> •
+
+a logical tree with a combination MA ∨ M B or 
+
+MA ∧ M B of two markers (node). Each marker is associated with an expected satisfac-tion value E(M) ∈ { 0, 1} derived from the nominal trajectory. From the method proposed in [7], access to the reachable sets leading to undetermined satisfaction is sufficient to mitigate indeterminacy. However, this approach is too pessimistic, as only subsets of these markers usually suffice. In the following, we compute a DNF of sufficient correction clauses. Let us define a master formula ψ ∈ {0, 1}, ameta-Boolean encoding whether satisfaction of ϕ is guaranteed: 
+
+Definition 4 (Master formula): 
+
+ψ := 
+
+(
+
+1, if ([˜ y]Sc , t ) |= ϕ = 1 ,
+
+0, if ([˜ y]Sc , t ) |= ϕ = [0 , 1] . (14) In our formulation, since the correction is computed along a reference trajectory, constraints are directly enforced in the clauses Qj , whether they correspond to inclusion or exclusion conditions. The DNF becomes: 
+
+ψ ≡ _
+
+> k∈K
+
+^
+
+> j∈Ck
+
+Qj , (15) where K is an index set and each Ck denotes the subset of clauses Qj appearing in the k-th conjunction of the DNF. Each conjunction is logically minimal: removing any clause Qj , j ∈ Ck, leaves ψ = 0 .However, this approach suffers from several limi-tations. First, the formula is monitored in continuous time, and the Picard boxes are abstractions over time intervals of varying lengths, propagated using the logic introduced in [4], [7]. Second, rewriting the formula in discrete time under a DNF using an LTL-based approach loses continuous-time guarantees and intro-duces a combinatorial complexity that can become in-tractable [8], particularly when online implementation is required. 
+
+B. Propagation Rules to Track Logical Dependencies 
+
+We compute logical dependencies directly during marker propagation through the STL syntax tree, by discarding insufficient clauses and constructing a log-ical expression when necessary. Following [4], [7], satisfaction signals are decomposed into certain and uncertain unitary parts, each carrying an expected value derived from the nominal trajectory (e.g., E(A) = 1 
+
+if satisfaction is 1 on time interval IA). Markers are propagated by exploiting dominance relations between expected values, as summarized in Table I, II, III, where (1) and (0) denote certain satisfaction. All reported propagation rules demonstrate the com-putation of an uncertain satisfaction signal ( C or D)over a time interval I. A checkmark ( ✓) indicates that a marker is present in the uncertain signal, while a cross (×) denotes a certain signal carrying no marker. TABLE I MARKER PROPAGATION FOR C = A ∨ B                                                                                                   
+
+> MAE(A)MBE(B)MCE(C)
+> ✓0×(0) MA0
+> ✓1×(0) MA1
+> ×(0) ✓0MB0
+> ×(0) ✓1MB1
+> ✓1✓0MA1
+> ✓0✓1MB1
+> ✓1✓1MA∨ M B1
+> ✓0✓0MA∧ M B0TABLE II MARKER PROPAGATION FOR C=A∧B
+> MAE(A)MBE(B)MCE(C)
+> ✓0×(1) MA0
+> ✓1×(1) MA1
+> ×(1) ✓0MB0
+> ×(1) ✓1MB1
+> ✓0✓1MA0
+> ✓1✓0MB0
+> ✓0✓0MA∨ M B0
+> ✓1✓1MA∧ M B1
+
+When a new uncertain signal is computed, domi-nance relations are exploited: for ∨, the marker with 
+
+E = 1 dominates, as it alone determines satisfaction. Similarly, for ∧ the marker with E = 0 dominates [27]. In the symmetric cases where both expected values agree, the resulting marker captures the joint depen-dency as MA ∨M B or MA ∧M B accordingly. Finally, negation simply inherits the marker while flipping the expected value (due to the symmetry ¬[0 , 1] = [0 , 1] ). For example, in Table I, line 6, consider A ∨ B with 
+
+E(A) = 0 and E(B) = 1 . Mitigating A alone leaves the satisfaction at [0 , 1] , since [0 , 1] ∨ 0 = [0 , 1] . Only mitigating B resolves the uncertainty: [0 , 1] ∨ 1 = 1 .Here B dominates the satisfaction. According to these propagation rules, evaluating a formula at a given time yields a mostly flat logi-cal structure between markers. This keeps the DNF computation tractable even while considering 50 to 700 markers as confirmed by the millisecond-range computation times reported in Section V. An example of marker propagation is shown in Fig. 1. An uncertain signal for a formula ϕ is decom-posed into unitary parts, each associated with a marker. Each part Sϕ,i is shifted back by ⊖[a, b ] to compute the satisfaction signal of F[a,b ]ϕ:
+
+[SF[a,b ]ϕ]( t) = _
+
+> i∈{ A,B,C }
+
+(Sϕ,i ⊖ [a, b ]) ( t), (16)                            
+
+> TABLE III MARKER PROPAGATION FOR D=¬C
+> MCE(C)MDE(D)
+> ✓1MC0
+> ✓0MC1[0,1] 0
+> tt=1
+> Fig. 1. Computing the satisfaction signal of F[a,b ]ϕunder uncertainty and marker propagation, shift-back in dashed line, x and y axis is time and satisfaction respectively. IAand IBare the time intervals defining each unitary signal Sϕ,A ,Sϕ,B .
+
+following [4], [7]. For example, MA = Q1 ∧ Q2 ∧ Q3
+
+and MB = Q4 ∧ Q5, yielding the DNF at t = 1 :
+
+ψ = ( Q1 ∧ Q2 ∧ Q3) ∨ (Q4 ∧ Q5). (17) Guaranteed satisfaction of ϕ thus requires mitigating either clause Q1 ∧ Q2 ∧ Q3 or Q4 ∧ Q5. This selection of clause and their expected value are the necessary constraints that the system should meet under control correction. In the implementation, the resulting log-ical expression is converted to DNF using standard Boolean algebra transformations, duplicated clauses being merged. While [7] treats these markers as jointly necessary, the propagation rules of Tables I–III recover their logical relations, exposing alternative sufficient corrections rather than a single conservative set, each conjunction being logically minimal since dominated markers are discarded. 
+
+Remark 1 (Reference trajectory): In this example, the signal part associated with MC yields a satisfaction of 0 regardless of the correction, since the nominal trajectory has an expected value of 0. If the formula requires a 1 satisfaction over the corresponding time interval, the initial trajectory is therefore ill-defined and well identified. C. Inherited Constraints 1) Problem formulation: The key insight is that the exact position of the corrected tube with respect to the nominal trajectory is irrelevant: it suffices to guarantee that the entire reachable tube lies inside the required predicate sets at the prescribed time instants or intervals, effectively reducing the problem to several coupled reach-avoid constraints. The DNF formulation decomposes this condition into alternative candidate constraint sets, among which the least costly is selected. Given a reachable tube computed from an initial parameter set Sinit , a tube [˜ y]Sc,V , originating from 
+
+Sc ⊂ Sinit and command corrections, the decision vector V identification problem is formulated as: 
+
+min  
+
+> v,k
+
+∥V ∥1
+
+s.t. [˜ yj ]Sc,V |= Qj , ∀j ∈ C k,
+
+Ck ∈ DNF( ϕ, y ref , [˜ y]Sinit ),
+
+[˜ yj ]Sc,V |= Cst( ϕ, Ck)
+
+vn ∈ [−1, 1] , n ∈ { 1, . . . , m · Nc}
+
+(18) where Cst( ϕ, Ck) collects the constraints inherited from the formula. Intuitively, these constraints capture all conditions that must remain satisfied once a correction is enforced. 
+
+2) Inherited Constraints: Resolving the uncertainty captured by the Ck clauses is not sufficient : the correc-tion must also satisfy all implicit constraints inherited from the nominal trajectory (e.g., obstacle avoidance, timing of temporal operators). 
+
+Definition 5 (Inherited constraints): Let ϕ be an STL formula and let Ck ∈ DNF( ϕ, y ref , [˜ y]Sinit ) be a set of clauses such that the master formula ψ = 1 . Q′
+
+> j
+
+is a predicate clause on time interval from Eq. (2) and (13). The set of constraints is: 
+
+Cst( ϕ, Ck) := {Q′ 
+
+> j
+
+| ( ^
+
+> i∈C k
+
+Qi) ∧ ¬ Q′ 
+
+> j
+
+⇒ ψ = 0 }. (19) To identify these, we fix the predicate clauses in Ck
+
+as certain based on their expected value, and relax all other atomic predicate signals to [0 , 1] while keeping their expected value unchanged. The tracking algorithm of Section III-B is then applied, potentially yielding hundreds to thousands of clauses. Portions whose inde-terminacy does not imply formula-level indeterminacy are discarded. The overall identification remains in a tractable time, for example 20–50 ms range as reported in Section V, owing to the efficiency of the logical tracking. [0,1] 0      
+
+> t
+> 1
+> Initial signal of
+> Critical time interval from
+> Projected signal Result of
+> [0,1] 01
+> cdFormula horizon
+> Fig. 2. Initial signal with critical time in blue, [0 ,1] projection in green, projection result in red with satisfaction relation.
+
+The approach is illustrated in Fig. 2. The original tube exhibits uncertainty due to the Ck clause in MC .To derive the necessary constraints associated with this clause, the full signal is switched to [0 , 1] , and the satisfaction of the projected signal is evaluated while tracking timed and logical dependencies. This yields the additional necessary constraints MA ∧ M B
+
+required to satisfy the full formula. Here IA and IB
+
+are time intervals corresponding to Picard boxes. The red-hatched regions correspond to intervals filtered out based on the formula horizon when evaluating at t = 0 ,this horizon is computable for any formula [4], [5]. 
+
+Remark 2 (Optimality): Obtaining the global min-imum correction would require computing the DNF of constraints from Cst( ϕ, Ck), yielding K′ additional disjunctions and potentially Ktot ≈ K · K′ clauses to compute control correction. Here we compute this DNF and filter to one clause to keep the computation tractable, using a set-membership score sc ([˜ y], X μ) =   
+
+> ν(Xμ∩[˜ y])
+> ν[˜ y]
+
+, with ν the volume of the set. 
+
+D. Probabilistic Extension and Scaling Vector 
+
+The formulation in Eq. (18) naturally extends to the probabilistic setting of Proposition 1. Let Sinit be a mean-centered parameter set with P(Sinit ) ≫ c. A scaling vector A defines a subset Sc ⊆ Sinit such that 
+
+P(Sc) = c.For w ≥ 2, infinitely many such A exist, inducing different distributions of uncertainty across parameters and thus different reachable tube widths. This flexibility yields distinct constraints on the control zonotopes 
+
+Zv,k , enabling the selection of a minimal correction (see Section V). The vector A can be sampled over a discrete grid, and the corresponding sets propagated using contractor-based methods [24]. 
+
+Remark 3 (Chance constraints): The probabilistic constraint Pr((ˆ y, t ) |= ϕ) ≥ c of Problem 1 is a chance constraint. Rather than solving it as astochastic program [14], Proposition 1 reduces it to a deterministic inclusion on the reachable tube of Sc.IV. C ONTROL CORRECTION USING ZONOTOPES 
+
+This section computes the control correction enforc-ing strict reachable set inclusion or exclusion. 
+
+A. Command Parameterization 
+
+We encode the control correction as zonotopic generators. On each time interval [tk, t k+1 ], k ∈{1, . . . , N c}, the corrected command is 
+
+u(t) = Unom ,k +
+
+> m
+
+X
+
+> n=1
+
+δU k,n · vk,n , v k,n ∈ [−1, 1] , (20) where δU k,n ∈ Rm is a fixed correction direction and amplitude and vk,n is the decision variable. Each 
+
+vk,n (flattened in vj ) is associated with a unique noise symbol εδ,j in the zonotopic representation. The re-sulting control zonotope has at most m · Nc generators, each symbol corresponding to a coordinate of decision vector V .After validated integration, each reachable set can be written as 
+
+[˜ y]Sc,δU =X0 ⊕
+
+n X 
+
+> i
+
+XA,i εi εi ∈ [−1, 1] 
+
+o
+
+⊕
+
+n X 
+
+> j
+
+XδU j εδ,j εδ,j ∈ [−1, 1] 
+
+o
+
+⊕ Zϵ
+
+:= X0 ⊕ ZA ⊕ Zv ⊕ Zϵ,
+
+(21) where ZA captures the uncertainty arising from the parameter set Sc = Sinit (A), Zv encodes the effect of each correction vj on the reachable set through the non-linear dynamics, and Zϵ aggregates the contributions of nonlinearities either from the control or uncertainties, the Picard box time enclosure, and numerical approxi-mation errors. The reachability solver tracks symbolic dependencies through the propagation. Fixing εδ,j = v∗ 
+
+> j
+
+shifts the center of the reachable set by δy k = P 
+
+> j
+
+XδU j ,k · v∗ 
+
+> j
+
+.
+
+B. Problem Formulation 1) Geometric Constraints: Proposition 2: For each critical reachable set k (at 
+
+[tk, t k+1 ]) with an inclusion constraint in X μ, the problem can be formulated as an inclusion in a reduced predicate: 
+
+X μA,ϵ,k := ( X μ ⊖ X0,k ) ⊖ □(Zϵ,k ⊕ ZA,k ),
+
+and Zv,k ⊆ X μA,ϵ,k =⇒ [˜ yk] ⊂ X μ, (22) where □(·) denotes the interval hull. Note that the equivalence holds when ZA ⊕ Zϵ is a box, which is the case after a necessary order reduction to compute the hull of the zonotope for predicate evaluation. 
+
+Proof: Starting from the full inclusion: 
+
+X0,k ⊕ Zv,k ⊕ ZA,k ⊕ Zϵ,k ⊆ X μ, (23) we have by translating −X0,k :
+
+Zv,k ⊕ ZA,k ⊕ Zϵ,k ⊆ X μ ⊖ X0,k . (24) Since X μ is an axis-aligned box, □(Zϵ,k ) and 
+
+□(ZA,k ) is a zero-centered symmetric interval hull [27]: 
+
+□(Zv,k ) ⊆ (X μ ⊖ X0,k ) ⊖ □(Zϵ,k ⊕ ZA,k ).
+
+=⇒ □(Zv,k ⊕ ZA,k ⊕ Zϵ,k ) ⊆ X μ ⊖ X0,k 
+
+⇐⇒ Zv,k ⊕ ZA,k ⊕ Zϵ,k ⊆ X μ ⊖ X0,k 
+
+(25) Each successive Pontryagin difference preserves the axis-aligned box structure. The resulting set X μA,ϵ,k := 
+
+X μ ⊖ X0,k ⊖ □(Zϵ,k ⊕ ZA,k ) is a box (possibly ∅ if the uncertainty exceeds the predicate margin). Then, 
+
+□(Zv,k ) ⊆ X μA,ϵ,k ⇐⇒ Zv,k ⊆ X μA,ϵ,k =⇒ [˜ yk] ⊂ X μ ■
+
+(26) The inclusion of Zv,k in the reduced predicate set 
+
+X μA,ϵ,k is equivalent to a set of linear constraints [27], which can be directly incorporated into the LP formu-lation. For a fixed scaling vector A, the minimum-effort control correction is obtained by solving the linear program 
+
+min 
+
+> vm·Nc
+
+X
+
+> j=1
+
+|vj |
+
+s.t. Cmin ,k ≤ GkV ≤ Cmax ,k , ∀k ∈ K ,vj ∈ [−1, 1] ,
+
+(27) where Gk is the command generator matrix, Cmin ,k and 
+
+Cmax ,k define the bounds of the reduced predicate, and 
+
+K denotes the set of critical reachable sets associated with a selected clause C and its inherited constraints 
+
+Cst( ϕ, C) (see Eq. (18)). Exclusion constraints are handled similarly via half-space selection, reducing to an equivalent inequality. 
+
+Remark 4 (Theoretical guarantee): The theoretical guarantee of Eq. (22) holds if and only if each control correction remains within its admissible bounds: every coordinate of V , vj ∈ [−1, 1] , as Zϵ,k is computed assuming these bounds. C. Feasibility and Iterative Refinement 
+
+Infeasibility of the LP in Eq. (27) does not neces-sarily imply infeasibility of the original problem, but may result from conservatism in Zϵ or tight bounds 
+
+vj ∈ [−1, 1] . These effects are coupled, as relaxing bounds increases Zϵ. An iterative scheme progressively tightens relaxed control bounds after recomputing the tube, though convergence is not guaranteed. Iterations are capped and persistent infeasibility triggers a failsafe fallback (replanning or safe stop). V. A PPLICATION AND RESULTS 
+
+The previous results are applied to an uncertain nonlinear vehicle. The nominal trajectory is chosen to present ambiguous cases that exercise the key features of our approach. 
+
+A. Setup 
+
+We consider a Dubins-like vehicle with dynamics 
+
+˙x = v cos θ, ˙y = v sin θ, 
+
+˙v = Kv(uv − v), ˙θ = Kc(uc − θ), (28) where (uv, u c)⊤ = Unom ,j = Uf f,j +
+
+Uf b (x, y, x ref ,j , y ref ,j ), and Kv, Kc are the throttle and steering gains. The piecewise command has 
+
+Nc = 15 steps, yielding 2Nc = 30 decision variables. Uncertainties affect Kv, Kc, and additive perturbations 
+
+P , leading to 
+
+˙v = Kv(uv − v) + Pv, ˙θ = Kc(uc − θ) + Pc. (29) The STL specification involves five predicates: two waypoints way1 and way2 , two obstacles obs1 and 
+
+obs2 , and a goal region: 
+
+ϕ =  F[5 ,7] way1 ∧ F[8 ,11] way2 ∧ G[0 ,t f ](¬obs1 ∧ ¬ obs2 )| {z } 
+
+> waypoints & obstacle avoidance ( flat formula)
+
+∧  G[10 ,11] 
+
+ way2 ⇒ F[3 ,4] goal  ∧ F[13 ,14] G[0 ,1] goal | {z } 
+
+> goal reaching ( nested formula)
+
+(30) requiring the vehicle to visit way1 between t ∈ [5 , 7] 
+
+and way2 between t ∈ [8 , 11] , avoid both obstacles over the full horizon, and reach goal within 4 sec-onds of passing through way2 , and stabilize in goal .Reachable tubes are computed using DynIbex 1 [1] with validated Runge-Kutta integration. The LP is solved using GLPK, and the confidence grid uses NA = 84 
+
+points. 
+
+> 1perso.ensta.fr/ chapoutot/dynibex/
+
+B. Bounded disturbances 
+
+The first scenario considers bounded uncertain-ties: [Kv] = [2 , 2.2] , [Kc] = [1 .8, 2] , and [Pv] =[−0.025 , 0.025] = 2[ Pc]. Although these perturbations may vary over time, validated numerical integration requires them to be treated as constant within each integration step [1]. The result is shown in Fig. 4. The blue tube (no correction) intersects obstacle 2 , triggering the correc-tion. The orange tube, obtained after solving Eq. (27), guarantees satisfaction of ϕ. The correction remains zero until deviation begins, then decelerates before 
+
+waypoint 2 and accelerates toward the goal, producing a slight overshoot which can be reduced using finer piecewise steps. 
+
+C. Probabilistic Threshold 
+
+The second scenario (Fig. 3, left) considers Gaussian uncertainties: Kv ∼ N (2 .1, 0.025 2),
+
+Kc ∼ N (2 .0, 0.025 2), and independent disturbances 
+
+Pv, P c ∼ N (0 , 0.04 2).The reach sequence timing is modified from G[10 ,11] 
+
+to G[8 ,9] . The constraint computation correctly enforces exclusion over this period, preventing premature trig-gering of the reaching sequence. Due to the over-approximation Zϵ, the deceleration before waypoint 2 
+
+is overly conservative. After this period, the system accelerates and stabilizes within the goal region. The third scenario (Fig. 3, right) is a multi-target case where uncertainty affects both waypoints and the stabilization in the goal region. The correction accel-erates and steers the system to the right over a single correction step, after which the feedback rejoins the original trajectory and the system stabilizes correctly within the goal for 1 s. Fig. 5 displays the minimal corrections computed over a grid of 84 different parameter sets S0.95 (thus 
+
+84 scaling vectors), satisfying Pr  (ˆ y, t ) |= ϕ ≥ 0.95 ,revealing variability in the correction magnitude with a global minimum of P 
+
+> j
+
+|δU j vj | = 1 .5 and a maxi-mum of 2. This trade-off is of practical interest when computation time is not critical. 
+
+D. Computation Time 
+
+The following computation times are on the formula horizon of 15s (using an HP laptop, Intel i7 and 
+
+std::chrono ) 2.Table IV reports the computation time for a single 
+
+Ck. 
+
+> 2github.com/Antoine-Bst/STL-Three-Valued-Clause-Filtering/ way2 way3 way1
+> Obstacles Waypoints Goal
+> t=9 t=9 way2 way1
+
+Fig. 3. Initial tube in blue for c = 0 .99 (left) and c = 0 .95 (right), corrected tube in orange, red circles show indeterminacy regions. Goal Obstacles 
+
+> way2 way1
+> Overshoot
+> tube from initial trajectory tube from corrected command command step
+
+Fig. 4. Initial tube in blue vs tube with corrected command in orange. Correction 
+
+> Sample number
+> Max Min
+
+Fig. 5. Sample number on the confidence grid vs sum of corrected command. 
+
+The total correction time scales linearly with the number of clauses and remains practical. Since each clause guarantees satisfaction, dominated clauses under disjunction are pruned using a set-membership scoring function, reducing the computation to a single Ck. Each clause is scored by aggregating predicate membership degrees with a minimum operator, consistent with conjunction semantics. This yields an increase in the average minimum correction across all samples (Fig. 5) from 1.7 to 2.2, highlighting a trade-off between opti-mality and computation time. The number of clauses Ck in the DNF is denoted by 
+
+K in Table V. The up to 26 × increase in computation time for propagation in Cst( ϕ, Ck) compared to the ini-tial propagation and DNF is due to the [0,1] switching step: the number of predicate clauses to propagate and compute linear constraints grows from 40 –55 to nearly 
+
+700 .The implemented SAT Evaluation enumerates mini-
+
+TABLE IV CONTROL CORRECTION COMPUTATION FOR ONE Ck CLAUSE 
+
+Formula type Number of constraints LP computation time Flat STL 610 27 ± 3 ms Nested STL 652 28 ± 3 ms TABLE V COMPARISON OF CONSTRAINT IDENTIFICATION METHODS 
+
+(C++14) 
+
+Time Computation Type SAT Ours 
+
+ψ + DNF( ψ) Flat ( K=13 ) 38 s ≈ 1 ms Nested ( K=208 ) T.O. ≈ 1 ms 
+
+Cst( ϕ, Ck ) Flat 48 ±3 ms 21 ±2 ms Nested 119 ±3 ms 26 ±2 ms 
+
+DNF(Cst) Flat ( K=13 ) T.O. ≈ 1 ms Nested ( K=13 ) T.O. ≈ 1 ms 
+
+mal satisfying conjunctions by iterative deepening over clause subsets, analogous to All-SAT with minimal subset filtering. Although it has access to the markers identified via [7] and their expected value, it has no prior on their logical dependencies within the formula. The combinatorial enumeration becomes intractable as the number of markers grows (Timeout T.O. > 1 min). For Cst( ϕ, Ck), constraints are identified by backward testing ordered by robustness, where each constraint is tested for necessity which is fast to obtain. VI. C ONCLUSION AND DISCUSSION 
+
+This paper introduces a method for identifying and enforcing sufficient constraints to guarantee STL sat-isfaction under uncertainty. To our knowledge, no ex-isting method combines tube-based guaranteed satis-faction assessment with corrective control. While com-puting the globally optimal correction is intractable in practice, our method provides a tractable and scalable alternative with formal guarantees, selecting a logically minimal sufficient clause subset at the cost of subop-timality. As an application, we instantiated this formu-lation in a control correction setting using zonotopic reachable sets and linear programming, showing how the extracted clauses recover guaranteed satisfaction. While mandatory for online monitoring, the main bottleneck remains reachability analysis (5–10 s), whereas the correction layer runs in milliseconds. Real-time deployment on a robotic platform therefore hinges primarily on accelerating this reachability step. Since our framework is independent of the reachabil-ity method, such improvements integrate directly. A promising direction for future work is to investigate al-ternative approaches for computing control corrections, as iterations due to tight control bounds (Section IV-C) arise frequently. ACKNOWLEDGMENT 
+
+The authors a acknowledge support from the CIEDS 3
+
+with the STARTS project. REFERENCES 
+
+[1] J. Alexandre dit Sandretto and A. Chapoutot, “Validated ex-plicit and implicit runge-kutta methods,” Reliable Computing ,vol. 22, 2016. [2] M. Althoff, “An introduction to CORA 2015,” in Proc. of the 1st and 2nd Workshop on Applied Verification for Continuous and Hybrid Systems , December 2015. [3] T. Kapela, M. Mrozek, D. Wilczak, and P. Zgliczy´ nski, “Capd::dynsys: A flexible c++ toolbox for rigorous numerical analysis of dynamical systems,” Communications in Nonlinear Science and Numerical Simulation , 2021. [4] O. Maler and D. Nickovic, “Monitoring temporal properties of continuous signals,” in Formal Techniques, Modelling and Analysis of Timed and Fault-Tolerant Systems . Springer, 2004. [5] F. Lercher and M. Althoff, “Using four-valued signal temporal logic for incremental verification of hybrid systems,” in Proc. of Computer Aided Verification (CAV) , ser. Lecture Notes in CS, 2024. [6] H. Roehm, J. Oehlerking, T. Heinz, and M. Althoff, “STL model checking of continuous and hybrid systems,” in Auto-mated Technology for Verification and Analysis (ATVA 2016) ,2016. [7] A. Besset, J. Tillet, and J. Alexandre dit Sandretto, “Uncer-tainty removal in verification of nonlinear systems against signal temporal logic via incremental reachability analysis,” in Proceedings of the 64th IEEE CDC . IEEE, 2025. [8] H. Tran, S. W. Choi, Y. Li, H. Okamoto, B. Hoxha, and G. Fainekos, “Probstar temporal logic for verifying complex behaviors of learning-enabled systems,” in Proceedings of the 28th ACM International Conference on Hybrid Systems: Computation and Control , 2025. [9] D. Nickovic, T. Ferr` ere, and O. Maler, “Trace diagnostics using temporal implicants,” in Automated Technology for Verification and Analysis - 13th International Symposium, ATVA , 2015. [10] C. Dawson and C. Fan, “Robust counterexample-guided op-timization for planning from differentiable temporal logic,” in 2022 IEEE/RSJ International Conference on Intelligent Robots and Systems , 2022. 
+
+> 3
+
+CIEDS: French Interdisciplinary Center for Defense and Secu-rity. [11] Y. Meng and C. Fan, “TeLoGraF: Temporal logic planning via graph-encoded flow matching,” in Proceedings of the 42nd International Conference on Machine Learning , 2025. [12] D. Sadigh and A. Kapoor, “Safe control under uncertainty with probabilistic signal temporal logic,” in Proceedings of Robotics: Science and Systems (RSS) , 2016. [13] S. S. Farahani, R. Majumdar, V. S. Prabhu, and S. Soudjani, “Shrinking horizon model predictive control with signal tem-poral logic constraints under stochastic disturbances,” IEEE Transactions on Automatic Control , 2019. [14] S. Jha, V. Raman, D. Sadigh, and S. A. Seshia, “Safe auton-omy under perception uncertainty using chance-constrained temporal logic,” J. Autom. Reason. , 2018. [15] L. Lindemann, G. J. Pappas, and D. V. Dimarogonas, “Reac-tive and risk-aware control for signal temporal logic,” IEEE Transactions on Automatic Control , 2021. [16] P. Yu, Y. Gao, F. J. Jiang, K. H. Johansson, and D. V. Dimarog-onas, “Online control synthesis for uncertain systems under signal temporal logic specifications,” International Journal of Robotics Research , 2024. [17] J. Verhagen, L. Lindemann, and J. Tumova, “Robust stl control synthesis under maximal disturbance sets,” in 2024 IEEE 63rd Conference on Decision and Control (CDC) , 2024. [18] E. E. Vlahakis, L. Lindemann, P. Sopasakis, and D. V. Dimarogonas, “Probabilistic tube-based control synthesis of stochastic multi-agent systems under signal temporal logic,” in 
+
+2024 IEEE 63rd Conference on Decision and Control (CDC) .IEEE, 2024. [19] B. Sch¨ urmann and M. Althoff, “Optimizing sets of solutions for controlling constrained nonlinear systems,” IEEE Trans-actions on Automatic Control , 2021. [20] B. Sch¨ urmann and M. Althoff, “Guaranteeing constraints of disturbed nonlinear systems using set-based optimal control in generator space,” 2017, 20th IFAC World Congress. [21] D. Ishii, N. Yonezaki, and A. Goldsztejn, “Monitoring tempo-ral properties using interval analysis,” IEICE Transactions on Fundamentals of Electronics, Communications and Computer Sciences , 2016. [22] T. Nghiem, S. Sankaranarayanan, G. Fainekos, F. Ivanci´ c, A. Gupta, and G. J. Pappas, “Monte-carlo techniques for falsi-fication of temporal properties of non-linear hybrid systems,” in Proceedings 13th ACM International Conference on Hybrid Systems: Computation and Control , 2010. [23] L. Lindemann, X. Qin, J. V. Deshmukh, and G. J. Pappas, “Conformal prediction for stl runtime verification,” in Pro-ceedings ACM/IEEE 14th International Conference on Cyber-Physical Systems , 2023. [24] J. Alexandre dit Sandretto, “Confidence-based contractor, propagation and potential clouds for differential equations,” 
+
+Acta Cybernetica , 2021. [25] F. Shmarov and P. Zuliani, “Probreach: A tool for guaranteed reachability analysis of stochastic hybrid systems,” in Sym-bolic and Numerical Methods for Reachability Analysis (SNR 2015) , 2015. [26] A. Majumdar and R. Tedrake, “Funnel libraries for real-time robust feedback motion planning,” International Journal of Robotics Research , 2017. [27] L. Jaulin, M. Kieffer, O. Didrit, and E. Walter, “Applied interval analysis,” in Applied Interval Analysis . Springer, 2001.
