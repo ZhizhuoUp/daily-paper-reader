@@ -1,0 +1,610 @@
+Title: Trajectory Bundle Method in SE(3) for Black-Box Fixed-Wing Aircraft Trajectory Optimization
+
+URL Source: https://arxiv.org/pdf/2609.12248v1
+
+Published Time: Mon, 14 Sep 2026 00:18:26 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Trajectory Bundle Method in SE(3) for Black-Box Fixed-Wing Aircraft Trajectory Optimization 
+
+Matthew D. Osburn 1, Cameron K. Peterson 2, John L. Salmon 3
+
+Abstract — Dynamically feasible trajectory optimization for rigid-body systems is naturally formulated on the special Euclidean group SE (3) but is challenging when dynamics are available only as black-box computations without derivatives. This paper formulates the Trajectory Bundle Method (TBM) for motion planning implicitly on SE (3). Bundles are constructed in the Lie algebra and propagated through nonlinear rigid-body dynamics using exponential and logarithmic maps, enabling derivative-free planning of non-Euclidean trajectories. We show that Euclidean TBM interpolation error is bounded quadrati-cally by bundle diameter and extend this result to SE (3), where the bound additionally depends on a local Lipschitz constant of the Log map. Numerical experiments corroborate these bounds. Finally, we demonstrate SE(3) TBM by optimizing an acrobatic, collision-free fixed-wing maneuver through a rotated aperture without explicit models or derivatives of the vehicle dynamics, aerodynamics, or collision model. 
+
+I. I NTRODUCTION 
+
+Trajectory optimization provides a systematic framework for generating dynamically feasible motion that satisfies state, control, and environmental constraints while opti-mizing a desired performance objective [1]. Unlike purely geometric path planning, trajectory optimization incorporates the system dynamics directly, allowing the resulting motion to be dynamically feasible and suitable for execution by a physical system [2]. This capability is particularly important in robotics and unmanned systems, where vehicle dynamics, actuator limits, collision avoidance, and mission objectives must often be considered simultaneously [3]. Commonly, trajectory optimization is posed as a finite-horizon optimal-control problem [4]. For nonlinear systems, computation time can dramatically increase because of the reliance on general nonlinear solvers and poor scaling as the number of variables increases [2]. Methods such as sequential convex programming (SCP) have been developed to reduce computation time by repeatedly forming convex approximations of the optimization problem and iteratively improving the trajectory [5], [6], [7]. These approaches are effective when accurate dynamics models and their deriva-tives are available, but can become more difficult to apply when derivative information is unavailable or expensive to  
+
+> 1Matthew D. Osburn is a PhD student in the Department of Electrical and Computer Engineering, Brigham Young University, Provo, UT 84602, USA
+
+osburnm@byu.edu  
+
+> 2Cameron K. Peterson is a professor with the Department of Electrical and Computer Engineering, Brigham Young University, Provo, UT 84602, USA
+
+cammy.peterson@byu.edu                   
+
+> 2John L. Salmon is aprofessor with the Department of Mechan-ical Engineering, Brigham Young University, Provo, UT 84602, USA
+
+johnsalmon@byu.edu         
+
+> Fig. 1. States in se (3)and controls uare sampled to form an input matrix
+> Wz. This matrix is passed through a black-box system, such as a flight simulator, to form an output matrix Wf. These two sampled matrices form a trajectory bundle that approximates system dynamics and enables sequential convex trajectory optimization.
+
+obtain, as may occur with black-box or learned dynamics models [8], [9]. The Trajectory Bundle Method (TBM), recently intro-duced by Tracy et al., addresses this limitation by re-placing derivative-based local approximations with sampled trajectory bundles [10]. Most SCP schemes linearize the problem by using the Jacobians of the dynamics at every iteration. Instead, TBM evaluates the dynamics, costs, and constraints at nearby samples and uses linear interpolation to approximate non-linear relationships between input and output. The sampled rollouts can be evaluated in parallel and are used to construct convex subproblems without requiring the derivatives of the dynamics to be explicitly available or known. TBM has been demonstrated on double-integrator collision avoidance, quadrotor tracking, and cart-pole swing-up with learned neural dynamics [10]. The existing TBM formulation constructs and interpolates bundles in Euclidean vector spaces or Euler angles. However, rigid-body motion does not have this structure: orientation evolves on the special orientation group, SO (3), and a full six-degree-of-freedom pose evolves on the special Euclidean group, SE (3) [11]. Encoding orientation using local Eu-clidean coordinates introduces coordinate singularities and gimbal lock [12] and limits the range of motion that can be planned in optimization. These issues are particularly important in planning problems that require large rotations or collision constraints that depend on vehicle attitude as well as position [13]. We address this shortcoming of the TBM by sampling on a nominal SE (3) tangent space, propagating samples through potentially black-box rigid-body dynamics on SE (3), and mapping samples back to a tangent space where the local input-output relationship can be approximated. Although arXiv:2609.12248v1 [cs.RO] 10 Sep 2026 Lie-group methods are well established in estimation [14], control [15], [16], and trajectory optimization [5], [17], to the best of the authors’ knowledge, the TBM has not previously been formulated directly on SE (3), nor has the interpolation error introduced by the SE (3) bundle approximation been characterized. The contributions of this work are as follows: 1) A TBM formulation on SE (3) that constructs trajectory bundles in Lie-algebra tangent spaces and propagates samples through nonlinear black-box dynamics using the exponential and logarithmic maps. 2) An interpolation-error characterization for TBM on SE (3), showing quadratic dependence on bundle di-ameter scaled by a local Lipschitz constant. 3) Application of SE (3) TBM to collision-free acro-batic fixed-wing trajectory planning through a rotated aperture without explicit models or derivatives of the vehicle dynamics or collision computations. The remainder of this paper proceeds as follows: Section II provides relevant background information; Section III devel-ops the proposed SE (3) TBM formulation and characterizes the approximation error for the bundles; Section IV presents numerical results; and Section V concludes the paper. II. B ACKGROUND 
+
+A. Rigid-Body Motion on SE (3)
+
+The pose of a rigid body is represented by the special Euclidean group 
+
+T =
+
+ R p
+
+01×3 I1×1
+
+
+
+∈ SE (3), (1) where R ∈ SO (3) is the orientation and p ∈ R3 is the posi-tion. Unlike Euclidean vector spaces, SE (3) is a nonlinear manifold and does not admit globally valid vector addition. The associated Lie algebra se (3) is the tangent space of SE (3) at the identity. A vector ξ = [ ρ⊤, ϕ⊤]⊤ ∈ R6 is mapped to se (3) through the hat operator, 
+
+ξ ∧ =
+
+[ϕ]× ρ
+
+01×3 01×1
+
+
+
+, (2) where [·]× is the skew-symmetric cross-product matrix, ρ is the translational component and ϕ is the rotational compo-nent of the pose. The inverse mapping of the hat operator is denoted by (·)∨.The exponential and logarithmic maps provide local map-pings between the Lie algebra and group, Exp (ξ ∧) = 
+
+Exp ([ ϕ]×) Jℓ(ϕ)ρ
+
+01×3 I1×1
+
+
+
+, (3) Log (T )∨ =
+
+Jℓ(ϕ)−1p
+
+ϕ
+
+
+
+, (4) where Jℓ(ϕ) is the left Jacobian of SO (3).Throughout this work, pose perturbations follow a right-perturbation convention. For a nominal pose ¯T , a tangent-space displacement ξ is mapped to SE (3) as 
+
+T = ¯T Exp (ξ ∧), ξ = Log ( ¯T −1T )∨. (5) Thus, Exp (ξ ∧) maps a se (3) local tangent-space displace-ment onto SE (3) , while Log ( ¯T −1T )∨ maps from SE (3) back to the local coordinates on se (3). See the grey tangent planes in Fig. 1 for an illustrative example. 
+
+B. Trajectory Bundle Method 
+
+Consider the discrete-time trajectory optimization problem min  
+
+> x0: K,u0: K−1
+
+ℓ f (xK ) + 
+
+> K−1
+
+# ∑
+
+> k=0
+
+ℓk(xk, uk) (6) s.t. xk+1 = fk(xk, uk),
+
+hk(xk, uk) = 0,
+
+gk(xk, uk) ≤ 0.
+
+where xk ∈ Rnx is the trajectory state, uk ∈ Rnu is the control input, ℓ f is the terminal cost, ℓk is the stage cost, fk denotes the discrete system dynamics, and hk and gk represent equality and inequality constraints, respectively, all of which may be nonlinear. The trajectory contains K + 1 knot points at which the trajectory is optimized and K dynamic intervals. The TBM constructs derivative-free local approximations of the nonlinear functions defined in Eq. (6) using sampled function evaluations rather than Jacobians. Let Φ(z) : Rnz →
+
+Rny be the black-box function that maps from the input states and controls to an output value. Define the combined state-input vector as 
+
+zi =
+
+xi
+
+ui
+
+
+
+∈ Rnz , nz = nx + nu, (7) where nx is the number of states in a sample, nu is the number of control inputs in a sample, nz is then the input dimension, and ny is the output dimension. Let ns denote the number of samples in a bundle. The input and output sample matrices are 
+
+Wz = z1 · · · zns
+
+ , WΦ = Φ(z1) · · · Φ(zns ) .
+
+(8) These two matrices form a trajectory bundle. Any point z in the convex hull of the input samples can be represented as 
+
+z = Wzα, α ∈ Ans =
+
+n
+
+α ∈ Rns | αi ≥ 0, 1⊤α = 1
+
+o
+
+. (9) TBM then approximates the corresponding function value using the output matrix as 
+
+Φ(Wzα) ≈ WΦα. (10) Applying Eq. (10) to the dynamics, cost residuals, and constraints produces a convex local subproblem in the inter-polation weights α. For example, using the discrete dynamics function f the multiple-shooting dynamics are approximated at knot point k + 1 by 
+
+Wx,k+1αk+1 ≈ W f ,kαk. (11) Typically, slack variables are introduced to the constraints in Eq. 6 to maintain feasibility and permit infeasible initial guesses. After each iteration, bundles are regenerated about the updated trajectory until convergence. Because TBM requires only sampled evaluations of the nonlinear functions, these evaluations can be parallelized and do not require analytic or automatic derivatives. III. M ETHODS 
+
+This section outlines the process of formulating TBM on SE (3) and characterizes both the Euclidean bundle in-terpolation error and the additional effect of mapping that approximation onto SE (3).
+
+A. Trajectory Bundle Method on SE(3) 
+
+Let r denote the TBM optimization iteration and k the trajectory knot point. At each optimization iteration, tra-jectory bundles are constructed locally about the current nominal pose ¯T (r) 
+
+> k
+
+. For each knot point, ns pose and input perturbations ξ (r) 
+
+> k,i
+
+∈ R6 and δ u(r) 
+
+> k,i
+
+∈ Rnu are sampled in the local Lie-algebra coordinates of ¯ T (r) 
+
+> k
+
+and mapped onto SE (3)
+
+using 
+
+T (r) 
+
+> k,i
+
+= ¯T (r) 
+
+> k
+
+Exp 
+
+
+
+ξ (r)
+
+> k,i
+
+∧
+
+. (12) These perturbed states are then propagated through the black-box dynamics f and mapped back to the Lie algebra associated with the next nominal pose at k + 1, 
+
+η(r) 
+
+> k,i
+
+= Log 
+
+ ¯T (r)
+
+> k+1
+
+−1
+
+fk
+
+
+
+T (r) 
+
+> k,i
+
+, ¯u(r) 
+
+> k
+
++ δ u(r)
+
+> k,i
+
+∨
+
+, (13) to build the sampled output of the system. The sampled output is in the tangent space of the k + 1 knot, allowing Eq. 11 to be used to enforce dynamic feasibility on se (3).In this case, the dynamics f plays the role of the black-box function Φ from the previous section. Define the local bundle input sample as 
+
+z(r) 
+
+> k,i
+
+=
+
+h
+
+(ξ (r) 
+
+> k,i
+
+)⊤, (δ u(r) 
+
+> k,i
+
+)⊤
+
+i⊤
+
+. (14) The corresponding sample matrices are then 
+
+W(r) 
+
+> z,k
+
+=
+
+h
+
+z(r) 
+
+> k,1
+
+· · · z(r)
+
+> k,ns
+
+i
+
+, W(r)  
+
+> f,k
+
+=
+
+h
+
+η(r) 
+
+> k,1
+
+· · · η(r)
+
+> k,ns
+
+i
+
+,
+
+(15) which define the trajectory bundle for the kth segment of the trajectory. These matrices can be used to rewrite Eq. 6 as a convex subproblem within an SCP optimization routine. After solving the convex subproblem at iteration r, we update the nominal knot points and obtain ¯ T (r+1) 
+
+> k
+
+. New perturbations are then sampled in these updated local coordinates and propagated to repeat the process. This scheme allows bundles to be reconstructed and propagated on SE (3) at every TBM iteration. 
+
+B. Error Characterization 
+
+This subsection characterizes the local interpolation error introduced by the TBM as a function of bundle diameter. We first establish a generic bound for Euclidean TBM interpolation and then extend the analysis to the proposed SE (3) formulation, where additional error arises from the Lie group’s nonlinear geometry. 
+
+Preliminaries. Given an input sample matrix Wz with interpolation weights α = [ α1, . . . , αns ]⊤ ∈ Ans , let Sz =
+
+conv {z1, . . . , zns } be the convex hull of the input samples with diameter ∆ = diam (Sz) = max za,zb∈Sz ∥za − zb∥ . Recall that any z ∈ Sz can be defined using a weigthed sum as shown in Eq. 9. Let Φ : Rnz → Rny be the black-box mapping from inputs and control to outputs, and assume to be continuous and twice differentiable. For smooth dynamical systems, such as aircraft models, it is reasonable to assume that the second derivative of Φ is bounded by a constant κΦ over Sz. Define the TBM approximation in terms of z as 
+
+eΦ(z) = 
+
+> ns
+
+# ∑
+
+> i=1
+
+αiΦ(zi). (16) Define DΦ(z) as the Jacobian of Φ at the point z. For a unit direction δ z ∈ Q = {q ∈ Rnz | ∥ q∥ = 1}, define the vector-valued directional second derivative as 
+
+D2Φ(z)[ δ z, δ z] = 
+
+h
+
+δ z⊤HΦ1(z)δ z, · · · , δ z⊤HΦny (z)δ z
+
+i⊤
+
+.
+
+(17) Define the Euclidean TBM approximation error as 
+
+eΦ(z) ≜ Φ(z) − eΦ(z).
+
+Lemma 1. Assuming that the second derivative of Φ is bounded on S z in all directions δ z by a constant κΦ such that 
+
+D2Φ(z)[ δ z, δ z] ≤ κΦ, ∀z ∈ Sz, ∀δ z ∈ Q, (18) 
+
+then the Euclidean TBM approximation error is bounded quadratically by the trajectory bundle diameter: 
+
+∥eΦ(z)) ∥ ≤ κΦ
+
+2 ∆2. (19) 
+
+Proof. Let the displacement of sample zi from the point z
+
+be 
+
+di = zi − z. (20) Multiplying by αi and summing over the ns samples gives 
+
+> ns
+
+# ∑
+
+> i=1
+
+αidi =
+
+> ns
+
+# ∑
+
+> i=1
+
+αizi − z
+
+> ns
+
+# ∑
+
+> i=1
+
+αi = z − z = 0. (21) Expanding the Taylor-Series of each sampled output Φ(zi)
+
+about z and combining the second and higher-order terms into the remainder ri gives Φ(zi) = Φ(z) + DΦ(z)di + ri.
+
+We multiply each ith sample’s Taylor series by αi, sum over all samples, and use Eq. (9), Eq. (16), and Eq. (21) to give 
+
+> ns
+
+# ∑
+
+> i=1
+
+αiΦ(zi) = 
+
+> ns
+
+# ∑
+
+> i=1
+
+αiΦ(z) + 
+
+> ns
+
+# ∑
+
+> i=1
+
+αiDΦ(z)di +
+
+> ns
+
+# ∑
+
+> i=1
+
+αiri
+
+eΦ(z) = Φ(z)
+
+> ns
+
+# ∑
+
+> i=1
+
+αi + DΦ(z)
+
+> ns
+
+# ∑
+
+> i=1
+
+αidi +
+
+> ns
+
+# ∑
+
+> i=1
+
+αiri
+
+eΦ(z) = Φ(z) + 
+
+> ns
+
+# ∑
+
+> i=1
+
+αiri. (22) Rearranging terms and expressing the result using the Euclidean TBM error yields 
+
+eΦ(z) = −
+
+> ns
+
+# ∑
+
+> i=1
+
+αiri. (23) By Taylor’s remainder theorem and Eq. (18), 
+
+∥ri∥ ≤ κΦ 
+
+> 2
+
+∥di∥2 . Taking the norm of Eq. (23) and applying the triangle inequality gives 
+
+∥eΦ(z)∥ ≤ κΦ
+
+2
+
+> ns
+
+# ∑
+
+> i=1
+
+αi ∥di∥2 . (24) Because z, zi ∈ Sz, by definition ∥di∥ ≤ ∆, ∀i ∈ { 1, . . . , ns}.Replacing ∥di∥ with ∆ and factoring it out from the sum results in 
+
+∥eΦ(z)∥ ≤ κΦ
+
+2 ∆2 ns
+
+# ∑
+
+> i=1
+
+αi. (25) Noting that αi sums to 1, we obtain Eq. 19. This lemma is not specific to SE(3), and shows that the Euclidean TBM approximation error is quadratically bounded by the diameter of the samples used to construct the approximation. For the SE (3) approximation, the true propagated pose and the TBM-approximated pose are both represented relative to the next nominal pose ¯ Tk+1 as 
+
+Ttrue = ¯Tk+1 Exp  Φ(z)∧ , TTBM = ¯Tk+1 Exp 
+
+ eΦ(z)∧
+
+. (26) The tangent-space error eΦ(z) is expressed in the Lie algebra associated with ¯Tk+1. Because SE(3) is non-commutative and non-linear, different Lie algebras will produce different errors between the same given poses. Therefore, we want to compute the error between the TBM approximation and the true propagated pose directly. We define 
+
+εT ≜ Log  T −1true TTBM 
+
+∨ . (27) to be the error between the TBM approximation and the true pose in the true pose’s frame of reference. 
+
+Theorem 1. Assume that the sampled rotations remain within a local region that does not cross the π singularity of the logarithmic map, and that the relative rotation between Ttrue and T TBM also remains away from π. Then there exists a local Lipschitz constant L Ψ such that 
+
+∥εT ∥ ≤ LΨ ∥eΦ(z)∥ ≤ LΨκΦ
+
+2 ∆2. (28) 
+
+Proof. Substituting Eq. (26) into Eq. (27) gives 
+
+∥εT ∥ = Log 
+
+h
+
+Exp  −Φ(z)∧ Exp 
+
+ eΦ(z)∧i ∨
+
+. (29) Define Ψ(a, b) = Log [Exp (−a∧) Exp (b∧)] ∨ , a, b ∈ R6. Then 
+
+∥εT ∥ = Ψ
+
+
+
+Φ(z), eΦ(z)
+
+
+
+. Within the assumed local region the difference between two poses will be finite and Ψ is locally Lipschitz in its second argument, so 
+
+∥Ψ(a, b) − Ψ(a, a)∥ ≤ LΨ ∥b − a∥ . (30) By definition, Ψ(a, a) = Log [Exp (−a∧) Exp (a∧)] ∨ = 0, and 
+
+∥εT ∥ ≤ LΨ eΦ(z) − Φ(z) ≤ LΨ ∥eΦ(z)∥ . (31) Applying Lemma 1 yields Eq. (28). For close pose transitions between knot points the Log map’s Lipschitz constant should remain well-behaved. For 10 3 10 2 10 1              
+
+> Bundle Scale
+> 10 10
+> 10 9
+> 10 8
+> 10 7
+> 10 6
+> 10 5
+> 10 4
+> 10 3
+> SE(3) TBM Error || ||
+> Sampled Bundles Mean TBM Error Mean Fit Slope 2.00
+> Fig. 2. Log-log validation of the SE (3)TBM error. Blue points show sampled bundle errors |εT|2in the true propagated pose frame, orange squares show the mean error at each bundle scale γb, and the black line is a least-squares fit to these means. The fitted slope of 2.00043 confirms the predicted quadratic dependence on bundle diameter.
+
+certain nonsmooth functions, such as signed-distance func-tions, we conjecture that the variation of the subgradient might be bounded by a finite constant, extending the results of Lemma 1. Establishing this rigorously is left for future work. IV. R ESULTS 
+
+The results first validate the theoretical TBM error bounds and characterize how approximation error scales with bundle size. We then evaluate the proposed SE (3) formulation in trajectory-optimization experiments involving acrobatic maneuvers and collision-avoidance constraints. 
+
+A. Empirical Error Validation 
+
+We validate the local interpolation bound for SE (3) TBM by measuring the sampled dynamics error of a single prop-agation step. For each bundle scale factor γb, a regular simplex was constructed in the 12-dimensional coordinate 
+
+zk,i = [ ξ k,i, νk,i]⊤, where ξ ∈ R6 is the local pose perturbation and ν ∈ R6 is the body-frame twist. The simplex has 13 vertices, as expected for a full-dimensional simplex in 12 dimensions. At each vertex, the dynamics 
+
+ξ k+1 = fkin (ξ k, νk) = Log Exp (ξ ∧ 
+
+> k
+
+) Exp (( tsνk)∧)∨ (32) were evaluated, where ts represents the integration timestep. The experiment used a step size ts = 0.1. The interpolation weights α that generate z = Wzα and the TBM approx-imation fkin (Wzα) ≈ W f α were sampled from a uniform Dirichlet distribution. The sweep used 25 bundle scale factors 
+
+γb from 10 −3 to 4 × 10 −1. Because the simplex geometry is fixed and uniformly scaled, its diameter satisfies ∆ =
+
+γb∆0, where ∆0 is the diameter of the unscaled simplex. At each scale, 5000 interior query points were sampled and propagated, making 125000 error samples in total. As shown in Figure 2, the fitted log-log slope of the mean error was 2.00043 with a maximum relative residual of 0.0037. A median-error fit produced a slope of 2.00047 with a maximum relative residual of 0 .0049, confirming that both statistics closely follow the predicted scaling. Since ∆ ∝ γb
+
+for the uniformly scaled simplex, these results are consistent with the ∆2 interpolation-error bound and numerically vali-date the quadratic error growth predicted for SE (3) TBM. B. Rotated Aperture Experiment 
+
+Bundle-scale effects were evaluated by planning acollision-free fixed-wing maneuver through a rotated rectan-gular aperture from a dynamically infeasible initial trajectory. This stress test exposes the trade-off between small bundles, which limit motion between iterations, and large bundles, which increase approximation error. PyFlyt [18] provided black-box aerodynamics, rigid-body dynamics, and collision computations, and CVXPY solved the resulting optimization problem. The 4 × 1.5 m aperture was rotated by 30 ◦, 60 ◦, and 90 ◦, while the aircraft frontal profile measured 2 .2 × 0.45 m. Increasing aperture rotation therefore required increasingly aggressive attitude changes to maintain clearance. An SE (3)
+
+state representation was used to ensure that Euler-angle singularities or gimbal-lock artifacts were avoided during optimization. Trajectories used K + 1 = 41 knots separated by 0 .1 s over a 4 s horizon, with the aperture crossed at the midpoint knot kg = 20. The initial guess was a straight trim trajectory whose middle six knots were rotated with the aperture. This produced an approximately collision-free but dynamically in-feasible trajectory, requiring the optimizer to restore dynamic feasibility while preserving clearance. Bundles used states x = [ ξ , ˙ξ ]⊤ and controls u =[uroll , upitch , uyaw , uthrust ]⊤. These control channels are passed through PyFlyt’s control surface mixer to produce flight commands, which the optimizer considers part of the black-box dynamics. State and control coordinates were sampled in positive and negative directions, except for non-negative throttle, yielding ns = 192 state-control pairs per knot and 7872 per iteration. PyFlyt’s control-surface mixer remained within the black-box dynamics. The scale factor γb uniformly scaled bundle offsets and therefore the bundle diameter ∆.For each iteration, the trajectory was obtained by solving min   
+
+> α,sdyn ,scol
+
+μgate Wx,kg αkg − xgate 22 (33) 
+
++ μdyn 
+
+> K−1
+
+# ∑
+
+> k=0
+
+sdyn ,k 22 + μcol 
+
+> K
+
+# ∑
+
+> k=0
+
+scol ,k 22
+
+s.t. Wx,k+1αk+1 + sdyn ,k = W f ,kαk,
+
+Wc,kαk + scol ,k ≥ cmin ,
+
+where cmin = 0.05 m. The first term penalizes deviation of the trajectory at the aperture from the desired state with weight μgate = 10 2. The slack variables sdyn ,k and scol ,k pe-nalize inconsistency with the system dynamics and collision constraints and are weighted by μdyn = 10 6 and μcol = 10 4,respectively. The matrices Wx,k, W f ,k, and Wc,k contain the 
+
+kth knot’s sampled states, propagated dynamics outputs, and sampled collision clearances, respectively. The optimization was considered to have converged if the dynamics residual was less than 10 −4, the collision clearance was greater than 0.1 m, and the improvement in objective was less than 10 −2
+
+for three iterations. We validated these trajectories using a pose-tracking air-craft controller in PyFlyt. Figure 3 shows the γb = 1 solution for the 90 ◦ aperture. PyFlyt simulated physics at 180 Hz, 18 times faster than the 10 Hz discretization used during planning. Figure 4 shows the controller tracking over time for the maneuver. This result provides an independent simulation and controller check that the trajectory planned with black-box dynamics at a time step of 0.1 s is executable when evaluated at the higher simulation rate.                  
+
+> Fig. 3. Closed-loop simulation of the γb=1 trajectory through the 90 ◦
+> rotated aperture. The infeasible initial trajectory is shown in black and the optimized trajectory in red. The aircraft is gray with green wing tips, and the aperture is dark gray. The controller runs at 180 Hz, 18 times the temporal resolution used for trajectory optimization. 0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0
+> Time (s)
+> −20 020 40 60
+> Attitude (deg)
+> Roll Roll Ref. Pitch Pitch Ref. Yaw Yaw Ref.
+> Fig. 4. Controller tracking attitude over time for the γb=1 trajectory through the 90 ◦rotated aperture. The planned trajectory was flyable at the increased simulation resolution.
+
+Table I shows the effect of bundle scale as the required maneuver becomes increasingly aggressive. The reported objective is only the first term of the cost function, with the other terms reported instead as a dynamics residual and the distance between the aircraft and the aperture. Validation in simulation was only applied to trajectories that converged. For the 30 ◦ aperture, all tested bundle scales converged to dynamically feasible trajectories and successfully passed the subsequent simulation test. The number of iterations was also nearly independent of bundle scale, ranging only from 10 to 11 iterations; however, objectives ranged more widely. While objectives varied between all runs, all trajectories were successful in simulation. The effect of bundle size is more apparent for the 60 ◦
+
+aperture. With γb = 0.5, the optimizer terminates with a dynamics violation of 0 .4554, while γb = 1, 2, and 4 all converge to feasible trajectories with zero dynamics residual. TABLE I SE(3) G ATE SCALE SWEEP RESULTS 
+
+Gate Metric 0.5 1 2 4Converged ✓ ✓ ✓ ✓
+
+Iterations 11 10 10 11 
+
+30 ◦ Objective 1472 2394 2417 1443 
+
+Dynamics violation 0 0 0 0Clearance 0.4242 0.4123 0.3881 0.3992 Control Success? ✓ ✓ ✓ ✓
+
+Converged ✗ ✓ ✓ ✓
+
+Iterations 7 20 20 26 
+
+60 ◦ Objective 1208 2102 2002 1834 
+
+Dynamics violation 0.4554 0 0 0Clearance 0.4501 0.1149 0.1265 0.1422 
+
+Control Success? - ✓ ✓ ✓
+
+Converged ✗ ✓ ✓ ✗
+
+Iterations 41 30 24 25 
+
+90 ◦ Objective 1616 1676 1715 1613 Dynamics violation 0.09513 0 0 0.2604 Clearance 0.1035 0.1009 0.1117 0.1098 Control Success? - ✓ ✓ -
+
+Because the initial trajectory is dynamically infeasible, the bundle must be large enough to move sufficiently far from the initial guess over the first few iterations to recover feasibility. The more aggressive maneuver also requires roughly twice as many iterations as the 30 ◦ case. The 90 ◦ aperture illustrates the opposing limitation of excessively large bundles. The small bundle with γb = 0.5is again unable to overcome the initial dynamics violation. In contrast, γb = 1 and γb = 2 both converge to dynamically feasible trajectories and subsequently succeed in simulation. Increasing the bundle scale to γb = 4, however, results in a dynamics violation of 0 .2604 and a failed simulation. In this case, the bundle was large enough to fix dynamic infeasibility, only to over-refine the objective and create new infeasibilities in the next iteration. As a rule of thumb, we found that the scales of the bundle axes should be set to a quantity that can reasonably be achieved during the integration window between knots. For example, the position samples should be separated by a distance that could reasonably be covered by the vehicle in 0.1 seconds at trim conditions. The bundle scales γb ∈ { 1, 2}
+
+adhered roughly to this rule of thumb with respect to the real aircraft dynamics and, as a result, produced feasible and flyable results even when making large maneuvers. V. C ONCLUSION 
+
+These results establish a geometric formulation of TBM that respects the nonlinear structure of rigid-body motion while retaining a practical interpretation of bundle size as a tuning parameter. Future work includes extending the approach to incorporate uncertainty and disturbances, and evaluating the method on higher-fidelity and hardware-based platforms. ACKNOWLEDGMENT This project was supported by NSF SBIR Phase 2 Award Number 2404858 and 4D Avionic Systems, LLC. The authors used ChatGPT to improve the paper’s read-ability and wording, then thoroughly reviewed and edited the content for accuracy and coherence. The authors take full responsibility for the content of the published article. REFERENCES [1] T. Kr¨ oger, On-Line Trajectory Generation in Robotic Systems , ser. Springer Tracts in Advanced Robotics, B. Siciliano, O. Khatib, and F. Groen, Eds. Berlin, Heidelberg: Springer Berlin Heidelberg, 2010, vol. 58. [Online]. Available: http://link.springer.com/10.1007/978-3-642-05175-3 [2] M. Kelly, “An Introduction to Trajectory Optimization: How to Do Your Own Direct Collocation,” SIAM Review , vol. 59, no. 4, pp. 849– 904, 2017. [3] R. Tedrake, Underactuated Robotics: Algorithms for Walking, Running, Swimming, Flying, and Manipulation , 2024, pub-lished: Course Notes for MIT 6.832. [Online]. Available: https://underactuated.csail.mit.edu [4] D. Malyuta, T. P. Reynolds, M. Szmuk, T. Lew, R. Bonalli, M. Pavone, and B. Ac ¸ıkmes ¸e, “Convex Optimization for Trajectory Generation: A Tutorial on Generating Dynamically Feasible Trajectories Reliably and Efficiently,” IEEE Control Systems ,vol. 42, no. 5, pp. 40–113, Oct. 2022. [Online]. Available: https://ieeexplore.ieee.org/document/9905530/ [5] J. Schulman, Y. Duan, J. Ho, A. Lee, I. Awwal, H. Bradlow, J. Pan, S. Patil, K. Goldberg, and P. Abbeel, “Motion planning with sequential convex optimization and convex collision checking,” The International Journal of Robotics Research ,vol. 33, no. 9, pp. 1251–1270, Aug. 2014. [Online]. Available: https://journals.sagepub.com/doi/10.1177/0278364914528132 [6] R. Bonalli, A. Cauligi, A. Bylard, and M. Pavone, “GuSTO: Guar-anteed Sequential Trajectory Optimization via Sequential Convex Programming,” in 2019 International Conference on Robotics and Automation , 2019, pp. 6741–6747. [7] Y. Mao, D. Dueri, M. Szmuk, and B. Ac ¸ıkmes ¸e, “Successive Convexification of Non-Convex Optimal Control Problems with State Constraints,” IFAC-PapersOnLine , vol. 50, no. 1, pp. 4063–4069, Jul. 2017. [Online]. Available: https://linkinghub.elsevier.com/retrieve/pii/S2405896317312405 [8] Z. Manchester and S. Kuindersma, “Derivative-Free Trajectory Opti-mization with Unscented Dynamic Programming,” in Proceedings of the IEEE 55th Conference on Decision and Control , 2016, pp. 3642– 3647. [9] B. Sukhija, N. K¨ ohler, M. Zamora, S. Zimmermann, S. Curi, A. Krause, and S. Coros, “Gradient-Based Trajectory Optimization With Learned Dynamics,” in Proceedings of the IEEE International Conference on Robotics and Automation , 2023, pp. 1011–1018. [10] K. Tracy, J. Z. Zhang, J. Arrizabalaga, S. Schaal, Y. Tassa, T. Erez, and Z. Manchester, “The Trajectory Bundle Method: Unifying Sequential-Convex Programming and Sampling-Based Trajectory Optimization,” Sep. 2025, arXiv:2509.26575 [math.OC]. [Online]. Available: http://arxiv.org/abs/2509.26575 [11] Z. Li, S. Sastry, and R. Murray, A mathematical introduction to robotic manipulation . CRC press Boca Raton, FL, 1994. [12] E. G. Hemingway and O. M. O’Reilly, “Perspectives on Euler angle singularities, gimbal lock, and the orthogonality of applied forces and applied moments,” Multibody system dynamics , vol. 44, no. 1, pp. 31–56, 2018. [13] S. Liu, K. Mohta, N. Atanasov, and V. Kumar, “Search-Based Motion Planning for Aggressive Flight in SE(3),” IEEE Robotics and Automation Letters , vol. 3, no. 3, pp. 2439–2446, Jul. 2018. [Online]. Available: http://ieeexplore.ieee.org/document/8264768/ [14] A. Barrau and S. Bonnabel, “Intrinsic filtering on Lie groups with applications to attitude estimation,” IEEE Transactions on Automatic Control , vol. 60, no. 2, pp. 436–449, 2014. [15] Z. Zheng, W. Shang, J. Ai, Y. Zou, and Z. Liu, “Integrated geometric optimal control of spacecraft attitude and orbit based on SE (3),” Ieee Access , vol. 11, pp. 27 382–27 394, 2023. [16] F. Bullo and R. M. Murray, “Proportional Derivative (PD) Control on the Euclidean Group,” in European Control Conference , 1995, pp. 1091–1097. [17] M. Watterson, S. Liu, K. Sun, T. Smith, and V. Kumar, “Trajectory Optimization on Manifolds with Applications to SO(3) and R3XS2,” in Robotics: Science and Systems , 2018. [18] J. J. Tai, J. Wong, M. Innocente, N. Horri, J. Brusey, and S. K. Phang, “Pyflyt–uav simulation environments for reinforcement learning re-search,” arXiv preprint arXiv:2304.01305 , 2023.
