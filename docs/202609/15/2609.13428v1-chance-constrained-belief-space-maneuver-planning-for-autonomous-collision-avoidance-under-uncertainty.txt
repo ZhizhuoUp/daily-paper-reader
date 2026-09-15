@@ -1,0 +1,1325 @@
+Chance-Constrained Belief-Space Maneuver Planning
+for Autonomous Collision Avoidance Under Uncertainty
+Grace Ra Kim
+Stanford University
+Duncan Eddy and Mykel J. Kochenderfer
+Stanford University
+ABSTRACT
+Increasing conjunction frequency in low Earth orbit places growing pressure on spacecraft operators to determine
+not only whether an encounter requires mitigation, but whether sufficient information is available to commit to a
+maneuver. Delaying action may provide additional tracking information that reduces state uncertainty and resolves
+an apparent conjunction. However, waiting also reduces the time and maneuver authority available if intervention
+ultimately becomes necessary, potentially increasing the required propellant expenditure. This work formulates this
+information–action tradeoff as a belief-space planning problem for conjunctions between a maneuverable spacecraft
+and an unmaneuverable secondary object. The planner represents the uncertain orbital states as Gaussian beliefs and
+uses a chance-constrained belief-space Monte Carlo tree search framework to reason over possible future tracking
+updates before time of closest approach (TCA). Because these observations are not known in advance, the resulting
+belief at TCA is uncertain, as different possible observation sequences may produce different terminal belief states.
+A terminal chance constraint limits the probability of reaching TCA with a belief whose probability of collision ex-
+ceeds a prescribed threshold, allowing the planner to wait when future tracking is likely to resolve the conjunction
+while requiring intervention when continued deferral becomes too risky. We evaluate the approach on eight historical
+conjunctions from NASA’s Conjunction Assessment Risk Analysis dataset. By varying the secondary-object mea-
+surement quality and tracking cadence, we generate a total of 96 distinct evaluation scenarios. Across the evaluated
+conditions, the planner reaches TCA without maneuvering in approximately 40% of episodes while maintaining no
+terminal collision-risk violations. In contrast, fixed-time rule-based maneuver policies resolve more encounters with-
+out maneuvering when intervention is deferred closer to TCA, but at the expense of increasing terminal risk violations.
+The ability to delay maneuver decisions depends strongly on tracking quality and measurement cadence, ranging from
+76% under accurate, frequent measurements to approximately 18%–20% under the poorest tracking conditions. For
+the same physical conjunction, changing only the expected tracking quality can shift the preferred decision from con-
+tinued waiting to delayed maneuver commitment or immediate intervention. These results show that tracking quality
+and frequency are not only inputs to collision-risk estimation: they can determine when intervention becomes neces-
+sary. Explicitly valuing future information therefore provides a principled mechanism for deciding when an avoidance
+decision can safely remain open and when uncertainty itself justifies action.
+1.
+INTRODUCTION
+Low Earth orbit (LEO) is becoming increasingly congested, increasing the demands placed on the systems and oper-
+ators responsible for conjunction assessment. In 2023, the United States Space Force 18th Space Defense Squadron
+(18 SDS) generated approximately 600,000 Conjunction Data Messages (CDMs) per day, three times the average
+daily rate reported in 2020 [1]. Behind this aggregate volume, however, each conjunction unfolds as a relatively short
+sequence of evolving risk assessments. As new tracking data become available, state estimates and covariances are
+refined, collision-risk estimates are updated, and operators must continually reassess whether a maneuver is warranted.
+At the same time, the information available for any one encounter can be sparse. NASA’s Conjunction Assessment
+Risk Analysis (CARA) program reports that conjunctions are generally first identified within seven days of the time
+of closest approach (TCA), yet most have fewer than ten CDMs available over that period [2]. Collision avoidance
+therefore presents a sequential decision problem in which operators must determine not only whether an encounter
+poses sufficient risk to warrant action, but also when the available information is sufficient to commit to a maneuver.
+arXiv:2609.13428v1  [cs.RO]  11 Sep 2026
+
+
+This timing question is particularly important for conjunctions between a maneuverable spacecraft and an unmaneu-
+verable secondary object. Although coordination between active operators has become increasingly important in dense
+lower-LEO constellation shells [3], ESA reports that conjunctions at higher LEO altitudes remain dominated by de-
+bris [4]. More generally, an “active” classification does not necessarily imply maneuverability, as ESA classifies an
+object as active based on the existence of a communication link and explicitly notes that such an object may never-
+theless be nonmaneuverable. When the secondary cannot coordinate an avoidance action or provide an authoritative
+maneuver plan, the primary spacecraft bears the burden of conjunction mitigation, while knowledge of the secondary
+is expected to improve through future surveillance observations. In this setting, choosing to wait is a deliberate action.
+Delaying a maneuver allows the planner to incorporate additional tracking information before committing to an avoid-
+ance action, but simultaneously reduces the remaining time and fuel efficiency and mitigation effectiveness available
+if intervention ultimately becomes necessary.
+Operational practice already reflects this tradeoff. Conjunction decisions are commonly informed by the probability of
+collision, Pc, evaluated against prescribed action criteria. For example, NASA specifies a baseline mitigation threshold
+of Pc > 10−4 at the mitigation commitment point [5]. Operators also differ in maneuver timing, with some favoring
+early intervention and others delaying action to refine the estimated encounter geometry and collision risk [6]. De-
+laying intervention may also avoid the operational impact of an unnecessary maneuver when an uncertain conjunction
+later resolves. Existing collision avoidance research has developed methods for collision-risk assessment and fuel-
+efficient maneuver design under state uncertainty [7, 8, 9]. More recently, chance constraints have been incorporated
+directly into spacecraft collision-avoidance optimization. Ryu et al. formulate fuel-optimal debris avoidance with a
+distributionally robust chance constraint on collision probability [10], while Arzelier et al. use sample-average approx-
+imation to minimize maneuver cost subject to a prescribed collision-probability threshold [11]. Chance-constrained
+control has also been applied to spacecraft trajectory planning under navigation, maneuver-execution, and dynamical
+uncertainty [12]. These approaches demonstrate how collision risk can be treated explicitly as a probabilistic con-
+straint rather than only as a term in the maneuver objective. In these formulations, however, uncertainty primarily
+enters the optimization of the maneuver or trajectory itself. Future observations are not treated as part of the decision
+process, and minimal explicit reasoning is performed about the information that could be gained at future stages.
+A separate line of recent work has begun to treat collision avoidance as a sequential decision problem. Bourriez
+et al. formulate autonomous collision avoidance as a POMDP with imperfect debris monitoring [13]. Kim et al.
+extend this decision-theoretic perspective to multi-spacecraft collision avoidance, using a semi-decentralized POMDP
+to account for intermittent information sharing under realistic communication constraints [3]. Kuhl et al. consider
+online maneuver planning against a nonmaneuverable object using an MDP [14] and Ferrara et al. explicitly examine
+the trade between delaying a maneuver for improved conjunction information and preserving the opportunity for
+effective intervention [15]. These works establish that maneuver timing and evolving information belong within the
+decision process itself. They do not, however, impose the terminal safety requirement considered in this work: a bound
+on the probability, over possible future observations and resulting belief evolution, that the collision-risk criterion will
+be violated at TCA.
+While these prior works motivate a sequential decision formulation of collision avoidance, they do not explicitly
+constrain risk over the possible belief states induced by future tracking observations. Because those observations are
+not known in advance, different measurement sequences may produce different beliefs at TCA, potentially resolving
+the conjunction or reinforcing the need to maneuver. The relevant safety question is therefore not only whether the
+current probability of collision satisfies a prescribed threshold, but how likely future observations are to produce a
+terminal belief that violates that safety threshold.
+In this work, we formulate autonomous collision avoidance as a finite-horizon, belief-space planning problem for a
+maneuverable primary spacecraft and an unmaneuverable secondary. The planner maintains Gaussian beliefs over
+both orbital states and uses a chance-constrained Monte Carlo tree search (MCTS) [16, 17] planner to reason over
+possible future tracking observations before TCA. Because these observations are not yet known, each candidate action
+induces a distribution over possible terminal beliefs. We impose a chance constraint on this distribution, requiring the
+probability of reaching TCA with a belief whose collision probability exceeds a prescribed threshold to remain below
+a specified risk level. This construction separates the collision-probability threshold that defines an unsafe terminal
+belief from the likelihood that future observations lead to such a belief. By applying the constraint at TCA, the
+planner can intelligently continue to wait when additional tracking is likely to resolve the conjunction and commit to
+a maneuver when continued deferral would no longer satisfy the prescribed terminal risk requirement.
+
+
+There are three main contributions of this work. First, we formulate the maneuverable–non-maneuverable maneuver
+decision as a terminal chance-constrained belief-space planning problem, allowing future tracking information to
+influence the decision to wait or maneuver before that information is observed. Second, we evaluate the resulting
+planner on real NASA CARA conjunction scenarios and compare its decisions against rule-based and optimistic greedy
+offline-planning policies, characterizing the trade between safely deferring a maneuver or committing to a maneuver
+early. Third, we examine how this behavior changes with measurement accuracy and tracking cadence, identifying
+the transition between tracking regimes in which uncertainty materially changes the maneuver decision. Collectively,
+these results establish chance-constrained belief-space planning as a principled framework for autonomous collision
+avoidance that explicitly accounts for the decision value of future tracking information.
+2.
+PROBLEM FORMULATION
+We formulate spacecraft collision avoidance as a finite-horizon sequential decision problem under evolving state-
+estimate uncertainty. The central decision is whether an avoidance maneuver is necessary and, if so, whether to execute
+it immediately or wait for additional tracking that may resolve the conjunction without intervention. Acting earlier pro-
+vides more time for a maneuver to modify the encounter geometry, but requires committing before additional tracking
+can determine whether intervention is necessary. Waiting allows future observations to refine the estimated state and
+uncertainty, but reduces the remaining time available for intervention. We represent this information–action tradeoff
+as a belief-space decision problem and impose the probability of collision Pc as the probabilistic safety quantity.
+2.1 Conjunction Scenario and Scope
+We consider a conjunction between one maneuverable active spacecraft, denoted by s, and one nonmaneuvering sec-
+ondary resident space object, denoted by d. The secondary may represent orbital debris, a rocket body, or another
+resident space object for which no avoidance action is modeled. The Cartesian states of the primary and secondary
+objects in the Earth-centered inertial (ECI) frame are
+xs =
+rs
+x
+rs
+y
+rs
+z
+vs
+x
+vs
+y
+vs
+z
+⊤∈R6,
+xd =
+rd
+x
+rd
+y
+rd
+z
+vd
+x
+vd
+y
+vd
+z
+⊤∈R6
+(1)
+where the first three components are position and the final three components are velocity. The planning horizon for a
+conjunction event starts with the generation of an initial CDM for the conjunction and terminates at the time of closest
+approach. We denote the time remaining to TCA by τ, such that τ = 0 corresponds to the TCA.
+This work considers conjunctions for which a two-dimensional encounter-plane probability of collision provides an
+appropriate representation of risk. In particular, we consider short-duration encounters for which the relative motion
+near TCA is sufficiently well represented by the assumptions underlying the 2D collision-probability model. Encoun-
+ters outside this validity regime were not considered in the present experiments. The planning framework itself is not
+restricted to this regime, but extension to these encounters would require an appropriate alternative risk metric, such
+as a higher-fidelity Pc method, which may come at greater computational cost.
+2.2 Belief-MDP Formulation
+Sequential collision avoidance requires a planner to repeatedly decide to maneuver or wait as the estimated encounter
+advances towards TCA. If the physical state of the conjuncting objects were known exactly, this problem could be
+represented as a Markov decision process (MDP), in which each action is selected from the current state to optimize
+a long-term objective [18]. In practice, however, the primary spacecraft and secondary object orbital states are not
+known exactly. They are inferred from imperfect tracking measurements and are therefore uncertain.
+This uncertainty makes the underlying problem partially observable. A partially observable Markov decision process
+(POMDP) extends the MDP framework by allowing the planner to receive noisy or incomplete observations of an
+underlying physical state rather than observing that state directly [19, 20]. The planner must therefore base its decisions
+on the belief, or the distribution of potential states.
+A POMDP can be reformulated as an equivalent MDP over belief-states, where each belief is a probability distribution
+over the possible underlying physical states [20, 21]. This representation is particularly useful for collision avoidance
+because Pc depends on both the estimated encounter geometry and its associated uncertainty. As new observations
+are received, the belief is updated, allowing the planner to recompute Pc and reason directly over the evolving state
+
+
+uncertainty. We therefore formulate collision avoidance as a finite-horizon belief-MDP Mb, with the current belief b
+serving as the state for both risk evaluation and maneuver planning
+Mb = (B,A,T,R,H)
+(2)
+where B is the belief space, A is the action space, T is the transition model over beliefs, R defines the reward or
+decision objective, and H is the planning horizon. Decisions are made at a finite set of prescribed times before TCA.
+We index these decision epochs by k, with monotonically decreasing τk denoting the time remaining to TCA at epoch
+k. At each epoch, the planner maintains a belief bk representing its current probabilistic estimate of the conjunction
+state. Because future observations are not known when an action is selected, the same current belief and action may
+lead to different successor beliefs. The transition model T therefore represents the distribution over possible successor
+beliefs induced by the future observation. Once a particular observation is realized, the corresponding posterior belief
+is obtained through a belief update model.
+2.2.1 Belief Space
+We represent the state uncertainty of the primary and secondary objects at decision epoch k by multivariate Gaussian
+beliefs, parameterized by their respective state means and covariances:
+xs
+k ∼N
+
+µs
+k,Σs
+k
+
+,
+xd
+k ∼N
+
+µd
+k ,Σd
+k
+
+(3)
+where µs
+k,µd
+k ∈R6 are the estimated Cartesian states and Σs
+k,Σd
+k ∈R6×6 are the corresponding state covariance matrices.
+The belief bk ∈B used for planning is therefore represented by
+bk =
+
+µs
+k,Σs
+k,µd
+k ,Σd
+k,τk
+
+(4)
+which contains the estimated state and uncertainty of both objects together with the time remaining to TCA. We assume
+independent state estimation errors between the two objects, eliminating the need to maintain cross-correlation terms
+and reducing the dimensionality of the belief representation.
+2.2.2 Action Space
+At each decision epoch, the planner selects an action ak ∈A = {WAIT,MANEUVER}, corresponding to either
+waiting for additional information or executing an avoidance maneuver. Here, WAIT applies no velocity change
+and MANEUVER applies a fixed impulsive maneuver to the active spacecraft. The maneuver magnitude is fixed
+at ∆vman = 0.1 m/s, a conservative but operationally plausible magnitude for a low-Earth-orbit collision-avoidance
+maneuver [9, 22], and is applied in the prograde direction according to
+∆vs = ∆vman vs
+∥vs∥
+(5)
+When the planner selects the MANEUVER action, this impulsive velocity change is applied immediately at the current
+decision epoch. The planner therefore determines, at each decision epoch, whether to execute the fixed maneuver or
+continue waiting, thereby selecting the maneuver timing from the discrete set of available decision epochs. Holding
+the maneuver magnitude and direction fixed isolates the effect of maneuver timing across the discrete decision epochs
+under evolving state uncertainty.
+2.2.3 Transition and Observation Model
+The belief evolves from one decision epoch to the next according to the selected action and the tracking information
+received before the next decision. Given the current belief bk and action ak, the belief transition model T(bk+1 | bk,ak)
+describes the distribution over possible successor beliefs bk+1 at the next decision epoch. These transitions occur over
+the finite set of prescribed times E = {τ0,τ1,...,τTCA = 0}, where τk denotes the time remaining to TCA at epoch
+k. Intermediate decision epochs occur at a prescribed fixed cadence corresponding to scheduled secondary tracking
+
+
+updates. At each decision epoch, the secondary belief is updated using the newly received measurement, the primary
+belief is updated using its assumed onboard navigation information, and the planner selects WAIT or MANEUVER.
+Future observations are not known when ak is selected, so the same current belief and action may lead to different
+successor beliefs depending on the observation received before the next decision epoch. At each scheduled tracking
+opportunity, the current Gaussian belief is propagated under action ak to the next decision epoch and updated using
+the received observation zk+1 through a Kalman measurement update. The propagation and measurement-update
+models are detailed in Section 3.1. During planning, future observations are sampled from the observation model,
+producing different possible successor beliefs and allowing the planner to reason over how future tracking may change
+the estimated encounter geometry and uncertainty before TCA.
+2.3 Chance-Constrained Collision Avoidance
+The belief-MDP describes how the conjunction estimate may evolve under future actions and observations. We next
+define the collision-risk quantity associated with a belief and formulate maneuver selection subject to a chance con-
+straint on the terminal collision risk.
+2.3.1 Probability of Collision
+When evaluating collision risk, the current belief bk is propagated from decision epoch k to TCA to obtain the corre-
+sponding predicted state distribution at closest approach. For the short-duration conjunctions considered in this work,
+collision risk is evaluated in the two-dimensional encounter plane at TCA, defined as the plane normal to the relative
+velocity vector of the two objects at closest approach [23, 24]. Given a belief bk at the current decision epoch, the pri-
+mary and secondary state distributions are propagated to TCA and combined to form the relative-position distribution.
+This distribution is then projected onto the encounter plane. We denote the resulting encounter-plane relative position
+between the primary and secondary objects at TCA by the random variable Yk ∈R2, which is normally distributed as
+Yk ∼N
+ µY,k,ΣY,k
+
+(6)
+where µY,k and ΣY,k are the mean and covariance of the relative position between the two objects, projected onto the
+encounter plane at TCA. These quantities are obtained by propagating the belief at decision epoch k to TCA. Let ρ
+denote the combined hard-body radius of the two objects. The probability of collision associated with belief bk is then
+Pc(bk) = Pr(∥Yk∥≤ρ)
+(7)
+where ∥Yk∥≤ρ denotes the event that the relative position at TCA lies within the hard-body collision region [23, 24].
+Because the distribution of Yk is determined by the belief bk, Pc(bk) depends on both the estimated encounter geometry
+and its associated uncertainty. The specific encounter-plane construction and numerical method used to evaluate Pc(bk)
+are described in the Appendix.
+2.3.2 Chance-Constrained Objective
+At decision epoch k, the observations that will be received over the remainder of the planning horizon are not yet
+known. Different observation sequences may produce different beliefs at TCA τ = 0. We denote this uncertain future
+belief by the random variable Bτ=0. Once a particular sequence of observations is realized, the resulting terminal belief
+is denoted by bτ=0. A realized terminal belief violates the prescribed collision-risk criterion when
+Pc (bτ=0) > δ
+(8)
+where δ is the maximum acceptable probability of collision. From the current decision epoch k, however, it is not
+yet known whether this event will occur because the terminal belief bτ=0 depends on future observations. The chance
+constraint therefore bounds the probability of the occurrence of this violation event with
+Pr
+
+Pc(Bτ=0) > δ | bk,ak
+
+< α
+(9)
+where α specifies the maximum acceptable probability of violating the collision-risk criterion δ over future obser-
+vations and the resulting belief evolution. The two parameters therefore operate at different levels: δ defines what
+
+
+constitutes an unsafe terminal belief with probability of collision, while α defines the maximum probability the plan-
+ner may tolerate of reaching an unsafe terminal belief. In this work, we prescribe the probability of collision threshold
+as δ = 10−5, which is consistent with the range of (Pc) criteria reported by LEO operators and equals the median high-
+interest threshold in the operator survey of Alfano et al. [6]. The threshold is also more conservative than NASA’s
+(10−4) baseline mitigation criterion [5]. The planner’s chance-constraint risk level is set to α = 0.05, balancing the
+desired confidence in constraint satisfaction with the need to retain feasible candidate actions. Because the chance
+constraint is imposed only on the terminal collision risk at TCA, intermediate beliefs along the planning horizon may
+have Pc(bk) > δ. These intermediate values do not by themselves make an action infeasible, since subsequent tracking
+observations may change the terminal belief and reduce the probability of violating the collision-risk criterion at TCA.
+Evaluating the constraint at TCA therefore allows the planner to account for future belief evolution without requiring
+a maneuver solely because an intermediate estimate exceeds the collision-risk threshold.
+When candidate actions satisfy the terminal chance constraint, the planning objective is to balance expected terminal
+collision risk against maneuver expenditure. For a candidate action ak selected from belief bk, we define the root
+decision objective as
+J(bk,ak) = −rpcE[Pc(Bτ=0) | bk,ak]−rman1[ak = MANEUVER]
+(10)
+where rpc weights the expected terminal collision probability and rman penalizes whether or not a maneuver was
+executed. The expectation E[Pc(Bτ=0) | bk,ak] represents the average terminal collision probability over the possible
+terminal beliefs that may result after selecting action ak from the current belief bk. This quantity differs from the
+violation probability used by the chance constraint: the violation probability measures how often the terminal collision
+probability exceeds δ, whereas the expected terminal collision probability captures the average magnitude of collision
+risk across possible terminal outcomes.
+3.
+METHODOLOGY
+This section describes the planning and belief-propagation methodology used to solve the finite-horizon belief-MDP
+formulated in Section 2. We use a chance-constrained receding-horizon Monte Carlo tree search (MCTS) [16] planner
+to sample rollouts of possible future action-observation sequences from the current belief through TCA. The resulting
+terminal beliefs are used to estimate, for each candidate root action, both the probability of violating the prescribed
+collision-risk threshold and the expected terminal probability of collision. The former determines chance-constrained
+feasibility, while the latter is used together with maneuver cost to rank feasible actions. The overall planning architec-
+ture is illustrated in Figure 1.
+3.1 Belief Propagation and Measurement Update
+Each belief-space transition propagates the primary and secondary Gaussian beliefs to the next decision epoch and
+incorporates the available tracking information. For each object j ∈{s,d}, the predicted mean and covariance are
+propagated according to
+µ j,−
+k+1 = f j 
+µ j
+k,ak,∆tk
+
+,
+Σ j,−
+k+1 = Φ j
+kΣj
+k
+
+Φj
+k
+⊤
+(11)
+where f j denotes the nonlinear orbital propagation model for object j, and Φj
+k is the corresponding state-transition
+matrix over the interval between successive decision epochs. For the primary spacecraft, f s applies the fixed prograde
+impulse when ak = MANEUVER before propagating the state. The secondary remains nonmaneuvering. At each
+tracking opportunity, object j is observed through the measurement model
+zj
+k+1 = h
+
+x j
+k+1
+
++ν j
+k+1,
+ν j
+k+1 ∼N
+ 0,R j
+(12)
+where R j is the measurement covariance. Observations are modeled as direct measurements of the full Cartesian state
+in ECI coordinates, such that
+h
+ x j
+= x j,
+H j = ∂h
+∂x j = I6
+(13)
+
+
+Fig. 1: Receding-horizon chance-constrained belief-space planning architecture. At each decision epoch, MCTS
+samples possible future belief evolution under the candidate root actions and evaluates the resulting terminal collision
+probabilities at TCA. The fraction of terminal rollouts exceeding δ determines chance-constrained feasibility under
+risk level α, after which feasible actions are ranked according to expected terminal collision risk and maneuver cost.
+Only the selected root action is executed before the belief is updated and planning is repeated.
+and the measurement update therefore follows a simplified version of the extended Kalman filter equations
+K j
+k+1 = Σ j,−
+k+1
+h
+Σ j,−
+k+1 +Rji−1
+(14)
+µ j
+k+1 = µ j,−
+k+1 +K j
+k+1
+
+zj
+k+1 −µ j,−
+k+1
+
+(15)
+Σj
+k+1 =
+
+I6 −K j
+k+1
+
+Σj,−
+k+1
+(16)
+where the simplification follows from H j = I6. The measurement model is linear, while the belief propagation follows
+the nonlinear orbital dynamics. During planning, future measurements are not known and are therefore sampled from
+the observation model. Each sampled measurement produces a different posterior belief, providing the observation-
+dependent branching used by the belief-space MCTS planner. The measurement-uncertainty models used to define
+R j, along with the tracking schedules considered in the experiments, are described in Section 4.2.
+Each terminal belief is propagated to TCA to evaluate Pc(bk), which is used for chance-constrained feasibility and
+root-action ranking. The encounter-plane construction and Elrod evaluation are described in the Appendix.
+3.2 Belief-Space Monte Carlo Tree Search
+The distribution of possible terminal beliefs Bτ=0 cannot be enumerated directly because future tracking observations
+may produce different posterior beliefs over the remaining planning horizon. We therefore use Monte Carlo tree search
+to sample possible future action-observation sequences from the current belief through TCA. Starting from bk, each
+MCTS rollout generates one possible sequence of future beliefs and terminates with a realization bτ=0. Repeated
+rollouts therefore provide additional samples of the possible terminal belief evolution used to evaluate the chance-
+constrained decision problem.
+To guide tree-search exploration, we construct an MCTS reward inspired by the maneuver-cost and terminal collision-
+risk components of the root decision objective J in Equation (10). Within the tree, each rollout accumulates a fixed
+penalty rman for each maneuver executed and, at TCA, a terminal collision-risk penalty rpcPc(bτ=0). Rollouts ter-
+minating above the collision-risk threshold additionally incur a large fixed penalty rviol. The sample-average return
+
+
+following action a from belief b defines the MCTS search value Q(b,a). This value is then used to guide tree traversal
+according to the upper-confidence-bound criterion [25]
+asel = argmax
+a∈A
+"
+Q(b,a)+c
+s
+lnN(b)
+N(b,a)
+#
+(17)
+where N(b) is the number of visits to belief node b, N(b,a) is the number of times action a has been selected from that
+node, and the constant c controls the exploration–exploitation tradeoff. Because future observations are continuous,
+progressive widening [26] limits the number of observation-dependent successor beliefs expanded from each action.
+We highlight that the search value Q(b,a) is used only to guide sampling and exploration within the MCTS tree,
+whereas the terminal rollout outcomes are used to evaluate chance-constrained feasibility and final selection of feasible
+root actions according to J(bk,ak), as described in the following section. As an ablation, we also consider direct root
+action selection using Q(bk,a) rather than J which we explore further in Section 5.1.
+The MCTS planner is executed in a receding-horizon manner. At each decision epoch, it evaluates possible belief
+evolution through TCA and selects the root action a⋆
+k using the chance-constrained procedure in Section 3.3. Only this
+root action is executed. After propagating to the next decision epoch and incorporating the new tracking observation,
+the posterior belief bk+1 becomes the root of a new MCTS search over the shortened horizon. This process repeats
+until TCA, allowing the planner to revise whether to wait or maneuver as new information becomes available.
+3.3 Chance-Constrained Root Action Selection
+The terminal beliefs generated by MCTS are used to evaluate the chance constraint for each candidate root action. Let
+L(ak) denote the set of rollouts beginning with action ak, and let L(ak) = |L(ak)| denote the number of corresponding
+terminal outcomes. The violation probability introduced in Section 2.3.2 is estimated from the fraction of these rollouts
+whose terminal collision probability exceeds δ
+ˆpviol(bk,ak) =
+1
+L(ak) ∑
+ℓ∈L(ak)
+1
+h
+Pc
+
+b(ℓ)
+τ=0
+
+> δ
+i
+(18)
+where b(ℓ)
+τ=0 is the terminal belief produced by rollout ℓ. A candidate action is considered feasible when
+ˆpviol(bk,ak) < α
+(19)
+under the given chance constraint. The same terminal outcomes are used to estimate the expected terminal collision
+probability appearing in the root decision objective from Equation (10)
+bE[Pc(Bτ=0) | bk,ak] =
+1
+L(ak) ∑
+ℓ∈L(ak)
+Pc
+
+b(ℓ)
+τ=0
+
+(20)
+where these two estimates serve different purposes: ˆpviol determines whether an action satisfies the chance constraint,
+while the expected terminal collision probability characterizes the average terminal risk used to rank feasible actions.
+Substituting this estimate into the root decision objective in Equation (10) gives its Monte Carlo estimate bJ(bk,ak).
+The set of chance-constrained feasible actions is
+Afeas(bk) = {a ∈A | ˆpviol(bk,a) < α}
+(21)
+and the action executed at decision epoch k is selected according to
+a⋆
+k = argmax
+a∈Afeas(bk)
+bJ(bk,a)
+(22)
+and this construction allows for the separation of probabilistic safety from action ranking. The chance constraint
+first determines which candidate actions are admissible based on the sampled distribution of terminal collision risk.
+Afterwards, ˆJ selects among the feasible actions based on expected terminal risk and maneuver expenditure. However,
+if neither candidate action satisfies the chance constraint, the feasible set is empty. This may occur when uncertainty
+in the current belief prevents either action from satisfying the prescribed confidence level, even when acceptable
+
+
+outcomes may exist. In this case, the planner instead selects the action with the lowest estimated expected terminal
+collision probability
+a⋆
+k = argmin
+a∈A
+bE[Pc(Bτ=0) | bk,a]
+(23)
+allowing the planner to select the least-risky action when neither available decision is predicted to satisfy the prescribed
+chance constraint under the current belief.
+4.
+EXPERIMENTS
+This section describes the conjunction scenarios, tracking conditions, and comparison policies used to evaluate the
+proposed chance-constrained planner. The NASA Conjunction Assessment Risk Analysis Tools dataset [27] provides
+the basis for the evaluation, with a subset of encounters selected to match the scope of this work. Measurement quality
+and tracking cadence are varied to examine how the information available to the planner affects its decisions, yielding
+96 evaluation configurations (8 conjunctions × 3 measurement-quality levels × 4 cadences). Baseline policies and
+evaluation metrics are then introduced to characterize maneuver timing, collision risk, and propellant expenditure.
+Orbital states are propagated numerically using the Brahe astrodynamics library [28]. Both objects are propagated in
+the Earth-centered inertial frame under a force model including a spherical-harmonic geopotential, atmospheric drag,
+third-body perturbations, and solar radiation pressure, with per-object ballistic parameters taken from the conjunction
+data message. Covariances are propagated by the linearized mapping obtained from the same numerical propagation.
+The same propagator is used to map each belief forward to TCA for collision-probability evaluation, and to back-
+propagate the CDM state and covariance from TCA to the start of the planning horizon.
+4.1 Conjunction Dataset and Scenario Selection
+We evaluate the proposed planner using conjunctions drawn from the NASA CARA Analysis Tools dataset [27]. The
+dataset contains historical conjunctions involving operational spacecraft between 2020 and 2023, provided as Con-
+junction Data Messages. Each CDM provides the primary and secondary state estimates and associated covariances at
+TCA together with encounter quantities including miss distance, relative velocity, combined hard-body radius, and a
+reference probability of collision.
+The CDM state and covariance information is used to initialize the conjunction beliefs evaluated by the planner.
+Because the CDMs provide state estimates at TCA, the object states and covariances are propagated backward from
+TCA to the beginning of the planning horizon. Forward propagation of these beliefs then produces the evolving
+state-estimation uncertainty considered throughout the decision process while retaining the encounter geometry and
+covariance structure of the original conjunction.
+As defined in Section 2.1, this work targets conjunctions for which the two-dimensional encounter-plane probability
+of collision provides an appropriate representation of collision risk. We apply a two-dimensional Pc usage-validity
+assessment, following NASA CARA’s implementation recommendations and usage boundaries [27], and exclude
+conjunctions outside the resulting validity regime. We additionally focus on conjunctions involving a nonmaneuvering
+debris secondary, consistent with the maneuverable-primary and nonmaneuvering-secondary problem considered in
+this work. The resulting evaluation set contains 8 debris-secondary conjunctions near the operational maneuver-
+decision window. Table 1 summarizes the selected encounters and their initial characteristics.
+4.2 Tracking and Measurement Configurations
+To evaluate how tracking information influences maneuver decisions, we independently vary the quality and cadence
+of measurements available for the secondary object. Measurement quality determines the uncertainty associated with
+each observation, while cadence determines how frequently new information becomes available before TCA.
+Observations are represented in the filter as direct measurements of the full ECI state, with H = I6. The measurement
+uncertainty, however, is constructed first in the secondary object’s local radial–transverse–normal (RTN) frame. This
+allows the state-space covariance to retain the range-versus-cross-range structure of the underlying radar measure-
+ments, with tighter uncertainty in the range direction and larger uncertainty in the two cross-range directions. Because
+the belief state is maintained in ECI, the resulting RTN covariance is rotated into ECI before being supplied to the ex-
+tended Kalman filter. The three measurement-quality levels in Table 2 are derived from calibrated Space Surveillance
+Network (SSN) radar performance reported by Vallado [29] and accessed through brahe 1.7.0 [28]. The best, median,
+
+
+Table 1: NASA CARA conjunction dataset selected for experimental evaluation.
+Primary (NORAD)
+Secondary (NORAD)
+t0 (h)
+PCDM
+c
+Miss (m)
+HBR (m)
+OCO-2 (40059)
+IRIDIUM 33 DEB (35921)
+21.8
+7.9×10−4
+448
+6.0
+METOP-B (38771)
+FENGYUN 1C DEB (30802)
+25.1
+1.6×10−3
+148
+10.0
+CALIPSO (29108)
+COSMOS 2251 DEB (34995)
+26.3
+1.8×10−3
+197
+14.8
+NPP (37849)
+THOR ABLESTAR DEB (13512)
+26.5
+1.1×10−2
+99
+6.0
+NOAA 19 (33591)
+COSMOS 1275 DEB (42216)
+27.0
+4.5×10−3
+74
+6.0
+NOAA 18 (28654)
+DMSP 5D-2 F12 DEB (41835)
+27.3
+5.0×10−3
+21
+6.0
+WORLDVIEW-3 (40115)
+FENGYUN 1C DEB (30660)
+27.7
+1.1×10−4
+405
+20.0
+TERRA (25994)
+CZ-4 DEB (26132)
+59.1
+1.2×10−3
+25
+15.0
+8 conjunctions; operational LEO payload primaries; debris secondaries; δ = 10−5
+and worst configurations correspond to the 10th, 50th, and 90th percentiles of the radar noise distribution, respectively,
+and represent favorable, typical, and degraded tracking conditions rather than individual sensors.
+For each quality level, range uncertainty defines the radial position uncertainty, while angular uncertainty is mapped
+to a representative cross-range uncertainty according to
+σcross = σangd
+(24)
+using a representative sensor-target slant range of d = 1200km, approximately corresponding to a 20◦elevation angle
+for a target near 550 km altitude. The measurement covariance is then constructed as
+RRTN = diag
+ σ2
+range,σ2
+cross,σ2
+cross,σ2
+v ,σ2
+v ,σ2
+v
+
+(25)
+where σv = 0.1m/s and the radar range standard deviation σrange is used to define the radial position uncertainty.
+The covariance is rotated into ECI using the secondary object’s reference state at the CDM epoch and held fixed for
+subsequent measurement updates.
+For each measurement-quality level, we additionally vary the secondary tracking cadence over 2,4,8,24 h. These
+cadences represent idealized tracking schedules in which secondary measurements become available at prescribed
+intervals rather than through explicit sensor visibility or tasking models. The scheduled measurement times define
+the planner’s decision epochs, such that each new secondary measurement triggers a belief update followed by a new
+maneuver decision. Shorter cadences therefore provide more frequent opportunities to update the conjunction belief
+and reconsider whether to maneuver, while longer cadences require the planner to wait longer between decisions. The
+primary spacecraft is assumed to have access to its own GPS-grade navigation solution (10 m, 1σ) [30], which is
+updated at each of these decision epochs. Together, the measurement-quality and cadence sweeps allow us to evaluate
+when additional tracking information is sufficiently informative to justify delaying an avoidance maneuver.
+Table 2: Secondary-object measurement-quality configurations derived from representative SSN radars [29]
+SSN radar noise
+Mapped state σ (RTN)
+Quality
+Percentile
+Range (m)
+Mean az/el (deg)
+Radial (m)
+Transverse, normal (m)
+Best
+10th
+26.0
+0.0115
+26.0
+241
+Median
+50th
+50.0
+0.0224
+50.0
+469
+Worst
+90th
+140.3
+0.0477
+140.3
+999
+4.3 Baseline Policies and Ablations
+We compare the proposed chance-constrained MCTS planner against baseline decision policies designed to isolate the
+benefit of reasoning over future belief evolution when determining maneuver timing. Each baseline is evaluated on the
+
+
+same conjunctions, with the same measurement schedule, the same observation noise realizations, and the same belief
+update as the planner, so that any difference in outcome is attributable to the decision rule alone.
+The rule-based family holds choosing to maneuver until the time to TCA falls below a threshold τact, at which point
+it maneuvers only if the current belief collision probability exceeds δ; it then executes a single burn. This represents
+the common operational pattern of screening against a risk threshold on a fixed schedule, and reads Pc from the same
+beliefs available to the chance-constrained planner. We consider decision times of 28, 12, 6, and 3 h before TCA,
+spanning early intervention through increasingly delayed responses. Sweeping τact traces the trade-off between acting
+early on poor information and deferring past the window in which a maneuver remains effective.
+The optimistic greedy offline plan represents a non-adaptive policy that commits to a maneuver strategy under favorable
+assumptions about future tracking. At the initial decision epoch, the policy propagates the WAIT trajectory to TCA
+while applying measurement updates according to the prescribed tracking schedule of 2, 4, 8, or 24 h. Each future
+measurement is set equal to the dynamics-predicted state, modeling an ideal measurement with no noise, so it contracts
+the covariance without updating the predicted trajectory. This represents planning under the optimistic, idealized
+assumption that the dynamics prediction is perfectly accurate, and future measurements will perfectly align, simply
+reducing uncertainty as TCA approaches. The policy then commits to a single decision under this optimistic forecast:
+if waiting is predicted to achieve Pc < δ at TCA, it commits to WAIT for the entire episode; otherwise it maneuvers
+immediately. This policy decision is made a priori and does not change during evaluation.
+This baseline is intentionally optimistic about the information that future tracking will provide. It assumes that subse-
+quent measurements will reduce uncertainty without shifting the trajectory prediction (mean state). During execution,
+however, measurements are drawn from the stochastic observation model and may not continue to confirm the initial
+trajectory prediction. A plan that appears safe under the optimistic forecast may therefore fail to achieve the antici-
+pated risk reduction when the realized measurements are less favorable. The baseline consequently tests the danger
+of committing too strongly to an expected improvement in state knowledge. By pushing deferral as far as the favor-
+able measurement forecast permits, it provides a deliberately aggressive reference for how many maneuvers could be
+avoided if future tracking perfectly supported a given prediction. Its failures illustrate the corresponding cost of over-
+confidence in a particular, potentially incorrect, predicted future evolution of a conjunction: a plan judged sufficiently
+mitigated in advance may no longer satisfy the collision-risk threshold once the actual measurements are incorporated.
+Finally, as an ablation, we apply the soft Pc penalty of the chance-constrained action-selection rule, where we evaluate
+the same MCTS planner selecting the root action by argmaxa Q(bk,a). Here the collision constraint enters only softly,
+as the penalty rviol embedded in the backed-up value, rather than as an explicitly estimated terminal violation prob-
+ability enforced as a feasibility requirement. Comparing the two isolates the effect of separating chance-constrained
+feasibility from the search value used to guide tree exploration. Parameters held fixed across the test sweep are sum-
+marized in Table 3. All policies use the same fixed prograde maneuver magnitude and collision-risk thresholds.
+Table 3: Fixed planner configurations.
+Parameter
+Value
+Maneuver magnitude (∆v)
+0.1 ms−1
+Collision-risk threshold (δ)
+10−5
+Chance-constraint level (α)
+0.05
+Collision-risk weight (rpc)
+106
+Terminal violation penalty (rviol)
+104
+Maneuver cost (rman)
+10
+MCTS exploration constant (c)
+10
+MCTS rollouts per decision
+100
+Full Episode Seed Runs
+5
+
+
+5.
+RESULTS
+The results evaluate three aspects of the proposed planner: its ability to safely defer maneuvers relative to the baseline
+policies, the sensitivity of this behavior to tracking quality, and the mechanism by which future information influences
+the maneuver decision. Results are aggregated across the CARA conjunctions, measurement realizations, and tracking
+configurations described in Section 4.
+5.1 Safe Resolution Without Maneuver
+We first examine how each policy balances resolving encounters without a maneuver against maintaining the pre-
+scribed collision-risk criterion at TCA. The results are shown in Figure 2.
+The rule-based policies show how this balance changes with decision timing. The 28 h rule is the most conservative,
+producing no observed terminal violations but resolving relatively few encounters without a maneuver. As τact moves
+closer to TCA, the policy benefits from additional tracking information and therefore classifies more encounters as
+safe to leave unmitigated. However, the decision is fixed at τact and is not revised as later measurements arrive. Those
+measurements can subsequently shift the estimated encounter geometry and collision risk, causing some encounters
+that appeared safe at the decision time to terminate above δ. Thus, later decision times increase the number of scenarios
+resolved without a maneuver, but at the cost of higher terminal violation rates. For the 3 h rule, approximately 61–77%
+of encounters are resolved without maneuvering, with 10.6–11.2% of all episodes terminating above δ.
+The optimistic greedy offline plan approaches the same decision from a different perspective. Rather than deferring
+the decision to a prescribed time, it commits at the initial epoch using an optimistic forecast of future tracking. Under
+this policy, 41–64% of encounters are ultimately resolved without a maneuver. When the anticipated measurements
+are subsequently realized, however, 0.6–4.5% of episodes terminate above δ. This result illustrates the consequence
+of relying too strongly on anticipated improvements in state knowledge. Future measurements can reduce uncertainty,
+but their realized innovations can also change the estimated encounter geometry and resulting collision risk.
+The two belief-space planners occupy a different region of the comparison. Both maintain zero observed terminal
+violations across all three sensor-quality configurations, while still allowing a substantial fraction of encounters to
+reach TCA and resolve the conjunction without a maneuver. Within this zero-violation region, the chance-constrained
+0
+20
+40
+60
+80
+100
+0
+2
+4
+6
+8
+10
+12
+14
+(%) Episodes with operator Pc > δ at TCA
+Better
+Sensor tracking: Best
+28 h
+12 h
+6 h
+3 h
+0
+20
+40
+60
+80
+100
+Better
+Sensor tracking: Median
+28 h
+12 h
+6 h
+3 h
+0
+20
+40
+60
+80
+100
+Better
+Sensor tracking: Worst
+28 h
+12 h
+6 h
+3 h
+Resolved without a maneuver (% of encounters)
+Rule-based policies (ﬁxed clock)
+Chance constraint
+Soft Pc penalty (ablation)
+Optimistic greedy oﬄine plan
+Fig. 2: Encounters resolved without a maneuver and Pc threshold violations at TCA for the proposed planner, its soft-
+penalty ablation, and comparison policies, separated by secondary measurement quality. Rule-based policies resolve
+more encounters without maneuvering as τact approaches TCA, but more frequently violate the chance constraint, vio-
+lating 10.6–11.2% of episodes at the 3 h rule. The optimistic greedy offline plan commits to a single up-front decision
+under a forecast in which future measurements contract the covariance without shifting the state estimate; because
+that forecast overstates what tracking delivers, it still leaves 0.6–4.5% of episodes in violation once measurements are
+realized. The chance-constrained planner and its soft-penalty ablation both hold violations at zero, with the chance
+constraint resolving more encounters without a maneuver.
+
+
+planner resolves more encounters without maneuvering than the soft-Pc penalty ablation. The chance constraint there-
+fore improves the use of available tracking information without obtaining that improvement through an increase in
+observed terminal risk.
+These results also clarify why the fraction of scenarios resolved without a maneuver should not be maximized in
+isolation. The 3 h rule-based policy resolves the largest share of encounters without maneuvering of any policy
+considered—76.9% under the best tracking, against 58.6% for the chance-constrained planner. However, this baseline
+does so while leaving 10.6% of episodes above δ at TCA, while the chance-constrained planners leave none. Some
+conjunctions remain above the prescribed risk criterion despite additional tracking and appropriately require a maneu-
+ver; a policy that avoids maneuvering in those cases has not resolved them, it has merely declined to act. The desired
+outcome is therefore not 100% no-maneuver resolution, but to identify which encounters can safely continue with-
+out intervention while retaining the ability to mitigate those that cannot. Figure 2 shows that the chance-constrained
+planner moves this balance toward greater no-maneuver resolution while satisfying the terminal chance constraint.
+5.2 Effect of Tracking Quality and Frequency
+The value of waiting depends strongly on both the quality of future measurements and how frequently they become
+available. Figure 3 compares the fraction of encounters resolved without a maneuver across sensor quality and mea-
+surement cadence. Because avoiding a maneuver is beneficial only when the resulting encounter remains safe, the
+figure reports this outcome together with the frequency of terminal collision-risk threshold violations.
+For the chance-constrained planner, accurate and frequent measurements create substantial opportunity to defer inter-
+vention safely. Under the best sensor-quality configuration, 76% of encounters are resolved without a maneuver at a
+2 h cadence and 72% at a 4 h cadence. This fraction decreases to 48% and 38% as the measurement cadence increases
+to 8 and 24 h, respectively. The same trend appears as measurement quality degrades. At median sensor quality, the
+fraction resolved without maneuvering falls from 60% at a 2 h cadence to 20% at 24 h. Under the worst sensor quality,
+2
+4
+8
+24
+Best
+Median
+Worst
+Sensor quality
+Chance constraint
+76
+72
+48
+38
+60
+48
+28
+20
+35
+35
+18
+20
+2
+4
+8
+24
+Soft Pc penalty (ablation)
+75
+70
+35
+28
+52
+42
+22
+15
+38
+35
+12
+12
+2
+4
+8
+24
+Measurement cadence (h)
+Best
+Median
+Worst
+Sensor quality
+Rule-based policy (3 h)
+80
+88
+72
+68
+72
+82
+62
+58
+68
+68
+55
+52
+2
+4
+8
+24
+Measurement cadence (h)
+Optimistic greedy oﬄine plan
+75
+75
+62
+43
+75
+75
+38
+43
+62
+50
+25
+29
+0
+10
+20
+30
+40
+50
+60
+70
+80
+90
+Resolved without a maneuver
+(% of encounters)
+Cost of imperfect state knowledge, by measurement timing and sensor quality
+Color = % of encounters resolved without a maneuver. White hatch = how often that left the operator Pc above threshold at TCA.
+no violation (0%)
+violation ≤10% of episodes
+violation > 10% of episodes
+Fig. 3: Encounters resolved without a maneuver across secondary measurement cadence and sensor quality. Cell color
+gives the percentage resolved without maneuvering, and white hatching indicates terminal Pc > δ violations. Both
+belief-space planners maintain zero observed violations, while the 3 h rule-based policy and optimistic greedy offline
+plan reach violation rates of up to 17.5% and 14.3%, respectively. The chance-constrained planner outperforms the
+soft-Pc penalty ablation in eleven of twelve settings, with the largest gains under sparse measurements.
+
+
+no-maneuver resolution remains at or below 35% across all cadences. Importantly, all conjunctions resolved without
+maneuvering have satisfied the terminal chance constraint. The interaction between measurement quality and cadence
+further shows that measurement frequency is most valuable when each observation is sufficiently informative. More
+frequent measurements substantially increase safe deferral under the best and median sensor qualities, whereas the
+benefit is smaller under the worst-quality configuration; even best-quality measurements at a 24 h cadence slightly
+outperform worst-quality measurements received every 2 h.
+The comparison with the soft-Pc penalty ablation shows that explicitly constraining risk becomes particularly important
+when measurements are sparse. The chance-constrained planner resolves more encounters without maneuvering across
+the majority of tracking scenarios, with the largest separation occurring at the 8 and 24 h cadences. As measurements
+become more frequent, the two belief-space planners converge, indicating that frequent information can partially
+compensate for differences in how risk is incorporated into the decision rule.
+The non-adaptive policies illustrate why no-maneuver resolution cannot be interpreted independently of safety. In
+particular, the optimistic greedy offline plan assumes favorable future measurement outcomes and commits at the
+initial decision epoch to the least-conservative plan that appears safe under that forecast. This assumption allows the
+plan to defer aggressively in several tracking regimes, but the apparent improvement comes with terminal threshold
+violations of up to 14.3%. The 3 h rule-based policy exhibits the same tradeoff more strongly, reaching violation rates
+of up to 17.5%. Thus, greater willingness to wait does not by itself indicate better use of future information.
+Together, these results show that future tracking has substantial decision value, but that value depends on accounting
+for uncertainty in what future measurements will reveal. Accurate and frequent measurements allow the chance-
+constrained planner to avoid unnecessary maneuvers while maintaining the prescribed risk criterion. Conversely,
+planning as though future measurements will be sufficiently favorable can make deferral appear more attractive than
+it is during execution. The benefit of belief-space planning is therefore not simply that it waits for more information,
+but that it determines when waiting remains justified under uncertainty in that information.
+0
+5
+10
+15
+20
+Time to TCA (h)
+10−18
+10−15
+10−12
+10−9
+10−6
+10−3
+Collision probability Pc at TCA
+NORAD 40059 vs 35921
+0
+5
+10
+15
+20
+25
+Time to TCA (h)
+Pc threshold 10−5
+NORAD 28654 vs 41835
+0
+5
+10
+15
+20
+25
+Time to TCA (h)
+NORAD 38771 vs 30802
+Line color = sensor quality
+Best sensors
+Median sensors
+Worst sensors
+Line color = sensor quality
+Best sensors
+Median sensors
+Worst sensors
+Solid: what MCTS-based planner did
+Dashed: Pc if waited instead
+Pc threshold (Pc = 10−5)
+No maneuver
+Maneuver (Pc →0)
+Fig. 4: Belief collision probability through TCA for three representative conjunctions under best, median, and worst
+secondary measurement quality. Solid curves show the executed MCTS trajectory, while dashed curves show the
+counterfactual continued-WAIT trajectory. The examples illustrate encounters that resolve through tracking alone
+(left), require mitigation (center), and produce measurement-dependent maneuver decisions (right). These cases are
+drawn from across the sweep to illustrate the wait-and-measure behavior of the tree-based planner rather than to
+compare the chance-constrained and soft-Pc root-selection rules.
+5.3 Information-Dependent Maneuver Timing
+For the MCTS-based planners, the same conjunction can lead to different maneuver decisions as the quality of tracking
+information available before TCA changes. To examine this behavior in more detail, Figure 4 shows complete episodes
+for three representative conjunctions selected from across the sweep. The cases illustrate three distinct responses
+to additional tracking information: an encounter that resolves without a maneuver, one that requires mitigation in
+all tracking scenarios, and one for which the maneuver decision changes with measurement quality. The examples
+are intended to illustrate the common wait-and-measure behavior of the MCTS-based planners rather than highlight
+differences between the chance-constrained and soft-Pc root-selection rules.
+
+
+For NORAD 40059 vs. 35921, continued tracking reduces the estimated collision probability below δ under all three
+measurement-quality configurations. The planner therefore reaches TCA without maneuvering, although the threshold
+is crossed earlier when measurements are more accurate. In contrast, NORAD 28654 vs. 41835 remains hazardous
+under the continued-WAIT trajectory for every tracking configuration, and the planner maneuvers at the initial decision
+epoch. NORAD 38771 vs. 30802 lies between these cases. With the best tracking configuration, the planner continues
+to wait and ultimately reaches TCA below δ without a maneuver. With median-quality tracking, it initially waits for
+additional information but later executes a maneuver as the belief evolves. Under the worst tracking configuration,
+it maneuvers immediately. The same conjunction therefore transitions from no maneuver, to a later maneuver, to
+immediate intervention as measurement quality decreases.
+These examples show how tracking quality changes both whether and when a maneuver is required. For some con-
+junctions, additional measurements consistently provide enough information to continue without intervention, while
+others require mitigation regardless of tracking quality. Between these cases are conjunctions for which the maneuver
+decision depends directly on the information obtained as the belief evolves toward TCA.
+5.4 Effect of Chance-Constrained Root Selection
+The chance constraint and soft-Pc penalty use the same MCTS search and differ only in how they select the final action.
+The soft penalty averages the penalized returns across rollouts, so even a single threshold violation can strongly reduce
+an action’s value. The chance constraint instead considers how often violations occur, allowing the action to remain
+feasible as long as the estimated violation frequency remains below the chance constraint set by α.
+Figure 5 illustrates this mechanism for a single root decision under best-quality tracking. WAIT violates the terminal
+threshold in one of its 27 rollouts, giving ˆpviol = 0.037 < α = 0.05, and therefore remains feasible. Its expected
+collision probability is E[Pc] = 4.9×10−7, approximately twenty times below δ, so the chance-constrained rule selects
+WAIT as the lower-cost feasible action. Under the soft-Pc penalty, the same violating rollout drives Q(WAIT) = −359
+compared with Q(MANEUVER) = −13, causing the planner to maneuver.
+Across the 96 paired comparisons in the sweeps examined in Section 5.1 and Section 5.2, the two root rules dis-
+agree in 23 cases. In every disagreement, the chance-constrained rule selects WAIT while the soft-Pc penalty selects
+MANEUVER; the reverse is never observed. These disagreements concentrate near the constraint boundary, where a
+small number of violating rollouts can substantially reduce the mean return without causing the estimated violation
+frequency to exceed α. Despite selecting WAIT more often in these cases, the chance-constrained planner produces no
+observed increase in terminal threshold violations, with both belief-space planners maintaining zero violations across
+all three tracking tiers.
+This behavior does not persist when the available tracking information no longer supports waiting. For the same
+conjunction under the worst sensor quality, WAIT has E[Pc] = 1.1×10−3, more than two orders of magnitude above δ,
+and both rules select MANEUVER. The chance-constrained rule eliminates WAIT as infeasible, while the soft-Pc rule
+rejects it through its mean return. Thus, the chance-constrained root rule preserves WAIT when its estimated violation
+frequency remains within the prescribed bound, but selects a maneuver when the available tracking information no
+longer supports WAIT as a feasible action.
+6.
+CONCLUSIONS
+Collision avoidance decisions depend not only on the collision risk estimated from the information available now, but
+also on the information expected to become available before TCA. For encounters with an unmaneuverable secondary,
+this creates a fundamental tradeoff: maneuvering early preserves mitigation authority but commits to an action using a
+less-informed estimate, while waiting can resolve uncertainty but leaves less time to respond. The chance-constrained
+belief-space formulation developed here makes this tradeoff explicit by evaluating whether future tracking is suffi-
+ciently likely to produce an acceptable terminal belief before allowing the planner to defer intervention.
+The experiments show that this distinction can materially change maneuver decisions. Across the evaluated NASA
+CARA conjunctions and tracking conditions, the chance-constrained planner resolved approximately 40% of episodes
+without a maneuver while maintaining zero terminal collision-risk violations. Rule-based policies deferred inter-
+vention more aggressively, but only by moving along a clear safety–deferral tradeoff, with threshold violation rates
+increasing to approximately 11% for the latest decision policy. The belief-space planner instead reasoned explicitly
+
+
+25 h
+17 h
+9 h
+1 h
+TCA
+Chance constraint: keep actions with ˆpviol < α = 0.05, then rank survivors by E[Pc] and fuel
+Feasible
+ˆpviol = 1/27 = 0.037 < α
+Feasible
+ˆpviol = 0/73 = 0.000 < α
+· · ·
+· · ·
+· · ·
+· · ·
+· · ·
+Selected: WAIT
+25 h
+17 h
+9 h
+1 h
+TCA
+Soft penalty (ablation): no gate — take arg max Q, which carries the in-tree −104 penalty
+Rejected
+Q = −359
+Selected
+Q = −13
+· · ·
+· · ·
+· · ·
+· · ·
+· · ·
+Selected: MANEUVER
+NORAD 38771 vs 30802, Best Sensor Quality
+Node size and edge width scale with MCTS visit count; deeper levels are imagined look-ahead rollouts, not committed actions.
+Feasible (Pc < 10−5)
+Transient warning
+Violating rollout at TCA (ringed)
+WAIT branch
+MANEUVER branch
+Fig. 5: One MCTS root decision for NORAD 38771 vs. 30802 under best-quality tracking and an 8 h measurement
+cadence. Both root rules read the same 325-node search tree. The chance constraint accepts WAIT because only one of
+27 rollouts violates the terminal threshold, giving ˆpviol = 0.037 < α = 0.05, and selects the lower-cost feasible action.
+The soft-Pc penalty instead allows this single violating rollout to dominate WAIT’s mean return and selects MANEU-
+VER. For this conjunction, waiting is ultimately preferable: under high-quality tracking, subsequent measurements
+resolve sufficient uncertainty for the encounter to reach TCA below the collision-risk threshold without a maneuver.
+The chance constraint preserves this option despite a single adverse rollout that would otherwise trigger unnecessary
+intervention.
+
+
+over possible future tracking outcomes to determine when deferral remained admissible under the prescribed terminal
+risk requirement.
+More importantly, the results show that the value of waiting is determined by the tracking environment. Under the
+most accurate and frequent secondary tracking considered, 76% of episodes were resolved without maneuvering. As
+measurements became less accurate or less frequent, safe deferral decreased substantially, reaching approximately
+18–20% under the least informative measurement conditions. This transition is not simply a change in the precision of
+the resulting collision-probability estimate. For the same NORAD 38771 and 30802 conjunction, the planner waited
+through TCA under high-quality tracking but maneuvered at the first decision epoch under low-quality tracking. The
+physical encounter was unchanged; only the information expected to arrive before TCA differed.
+This result has a broader implication for autonomous conjunction management. Tracking performance and maneuver
+planning should not be treated as independent components of the response pipeline. The quality and timing of future
+observations determine how long an avoidance decision can safely remain open, and therefore have direct operational
+value in units of maneuver deferral. Conversely, degraded state knowledge carries a decision cost: when future
+observations cannot be expected to resolve the encounter with sufficient confidence, the planner must surrender the
+option to wait and commit earlier. The terminal chance constraint provides a principled boundary between these
+regimes by identifying when the uncertainty in future belief evolution makes continued deferral itself inadmissible.
+The formulation developed here isolates this information–action tradeoff using a fixed impulsive maneuver, prescribed
+tracking opportunities, and short-duration conjunctions within the validity regime of the two-dimensional encounter-
+plane collision model. These assumptions provide a controlled setting in which the decision value of future information
+can be separated from continuous maneuver optimization and sensor scheduling. Extending the action space to con-
+tinuous maneuver design and allowing future observations to be actively tasked would remove that separation and
+create a more general problem: jointly deciding when to observe, when to wait, and when and how to maneuver.
+In that setting, tracking resources and propellant become coupled resources for managing collision risk. The results
+presented here suggest that this coupling is consequential: improving knowledge of an encounter can eliminate the
+need to maneuver, while insufficient knowledge can itself become a reason to act.
+ACKNOWLEDGMENTS
+This research was supported by the Fannie and John Hertz Foundation and the National Defense Science and Engi-
+neering Graduate (NDSEG) Fellowship Program. Specifically, this material is based upon work supported by the Air
+Force Office of Scientific Research under award number FA9550-25-C-B010 in the amount of currently negotiated
+tuition and stipend rates.
+REFERENCES
+[1] Christian Ramos, Diana McKissock, Nicholas Herzer, Katelyn Eppich, Bailey Bourque, Joshua Parris, and Amos
+Alexander. Lessons Learned on Mega-Constellation Deployments and Impact on Space Domain Awareness. In
+Advanced Maui Optical and Space Surveillance Technologies (AMOS) Conference, 2023.
+[2] Alinda K. Mashiku, Lauri K. Newman, and Dolan E. Highsmith. NASA Conjunction Assessment Risk Analysis
+(CARA) Compendium for Artificial Intelligence and Machine Learning for Satellite Collision Avoidance. In
+Advanced Maui Optical and Space Surveillance Technologies (AMOS) Conference, Wailea, HI, 2025.
+[3] Grace Ra Kim, Mahdi Al-Husseini, Duncan Eddy, and Mykel J. Kochenderfer.
+Semi-Decentralized Multi-
+Spacecraft Collision Avoidance under Communication Constraints. In AAS/AIAA Astrodynamics Specialist Con-
+ference, 2026.
+[4] ESA Space Debris Office. ESA’s Annual Space Environment Report. Issue 10.0 GEN-DB-LOG-00288-OPS-SD,
+European Space Agency, Darmstadt, Germany, May 2026.
+[5] National Aeronautics and Space Administration. NASA Spacecraft Conjunction Analysis and Collision Avoid-
+ance for Space Environment Protection. Technical Report NPR 8079.1, National Aeronautics and Space Admin-
+istration, 2023.
+[6] Salvatore Alfano, Daniel L. Oltrogge, and Lorenzo Arona. Operators’ Requirements for SSA Services. The
+Journal of the Astronautical Sciences, 69:1441–1476, 2022.
+
+
+[7] Maruthi R. Akella and Kyle T. Alfriend. Probability of Collision Between Space Objects. Journal of Guidance,
+Control, and Dynamics, 23(5):769–772, 2000.
+[8] Kyle T. Alfriend, Maruthi R. Akella, Joseph Frisbee, James L. Foster, Deok-Jin Lee, and Matthew P. Wilkins.
+Probability of Collision Error Analysis. Space Debris, 1(1):21–35, 1999.
+[9] Claudio Bombardelli and Javier Hernando-Ayuso. Optimal Impulsive Collision Avoidance in Low Earth Orbit.
+Journal of Guidance, Control, and Dynamics, 38(2):217–225, 2015.
+[10] Kanghyun Ryu, Jean-Baptiste Bouvier, Shazaib Lalani, Siegfried Eggl, and Negar Zahedi Mehr. Risk-Sensitive
+Orbital Debris Collision Avoidance Using Distributionally Robust Chance Constraints. In AIAA SCITECH 2025
+Forum, 2025.
+[11] Denis Arzelier, Fabrizio Dabbene, Mioara Joldes¸, Martina Mammarella, Matthieu Masson, and Pema Mercereau-
+Boland. An Evaluation of Sample Average Approximation Applied to the Design of Impulsive Thrust Space
+Collision Avoidance Maneuvers. IFAC-PapersOnLine, 59(31):97–102, 2025.
+[12] Kenshiro Oguri. Chance-Constrained Control for Safe Spacecraft Autonomy: Convex Programming Approach.
+In 2024 American Control Conference (ACC), 2024.
+[13] Nicolas Bourriez, Adrien Loizeau, and Adam F. Abdin. Spacecraft Autonomous Decision-Planning for Collision
+Avoidance: A Reinforcement Learning Approach. In International Astronautical Congress (IAC), 2023.
+[14] William Kuhl, Jun Wang, Duncan Eddy, and Mykel J. Kochenderfer. Markov Decision Processes for Satellite
+Maneuver Planning and Collision Avoidance. In IEEE Aerospace Conference, 2025.
+[15] Francesca Ferrara, Lander W. Schillinger Arana, Florian D¨orfler, and Sarah H. Q. Li.
+A Markov Decision
+Process Framework for Early Maneuver Decisions in Satellite Collision Avoidance. In AAS/AIAA Astrodynamics
+Specialist Conference, 2025.
+[16] Cameron B. Browne, Edward Powley, Daniel Whitehouse, Simon M. Lucas, Peter I. Cowling, Philipp Rohlfsha-
+gen, Stephen Tavener, Diego Perez, Spyridon Samothrakis, and Simon Colton. A Survey of Monte Carlo Tree
+Search Methods. IEEE Transactions on Computational Intelligence and AI in Games, 4(1):1–43, 2012.
+[17] Robert J. Moss, Arec Jamgochian, Johannes Fischer, Anthony Corso, and Mykel J. Kochenderfer.
+Con-
+strainedZero: Chance-Constrained POMDP Planning Using Learned Probabilistic Failure Surrogates and Adap-
+tive Safety Constraints. In International Joint Conference on Artificial Intelligence, pages 6752–6760, 2024.
+[18] Martin L. Puterman. Markov Decision Processes: Discrete Stochastic Dynamic Programming. John Wiley &
+Sons, New York, NY, 1994.
+[19] Leslie Pack Kaelbling, Michael L. Littman, and Anthony R. Cassandra. Planning and Acting in Partially Ob-
+servable Stochastic Domains. Artificial Intelligence, 101(1–2):99–134, 1998.
+[20] Mykel J. Kochenderfer, Tim A. Wheeler, and Kyle H. Wray. Algorithms for Decision Making. The MIT Press,
+2022.
+[21] Richard D. Smallwood and Edward J. Sondik. The Optimal Control of Partially Observable Markov Processes
+over a Finite Horizon. Operations Research, 21(5):1071–1088, 1973.
+[22] H. Klinkrad, J. R. Alarcon, and N. Sanchez. Collision Avoidance for Operational ESA Satellites. In European
+Conference on Space Debris, volume 587, page 509, 2005.
+[23] James Lee Foster and Herbert S. Estes. A Parametric Analysis of Orbital Debris Collision Probability and
+Maneuver Rate for Space Vehicles. NASA, National Aeronautics and Space Administration, Lyndon B. Johnson
+Space Center, 1992.
+[24] Salvatore Alfano. A Numerical Implementation of Spherical Object Collision Probability. The Journal of the
+Astronautical Sciences, 53(1):103–109, 2005.
+[25] Levente Kocsis and Csaba Szepesv´ari. Bandit-Based Monte-Carlo Planning. In European Conference on Ma-
+chine Learning, 2006.
+[26] Zachary Sunberg and Mykel Kochenderfer. Online Algorithms for POMDPs with Continuous State, Action, and
+Observation Spaces. In International Conference on Automated Planning and Scheduling, volume 28, pages
+259–263, 2018.
+[27] NASA Conjunction Assessment Risk Analysis (CARA) Team. CARA Analysis Tools, 2026. Accessed: 2026-
+08-14.
+[28] Duncan Eddy and Mykel J. Kochenderfer. Brahe: A Modern Astrodynamics Library for Research and Engineer-
+ing Applications. 2026.
+[29] David A. Vallado. Fundamentals of Astrodynamics and Applications. Space Technology Library. Microcosm
+Press, Hawthorne, CA, 4 edition, 2013.
+[30] Andr´e Hauschild and Oliver Montenbruck. Precise Real-Time Navigation of LEO Satellites Using GNSS Broad-
+
+
+cast Ephemerides. NAVIGATION, 68(2):419–432, 2021.
+[31] Chris Elrod, James A. Stamey, and Matthew D. Hejduk. Computational Bayesian Methods Applied to Complex
+Problems in Bio and Astro Statistics. Technical report, 2019.
+APPENDIX
+Collision-Probability Evaluation.
+For each belief encountered during planning, the probability of collision is eval-
+uated at TCA and used both to test chance-constrained feasibility and to score the decision objective. Starting from
+a belief bk, the mean state and covariance of each object are propagated to TCA using the dynamics and covariance
+propagation of Section 3.1. Importantly, Στ=0 is obtained by propagating the accumulated belief covariance forward
+from bk, so that the information gained from observations taken before tk is reflected in the terminal risk; it is not reset
+to the initial covariance. The position covariances are combined to give the relative-position covariance
+Σrel =
+
+Σs
+τ=0
+(r)
++
+
+Σd
+τ=0
+(r)
+(26)
+where
+ Σs
+τ=0
+(r) and
+ Σd
+τ=0
+(r) are the position submatrices of the propagated primary and secondary covariances,
+respectively. The corresponding relative-position mean is
+µrel =
+
+µs
+τ=0
+(r)
+−
+
+µd
+τ=0
+(r)
+(27)
+Because the conjunctions considered here are short-duration, high relative-velocity encounters, the relative motion
+is approximately linear and the covariance approximately static over the encounter, permitting the standard two-
+dimensional reduction [23, 24]. Let
+vrel = (µs
+τ=0)(v) −
+
+µd
+τ=0
+(v)
+,
+ˆvrel =
+vrel
+∥vrel∥
+(28)
+and let ˆu1, ˆu2 be an orthonormal basis for the encounter plane normal to ˆvrel. Stacking these basis vectors as rows of
+T =
+
+ˆu⊤
+1
+ˆu⊤
+2
+
+∈R2×3
+(29)
+gives the projected relative-position mean and covariance
+µY,k = T µrel,
+ΣY,k = TΣrelT ⊤
+(30)
+and the collision probability associated with belief bk is
+Pc(bk) =
+Z
+∥y∥≤ρ N
+ y;µY,k,ΣY,k
+
+dy
+(31)
+where ρ is the sum of the primary and secondary hard-body radii [23, 24].
+We evaluate this integral using the fixed-order Gauss–Chebyshev quadrature formulation described by Elrod [31]
+implemented in NASA CARA’s software toolbox [27]. In contrast to Chan’s series formulation, which obtains the
+anisotropic case through an approximation to an isotropic formulation, the quadrature directly evaluates the one-
+dimensional integral associated with the general two-dimensional Gaussian encounter-plane distribution [24]. This
+is well suited to the eccentric, potentially rotated encounter-plane covariance ellipses produced by our sensor model
+in Section 4.2.

@@ -1,0 +1,1524 @@
+BIG-CBF: Behavior-Imagination-Guided Control Barrier Function with
+Shared Uncertainty for Mobile Robot Navigation
+Shibo Li1, Zhongcheng Wang1, Jiahe Cao1, Jianhua Yang1,∗, and Ke Wu2,∗
+Abstract— Control barrier functions (CBFs) provide a math-
+ematically grounded framework for enforcing local collision-
+avoidance constraints in autonomous mobile robots, commonly
+through optimization-based safety filters. However, a minimum-
+intervention CBF filter lacks task-level maneuver awareness
+and may fail to select a productive avoidance direction when
+multiple distinct maneuvers are locally viable, leading to safe
+but stalled behavior in geometrically ambiguous environments.
+This paper presents BIG-CBF, Behavior-Imagination-Guided
+Control Barrier Function with shared uncertainty, a two-
+rate navigation architecture that separates low-rate maneuver
+selection from high-rate safety filtering. Over a short horizon,
+six closed-loop feedback behaviors are imagined and evaluated
+using analytic CBF compatibility together with a lightweight
+objective accounting for task progress, freezing, smoothness,
+and switching. To reduce planning–execution mismatch, the
+imagination and execution layers share consistent uncertainty
+sources for relative-motion delay, obstacle prediction, zero-
+order-hold motion, and command-execution residuals, while
+a hard CBF remains the final safety authority. In a 3,600-
+episode comparative benchmark across nine scenarios, BIG-
+CBF achieves the highest overall task success rate of 99.78%
+while substantially reducing downstream CBF intervention.
+On a physical omnidirectional robot with onboard Jetson
+Orin Nano computation, BIG-CBF completes all 15 evaluation
+runs without a recorded contact event. Matched hardware
+comparisons against the non-shared variant further show lower
+CBF intervention energy and activation frequency, supporting
+improved consistency between maneuver selection and safety-
+critical execution.
+I. INTRODUCTION
+Safe local navigation requires a mobile robot to satisfy two
+coupled objectives: avoiding unsafe states while selecting
+maneuvers that maintain progress toward the navigation
+goal. Control barrier functions (CBFs) have emerged as a
+prominent mechanism for the former, providing modular
+quadratic-program (QP) safety filters for enforcing forward-
+invariance conditions [1], [2].
+However, a safety filter determines how a command should
+be modified to satisfy local safety constraints, rather than
+which task-progressing avoidance maneuver should be se-
+lected. This distinction creates a liveness gap. When a goal-
+directed command encounters a geometrically symmetric ob-
+stacle, the CBF correction may suppress the unsafe approach
+1Shibo
+Li,
+Zhongcheng
+Wang,
+Jiahe
+Cao,
+and
+Jianhua
+Yang
+are
+with
+the
+School
+of
+Automation,
+Northwestern
+Polytechnical
+University, Xi’an, China. E-mails: lishibo97@mail.nwpu.edu.cn,
+wangzhongcheng@mail.nwpu.edu.cn,
+chelde@mail.nwpu.edu.cn, and yangjianhua@nwpu.edu.cn.
+2Ke Wu is with the Department of Robotics, Mohamed bin Zayed
+University of Artificial Intelligence, Abu Dhabi, United Arab Emirates. E-
+mail: ke.wu@mbzuai.ac.ae.
+∗Jianhua Yang and Ke Wu are corresponding authors.
+component without creating a persistent lateral preference.
+Consequently, the robot may remain safe yet become trapped
+in a stalled state, demonstrating that forward invariance alone
+does not imply task-level liveness [3], [4].
+To mitigate such local traps, various extensions have
+been proposed. Backup CBFs [5] and Policy-Library CBFs
+(PL-CBF) [6] extend safety reasoning beyond the instanta-
+neous command through finite-horizon rollouts of fallback
+or library policies, while geometric approaches, such as
+collision-cone CBFs (C3BFs) [7] and turning-circle CBFs
+[8], encode richer relative-motion or kinematic structure into
+barrier construction. Concurrently, sampling-based predictive
+controllers such as Model Predictive Path Integral (MPPI) [9]
+and safety-integrated variants [10], [11] combine predictive
+rollouts with safety mechanisms. Recent works [12], [13]
+have also explored learned generative models for predictive
+planning and navigation. These predictive and generative
+approaches provide expressive look-ahead behavior, but typi-
+cally rely on online trajectory sampling, iterative generation,
+or offline learned action distributions. For many local avoid-
+ance interactions, a compact set of interpretable feedback
+maneuvers provides a lower-complexity alternative when the
+dominant decision is the maneuver choice itself.
+Practical deployment further complicates this problem.
+Real-world systems are affected by sampled-data effects,
+delays, zero-order-hold (ZOH) execution, and model and per-
+ception uncertainty [14]–[16]. Recent uncertainty-aware and
+distributionally robust CBFs explicitly account for uncertain
+dynamics, perception, or obstacle motion in safety synthesis
+[17]–[19]. However, consistency between uncertainty-aware
+safety constraints and an upstream maneuver-selection layer
+remains less explored, despite the broader importance of
+cross-layer robustness in layered safety-critical control [20].
+If candidate maneuvers are evaluated using nominal geom-
+etry while the downstream CBF uses uncertainty-inflated
+geometry, a maneuver judged favorable upstream may re-
+peatedly trigger corrective intervention during execution.
+This mismatch motivates exposing consistent uncertainty
+semantics to both maneuver evaluation and command-level
+safety filtering.
+Motivated by these observations, we introduce BIG-CBF,
+Behavior-Imagination-Guided Control Barrier Function with
+Shared Uncertainty. As illustrated in Fig. 1, BIG-CBF ad-
+dresses both maneuver ambiguity and cross-layer uncertainty
+mismatch through a two-rate architecture. At the low rate,
+a lightweight imagination layer evaluates a compact library
+of closed-loop feedback behaviors over a short horizon and
+selects only a behavior mode. The selected policy then
+arXiv:2609.14343v1  [cs.RO]  13 Sep 2026
+
+
+Liveness gap of CBF filtering
+Cross-layer mismatch under uncertainty
+BIG-CBF: behavior imagination 
+with shared uncertainty
+Safe but stalled
+Shared 
+Uncertainty
+No lateral preference
+Boundary expansion 
+due to uncertainty
+The corrected trajectory 
+of the lower-level CBF
+Upper-level 
+trajectory
+Cross-layer inconsistency
+Goal-directed 
+nominal command
+Resolve both issues
+Behavior Imagination
+Scoring
+Hard CBF execution follows 
+behavior imagination
+Fig. 1.
+Motivation and core idea of BIG-CBF. A conventional CBF can
+preserve local safety yet fail to select a productive avoidance direction,
+resulting in a safe-but-stalled state in geometrically ambiguous scenes. In
+layered navigation, a branch that appears feasible under nominal geometry
+may be repeatedly corrected at execution time when the downstream CBF
+accounts for uncertainty. BIG-CBF addresses both issues by selecting among
+a library of closed-loop behaviors through low-rate behavior imagination,
+while exposing shared uncertainty components to both the imagination and
+high-rate hard-CBF execution layers.
+continuously regenerates a state-dependent local subgoal and
+input command from current measurements at the faster
+control rate. In parallel, the imagination and execution layers
+use a common relative-position uncertainty representation
+constructed from the same uncertainty sources and physical
+semantics, while allowing layer-dependent calibration. The
+resulting input command is filtered by a hard CBF, which
+remains the command-level safety filter.
+The primary contributions of this letter are threefold:
+1) Lightweight Behavior Imagination: We introduce a
+lightweight maneuver-selection architecture that eval-
+uates a compact library of closed-loop feedback be-
+haviors over a finite horizon. The outer imagination
+layer selects only a behavior mode, while the selected
+policy continuously regenerates a state-dependent local
+subgoal and input command from the latest measure-
+ments at the faster execution rate. This design resolves
+discrete passing, sidestepping, and yielding choices
+without replaying open-loop imagined trajectories or
+performing dense trajectory optimization.
+2) Cross-Layer Shared-Uncertainty Evaluation: We
+formulate a common relative-position uncertainty rep-
+resentation that incorporates delay-induced displace-
+ment, obstacle-prediction uncertainty, zero-order-hold
+motion, and command-execution residuals. The same
+uncertainty sources and physical semantics are ex-
+posed to both behavior-level evaluation and the down-
+stream hard CBF, aligning maneuver selection with
+the uncertainty-aware constraints encountered during
+execution without introducing a second safety filter in
+the imagination layer.
+3) Extensive Empirical Validation: We conduct paired
+evaluations against representative baseline methods
+over 3,600 simulation episodes across nine scenar-
+ios, together with onboard physical-robot experiments.
+BIG-CBF achieves a 99.78% overall task success rate
+in simulation and completes all 15 supervised hardware
+trials. The evaluation further shows that behavior imag-
+ination improves task liveness, while cross-layer un-
+certainty consistency substantially reduces downstream
+safety-filter intervention.
+II. PROBLEM FORMULATION
+A. Robot and Obstacle Models
+Robot model. We consider an omnidirectional mobile
+robot with state x = [px, py, θ, vx, vy, ω]T, where p =
+[px, py]T is the robot position in the planar odometry frame,
+θ is the yaw angle, and (vx, vy, ω) are the body-frame
+velocities. The commanded body-frame velocity is u =
+[ux, uy, uω]T ∈R3. Throughout this paper, x and p denote
+the robot state and position available to the controller;
+physical ground-truth quantities are explicitly marked by
+the superscript “true”. The realized translational command
+execution is modeled as
+vreal = R(θ) (Au + d + r) ,
+(1)
+where vreal ∈R2 is the realized velocity in the odometry
+frame, while Au, d, and r represent the nominal realized
+translation, constant bias, and bounded residual in the body
+frame, respectively. The robot footprint is conservatively
+approximated by a circle of radius rR.
+Obstacle model. Let M denote the number of tracked
+obstacles. At the beginning of each prediction rollout (k =
+0), obstacle i ∈{1, . . . , M} is described by its estimated
+center ˆpi,0 ∈R2, estimated velocity ˆvi,0 ∈R2 expressed
+in the odometry frame, position covariance Σi,0 ∈R2×2,
+and physical radius ri. Over the short imagination horizon,
+obstacle velocity is assumed constant and its position is
+propagated as
+ˆpi,k+1 = ˆpi,k + ∆t ˆvi,k,
+(2)
+where k is the discrete prediction index and ∆t > 0 is the
+prediction interval. Prediction uncertainty is approximated by
+Σi,k+1 = Σi,k + qΣ,i∆tI2,
+(3)
+where qΣ,i ≥0 is the obstacle covariance-growth intensity
+and I2 is the 2 × 2 identity matrix. The predicted obstacle
+information at step k is collected as
+Ok = {ˆpi,k, ˆvi,k, Σi,k, ri}M
+i=1 .
+(4)
+B. Navigation Objective and Safety Requirement
+Navigation objective. Given a goal position pg ∈R2 and
+goal tolerance εg > 0, define the goal region as
+G = {x : ∥p −pg∥2 ≤εg} .
+(5)
+The navigation objective is to reach G within the task
+horizon while avoiding persistent stagnation and satisfying
+the execution-layer collision-avoidance constraints.
+Physical safety requirement. Let ptrue and ptrue
+i
+denote
+the physical centers of the robot and obstacle i, respectively.
+For a baseline clearance d0 ≥0, collision avoidance requires
+ptrue −ptrue
+i
+
+2 ≥rR + ri + d0,
+∀i.
+(6)
+
+
+g
+p
+Goal
+Robot State x
+Obstacles 
+}
+{
+,
+,
+,
+i
+i
+i
+i
+r
+Σ
+p v
+Behavior Rules
+Closed-loop Imagination
+Behavior Evaluation and Scoring
+sw
+sw,
+b
+W
+b
+P
+b
+F
+b
+b
+S
+b
+J
+w W
+w P
+w F
+w C
+w S
+=
+−
++
++
++
+
+Selected 
+Behavior
+*b
+Low-rate Behavior Imagination
+Shared Uncertainty Representation
+
+
+ref
+95
+max
+exec
+ref
+ZOH
+2
+sampled-data motion
+robot execution
+obstacle prediction
+relative-motion delay
+( )(
+)
+(
+) 
+(
+)
+i
+i
+i
+m
+R
+A
+e
+e
+θ
+τ
+β
+λ
+=
++
+−
++
+Σ
++
++
+u
+d
+v
+u
+
+
+
+Hard CBF
+(
+)
+
+T
+(exec)
+2
+( )
+0
+i
+i
+i
+R
+A
+h
+θ
+α
+
+
++
+−
++
+≥
+
+
+q
+u
+d
+v
+in
+u
+safe
+u
+High-rate Execution
+2
+0
+i
+R
+i
+i
+r
+r
+d
+m
+κ
+≥
++
++
++
+q
+
+‖ ‖
+GOAL 
+PASS-L 
+PASS-R 
+SIDE-L
+SIDE-R 
+YIELD
+Behaviors
+Local subgoal
+b
+g
+Feedback command 
+b
+u
+Selected 
+Feedback Rule
+* 
+b
+π
+Local 
+Subgoal
+*
+b
+g
+Fig. 2.
+Overview of BIG-CBF. The low-rate imagination layer evaluates six closed-loop feedback behaviors and selects only a behavior mode b∗. At the
+high-rate execution loop, the selected behavior recomputes a state-dependent local subgoal and uin from current measurements, after which the hard CBF
+generates usafe. Shared uncertainty components are used for both behavior-level compatibility evaluation and execution-level filtering.
+In practice, the true relative geometry in Eq. (6) is not di-
+rectly available due to obstacle-prediction uncertainty, sens-
+ing and actuation delay, sampled-data effects, and command-
+execution errors. BIG-CBF therefore constructs a determin-
+istic uncertainty-aware counterpart of this physical separa-
+tion requirement and uses the same uncertainty sources for
+behavior-level evaluation and CBF execution, as developed
+in Sec. III.
+III. PROPOSED METHOD
+BIG-CBF combines three coupled components, as illus-
+trated in Fig. 2. First, a low-rate behavior-imagination layer
+evaluates a compact set of closed-loop maneuver modes and
+selects a local strategy. Second, a shared relative-position
+uncertainty representation aligns behavior evaluation with the
+uncertainty-aware geometry used during execution. Finally,
+at the faster control rate, the selected behavior continuously
+regenerates the input command, which is filtered by a hard
+CBF before being sent to the robot.
+A. Lightweight Behavior Imagination
+BIG-CBF separates low-rate behavior selection from high-
+rate command execution. Let TB denote the behavior-
+selection period and TC < TB the control period. At the
+nth behavior update tn = nTB, the current robot state and
+obstacle estimates initialize a short-horizon evaluation of
+B = {GOAL, PASS-L, PASS-R, SIDE-L, SIDE-R, YIELD}.
+(7)
+Only the selected mode b∗
+n is retained; imagined trajecto-
+ries and commands are not replayed. Between two behavior
+updates, the selected feedback policy is reevaluated from the
+latest measurements,
+uin(t) = πb∗n (x(t), O(t), pg) ,
+t ∈[tn, tn+1),
+(8)
+where O(t) denotes the current obstacle estimates. Thus, TB
+governs maneuver selection, whereas TC governs feedback
+command generation and CBF filtering.
+Feedback behavior rules. Outside the goal region G,
+define the goal-directed unit vector and its left normal as
+dg =
+pg −p
+∥pg −p∥2
+,
+ng =
+
+−dg,y
+dg,x
+
+.
+(9)
+For σ = +1 and σ = −1 denoting left and right, respectively,
+the behavior-dependent local subgoal is
+gb =
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+pg,
+b = GOAL,
+p + 0.85dg
++ σ max(dpass, rR + ri + 0.35)ng,
+b = PASS-σ,
+p + 0.45dg + 0.80σng,
+b = SIDE-σ,
+p,
+b = YIELD,
+(10)
+where i denotes the locally relevant obstacle and dpass is
+the minimum lateral passing offset. PASS-L/R retain a goal-
+directed component while committing to one side; SIDE-
+L/R emphasize lateral release; and YIELD intentionally
+suppresses movement when dynamic obstacles are present.
+Let eb = gb−p. A bounded holonomic feedback controller
+generates the world-frame translational velocity
+vb = satvmax
+b
+
+eb
+∥eb∥2 min
+ vmax
+b
+, (2s−1)∥eb∥2
+
++ (0.35s−1)eb
+
+,
+(11)
+
+
+where vmax
+b
+is the behavior-dependent speed limit and
+satvmax
+b
+(·) limits the vector norm to vmax
+b
+. For YIELD, the
+command is set to zero. These rules define the feedback
+policy πb used in Eq. (8).
+Closed-loop imagination. For every candidate b ∈B, the
+imagined robot state is initialized as ˆxb
+0 = x(tn). At every
+prediction step, the command is regenerated from the current
+imagined state,
+ub
+k = πb
+ ˆxb
+k, Ok, pg
+
+,
+k = 0, . . . , N −1.
+(12)
+After each step, the robot state is propagated over ∆t using
+the execution model in Eq. (1), while obstacle states and
+covariances evolve according to Eqs. (2)–(3). Hence both
+the local subgoal and command are recomputed throughout
+the rollout.
+Behavior evaluation and scoring. Let f
+Wb denote the
+accumulated CBF-compatibility penalty constructed from
+the shared uncertainty model in Sec. III-B. The remaining
+evaluation terms are
+Pb = ∥p −pg∥2 −∥ˆpb
+N −pg∥2,
+Fb = 1
+N
+N−1
+X
+k=0
+I
+
+ub
+x,k
+ub
+y,k
+
+2
+< vfreeze
+
+,
+Sb =
+N−1
+X
+k=1
+∥ub
+k −ub
+k−1∥2
+2 + ∥ub
+0∥2
+2,
+Csw,b = I[b̸ = bcur],
+(13)
+where ˆpb
+N is the position component of the terminal imag-
+ined state, vfreeze is the translational freezing threshold, and
+bcur is the currently retained mode.
+Candidates passing the robust barrier test defined in
+Sec. III-B are ranked by
+Jb = wW f
+Wb −wP Pb + wF Fb + wswCsw,b + wSSb, (14)
+with positive weights wW , wP , wF , wsw, wS. The lowest-
+cost accepted candidate is selected subject to a minimum
+dwell time and a relative switching-improvement threshold.
+If all regular behaviors fail the acceptance test, the controller
+invokes the predefined reverse-release fallback. The numer-
+ical parameters are reported in Sec. IV.
+B. Cross-Layer Shared-Uncertainty Evaluation
+Shared uncertainty aligns behavior-level evaluation with
+the uncertainty-aware geometry encountered during execu-
+tion without introducing a second safety filter in the imagi-
+nation layer.
+Relative-position uncertainty representation. We aggre-
+gate their effect into the relative-position error ϵrel
+i . Define
+qi = p −ˆpi,
+ϵrel
+i
+= (ptrue −p) −(ptrue
+i
+−ˆpi). (15)
+The true relative position is therefore
+ptrue −ptrue
+i
+= qi + ϵrel
+i .
+(16)
+For layer ℓ∈{img, exec}, let κℓmi denote the adopted
+relative-position uncertainty envelope,
+∥ϵrel
+i ∥2 ≤κℓmi,
+(17)
+where mi is the common uncertainty radius and κℓallows
+layer-dependent calibration.
+Applying the reverse triangle inequality gives
+ptrue −ptrue
+i
+
+2 =
+qi + ϵrel
+i
+
+2
+≥∥qi∥2 −∥ϵrel
+i ∥2
+≥∥qi∥2 −κℓmi.
+(18)
+Therefore, a sufficient instantaneous condition for satisfying
+Eq. (6) is
+∥qi∥2 ≥rR + ri + d0 + κℓmi.
+(19)
+Accordingly, define
+D(ℓ)
+i
+= rR + ri + d0 + κℓmi,
+h(ℓ)
+i
+= ∥qi∥2
+2 −
+
+D(ℓ)
+i
+2
+.
+(20)
+Thus, D(ℓ)
+i
+follows directly from a bound on the uncertain
+relative position. For the execution layer, the resulting ro-
+bustness statement is conditional on the adopted bound in
+Eq. (17) containing the actual relative-position error.
+Cross-layer uncertainty sharing. Let uref denote the
+command associated with the layer being evaluated: uref =
+ub
+k during imagination and uref = uin during execution. The
+common relative-position uncertainty radius is
+mi = ∥R(θ)(Auref + d) −ˆvi∥2 τ95
+|
+{z
+}
+relative-motion delay
++ β
+p
+λmax(Σi)
+|
+{z
+}
+obstacle prediction
++ eexec(uref)
+|
+{z
+}
+robot execution
++
+eZOH
+| {z }
+sampled-data motion
+.
+(21)
+Here τ95
+is the adopted perception-to-actuation delay,
+β
+p
+λmax(Σi) is the covariance-based obstacle prediction
+radius, eexec bounds displacement induced by execution
+residuals, and eZOH accounts for inter-sample zero-order-
+hold motion. Eq. (21) is reevaluated with the corresponding
+predicted quantities during imagination. In particular, for
+candidate b at step k, h(img),b
+i,k
+denotes Eq. (20) evaluated with
+ℓ= img, the imagined robot state ˆxb
+k, obstacle prediction
+(ˆpi,k, ˆvi,k, Σi,k), and uref = ub
+k.
+A candidate is rejected when
+min
+k,i h(img),b
+i,k
+< −εh,
+(22)
+where εh ≥0 is the barrier-acceptance tolerance. For an ac-
+cepted candidate, CBF compatibility is evaluated analytically
+without solving a future QP. Let α > 0 be the CBF gain and
+define the scalar CBF margin along the imagined rollout as
+γb
+i,k(u) = 2(ˆpb
+k −ˆpi,k)T h
+R(ˆθb
+k)(Au + d) −ˆvi,k
+i
++ αh(img),b
+i,k
+,
+(23)
+where ˆpb
+k and ˆθb
+k are the position and yaw components of
+ˆxb
+k. Since γb
+i,k(u) is affine in u, the accumulated normalized
+violation is
+f
+Wb =
+N−1
+X
+k=0
+M
+X
+i=1
+h
+max
+
+−γb
+i,k(ub
+k), 0
+i2
+∥∇uγb
+i,k∥2
+2 + ϵ
+,
+(24)
+where ϵ > 0 is a small numerical regularizer. With multiple
+coupled constraints and actuator bounds, f
+Wb is used only as
+
+
+an analytic intervention surrogate, and no CBF-QP is solved
+inside the imagination layer.
+Hence, the two layers share the same uncertainty sources
+and physical semantics, while κℓallows layer-specific cal-
+ibration. Behavior imagination uses the resulting geometry
+only for candidate evaluation, whereas the execution layer
+uses h(exec)
+i
+in the actual hard safety filter.
+C. Hard CBF Execution Filter
+CBF constraint. At each control update, D(exec)
+i
+is evalu-
+ated from the current uncertainty profile and uin, and is held
+fixed during the current optimization. The execution filter
+then enforces
+2qT
+i [R(θ)(Au + d) −ˆvi] + αh(exec)
+i
+≥0.
+(25)
+With D(exec)
+i
+fixed within the current solve, Eq. (25) is affine
+in u. This constraint is used as a sampled command-level
+safety filter.
+Minimum-intervention filtering. The final safety filter
+computes
+usafe = arg min
+u
+(u −uin)TH(u −uin)
+s.t.
+Eq. (25),
+∀i,
+umin ≤u ≤umax,
+(26)
+where H ≻0 weights modification of the command channels
+and umin, umax are the actuator bounds. If uin already
+satisfies all constraints, the minimum-intervention solution
+is usafe = uin; otherwise, the CBF modifies it within the
+feasible set.
+IV. SIMULATION RESULTS
+A. Simulation Setup
+We evaluate BIG-CBF in an omnidirectional-robot sim-
+ulator that explicitly models command latency, affine ex-
+ecution scaling, bounded execution residuals, and lateral
+slip. As illustrated in Fig. 3, nine scenarios cover limited
+visibility, narrow-space negotiation, dynamic interactions,
+execution uncertainty, dense clutter, and mandatory lateral
+maneuvering. All methods use identical observations, actu-
+ator limits, execution disturbances, and the same final hard
+CBF filter. We compare CBF-only [1], Backup-CBF+CBF
+[5], PL-CBF+CBF [6], APF+CBF [21], DWA+CBF [22],
+MPPI+CBF [9], BIG-CBF-NoShared, and BIG-CBF. CBF-
+only directly provides goal-tracking commands to the com-
+mon CBF, whereas Backup-CBF and PL-CBF act as policy
+shields before the same execution filter. APF and DWA
+operate at the control rate. DWA uses a 1.5 s rolling horizon,
+matching the prediction horizon of BIG-CBF. MPPI is con-
+figured with the same 2 Hz outer-loop frequency and 1.5 s
+prediction horizon as BIG-CBF, and MPPI itself uses 512
+sampled trajectories and two sampling updates per planning
+cycle. Each method–scenario combination is evaluated using
+the same 50 random seeds, resulting in 8 × 9 × 50 = 3600
+formal episodes.
+Parameters. The simulation instantiates the symbols in-
+troduced in Secs. II–III as summarized in Table I. The
+(a) blind_corner
+(b) corridor_meeting
+(c) crossing_person
+(d) crowd_crossing
+(e) delay_slip
+(f) double_squeeze
+(g) mixed_dense
+(h) multi_static_clutter
+(i) sidestep_required
+Robot / safety footprint
+Static obstacle
+Dynamic obstacle
+Boundary proxy
+Goal
+Fig. 3.
+Nine simulation benchmark scenarios. (a) blind-corner emergence,
+(b) corridor meeting, (c) single-person crossing, (d) crowd crossing, (e)
+delay and slip, (f) double squeeze, (g) mixed dense traffic, (h) multi-static
+clutter, and (i) required sidestepping.
+behavior-selection and execution periods are TB = 0.5 s
+and TC = 0.05 s, respectively. Behavior imagination uses
+N = 15 prediction steps with ∆t = 0.1 s. The latency and
+execution-residual terms were obtained from an independent
+calibration sequence.
+TABLE I
+PRINCIPAL SIMULATION PARAMETERS
+Quantity
+Symbol
+Value
+Behavior-selection period
+TB
+0.50 s (2 Hz)
+Execution / CBF period
+TC
+0.05 s (20 Hz)
+Perception rate
+–
+≈10 Hz
+Imagination horizon
+N, ∆t
+15, 0.10 s
+Goal tolerance
+εg
+0.15 m
+Freeze threshold
+vfreeze
+0.05 m/s
+Barrier acceptance tolerance
+εh
+0.10 m2
+Base clearance
+d0
+0.10 m
+Delay parameter
+τ95
+0.10 s
+Covariance scale
+β
+2.0
+ZOH displacement
+eZOH
+0.025 m
+Layer scaling
+κimg, κexec
+1.0, 1.0
+Score weights
+(wW , wP , wF ,
+wsw, wS)
+(1, 1.5, 3.0,
+0.5, 0.05)
+Evaluation metrics. Task success denotes reaching the
+goal region G before the scenario timeout. In addition to
+completion time and minimum geometric clearance, we
+measure the burden placed on the common CBF using
+ECBF =
+K−1
+X
+k=0
+(usafe,k −uin,k)TRu(usafe,k −uin,k),
+(27)
+where Ru is fixed across all methods. This is a weighted
+command-correction metric. Lower values indicate that the
+upstream controller more frequently generates commands
+already compatible with the common CBF. We also report
+the common-CBF activation ratio, defined as the fraction of
+control steps for which at least one CBF constraint is active,
+and the hard-QP infeasibility rate.
+
+
+B. Comparative Analysis
+Aggregate performance. Table II reports aggregate per-
+formance over the 450 episodes of each method. All eight
+methods recorded zero simulated collisions under the com-
+mon hard CBF execution layer; the main differences there-
+fore concern task liveness and the amount of downstream
+CBF intervention. BIG-CBF completed 449/450 episodes,
+corresponding to 99.78% task success. More importantly,
+it required substantially less correction from the common
+safety filter: mean ECBF was 0.02, compared with 0.83 for
+DWA+CBF and 0.45 for MPPI+CBF, while the CBF acti-
+vation ratio decreased to 9.10% from 30.24% and 36.94%,
+respectively. These results indicate that behavior imagination
+more frequently produces uin inside or near the downstream
+CBF-admissible set. BIG-CBF also achieved the largest
+mean minimum clearance, 0.55 m.
+TABLE II
+AGGREGATED PERFORMANCE ACROSS 9 SCENARIOS
+Method
+Success
+Time
+Clearance
+ECBF
+Active
+QP Infeas.
+(%)
+(s)
+(m)
+(%)
+(%)
+CBF-only
+68.67
+15.13
+0.35
+7.03
+62.51
+0.04
+Backup-CBF + CBF
+76.00
+13.70
+0.35
+4.97
+39.06
+0.06
+PL-CBF + CBF
+74.89
+14.51
+0.33
+6.08
+44.29
+0.08
+APF + CBF
+82.44
+14.52
+0.51
+0.17
+14.73
+0.00
+DWA + CBF
+93.78
+11.31
+0.41
+0.83
+30.24
+0.03
+MPPI + CBF
+83.33
+12.35
+0.41
+0.45
+36.94
+0.03
+BIG-CBF-NoShared
+98.89
+11.21
+0.52
+0.10
+15.64
+0.00
+BIG-CBF
+99.78
+11.72
+0.55
+0.02
+9.10
+0.00
+Scenario-level liveness. Fig. 4 shows that the aggre-
+gate difference is concentrated in scenarios requiring per-
+sistent maneuver selection. In required sidestepping, CBF-
+only, Backup-CBF, PL-CBF, and APF achieved 50%, 52%,
+52%, and 56% success, respectively; DWA+CBF and both
+BIG-CBF variants achieved 100%, while matched-horizon
+MPPI+CBF achieved 66%. Multi-static clutter was more
+discriminative: CBF-only, Backup-CBF, PL-CBF, and APF
+all achieved 0%, DWA achieved 68%, MPPI 2%, BIG-CBF-
+NoShared 94%, and BIG-CBF 100%. These cases support
+the intended role of behavior imagination in maintaining a
+productive passing or sidestepping mode rather than relying
+on the pointwise CBF to create such a preference. Con-
+versely, BIG-CBF achieved 98% in corridor meeting, where
+all comparison methods achieved 100%; its single failure was
+a collision-free timeout, illustrating that persistent behavior
+commitment and uncertainty inflation can occasionally re-
+duce efficiency in narrow but feasible geometries.
+Computation. BIG-CBF required 55.68 ms P95 for its
+TB = 0.5 s imagination cycle, corresponding to 11.14%
+of the available outer-loop period. Matched MPPI required
+77.80 ms (15.56%), whereas DWA required 2.12 ms P95
+at its 20 Hz replanning rate, or 4.24% of its 50-ms period.
+The common CBF required approximately 0.80 ms P95 for
+BIG-CBF. No evaluated outer planner missed its scheduling
+deadline.
+CBF-only
+Backup-CBF + CBF
+PL-CBF + CBF
+APF + CBF
+DWA + CBF
+MPPI + CBF
+BIG-CBF-NoShared
+BIG-CBF
+blind_corner
+corridor_meeting
+crossing_person
+crowd_crossing
+delay_slip
+double_squeeze
+mixed_dense
+multi_static_clutter
+sidestep_required
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+0.98
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+0.64
+1.00
+0.86
+0.86
+0.86
+0.90
+0.96
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+0.04
+0.32
+0.36
+1.00
+0.90
+0.92
+1.00
+1.00
+0.00
+0.00
+0.00
+0.00
+0.68
+0.02
+0.94
+1.00
+0.50
+0.52
+0.52
+0.56
+1.00
+0.66
+1.00
+1.00
+Success rate by scenario
+CBF-only
+Backup-CBF + CBF
+PL-CBF + CBF
+APF + CBF
+DWA + CBF
+MPPI + CBF
+BIG-CBF-NoShared
+BIG-CBF
+blind_corner
+corridor_meeting
+crossing_person
+crowd_crossing
+delay_slip
+double_squeeze
+mixed_dense
+multi_static_clutter
+sidestep_required
+0.74
+0.63
+0.66
+0.00
+0.12
+0.03
+0.03
+0.00
+4.45
+3.84
+5.09
+0.72
+0.59
+0.76
+0.24
+0.10
+0.38
+0.34
+0.34
+0.11
+0.11
+0.22
+0.02
+0.01
+17.40
+2.47
+11.23
+0.47
+3.56
+1.06
+0.40
+0.03
+0.42
+0.37
+0.38
+0.11
+0.13
+0.18
+0.03
+0.01
+2.78
+2.10
+2.35
+0.04
+0.11
+0.18
+0.01
+0.01
+15.47
+13.32
+13.08
+0.07
+2.74
+0.91
+0.15
+0.04
+13.95
+14.01
+14.00
+0.00
+0.07
+0.60
+0.02
+0.02
+7.64
+7.62
+7.62
+0.01
+0.03
+0.10
+0.00
+0.00
+CBF intervention energy by scenario
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+2
+4
+6
+8
+10
+12
+14
+16
+Fig. 4.
+Scenario-level performance across the nine simulation environ-
+ments. The largest success-rate differences occur in topologically ambiguous
+scenarios such as required sidestepping and multi-static clutter, while several
+simpler scenarios saturate at 100%. All methods use the same final hard CBF
+execution filter.
+C. Shared-Uncertainty Ablation
+Ablation design. BIG-CBF-NoShared isolates the contri-
+bution of cross-layer uncertainty consistency. It retains the
+same behavior library, feedback policies, horizon, switching
+logic, and final hard CBF as BIG-CBF, but replaces the
+imagination-layer uncertainty construction in Eq. (21) with a
+fixed 0.30-m geometric margin. Thus, any difference between
+the two variants arises from how candidate behaviors are
+evaluated upstream.
+Safety-filter
+burden.
+BIG-CBF-NoShared
+achieved
+98.89% success compared with 99.78% for BIG-CBF.
+More clearly, uncertainty sharing reduced the common-CBF
+activation ratio from 15.64% to 9.10% and reduced mean
+ECBF from 0.10 to 0.02. Mean minimum clearance increased
+from 0.52 m to 0.55 m. These results are consistent with the
+intended effect of shared uncertainty: candidate maneuvers
+are evaluated under uncertainty semantics consistent with
+those
+encountered
+by
+the
+downstream
+CBF,
+reducing
+subsequent command correction.
+Conservatism trade-off. The improved cross-layer con-
+sistency incurs a modest efficiency cost. BIG-CBF required
+a mean completion time of 11.72 s, compared with 11.21
+s for BIG-CBF-NoShared. The additional stopped time was
+
+
+t=0s
+t=3s
+t=6s
+t=9s
+t=0s
+t=4s
+t=8s
+t=12s
+t=0s
+t=3s
+t=8s
+t=14s
+t
+(a)
+(b)
+(c)
+Fig. 5.
+Representative real-world executions of BIG-CBF in three navigation scenarios: (a) required sidestepping, (b) static clutter, and (c) pedestrian
+crossing. For each scenario, four snapshots are shown from left to right in temporal order. The sequences illustrate how BIG-CBF maintains a persistent local
+maneuver while continuously updating the executed command from current onboard perception. Full temporal executions are provided in the supplementary
+video.
+associated with deliberately selected YIELD behavior rather
+than persistent unintended stagnation. Shared uncertainty
+should therefore be interpreted as trading modest proactive
+conservatism for lower downstream intervention and larger
+simulated separation.
+V. REAL-WORLD EXPERIMENTS
+A. Platform, Calibration, and Implementation
+Platform and perception. Physical experiments were
+conducted on a Rosmaster X3 Mecanum-wheeled robot
+equipped with an NVIDIA Jetson Orin Nano (4 GB RAM)
+running ROS 2 Humble. Robot state estimation combined
+wheel odometry and IMU measurements, while LiDAR-
+based obstacle perception operated at approximately 10 Hz.
+Detected obstacles were clustered and associated into at
+most eight tracked entities using constant-velocity Kalman
+filters with static/dynamic classification hysteresis. All per-
+ception, behavior imagination, CBF filtering, and command
+generation were executed onboard. The simulation timing
+configuration was retained, with TC
+= 0.05 s for the
+execution/CBF loop and TB = 0.5 s for BIG-CBF behavior
+imagination. The translational speed limit was 0.8 m/s, while
+SIDE-L/R used a lateral speed limit of 0.55 m/s.
+Physical uncertainty profile. The uncertainty model was
+calibrated separately from the synthetic simulation profile.
+The robot footprint was conservatively represented by a
+circle with rR = 0.15 m. The physical profile used d0 = 0.05
+m, β = 1, and eZOH = 0.0716 m, together with latency
+and command-dependent execution-residual terms obtained
+from hardware measurements. The execution layer used the
+full profile (κexec = 1); in dynamic scenes, the imagination
+layer used κimg = 0.8 for the non-base uncertainty terms.
+BIG-CBF-NoShared retained the same execution CBF but
+replaced the imagination-side shared-uncertainty model with
+a fixed 0.30 m margin.
+B. Hardware Evaluation Results
+Evaluation protocol. The eight methods were evaluated in
+three representative physical navigation scenarios: required
+sidestepping, static clutter, and pedestrian crossing. Each
+method–scenario combination was repeated five times, re-
+sulting in 120 supervised trials. Fig. 5 qualitatively illustrates
+BIG-CBF behavior in the three test environments.
+TABLE III
+OVERALL PERFORMANCE IN 3 REAL-WORLD SCENARIOS
+Method
+Success
+Time
+Clearance
+ECBF
+Active
+QP Infeas.
+(s)
+(m)
+(%)
+(%)
+CBF-only
+7/15
+21.62
+0.29
+11.04
+88.60
+0.12
+Backup-CBF + CBF
+8/15
+19.80
+0.21
+1.65
+59.60
+0.09
+PL-CBF + CBF
+9/15
+19.92
+0.16
+1.49
+55.20
+0.43
+APF + CBF
+1/15
+29.75
+0.29
+0.28
+29.60
+0.04
+DWA + CBF
+13/15
+12.32
+0.14
+0.88
+47.30
+1.42
+MPPI + CBF
+9/15
+20.56
+0.27
+0.40
+42.85
+0.10
+BIG-CBF-NoShared
+15/15
+11.79
+0.24
+0.60
+39.30
+0.18
+BIG-CBF
+15/15
+13.18
+0.29
+0.26
+26.9
+0.00
+Task performance. BIG-CBF completed all 15 physical
+trials, as did BIG-CBF-NoShared, while DWA+CBF com-
+pleted 13/15, MPPI+CBF 9/15, and APF+CBF 1/15. To-
+gether with the simulation results, these observations support
+the role of persistent behavior selection in local geometries
+where purely reactive commands may fail to maintain task
+progress.
+Shared-uncertainty effect. The matched comparison be-
+tween BIG-CBF and BIG-CBF-NoShared provides more di-
+rect evidence for the effect of cross-layer uncertainty consis-
+tency. Shared uncertainty reduced common-CBF intervention
+
+
+energy by 0.34 and reduced the CBF activation rate by 12.40
+percentage points. This reduction in downstream intervention
+was accompanied by an increase in mean completion time
+from 11.79 s to 13.18 s, indicating a modest conservatism–
+efficiency trade-off.
+Onboard computation. BIG-CBF remained within its
+onboard behavior-imagination budget on the Jetson Orin
+Nano, with a planner P95 latency of 141.0 ms, corresponding
+to 28.20% of the available TB = 0.5 s period. The TC = 0.05
+s exact active-set CBF achieved a P95 solve time of 3.86 ms
+and recorded a 0.00% QP failure rate. These measurements
+demonstrate that the two-rate architecture can be executed
+fully onboard under the computational constraints of the
+tested platform.
+VI. CONCLUSION
+This paper presented BIG-CBF, a two-rate mobile-robot
+navigation framework that combines behavior-level maneu-
+ver selection with hard-CBF-based safety filtering under a
+shared uncertainty representation. Across 3,600 simulation
+episodes, BIG-CBF achieved a 99.78% task success rate
+while substantially reducing downstream CBF intervention,
+and the ablation results further showed that cross-layer
+uncertainty consistency lowers safety-filter burden while
+maintaining conservative separation. In physical experiments,
+BIG-CBF completed all 15 supervised trials and demon-
+strated onboard computational feasibility on a Mecanum
+robot equipped with a Jetson Orin Nano. These results
+demonstrate that lightweight behavior imagination can im-
+prove task liveness while remaining compatible with high-
+rate CBF execution. Future work will extend the framework
+to richer geometric representations, more principled uncer-
+tainty models, and adaptive behavior generation in complex
+dynamic environments.
+REFERENCES
+[1] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier
+function based quadratic programs for safety critical systems,” IEEE
+Trans. Autom. Control, vol. 62, no. 8, pp. 3861–3876, Aug 2017.
+[2] K.-C. Hsu, H. Hu, and J. F. Fisac, “The safety filter: A unified view
+of safety-critical control in autonomous systems,” Annu. Rev. Control
+Robot. Auton. Syst., vol. 7, pp. 47–72, 2024.
+[3] P. Mestres, Y. Chen, E. Dall’Anese, and J. Cort´es, “Control barrier
+function-based safety filters: Characterization of undesired equilibria,
+unbounded trajectories, and limit cycles,” J. Nonlinear Sci., vol. 36,
+no. 2, p. 41, 2026.
+[4] R. Chandra, V. Zinage, E. Bakolas, P. Stone, and J. Biswas,
+“Deadlock-free, safe, and decentralized multi-robot navigation in
+social mini-games via discrete-time control barrier functions,” Au-
+tonomous Robots, vol. 49, no. 2, p. 12, 2025.
+[5] Y. Chen, M. Jankovic, M. A. Santillo, and A. D. Ames, “Backup
+control barrier functions: Formulation and comparative study,” in Proc.
+IEEE Conf. Decision Control (CDC), 2021, pp. 6835–6841.
+[6] T. Kim, H. Okamoto, B. Hoxha, G. Fainekos, and D. Panagou, “Policy
+library cbf: Finite-horizon safety at runtime via parallel rollouts,” arXiv
+preprint arXiv:2605.16588, 2026.
+[7] M. Tayal, B. G. Goswami, K. Rajgopal, R. Singh, M. T. Rao,
+J. Keshavan, P. Jagtap, and S. N. Yadukumar, “A collision cone
+approach for control barrier functions,” IEEE Transactions on Control
+Systems Technology, 2026.
+[8] C. Lee, K. Park, and J. Kim, “Turning circle-based control barrier
+function for efficient collision avoidance of nonholonomic vehicles,”
+IEEE Transactions on Control Systems Technology, 2026.
+[9] G. Williams, P. Drews, B. Goldfain, J. M. Rehg, and E. A. Theodorou,
+“Information-theoretic model predictive control: Theory and applica-
+tions to autonomous driving,” J. Guid. Control Dyn., vol. 40, no. 2,
+pp. 430–446, 2017.
+[10] J. Yin, C. Dawson, C. Fan, and P. Tsiotras, “Shield model predictive
+path integral: A computationally efficient robust mpc method using
+control barrier functions,” IEEE Robot. Autom. Lett., vol. 8, no. 11,
+pp. 7106–7113, Nov 2023.
+[11] J. Yin, O. So, E. Y. Yu, C. Fan, and P. Tsiotras, “Safe beyond the
+horizon: Efficient sampling-based mpc with neural control barrier
+functions,” in Proc. Robot. Sci. Syst. (RSS), 2025.
+[12] W. Xiao, J. Wang, C. Gan, R. Hasani, M. Lechner, and D. Rus,
+“Safediffuser: Safe planning with diffusion probabilistic models,” in
+International Conference on Learning Representations, vol. 2025,
+2025, pp. 100 391–100 412.
+[13] S. Li, Z. Wang, J. Cao, J. Yang, and K. Wu, “PIER-Flow: Physics-
+informed efficient rectified flow for real-time mobile robot navigation,”
+arXiv preprint arXiv:2607.10288, 2026.
+[14] K. Garg, J. Usevitch, J. Breeden, M. Black, D. Agrawal, H. Par-
+wana, and D. Panagou, “Advances in the theory of control barrier
+functions: Addressing practical challenges in safe control synthesis
+for autonomous and robotic systems,” Annu. Rev. Control, vol. 57, p.
+100945, 2024.
+[15] X. Tan, E. Das, A. D. Ames, and J. W. Burdick, “Zero-order control
+barrier functions for sampled-data systems with state and input depen-
+dent safety constraints,” arXiv preprint arXiv:2411.17079, 2024.
+[16] S. Liu, W. Xiao, and C. A. Belta, “Sampling-aware control barrier
+functions for safety-critical and finite-time constrained control,” arXiv
+preprint arXiv:2511.11897, 2025.
+[17] J. Li, Q. Liu, W. Jin, J. Qin, and S. Hirche, “Robust safe learning and
+control in an unknown environment: An uncertainty-separated control
+barrier function approach,” IEEE Robot. Autom. Lett., vol. 8, no. 10,
+pp. 6539–6546, Oct 2023.
+[18] K. Long, Y. Yi, Z. Dai, S. Herbert, J. Cort´es, and N. Atanasov,
+“Sensor-based distributionally robust control for safe robot navigation
+in dynamic environments,” Int. J. Robot. Res., vol. 45, no. 2, pp. 328–
+351, 2026.
+[19] X. Wang, T. Kim, B. Hoxha, G. Fainekos, and D. Panagou, “Safe
+navigation in uncertain crowded environments using risk adaptive cvar
+barrier functions,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst.
+(IROS), 2025, pp. 7669–7676.
+[20] W. D. Compton, M. H. Cohen, and A. D. Ames, “Learning for layered
+safety-critical control with predictive control barrier functions,” in
+Proc. 7th Annu. Learn. Dyn. Control Conf., vol. 283.
+PMLR, 2025,
+pp. 153–165.
+[21] O. Khatib, “Real-time obstacle avoidance for manipulators and mobile
+robots,” Int. J. Robot. Res., vol. 5, no. 1, pp. 90–98, 1986.
+[22] D. Fox, W. Burgard, and S. Thrun, “The dynamic window approach
+to collision avoidance,” IEEE Robot. Autom. Mag., vol. 4, no. 1, pp.
+23–33, Mar 1997.

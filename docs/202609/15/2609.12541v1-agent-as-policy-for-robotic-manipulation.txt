@@ -1,0 +1,1874 @@
+Agent as Policy
+AGENT AS POLICY FOR ROBOTIC MANIPULATION
+Mengzhao Jia1,*
+Yang Lin2,*
+Xixin Zhang3,*
+Zhihan Zhang1
+Xiaobai Liu3
+Meng Jiang1
+1University of Notre Dame
+2University of California San Diego
+3San Diego State University
+*Core contributors
+1mjia2@nd.edu
+ABSTRACT
+We demonstrate that a general-purpose agent can directly drive a physical robot
+throughout task execution without any task-specific or environment-specific train-
+ing. We introduce Agent as Policy (AGP), which places task planning and ex-
+ecution under the agent’s control. Given a task and a robot interface, the agent
+interprets visual evidence, writes executable programs, issues motion commands,
+and revises its actions in response to physical outcomes. This brings the agent’s
+reasoning and programming capabilities into continuous interaction with the physi-
+cal world. We study AGP across multiple real-world manipulation tasks spanning
+precision manipulation, dynamic motions, and deformable objects. These include
+assembly from human videos, block construction from goal images, die reorienta-
+tion, targeted throwing, and bimanual towel folding. AGP achieves success rates of
+100%, 100%, and 80% on three block construction configurations. These findings
+establish a path for general-purpose agents to act as robot policies, extending their
+autonomy to physical manipulation through runtime reasoning, programming, and
+interaction.
+1
+INTRODUCTION
+Multimodal large language models (MLLMs) demonstrate strong general capabilities (Li et al.,
+2026b). Agents built on these models tackle digital tasks such as software development and computer
+use (Yang et al., 2024; Wang et al., 2024; Xie et al., 2024). Recent work extends these agents to
+robot manipulation, bringing their task execution capabilities from digital environments into the
+physical world (Li et al., 2026a; Zhang et al., 2026; Galanti et al., 2026). These agentic robot systems
+broadly follow two approaches. The first approach uses agents to generate executable programs in
+advance, expressed as code or computation graphs that the robot runs during task execution (Liang
+et al., 2022; Chen et al., 2026). The second approach uses agents as orchestrators of existing learned
+policies, selecting and sequencing these policies according to task goals and execution feedback (Li
+et al., 2026a; Zhang et al., 2026; Galanti et al., 2026). Both approaches, however, have limitations.
+Generated programs must express runtime decisions through explicit rules, making it difficult to
+anticipate how uncertain observations and unexpected outcomes should affect execution. Policy
+orchestration gives agents control over which policy runs next, while motion generation remains
+limited by what the selected policies can perform.
+Yet physical tasks often require the flexibility to adapt both how evidence is interpreted and how
+actions are generated. After a failed insertion, for example, the robot may need a closer view, a revised
+alignment estimate, or a different approach direction. Choosing and carrying out the appropriate
+response requires reasoning jointly about the current scene, the attempted motion, and its outcome.
+To this end, we introduce Agent as Policy (AGP), which uses the agent itself as the policy throughout
+task execution. We grant the agent full autonomy over runtime task decisions: it decides what to
+observe, how to interpret evidence, and which motion to request, and can author and revise local
+programs as needed. Each result informs the next decision, including whether to gather more evidence
+or change the execution strategy. This gives the agent control over perception, motion generation,
+and recovery at the level where new physical evidence becomes available.
+1
+arXiv:2609.12541v1  [cs.CL]  11 Sep 2026
+
+
+Agent as Policy
+(a) Tasks
+Video guided
+assembly
+Image guided
+construction
+Dice
+reorientation
+Targeted
+throwing
+Bimanual
+towel folding
+Eight parts · Four pairs
+Six blocks → pyramid
+Set all six with 5 up
+Potato into bowl
+Two arms + towel
+Long Horizon Reasoning · Visual Instruction
+Action Diversity · Language Instruction
+Deformable Objects
+(b) Agent as Policy
+1  Task preparation Once per task type
+User request
+Video / image / language
+Preparation agent
+Reads task requirements
+Task definition
+Goal, constraints, criteria
+Current instance
++ robot interface docs
+2  Task execution
+Execution agent
+Creates&Selects tools for the current task
+Examples
+3D localization
+Images + depth
+Object position
+Pose planning
+Object geometry
+Gripper pose
+Executable code
+Python + libraries
+Move + inspect
+New observations guide the next estimate and action
+Robot interface
+Observation 
+Action Requests
+Images, state, errors
+Robot + controller
+IK for pose targets
+Trajectory + feedback
+Runtime
+Figure 1: Overview of AGP. (a) Evaluated tasks include video guided assembly, image guided
+construction, die reorientation, targeted throwing, and bimanual towel folding. (b) A preparation
+agent creates a reusable task definition. At runtime, the execution agent writes and selects programs to
+interpret observations, compute motion targets, and request robot actions through the robot interface.
+After each action, the agent uses motion feedback and new observations to refine its estimates and
+adjust subsequent actions.
+We implement AGP by connecting a general purpose coding agent to the robot through a bridge
+that exposes calibrated observations, geometric queries, and motion commands (Figure 1). The
+coding agent provides the programming tools and persistent workspace used to create scripts, inspect
+data, and retain execution evidence. Through these tools, it can compute object geometry, evaluate
+candidate motions, and revise action sequences using feedback from the robot. The bridge grounds
+these computations in camera calibration and robot coordinates, validates requested motion, and
+returns measured state and execution reports. It also supports coordinated joint and gripper motion
+for actions that depend on timing. Motion execution and monitoring run independently of agent
+inference, allowing the robot to execute a submitted motion while the agent reasons between tool
+calls. Adaptation occurs through updated measurements, programs, and decisions within the session,
+with model parameters fixed throughout execution.
+We evaluate AGP directly on real robots through assembly from human videos, block construction
+from goal images, die reorientation, targeted throwing, and bimanual towel folding. In the main
+evaluation, each trial starts in a fresh session with fixed model weights and no prior task execution
+experience or simulation rehearsal. AGP achieves success rates of at least 80% in seven of eight task
+configurations, including 14 of 15 successful trials across three block construction configurations and
+5 of 5 on die reorientation. Across configurations, mean completion time for successful trials ranges
+from 20.6 to 54.3 minutes, with mean inference costs from USD 7.46 to USD 27.41 per successful
+trial. We also explore experience reuse across two assembly tasks and observe that its benefits for
+task execution time vary by task.
+This work provides evidence that general purpose foundation MLLMs can serve as policies for
+direct robot arm control through a robot interface. Their visual perception and reasoning capabilities
+support interpreting task goals, generating motions, and adapting to physical feedback during zero
+shot manipulation. The substantial execution time and inference cost remain barriers to practical de-
+ployment. We hope this study provides insights for future research on using the powerful capabilities
+of foundation MLLMs for more capable and efficient robot manipulation.
+2
+
+
+Agent as Policy
+2
+RELATED WORK
+2.1
+AGENTIC ROBOT SYSTEMS
+Agentic robot systems use language models for reasoning, tool use, and adaptation through execution
+feedback, with two main roles for the agent. Program synthesis and refinement. One line generates
+programs that map observations to actions through perception and control interfaces, with validation
+supporting execution in simulation and on physical robots (Singh et al., 2022; Liang et al., 2022; Chen
+et al., 2024; Mu et al., 2024). Recent work uses execution evidence to iteratively refine programs or
+computation graphs and retain reusable solutions (Lu et al., 2026). AGP keeps a runtime agent in the
+decision loop during deployment, allowing it to choose new approaches, write new programs, and
+revise workflows based on observations and execution feedback. Runtime policy orchestration. A
+second line selects and sequences learned skills according to task goals, affordances, and environment
+feedback (Ahn et al., 2022; Huang et al., 2022). Recent systems extend this approach to vision
+language action (VLA) policies with progress monitoring and recovery (Li et al., 2026a; Zhang et al.,
+2026; Galanti et al., 2026). These systems separate skill selection from motion generation within
+the invoked policy or primitive. AGP uses the runtime agent itself as the policy without a separately
+trained action policy, enabling zero shot task execution in previously unseen environments.
+2.2
+ROBOT MANIPULATION
+Classical robot manipulation combines geometric modeling, task and motion planning, and feedback
+control (Garrett et al., 2021). Learned visuomotor policies predict actions from robot trajectory data,
+with diffusion models capturing action sequences (Chi et al., 2023). Vision language action models
+extend this approach to diverse tasks through image and language conditioning (Brohan et al., 2023;
+Kim et al., 2024; Black et al., 2024). Video and world action models further couple actions with
+future visual states to inform action generation and evaluation (Li et al., 2025; Ye et al., 2026). AGP
+introduces an alternative to policies trained specifically for action generation by using a general
+purpose foundation multimodal large language model (MLLM) directly as the robot policy.
+2.3
+AGENTIC WORKFLOWS BEYOND ROBOTICS
+Language agents combine reasoning, tool use, and reflection on interaction feedback (Yao et al.,
+2022; Schick et al., 2023; Shinn et al., 2023). Coding agents apply these mechanisms to editing
+and testing software (Yang et al., 2024; Wang et al., 2024), while computer use agents act through
+browser and desktop interfaces, adapting to interface changes (Zhou et al., 2023; Xie et al., 2024).
+Multiagent frameworks distribute workflows among specialized roles that communicate and share
+intermediate results (Wu et al., 2023; Hong et al., 2023). These workflows establish mechanisms
+for tool use, memory, feedback, and coordination. AGP studies how they shape the robot policy
+boundary, with agents governing physical task execution through perception, geometry, planning, and
+control interfaces.
+3
+A GENERAL PURPOSE AGENT AS THE ROBOT POLICY
+3.1
+PROBLEM FORMULATION
+Task objective. We consider physical manipulation tasks specified through video instructions, image
+instructions, language instructions, or a combination of these. A robot operates in a persistent scene,
+and the objective is to bring that scene into a state satisfying the task criteria within fixed budgets for
+elapsed time and observation and action requests.
+Task preparation. When a task type is first introduced to the system, a separate coding agent prepares
+a reusable task definition from the user’s request. This agent runs only during task preparation. A
+different agent, the execution agent, carries out the task at runtime. This definition specifies the goal,
+reference materials, constraints, allowed variations, and completion criteria, along with interface
+access rules, budgets, and reporting requirements. For subsequent instances of an existing task type,
+a launch program starts the execution agent directly with the saved definition and the current instance
+details. The execution agent reads the supplied materials and carries out the requested instance.
+3
+
+
+Agent as Policy
+Agent as the robot policy. We use a general purpose agent as the robot policy. The agent receives a
+task specification g, including the prompt and reference materials, and a documented robot interface
+I. It maintains a local workspace W containing scripts, notes, and observations collected during
+execution. The agent interprets the task, plans actions, and interacts with the robot through tools. We
+describe its tool selection process as
+uk ∼πθ( · | g, I, Hk, Wk),
+(1)
+where uk is the tool call selected at step k, Hk contains the conversation and tool results available
+at that step, and Wk contains the current workspace files. A tool call may acquire information or
+execute a program that submits action targets to the robot controller. The model parameters θ remain
+fixed throughout execution.
+3.2
+AGENT TO ROBOT BRIDGE
+The robot interface I supports information exchange in two directions. The robot provides camera
+observations and proprioceptive state to the agent. The agent sends requests for observations or
+actions through this interface. Together, these exchanges allow the agent to observe the scene, direct
+physical actions, and assess the resulting state.
+Robot to agent. The interface provides two sources of information. Cameras supply overhead
+images for a view of the scene and wrist images with aligned depth for closer inspection and spatial
+measurement. Camera calibration and poses relate these observations to a shared robot coordinate
+frame. The robot’s state interface supplies joint positions from motor feedback and the corresponding
+end effector pose computed through forward kinematics. This proprioceptive state describes the
+robot’s current configuration and supports comparison with commanded targets. After a motion, the
+interface returns the available updated state and target errors computed from this state. Observations
+are saved in the agent’s workspace for visual inspection and programmatic processing.
+Agent to robot. The agent sends requests through the interface. These include observation requests,
+which ask the robot system to capture images or report its state, and action requests, which specify
+arm movements or gripper opening and closing. For arm movement, the agent chooses between
+specifying target joint angles and specifying a target end effector position and orientation. The latter
+describes where to place the gripper and how to orient it. Gripper requests separately specify how
+far the fingers should open or close. To carry out these requests, the robot uses a controller to turn
+the agent’s targets into commands that drive its joints and gripper. For end effector targets, it uses
+Mink (Zakka, 2026) for inverse kinematics to compute joint targets. It then generates joint trajectories
+subject to workspace and motion limits and uses motor feedback to track them. Between requests, the
+controller maintains the arm’s posture while the agent reasons about its next step. Motion commands
+execute in order for each arm, and commands to different arms can proceed concurrently.
+3.3
+RUNTIME PROGRAMMING AND EXECUTION
+Runtime programming. The agent writes programs during execution to interpret observations,
+compute action targets, and submit them through the robot interface. It can inspect reference videos
+and camera images and process saved data with Python and available libraries. For example, it can
+estimate an object’s position from camera observations and depth measurements, compute a target
+gripper pose, and issue the corresponding robot commands. Appendix E analyzes recorded programs
+for geometric estimation, visual processing, and robot call composition.
+Feedback and adaptation. After executing an action, the agent uses motion feedback and new
+observations to revise its estimates and subsequent actions. For example, an unsuccessful insertion
+can prompt a new alignment estimate and a modified approach. The agent determines grasp poses,
+action sequences, observation timing, and recovery during this cycle. It continues until it reports
+completion or ends the attempt within the task budget. Physical success is assessed against the task
+criteria using the resulting scene and recorded evidence.
+Execution efficiency. To reduce tool overhead, we instruct the agent to wait longer for completed
+action results and to combine consecutive operations, such as moving the arm and then capturing and
+displaying an image, in one tool call. These instructions are enabled according to the experimental
+condition.
+4
+
+
+Agent as Policy
+4
+EXPERIMENTS
+We evaluate AGP on real-world robot tasks spanning long horizon reasoning, action diversity, and
+object diversity under video, image, and language instructions. We assess success rate, completion
+time, token usage, and inference cost, then examine whether accumulated experience improves
+execution efficiency.
+4.1
+EXPERIMENTAL SETUP
+4.1.1
+ROBOT PLATFORM AND AGENT CONFIGURATION
+Robot Platform. We use an I2RT YAM (I2RT) arm with six revolute joints and a parallel gripper in
+a tabletop workspace. The free_agent runtime provides the robot interface described in Section 3.2.
+Bimanual towel folding uses two arm servers with a common coordinate frame and coordination
+selected by the agent. The archived throwing case uses a separate interface with timed motion
+programs, documented in Appendix A.1.
+Cameras. A wrist mounted Intel RealSense D405 provides aligned RGB and depth at 640 × 360
+pixels. A fixed overhead Logitech BRIO provides rectified RGB at 1920×1080 pixels. Both cameras
+capture at 30 frames per second, and the agent requests observations on demand.
+Model Configuration. GPT-6 Astra (OpenAI, b) at high thinking effort is the default across all
+four task groups. A separate study varies the model and thinking effort on a two pair assembly task.
+Model weights remain fixed. Appendix A gives platform, agent, and model configuration details.
+4.1.2
+TASKS AND EVALUATION
+Capability Driven Task Design. We find that conventional pick and place tasks, such as placing
+an object into a bowl, pose little challenge for AGP, motivating more demanding tasks to evaluate
+its capabilities. We use four task groups. Assembly of eight parts into four pairs from a human
+video and block construction from goal images test long horizon reasoning under video and image
+instructions, respectively. Both require interpreting visual relationships and ordering operations while
+preserving earlier progress. The assembly parts are adapted from the AutoMate dataset (Tang et al.,
+2024). Block targets comprise a pyramid, two towers, and a six block tower. Die flipping requires
+reorienting six randomly placed dice so that all six show the requested number on their upward faces.
+Die flipping and targeted throwing follow language instructions and test action diversity through
+grasp dependent reorientation and timed release during a circular swing. Bimanual towel folding
+follows video instructions and tests object diversity through coordinated manipulation of deformable
+material. Appendix B.1 gives the design rationale, task definitions, and success criteria.
+Trial Protocol. Trials use predefined initial scenes and fixed budgets for elapsed time and observation
+and action requests. Model and experience comparisons use matched scenes and counterbalanced
+execution order. Recovery is permitted within these budgets. A reset or human intervention ends the
+autonomous trial. Physical outcomes and execution video determine success using predefined criteria.
+Appendix B.2 gives the detailed protocol.
+Metrics. Table 1 reports AGP success rates and resource use across tasks. Time is the mean elapsed
+minutes from task delivery to final physical verification over successful trials, with the observed
+minimum and maximum shown below the mean. Tokens reports mean total input and output usage
+over successful trials in thousands, with the observed minimum and maximum below, including
+reasoning tokens and retries. Block construction and towel folding report success rate, completion
+time, token usage, and model inference cost separately for each equally sampled configuration.
+Appendix B.3 defines accounting, partial completion measures, and uncertainty estimates.
+4.2
+EXPERIMENTAL RESULTS
+4.2.1
+MAIN RESULTS
+Table 1 summarizes AGP success rates, completion times, token usage, and inference costs across
+the manipulation tasks. The results yield three main observations. Strong zero shot performance.
+AGP achieves success rates of at least 80% in seven of eight task configurations, with 100% observed
+5
+
+
+Agent as Policy
+Table 1: Main results across manipulation tasks. Success is reported as the number of successful
+trials over the total number of trials (n/N). Time, tokens, and cost summarize successful trials, with
+means above [min, max]. Cost uses Standard API rates and accounts for cache hits through cached
+input pricing. † Throwing time includes subsequent motion trajectory analysis and verification.
+The throw itself is completed an average of 13.9 minutes after task delivery. Tags denote long
+horizon reasoning (LHR), action diversity (AD), object diversity (OD), video instruction (Vid), image
+instruction (Img), and language instruction (Lan).
+Task
+Capability
+Instruction
+Success
+Time ↓
+Tokens ↓
+Cost ↓
+(n/N)
+(min)
+(k)
+(USD)
+Four pair assembly
+LHR
+Vid
+4/5
+54.3
+[38.6, 78.2]
+22255
+[12838, 42988]
+27.41
+[16.92, 49.88]
+Block construction
+LHR
+Img
+Pyramid
+5/5
+22.8
+[14.9, 32.2]
+9069
+[6267, 12937]
+11.56
+[8.01, 15.28]
+Two towers
+5/5
+21.4
+[14.8, 29.2]
+8332
+[4944, 14390]
+10.28
+[6.27, 16.85]
+Six block tower
+4/5
+34.7
+[17.3, 55.0]
+13111
+[5086, 19846]
+17.35
+[6.69, 26.78]
+Die flipping
+AD
+Lan
+5/5
+42.9
+[22.6, 56.0]
+18460
+[10158, 25000]
+22.52
+[12.57, 31.20]
+Targeted throwing
+AD
+Lan
+Potato
+2/2
+22.8†
+[22.2, 23.3]
+6256
+[6254, 6257]
+8.94
+[8.71, 9.18]
+Towel folding
+OD
+Vid
+Sequential
+5/5
+50.8
+[33.8, 63.3]
+18123
+[10126, 25262]
+24.14
+[14.16, 30.90]
+Simultaneous
+3/5
+21.4
+[15.7, 31.2]
+5055
+[4270, 5684]
+7.46
+[6.16, 8.67]
+success in five. These results support its effectiveness for zero shot manipulation across the evaluated
+tasks. Task complexity and execution overhead. Execution time and inference cost generally
+increase with task complexity, as illustrated by the six block tower relative to the pyramid and two
+towers. Execution overhead also includes reviewing actions and verifying outcomes. In potato
+throwing, the throw is completed after 13.9 minutes on average, while subsequent trajectory analysis
+and verification account for approximately 40% of the reported 22.8 minutes. Challenges in
+deformable object manipulation. Deformable object manipulation remains challenging. Sequential
+towel folding succeeds in all five trials but requires 50.8 minutes and USD 24.14 on average, among
+the highest expenditures in the task suite. Simultaneous folding, whose demonstration brings both
+short ends inward together, has the lowest observed success rate at 3/5, highlighting the challenge of
+coordinating dynamic manipulation of deformable material.
+4.2.2
+AGENT AND THINKING EFFORT COMPARISON
+Table 2 compares agent and model configurations on two pair assembly from a human demonstration.
+The task pairs a hexagonal ring with a short post and a circular sleeve with a stepped cylinder. Within
+Codex (OpenAI, a), we evaluate GPT-6 Astra at low, medium, and high thinking effort and GPT-5.6
+Sol, Terra, and Luna (OpenAI, c) at high thinking effort. The comparison also includes Claude
+Code (Anthropic, a) with Claude Opus 5 (Anthropic, 2026) and Claude Fable 5.1, both at high effort.
+Task references, robot functions, and trial budgets are shared across configurations.
+AGP supports successful assembly across both Codex and Claude Code, while the performance
+differences among models within each agent show that model choice remains important. Astra
+maintains consistent success across thinking effort levels, suggesting limited benefit from additional
+thinking effort on this task. Sol offers lower inference cost with longer execution time than Astra.
+Within Claude Code, Fable achieves lower success than Opus and uses fewer tokens on successful
+trials, yet incurs greater time and cost.
+6
+
+
+Agent as Policy
+Table 2: Agent and thinking effort comparison on two pair assembly. GPT-6 Astra is reported at
+low, medium, and high effort as separate rows. Other models use high effort. Aggregation follows
+Table 1. Success is reported as the number of successful trials over the total number of trials (n/N).
+Model versions, native effort settings, and agent versions are recorded before collection.
+Model
+Success
+Time ↓
+Tokens ↓
+Cost ↓
+(n/N)
+(min)
+(k)
+(USD)
+Codex
+GPT-6 Astra
+Low effort
+5/5
+9.9
+[6.0, 19.0]
+3689
+[1438, 7720]
+4.79
+[2.15, 9.56]
+Medium effort
+5/5
+9.2
+[6.3, 15.4]
+3025
+[1842, 5801]
+4.09
+[2.76, 7.48]
+High effort
+5/5
+9.2
+[7.9, 10.6]
+3300
+[2584, 4024]
+4.47
+[3.72, 5.19]
+GPT-5.6 Sol
+5/5
+14.2
+[9.1, 19.3]
+7128
+[4118, 9718]
+3.94
+[2.40, 5.30]
+GPT-5.6 Terra
+1/5
+19.0
+[19.0, 19.0]
+6282
+[6282, 6282]
+1.98
+[1.98, 1.98]
+GPT-5.6 Luna
+0/5
+–
+–
+–
+Claude Code
+Claude Opus 5
+5/5
+22.2
+[14.4, 31.9]
+12398
+[9050, 16725]
+9.75
+[6.94, 13.03]
+Claude Fable 5.1
+3/5
+27.7
+[18.3, 39.8]
+9266
+[6874, 11100]
+11.30
+[8.33, 14.36]
+4.3
+IMPROVING EFFICIENCY THROUGH EXPERIENCE
+We study whether saved task experience can improve efficiency in two ways. First, can the agent
+reduce execution time over repeated runs by accumulating experience? Second, can this experience
+help a smaller, more economical agent complete the same task? Both studies use the free_agent
+runtime with fixed model weights. Experience is retained as files that a fresh agent context can
+inspect and reuse. A detailed runtime breakdown of the evaluated trials is provided in Appendix D.1.
+4.3.1
+ACCUMULATING REUSABLE TASK EXPERIENCE
+1
+2
+3
+4
+5
+Cycle
+0
+8
+16
+Time (min)
+(a) Ring
+1
+2
+3
+4
+5
+Cycle
+0
+5
+10
+(b) Two pairs
+Total
+Task
+Experience
+Figure 2: Experience reuse across two tasks.
+Time includes task execution and experience
+writing. Totals include handoffs for ring cycles
+and within trial overhead for two pair assembly.
+Appendix D.2 defines the boundaries.
+People build experience through repeated task exe-
+cution, retaining successful procedures and lessons
+from mistakes that can make later attempts more
+efficient. Persistent memory has been used to carry
+execution feedback across trials (Shinn et al., 2023).
+Motivated by this process, we investigate whether
+an agent can improve its efficiency by accumulating
+and reusing task experience.
+We evaluate two tasks with five executions each us-
+ing GPT-6 Astra at high thinking effort. One repeat-
+edly disassembles and reassembles a ridged ring and
+its base. The other assembles a hexagonal ring onto
+a narrow post and a circular collar onto a stepped
+cylinder. Each task uses a fixed robot and execution
+configuration. Every execution starts with a fresh
+agent context, beginning with empty experience and
+subsequently reusing and updating saved measure-
+ments, procedures, corrections, and scripts.
+Figure 2 shows that the benefit of experience reuse
+varies by task. Ring disassembly and reassembly becomes faster after the first cycle and remains near
+that lower task time. In two pair assembly, task time fluctuates and returns close to its starting value,
+7
+
+
+Agent as Policy
+while experience writing becomes shorter overall. These observations suggest that accumulated
+experience can improve execution efficiency on some tasks, with limited gains in task execution on
+others. Appendix D.2 provides the timing breakdown.
+4.3.2
+TRANSFERRING EXPERIENCE TO A SMALLER AGENT
+No
+Yes
+No
+Yes
+Astra experience
+0
+10
+20
+Time (min)
+19.0
+10.2
+0
+2
+4
+6
+8
+Tokens (M)
+6.28
+4.36
+Figure 3: Transferring Astra experience to
+Terra. Mean completion time on the left axis
+and token usage on the right axis are computed
+over successful trials, following Table 2.
+We evaluate whether experience collected by GPT-
+6 Astra improves GPT-5.6 Terra on the two pair
+assembly task in Table 2. Success requires both
+demonstrated pairings to remain engaged and stable
+after release.
+Astra saves geometry, procedures, corrections, and
+scripts over five executions.
+Terra receives this
+frozen collection with read access only, and the ex-
+perience remains fixed across trials. We compare
+Terra with empty experience and with Astra expe-
+rience. Both conditions use fresh agent contexts,
+high thinking effort, and the task references, robot
+interface, and trial budgets of Table 2.
+Success increases from 1/5 with empty experience
+to 2/5 with Astra experience. Figure 3 shows shorter
+completion time and lower token usage among suc-
+cessful executions with transferred experience. These observations suggest that saved experience can
+support transfer across models, although the small number of successful trials limits the strength of
+this conclusion.
+5
+CONCLUSION
+We introduced AGP, which uses a general purpose agent as the robot policy. Through runtime
+programming and a robot interface, the agent interprets observations, generates motion requests, and
+revises its actions using physical feedback. Real robot experiments evaluate long horizon reasoning,
+action diversity, and object diversity under video, image, and language instructions. The results
+support AGP’s ability to carry out diverse manipulation tasks. Experience reuse shows varying
+benefits for task execution time across the two assembly tasks. Execution time, inference cost, and
+reliability in coordinated deformable object manipulation remain key challenges. These results
+support general purpose agents as a viable approach to robot control through reasoning, programming,
+and physical interaction.
+AI USE STATEMENT
+During the preparation of this manuscript, the authors used generative AI tools to assist with drafting
+and language editing, including refining sentence structure and improving clarity and readability.
+The authors are responsible for reviewing and revising the resulting text to ensure that it accurately
+represents the research. The authors take full responsibility for the content of the manuscript,
+including the methodology, experimental results, interpretations, and conclusions.
+REPRODUCIBILITY STATEMENT
+Section 3 describes the agent formulation, robot interface, and runtime execution procedure. Sec-
+tion 4.1 summarizes the experimental setup, with robot hardware, control parameters, and agent
+configurations detailed in Appendix A. Appendix B describes the tasks, reference materials, success
+criteria, trial protocol, and metric definitions. The assembly parts are adapted from the AutoMate
+dataset (Tang et al., 2024), as described in Appendix B.1. Appendix C explains the archived agent
+comparison and its usage and cost accounting. Appendix D documents the execution time analysis
+and repeated execution study, including experience checkpoints and timing boundaries. Appendix F
+presents visual references and representative execution sequences.
+8
+
+
+Agent as Policy
+REFERENCES
+Michael Ahn, Anthony Brohan, Noah Brown, et al. Do as i can, not as i say: Grounding language in
+robotic affordances. arXiv preprint arXiv:2204.01691, 2022.
+Anthropic. Claude Code overview. https://code.claude.com/docs/en/overview, a.
+Accessed September 8, 2026.
+Anthropic.
+Claude Code model configuration.
+https://code.claude.com/docs/en/
+model-config, b. Accessed September 8, 2026.
+Anthropic.
+Claude Opus 5 system card.
+https://www-cdn.anthropic.com/
+b514064af1408018e64b1ad24e7d5e75850b4ffd/Claude%20Opus%205%
+20System%20Card.pdf, 2026. Accessed September 8, 2026.
+Kevin Black, Noah Brown, Danny Driess, et al. π0: A vision-language-action flow model for general
+robot control. arXiv preprint arXiv:2410.24164, 2024.
+Anthony Brohan, Noah Brown, Justice Carbajal, et al. RT-2: Vision-language-action models transfer
+web knowledge to robotic control. arXiv preprint arXiv:2307.15818, 2023.
+Junting Chen, Yao Mu, Qiaojun Yu, Tianming Wei, Silang Wu, Zhecheng Yuan, Zhixuan Liang,
+Chao Yang, Kaipeng Zhang, Wenqi Shao, Yu Qiao, Huazhe Xu, Mingyu Ding, and Ping Luo.
+RoboScript: Code generation for free-form manipulation tasks across real and simulation. arXiv
+preprint arXiv:2402.14623, 2024.
+Kaiyuan Chen, Shuangyu Xie, Letian Fu, Justin Yu, William Pacini, Sandeep Bajamahal, Hudson Kim,
+Jaimyn Drake, Daehwa Kim, Haoru Xue, Jonathan Francis, Christian Juette, Muhammet Yunus
+Seker, Ruwan Wickramarachchi, Uksang Yoo, Guanzhi Wang, Adithyavairavan Murali, Balakumar
+Sundaralingam, S. Shankar Sastry, Spencer Huang, Yuke Zhu, Linxi Fan, and Ken Goldberg. GaP:
+A graph-as-policy multi-agent self-learning harness for variational automation tasks. arXiv preprint
+arXiv:2607.05369, 2026.
+Cheng Chi, Zhenjia Xu, Siyuan Feng, Eric Cousineau, Yilun Du, Benjamin Burchfiel, Russ Tedrake,
+and Shuran Song. Diffusion policy: Visuomotor policy learning via action diffusion. arXiv preprint
+arXiv:2303.04137, 2023.
+Liane Galanti, Dhruv Shah, and Tri Dao. Addressing the orchestration gap in generalist robots via
+physical agency. arXiv preprint arXiv:2607.21725, 2026.
+Caelan Reed Garrett, Rohan Chitnis, Rachel Holladay, Beomjoon Kim, Tom Silver, Leslie Pack
+Kaelbling, and Tomás Lozano-Pérez.
+Integrated task and motion planning.
+Annual Re-
+view of Control, Robotics, and Autonomous Systems, 4:265–293, 2021.
+doi:
+10.1146/
+annurev-control-091420-084139.
+Sirui Hong, Mingchen Zhuge, Jiaqi Chen, et al. MetaGPT: Meta programming for a multi-agent
+collaborative framework. arXiv preprint arXiv:2308.00352, 2023.
+Wenlong Huang, Fei Xia, Ted Xiao, et al. Inner monologue: Embodied reasoning through planning
+with language models. arXiv preprint arXiv:2207.05608, 2022.
+I2RT. I2RT robot software and YAM platform. https://github.com/i2rt-robotics/
+i2rt. Accessed September 8, 2026.
+Moo Jin Kim, Karl Pertsch, Siddharth Karamcheti, et al. OpenVLA: An open-source vision-language-
+action model. arXiv preprint arXiv:2406.09246, 2024.
+Ruiying Li, Yunlang Zhou, YuYao Zhu, Kylin Chen, Jingyuan Wang, Sukai Wang, Kongtao Hu,
+Minhui Yu, Bowen Jiang, Zhan Su, Jiayao Ma, Xin He, Yongjian Shen, Yang Yang, Guanghui
+Ren, Maoqing Yao, Wenhao Wang, and Yao Mu. RoboClaw: An agentic framework for scalable
+long-horizon robotic tasks. arXiv preprint arXiv:2603.11558, 2026a.
+Shuang Li, Yihuai Gao, Dorsa Sadigh, and Shuran Song. Unified video action model. arXiv preprint
+arXiv:2503.00200, 2025.
+9
+
+
+Agent as Policy
+Zongxia Li, Xiyang Wu, Hongyang Du, Fuxiao Liu, Huy Nghiem, and Guangyao Shi. A survey
+of state of the art large vision language models: Alignment, benchmark, evaluations and chal-
+lenges. arXiv preprint arXiv:2501.02189v7, 2026b. URL https://arxiv.org/abs/2501.
+02189v7. Revised August 22, 2026.
+Jacky Liang, Wenlong Huang, Fei Xia, Peng Xu, Karol Hausman, Brian Ichter, Pete Florence, and
+Andy Zeng. Code as policies: Language model programs for embodied control. arXiv preprint
+arXiv:2209.07753, 2022.
+Runyu Lu, Yubo Wu, Ethan Kou, Letian Fu, Wenli Xiao, Ajay Mandlekar, Yinzhen Xu, Guanya
+Shi, Ken Goldberg, Ang Chen, Mosharaf Chowdhury, Yuke Zhu, Linxi Fan, and Guanzhi Wang.
+ASPIRE: Agentic /skills discovery for robotics. arXiv preprint arXiv:2607.00272, 2026.
+Yao Mu, Junting Chen, Qing-Long Zhang, Shoufa Chen, Qiaojun Yu, Chongjian Ge, Runjian Chen,
+Zhixuan Liang, Mengkang Hu, Chaofan Tao, Peize Sun, Haibao Yu, Chao Yang, Wenqi Shao,
+Wenhai Wang, Jifeng Dai, Yu Qiao, Mingyu Ding, and Ping Luo. RoboCodeX: Multimodal code
+generation for robotic behavior synthesis. In Proceedings of the 41st International Conference on
+Machine Learning, volume 235 of Proceedings of Machine Learning Research, pp. 36434–36454.
+PMLR, 2024.
+OpenAI. Codex CLI. https://learn.chatgpt.com/docs/codex/cli, a. Accessed
+September 8, 2026.
+OpenAI. GPT-6 Astra model. https://developers.openai.com/api/docs/models/
+gpt-6-astra, b. Accessed September 8, 2026.
+OpenAI.
+OpenAI model catalog.
+https://developers.openai.com/api/docs/
+models/all, c. Accessed September 8, 2026.
+Timo Schick, Jane Dwivedi-Yu, Roberto Dessì, Roberta Raileanu, Maria Lomeli, Luke Zettlemoyer,
+Nicola Cancedda, and Thomas Scialom. Toolformer: Language models can teach themselves to
+use tools. arXiv preprint arXiv:2302.04761, 2023.
+Noah Shinn, Federico Cassano, Edward Berman, Ashwin Gopinath, Karthik Narasimhan, and
+Shunyu Yao. Reflexion: Language agents with verbal reinforcement learning. arXiv preprint
+arXiv:2303.11366, 2023.
+Ishika Singh, Valts Blukis, Arsalan Mousavian, Ankit Goyal, Danfei Xu, Jonathan Tremblay, Dieter
+Fox, Jesse Thomason, and Animesh Garg. ProgPrompt: Generating situated robot task plans using
+large language models. arXiv preprint arXiv:2209.11302, 2022.
+Bingjie Tang, Iretiayo Akinola, Jie Xu, Bowen Wen, Ankur Handa, Karl Van Wyk, Dieter Fox,
+Gaurav S. Sukhatme, Fabio Ramos, and Yashraj Narang. AutoMate: Specialist and generalist
+assembly policies over diverse geometries. arXiv preprint arXiv:2407.08028, 2024.
+Xingyao Wang, Boxuan Li, Yufan Song, Frank F. Xu, Xiangru Tang, Mingchen Zhuge, Jiayi Pan,
+Yueqi Song, Bowen Li, Jaskirat Singh, Hoang H. Tran, Fuqiang Li, Ren Ma, Mingzhang Zheng,
+Bill Qian, Yanjun Shao, Niklas Muennighoff, Yizhe Zhang, Binyuan Hui, Junyang Lin, Robert
+Brennan, Hao Peng, Heng Ji, and Graham Neubig. OpenHands: An open platform for AI software
+developers as generalist agents. arXiv preprint arXiv:2407.16741, 2024.
+Qingyun Wu, Gagan Bansal, Jieyu Zhang, et al. AutoGen: Enabling next-gen LLM applications via
+multi-agent conversation. arXiv preprint arXiv:2308.08155, 2023.
+Tianbao Xie, Danyang Zhang, Jixuan Chen, Xiaochuan Li, Siheng Zhao, Ruisheng Cao, Toh Jing
+Hua, Zhoujun Cheng, Dongchan Shin, Fangyu Lei, Yitao Liu, Yiheng Xu, Shuyan Zhou, Silvio
+Savarese, Caiming Xiong, Victor Zhong, and Tao Yu. OSWorld: Benchmarking multimodal agents
+for open-ended tasks in real computer environments. arXiv preprint arXiv:2404.07972, 2024.
+John Yang, Carlos E. Jimenez, Alexander Wettig, Kilian Lieret, Shunyu Yao, Karthik Narasimhan,
+and Ofir Press. SWE-agent: Agent-computer interfaces enable automated software engineering.
+arXiv preprint arXiv:2405.15793, 2024.
+10
+
+
+Agent as Policy
+Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao.
+ReAct: Synergizing reasoning and acting in language models. arXiv preprint arXiv:2210.03629,
+2022.
+Seonghyeon Ye, Yunhao Ge, Kaiyuan Zheng, Shenyuan Gao, Sihyun Yu, George Kurian, Suneel
+Indupuru, You Liang Tan, Chuning Zhu, Jiannan Xiang, et al. World action models are zero-shot
+policies. arXiv preprint arXiv:2602.15922, 2026.
+Kevin Zakka. Mink: Python inverse kinematics based on MuJoCo. https://github.com/
+kevinzakka/mink, 2026.
+Yixian Zhang, Huanming Zhang, Feng Gao, Xiao Li, Zhihao Liu, Yi Nie, Chunyang Zhu, Jiaxing Qiu,
+Yuchen Yan, Jiyuan Liu, Wenhao Tang, Jiaji Rao, Zhengru Fang, Changxu Wei, Yu Wang, Wenbo
+Ding, and Chao Yu. Harness VLA: Steering frozen VLAs into reliable manipulation primitives via
+memory-guided agents. arXiv preprint arXiv:2607.08448, 2026.
+Shuyan Zhou, Frank F. Xu, Hao Zhu, Xuhui Zhou, Robert Lo, Abishek Sridhar, Xianyi Cheng,
+Tianyue Ou, Yonatan Bisk, Daniel Fried, Uri Alon, and Graham Neubig. WebArena: A realistic
+web environment for building autonomous agents. arXiv preprint arXiv:2307.13854, 2023.
+11
+
+
+Agent as Policy
+Contents of Appendix
+A Implementation Details
+13
+A.1
+Robot Platform and Control Interface
+. . . . . . . . . . . . . . . . . . . . . . . .
+13
+A.2
+Agent Configuration and Execution Conditions
+. . . . . . . . . . . . . . . . . . .
+14
+A.3
+Model and Reasoning Effort Configurations . . . . . . . . . . . . . . . . . . . . .
+14
+B
+Tasks and Evaluation Protocol
+14
+B.1
+Task Definitions and Success Criteria
+. . . . . . . . . . . . . . . . . . . . . . . .
+14
+B.2
+Trial Protocol . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+16
+B.3
+Metric Definitions and Resource Accounting . . . . . . . . . . . . . . . . . . . . .
+17
+C Supplementary Coding Agent Comparison on Pyramid Construction
+17
+D Efficiency and Experience Reuse Analysis
+18
+D.1
+Task Execution Time Analysis . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+18
+D.2
+Repeated Execution with Persistent Experience . . . . . . . . . . . . . . . . . . .
+19
+E
+Runtime Program Analysis
+21
+F
+Qualitative Task Examples
+22
+F.1
+Four Pair Assembly . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+22
+F.2
+Block Construction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+24
+F.3
+Die Flipping . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+25
+F.4
+Targeted Throwing
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+26
+F.5
+Bimanual Towel Folding . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+28
+G Execution Across Arm and End Effector Embodiments
+32
+H Error and Recovery Study
+34
+H.1
+Six Block Tower Collapse During Withdrawal . . . . . . . . . . . . . . . . . . . .
+34
+I
+Broader Impact
+35
+12
+
+
+Agent as Policy
+A
+IMPLEMENTATION DETAILS
+A.1
+ROBOT PLATFORM AND CONTROL INTERFACE
+This subsection details the robot platform introduced in Section 4.1.1 and the observation and motion
+interface described in Section 3.2. Figure 4 shows the physical setup and identifies the robot arm,
+gripper, and cameras.
+Robot platform.
+The current platform uses an I2RT YAM arm1 with six revolute joints and a
+motorized linear_4310 parallel gripper. The nominal maximum inner jaw opening is 95.5 mm. The
+arm operates over a tabletop workspace through the i2rt Python library and a CAN connection at
+1 Mbit/s. The library supplies robot models, motor communication, and gravity compensation. The
+free_agent runtime exposes camera captures, robot state, Cartesian and joint motion, and gripper
+control. The default channel controls the left arm. Bimanual towel folding adds a right arm server
+and expresses both arms’ Cartesian poses in the left base frame through a configured rigid transform.
+The agent chooses how to coordinate commands across the two servers.
+Observations and geometric grounding.
+A wrist mounted Intel RealSense D4052 provides aligned
+RGB and depth at 640×360 pixels, with a configured stream rate of 30 Hz. A fixed overhead Logitech
+BRIO3 provides rectified RGB images at 1920 × 1080 pixels, also with a configured stream rate
+of 30 Hz. The runtime exposes both views to the agent at these resolutions through on demand
+observation requests. Captures include calibration, timestamps, and robot state. Wrist depth supports
+deprojection into the arm base frame. Overhead pixels are grounded by intersecting camera rays with
+a plane at an estimated height. The agent can acquire additional views and estimate scene geometry
+during execution. Camera stream rates and observation requests are distinct from the agent’s decision
+rate.
+Figure 4: Robot platform and camera placement. The setup contains two I2RT YAM arms mounted
+on a shared tabletop rail. The annotations identify an arm, a linear_4310 parallel gripper, a wrist
+mounted Intel RealSense D405 RGB and depth camera, and the fixed overhead Logitech BRIO RGB
+camera. The two arms support bimanual towel folding.
+1https://doc.i2rt.com/products/yam
+2https://www.realsenseai.com/products/stereo-depth-camera-d405/
+3https://www.logitech.com/brio
+13
+
+
+Agent as Policy
+Action interface.
+The robot interface exposes state, status, help, frames, move_ee,
+move_joints, and gripper. The agent computes geometry from saved images, depth, and
+calibration in local programs. Cartesian motion invokes the underlying inverse kinematics and
+trajectory execution software. Ordinary motion uses joint velocity and acceleration limits of 20◦/s
+and 40◦/s2, a Cartesian translation limit of 0.03 m/s, and an orientation limit of 10◦/s. The gripper
+target changes at 0.25 of its normalized travel per second. The session server enforces a radial target
+envelope of 0.12 to 0.65 m, a grasp point height envelope of −0.050 to 0.60 m, and a maximum
+Cartesian step of 0.25 m. For targeted throwing, the recorded case uses a task specific runtime with
+timed motion programs to coordinate the swing and gripper release. Each program specifies joint
+offsets at time knots and scheduled gripper targets. The executor interpolates commands on a 50 Hz
+grid and records measured joint position, velocity, effort, and dispatch timing. Within these programs,
+joint 4 uses velocity and acceleration limits of 180◦/s and 360◦/s2.
+A.2
+AGENT CONFIGURATION AND EXECUTION CONDITIONS
+This subsection specifies the agent configuration introduced in Section 4.1.1 and the execution
+conditions for the tool strategies described in Section 3.3.
+Trial setup and execution conditions.
+Each trial provides the robot interface, its documentation,
+and a corresponding task prompt. Standard trials begin with fresh task experience. Task experience
+reuse is a separately recorded setting. The efficiency comparison varies guidance on waiting for
+action completion and combining consecutive operations. The same guidance is used across trials
+within each condition. Trials record the interface, execution condition, and inherited experience.
+Agent traces establish the effective waiting intervals, intermediate status checks, and commands
+grouped within each invocation.
+Agent configuration.
+Each trial starts in a fresh session with interface documentation, task instruc-
+tions, reference media, and a writable workspace. The agent can create Python programs and retain
+observations and intermediate computations within that trial. Model weights remain fixed. Exact
+model identifiers, agent software versions, host specifications, task budgets, and inference settings
+are recorded with the evaluation. Prior trial solutions and attempt logs are excluded from fresh trial
+inputs.
+A.3
+MODEL AND REASONING EFFORT CONFIGURATIONS
+The model and thinking effort study in Section 4.2.2 and Table 2 uses four parts forming two pairs.
+A hexagonal ring fits over a short post, and a circular sleeve fits over a stepped cylinder. Success
+requires both pairs to remain assembled after release and arm withdrawal. The Codex configurations
+comprise GPT-6 Astra at low, medium, and high thinking effort, plus GPT-5.6 Sol, GPT-5.6 Luna,
+and GPT-5.6 Terra at high effort. The Claude Code configuration uses Claude Opus 5 at high effort
+with model identifier claude-opus-5. Model selection and reasoning effort are configured through the
+native controls of Claude Code (Anthropic, b). Each trial records the requested and resolved model
+identifiers and effective effort setting.
+The Astra effort sweep holds the model version, agent environment, task inputs, and robot interface
+fixed. Each remaining model uses its specified high setting. Native effort settings are reported
+alongside token usage, elapsed time, observation requests, action requests, and recovery episodes.
+Comparisons across agent environments are interpreted as comparisons of complete systems. Every
+configuration uses the same predefined assembly scenes, reference package, and time and request
+budgets. GPT-6 Astra high assembly trials are shared between the model study and the main AGP
+results, with each trial counted once per reported estimate.
+B
+TASKS AND EVALUATION PROTOCOL
+B.1
+TASK DEFINITIONS AND SUCCESS CRITERIA
+Table 3 defines the tasks, target capabilities, instruction types, and success criteria used in the main
+evaluation. Controller arrival tolerances are reported separately from task success tolerances.
+14
+
+
+Agent as Policy
+Table 3: Task definitions and success criteria. Capability identifies the primary manipulation
+challenge, and Instruction type identifies how the task goal or procedure is communicated. The final
+column specifies the required behavior and physical outcome. Success is assessed from the final state
+and execution video using criteria fixed before evaluation. Required assembly, support, orientation,
+and fold relationships must remain stable after gripper release and arm withdrawal.
+Task
+Capability
+Instruction type
+Task requirements and success criteria
+Four pair assem-
+bly
+Long horizon rea-
+soning
+Video
+Assemble eight parts into four pairs in the demon-
+strated order, inferring mating relationships and
+insertion motions from the video and current scene.
+Success requires all four pairs to remain assembled,
+preserving completed pairs throughout subsequent
+operations.
+Block construc-
+tion
+Long horizon rea-
+soning
+Image
+Arrange six cubes into a pyramid, two towers, or a
+six block tower matching the goal image. Infer ob-
+ject identities, orientations, and support relations,
+and choose a placement order that maintains inter-
+mediate stability. Success requires the complete
+target structure.
+Die flipping
+Action diversity
+Language
+Reorient six randomly placed dice to the requested
+upward face through grasp selection and rotation.
+Success requires all six dice to show the requested
+number after placement.
+Targeted throw-
+ing
+Action diversity
+Language
+Coordinate a circular joint swing with gripper re-
+lease to throw an object toward the specified target.
+Success requires the object to separate from the
+moving hand, travel through the air, and come to
+rest within the target region.
+Towel folding
+Object diversity
+Video
+Use both arms to reproduce the demonstrated folds.
+Fold the near long edge onto the far edge, then
+fold both short ends inward, either right then left
+(Sequential) or beginning together (Simultaneous).
+Success requires both inward folds with reasonably
+aligned edges. Small wrinkles and creases are per-
+mitted, and the final table position is unrestricted.
+Assembly from video.
+The four pairs comprise a ridged sleeve and broad round base, a hexagonal
+nut and short post, a smooth sleeve and stepped cylinder, and a long pin and hollow tube, in
+demonstration order. The parts are 3D printed from AutoMate models (Tang et al., 2024). All
+methods receive the same human video, extracted frames, and timestamped textual guide. We report
+complete task success and the fraction of correctly assembled pairs. Figure 5 shows the demonstration
+and robot execution.
+Assembly part dimensions.
+Table 4 reports the nominal printing dimensions and mating clearances
+of the AutoMate meshes, scaled with their aspect ratios preserved.4 Successful assembly with nominal
+radial clearances as small as 0.73 mm illustrates AGP’s ability to perform relatively fine manipulation
+(Figure 5). Physical insertion tolerance also depends on printing accuracy and angular alignment.
+Block construction from images.
+Initial cube poses vary across trials while the goal photograph
+remains fixed within each configuration. Block sets and placement tolerances are fixed before
+evaluation. We report complete structure success and the fraction of correctly realized target relations,
+with equal trial counts and separate resource accounting for each configuration. Figure 6 shows the
+three construction cases.
+4The plug and socket meshes are asset_plug.obj and asset_socket.obj in each official AutoMate
+asset directory.
+15
+
+
+Agent as Policy
+Table 4: Printing dimensions and mating clearances. Assembly identifies each AutoMate part
+pair in demonstration order, with plug and socket meshes shown in blue and gray, respectively. Plug
+overall size and Socket overall size give the respective mesh dimensions as x × y × z in the original
+mesh frame. Hole Dh is the effective bore diameter, measured by the largest cylinder that fits through
+the bore, including its narrowest ridges. Shaft Ds is the effective shaft diameter, measured by the
+smallest cylinder enclosing the mating shaft segment. The diametral clearance is ∆= Dh −Ds, and
+the conservative radial clearance c = ∆/2 gives the available transverse offset for parallel mating
+axes. All dimensions and clearances are in millimeters. The hole is in the plug mesh for the first three
+pairs and in the socket mesh for 00446. Clearances are computed before rounding.
+Assembly
+Plug overall size
+Socket overall size
+Hole Dh
+Shaft Ds
+∆
+c
+00081
+52.95 × 52.98 × 27.53
+71.59 × 71.65 × 58.26
+37.41
+35.86
+1.56
+0.78
+00581
+55.58 × 48.32 × 19.46
+45.52 × 39.42 × 78.83
+28.18
+25.80
+2.38
+1.19
+00007
+51.08 × 50.94 × 39.60
+42.42 × 42.30 × 81.44
+42.86
+37.20
+5.66
+2.83
+00446
+39.25 × 39.16 × 105.04
+31.32 × 31.32 × 90.81
+18.01
+16.54
+1.47
+0.73
+Action diversity.
+Die flipping uses distinct initial and target faces balanced across predefined
+conditions. We record final face correctness and annotate grasp selection, rotation, and regrasping
+from video. The case in Appendix F.3 uses three black and three light blue dice, with a goal
+photograph specifying six pips upward. For throwing, the object, target geometry, initial arrangement,
+and permitted swing conditions are fixed before evaluation. We report success and landing error
+relative to the target center, with execution records and video establishing joint motion, gripper
+opening, and object separation. The case in Appendix F.4 uses joint 4.
+Bimanual towel folding.
+Each configuration provides an overhead human demonstration video and
+images of the initial and final towel states. Trials begin with the towel lying flat in an arrangement
+approximately matching the demonstration. Sequential and Simultaneous describe the demonstrated
+folding patterns. The agent selects grasp points, arm assignments, and motion timing from the
+observed towel state, and may stage placements to maintain arm clearance. Success is verified in
+an overhead image after both grippers open and both arms withdraw. We evaluate five trials per
+configuration and report success rate and resource use separately in Table 1. Figures 9 and 10 show
+the respective demonstrations and robot executions.
+B.2
+TRIAL PROTOCOL
+This subsection details the trial protocol outlined in Section 4.1.2. Prompting, dependencies, revision
+rules, and persistent state access are documented for each AGP configuration. Each trial begins from
+a documented physical reset and an initial scene drawn from a predefined set of placements. Model
+and experience comparisons use matched task instances with counterbalanced execution order. Each
+task has a fixed wall clock budget and a fixed budget for observation and action requests, shared
+across configurations. Geometric queries and local computation are logged separately. Recovery
+within a trial is allowed within these budgets. A reset or human intervention during execution ends
+the autonomous trial. Physical failure, budget exhaustion, intervention, and infrastructure interruption
+are recorded separately under a predefined inclusion policy.
+16
+
+
+Agent as Policy
+B.3
+METRIC DEFINITIONS AND RESOURCE ACCOUNTING
+This subsection expands the metric definitions in Section 4.1.2 and specifies the accounting used for
+the task and model comparisons in Sections 4.2.1 and 4.2.2.
+Success and time.
+For each task or model configuration, success rate is 100s/n, where s is the
+number of completely successful trials and n is the number of evaluated trials. We provide the
+underlying counts and 95% Wilson confidence intervals alongside the detailed results. The main
+assembly task requires all four pairs to be complete in one trial. The model and thinking effort
+comparison requires both pairs to be complete in one trial. Block construction reports success rate,
+completion time, token usage, and model inference cost separately for its three configurations using
+equal trial counts. The mean fraction of completed assembly pairs and realized block relations is
+reported as partial completion diagnostics.
+Completion time starts when the task and references are delivered and ends at final physical verifica-
+tion. It includes policy construction or revision, reference processing, model calls, local computation,
+sensing, motion, and recovery. Tables report the mean in minutes over successful trials, with the
+observed minimum and maximum below in brackets. Detailed results include elapsed times for
+all trials and the fraction that exhaust the budget. A configuration with no successful trials has an
+undefined successful completion time. Each task configuration has five evaluated trials, except potato
+throwing, which has two. Successful timing samples comprise four assembly, five pyramid, five
+two tower, four six block tower, five die flipping, two potato throwing, five sequential folding, and
+three simultaneous folding trials. Completion time, token usage, and cost in Table 1 use the same
+successful trials for each configuration.
+Interaction accounting.
+The index k in Equation 1 counts agent tool decisions. The interaction
+budget counts individual observation and action requests, including those grouped within a single
+tool call.
+Token usage.
+Each trial retains usage records for every model request, including policy generation,
+revision, observation interpretation, verification, and retries. Total tokens sum input and output usage
+across those requests. Repeatedly submitted context is counted on each request. Cached input tokens
+contribute once within the input total for that request. Provider usage records are normalized so that
+output includes generated content and reasoning. Reasoning reported separately is added to this total,
+and reasoning already included in output is counted once. Input, cached input, output, and reasoning
+breakdowns are retained wherever exposed. Missing usage fields are marked unavailable, and their
+coverage is reported. Table entries are mean total tokens per successful trial in thousands.
+C
+SUPPLEMENTARY CODING AGENT COMPARISON ON PYRAMID
+CONSTRUCTION
+We supplement the coding agent comparison on two pair assembly in Table 2 with a pyramid
+construction experiment using GPT-5.6 Sol and GPT-6 Astra within Codex. Both models use high
+thinking effort and control the YAM arm through the free_agent runtime. The goal is a six cube
+pyramid with three blue cubes in the base, two grey cubes bridging the base seams, and one grey
+cube at the peak.
+Experimental configurations and outcomes.
+Each model is evaluated over ten sessions. GPT-5.6
+Sol completes the pyramid in seven sessions after gripper release and arm withdrawal. Two sessions
+end by supervisor intervention with the structure incomplete. One session ends with the robot bridge
+disconnected before physical execution. These three sessions count as unsuccessful. GPT-6 Astra
+completes the pyramid in all ten sessions. Table 5 reports the successful sessions and resource use for
+each model.
+Usage and pricing.
+We reconstruct per request usage from the original Codex traces, remove
+duplicate usage events, and verify the sums against the final cumulative counters. Total tokens include
+input and output, with reasoning counted once within output. We compute API equivalent inference
+costs from recorded billable usage and each model’s Standard prices retrieved on September 9, 2026.
+17
+
+
+Agent as Policy
+Table 5: Supplementary coding agent comparison on pyramid construction. Both Codex models
+use high thinking effort, extending the comparison in Table 2. Successes count completed pyramids
+recorded in the session reports. Interrupted sessions count as unsuccessful. Tokens and cost are
+means over successful sessions for each model. Total cost covers all ten sessions for each model.
+Cost uses Standard API prices for each model.
+Model
+Successes
+Tokens (k)
+Cost (USD)
+Total (USD)
+GPT-5.6 Sol
+7/10
+18860.3
+9.22
+87.25
+GPT-6 Astra
+10/10
+9239.9
+11.69
+116.88
+Astra sessions were configured for Fast service, and Table 5 normalizes their costs to Standard prices.
+The executions used Pro subscriptions.
+Interpretation.
+Sol has lower estimated expenditure despite greater token usage. Its Standard token
+prices are 40% of Astra’s corresponding prices. Pricing the same Sol usage at Astra Standard rates
+would give USD 23.05 per successful session, compared with USD 11.69 for the Astra configuration.
+This calculation separates the price contribution from the observed usage difference.
+D
+EFFICIENCY AND EXPERIENCE REUSE ANALYSIS
+D.1
+TASK EXECUTION TIME ANALYSIS
+We reconstruct detailed timelines for the 37 trials in Table 1 by matching robot session identifiers
+to the original timestamped agent traces. These traces contain 4,882 paired tool calls. Table 6
+reports the mean time allocation over all five trials of each configuration and both potato throwing
+trials, including unsuccessful trials. The task configurations and trial selection match Table 1, whose
+resource means use successful trials. Each timeline starts at task delivery and ends at agent turn
+completion or the recorded timeout. The assembly trial that reaches the timeout includes its terminal
+failure report. For bimanual towel folding, we combine the left and right arm request logs and count
+concurrent intervals once.
+Decision, execution, and reporting time.
+The visual loop combines image acquisition, geometric
+queries, visual tool execution, and the model response immediately following image input. Such a
+response can combine perception, planning, and code generation. Remaining response time covers
+the same agent’s model and client time after accounting for the visual loop, tool execution, action
+service, terminal checking, and reporting. It includes the model’s reasoning and response generation,
+together with queueing and transport. The traces measure these contributions jointly. Model responses
+immediately following image input, including their planning and code generation, contribute to the
+visual loop. The split between these two columns therefore depends on the sequence of image inputs
+and tool calls. The Local tools column covers the remaining tool execution intervals, including
+shell commands through exec_command to read interface documentation, list workspace files, and
+run local Python calculations, as well as process polling through write_stdin. Robot service
+intervals and tool calls classified as visual processing are assigned to their respective categories before
+local tool time is accumulated. Action service includes controller planning, movement, settling,
+and unsuccessful requests. Terminal checking runs from the last action to the reporting boundary.
+Reporting starts at the creation timestamp of the subsequent tool item that writes the result and ends
+with the recorded execution. When a tool call combines final image acquisition and result writing,
+the reporting boundary follows delivery of the final verification image. Intermediate checks remain
+within their respective decision and execution intervals. We assign overlapping intervals once. The
+total includes initial reading and terminal reporting, extending beyond the task completion metric in
+Section 4.1.2.
+Observed costs.
+Four pair assembly averages 62.0 minutes across five trials, including 30.6 minutes
+in the visual loop, 16.1 minutes of remaining response time, and 13.6 minutes of action service.
+Among the block configurations, the six block tower has the longest visual loop at 18.4 minutes. Die
+flipping averages 43.6 minutes, including 19.5 minutes in the visual loop and 14.3 minutes of action
+18
+
+
+Agent as Policy
+Table 6: Detailed time allocation across manipulation tasks. Values are mean minutes over all
+N evaluated trials in each configuration, including unsuccessful trials. Rows use the same trials as
+Table 1. Total includes terminal reporting. The visual loop includes image conditioned decisions.
+Remaining response time includes reasoning and generation by the same agent, together with client
+and service time outside the other categories. The Local tools column covers shell execution, file
+access, local calculations, and process polling. Action service includes controller planning, motion,
+and settling. Concurrent arm requests contribute once to elapsed time. Throwing includes subsequent
+trajectory analysis and verification. Rounded components may differ from the displayed total.
+Task
+N
+Total
+Visual
+Remaining
+response time
+Local
+Action
+Check
+Report
+loop
+tools
+service
+Four pair assembly
+5
+62.0
+30.6
+16.1
+0.4
+13.6
+0.5
+0.8
+Block construction
+Pyramid
+5
+23.7
+9.4
+3.7
+0.2
+8.5
+1.0
+0.9
+Two towers
+5
+22.3
+9.1
+4.6
+0.1
+7.4
+0.2
+0.9
+Six block tower
+5
+35.8
+18.4
+5.5
+0.1
+10.2
+0.7
+0.9
+Die flipping
+5
+43.6
+19.5
+7.6
+0.2
+14.3
+1.2
+0.8
+Targeted throwing
+Potato
+2
+23.7
+7.2
+12.7
+0.7
+1.9
+0.2
+0.9
+Towel folding
+Sequential
+5
+52.7
+25.4
+10.0
+0.5
+14.7
+0.3
+1.9
+Simultaneous
+5
+23.2
+12.2
+1.6
+0.1
+7.1
+0.3
+2.0
+service. Sequential and simultaneous towel folding average 52.7 and 23.2 minutes, respectively,
+with visual loops of 25.4 and 12.2 minutes. Potato throwing averages 23.7 minutes, including 12.7
+minutes of remaining response time and 1.9 minutes of action service. Image conditioned decision
+cycles account for a substantial share of elapsed time, with perception, planning, and code generation
+coupled within model responses. Action service measures request handling, including controller
+computation and settling, so its duration includes periods when the robot is stationary.
+D.2
+REPEATED EXECUTION WITH PERSISTENT EXPERIENCE
+This subsection provides the protocol, timing boundaries, and execution records for the five cycle
+experience accumulation study in Section 4.3.1.
+Protocol and evidence.
+A single right arm completes five consecutive cycles on the same ridged
+ring and broad circular base. Every cycle begins assembled, places the removed ring independently
+on the table, and ends with a stable assembly after release and withdrawal. In the first cycle, the agent
+verifies the initial home posture and establishes the procedure from empty task experience. Each later
+cycle uses a new Codex process and context, reads the previous experience checkpoint, and updates
+object poses from current observations. Checkpoints retain cumulative geometry, successful scripts
+and dependencies, failed attempts, corrections, and the next cycle plan. A handoff requires successful
+stage records, a saved checkpoint, and normal agent exit. The agent performs final home after the
+fifth cycle. The five cycles share a budget of 1,200 counted requests and 180 minutes. Joint velocity
+and acceleration limits remain 20◦/s and 40◦/s2. Continuous wrist and overhead video, measured
+joints, commanded actions, and stage markers span all five cycles. The final export confirms all ten
+successful stages and all five checkpoints with complete recording streams.
+Timing boundaries.
+Task time runs from the disassembly start marker to the successful assembly
+end marker and includes observation, computation, command execution, and retries within that
+interval. Experience writing runs from assembly completion to checkpoint commit. For cycles 2
+through 5, the handoff interval runs from the previous checkpoint to the current disassembly start.
+It therefore includes the previous agent’s remaining report work, process exit, new agent startup,
+and initial reading. The cycle accounting total is the sum of these three intervals. These contiguous
+intervals sum to 53.8 minutes, while the full session takes 58.0 minutes including initial preparation,
+final home, and final reporting and recording export. The first cycle begins assembled. Motion
+19
+
+
+Agent as Policy
+Table 7: Execution time over five repeated task cycles. Times are seconds. Handoff includes work
+after the preceding checkpoint. Retries count failed physical stage attempts. Calls lists motion and
+gripper requests followed by frame capture requests over the cycle accounting interval. Successful
+commands alone do not establish physical stage success.
+Cycle
+Task
+Handoff
+Experience
+Total
+Motion wait
+Retries
+Calls
+1
+870.3
+0.0
+119.4
+989.7
+127.2
+1
+37 / 37
+2
+408.8
+170.2
+114.1
+693.1
+91.6
+0
+32 / 34
+3
+372.3
+33.3
+117.6
+523.1
+92.5
+0
+32 / 33
+4
+372.2
+45.9
+112.2
+530.3
+92.7
+0
+32 / 34
+5
+393.2
+29.0
+68.5
+490.7
+91.7
+0
+32 / 33
+Table 8: Time allocation for repeated two pair assembly. Times are seconds. Total is the sum of
+Task, Experience, and Other. Motion wait is included in Task. Calls lists motion and gripper requests
+followed by frame capture requests.
+Trial
+Task
+Experience
+Other
+Total
+Motion wait
+Calls
+1
+471.0
+81.2
+6.8
+559.0
+134.3
+26 / 27
+2
+387.0
+66.0
+16.0
+469.0
+144.1
+24 / 25
+3
+408.0
+53.3
+7.7
+469.0
+137.9
+23 / 24
+4
+425.0
+59.3
+13.7
+498.0
+131.3
+23 / 24
+5
+475.0
+48.7
+5.3
+529.0
+128.9
+23 / 24
+command wait is the server interval for motion and gripper calls, including controller and transport
+overhead. It contributes to the cycle accounting total.
+Observed reuse and remaining costs.
+The first cycle spends 445.7 seconds on disassembly and
+424.0 seconds on assembly including recovery. Its initial insertion stalls, prompting a safe lift and
+measurement of an approximately 9 mm offset between the grasped ring center and the tool. In later
+cycles, the agent reuses the corrected alignment procedure and validates it with current observations.
+Across cycles 2 through 5, disassembly takes 189.7, 166.9, 162.4, and 182.2 seconds, while assembly
+takes 218.8, 205.2, 209.5, and 210.8 seconds. Motion command wait remains near 92 seconds in these
+four cycles. Across the full sequence, task intervals account for 40.3 minutes, experience writing for
+8.9 minutes, and handoffs for 4.6 minutes. Motion command wait totals 8.3 minutes within these
+intervals. This leaves substantial scope to reduce observation and decision overhead and the cost of
+writing and transferring experience. The recorded sequence provides five dependent repetitions, with
+fixed model weights and updated physical poses. A matched comparison with fresh agents receiving
+empty experience at every cycle is needed to isolate the contribution of persistent experience.
+Two pair assembly with experience checkpoints.
+Five trials use GPT-6 Astra at high thinking
+effort on the left arm. Each trial assembles the hexagonal ring and narrow post and the circular
+collar and stepped cylinder. A fresh agent receives cumulative experience and script snapshots from
+previous trials. All five final agent reports describe stable assemblies after release and withdrawal.
+These outcomes are agent assessments based on recorded visual evidence. Checkpoints preserve the
+action helper, measurements, execution records, and result report.
+Table 8 reconstructs timing from server logs, checkpoint timestamps, and trial duration records. Task
+time extends from server startup to the last scene or robot state check and includes initial reading and
+the return home. Experience writing extends from that check to checkpoint saving. Other overhead is
+the remainder of the recorded trial duration. Server timestamps have one second resolution. Motion
+wait sums logged service durations for motion and gripper requests, including rejected requests, and
+is included in task time. This protocol uses separate trial sessions. Intervals between sessions are
+excluded from trial totals, including the 20.6 minute interval before trial 3. These boundaries differ
+from the stage markers and contiguous handoff accounting used for ring cycles.
+20
+
+
+Agent as Policy
+Table 9: Programs constructed during execution. Primary purposes of the 37 retained Python
+working files. Image crops, demonstration montages, and some object detection routines also appear
+as inline code and are outside this file inventory.
+Primary purpose
+Files
+Observed computations and operations
+Perception and geometry
+29
+Depth measurement, color region selection, ray intersection, triangu-
+lation, surface fitting, and grasp offset estimation.
+Robot call composition
+7
+Pose and gripper commands followed by capture, concurrent calls to
+different arms, compact responses, and full response logging.
+Visual annotation
+1
+Projection of spatial reference points into camera images for inspec-
+tion.
+E
+RUNTIME PROGRAM ANALYSIS
+We analyze the programs constructed during 65 robot task executions to characterize the runtime
+programming described in Section 3.3.
+Program inventory.
+The session workspaces retain 37 Python working files across 18 sessions.
+Agent event logs identify their creation or renaming during execution. Table 9 groups these files by
+their primary purpose. We count each retained working path once within its session. The inventory
+separately identifies 63 Python file copies supplied through inherited knowledge and seven copies
+exported for subsequent reuse. These copies are excluded from the 37 working files.
+The logs also contain 135 shell command events with inline Python across 48 sessions, including
+all 18 sessions with saved working files. These events contain image processing and geometric
+computation as well as dependency checks, report writing, and file verification. An event can
+combine several operations or create a saved program, so event and file counts are reported separately.
+Interface capabilities affect the required code, since some archived configurations expose geometric
+queries and others require local computation from calibration and depth. The counts describe retained
+artifacts and recorded execution events under these conditions.
+Surface fitting and grasp offset compensation.
+In a four pair assembly execution, the agent
+created fit_head.py to estimate the pose of a held pin from a wrist depth image. It sampled
+triples of points to identify a planar surface, then used singular value decomposition to estimate
+its normal. The following excerpt shows the refinement after selection of the surface points, with
+statements placed on separate lines for readability.
+ctr = best.mean(0)
+_, _, v = np.linalg.svd(best - ctr)
+normal = v[-1]
+normal *= np.sign(normal[2])
+The agent extended the program to intersect an overhead pixel ray with this plane, estimate the
+pin tip using an assumed pin length, and express the tip offset in the gripper frame. A further
+extension computed a corrected target orientation and position. The resulting horizontal target was
+approximately (0.51325, −0.15820) m. The next motion request used (0.5133, −0.1582) m and the
+computed quaternion, establishing a direct link between the program output and physical action
+selection. That request returned a target arrival error. The agent then adjusted the requested position
+and continued the insertion sequence. This trace illustrates successive program extensions and the
+use of their outputs within a feedback loop.
+Triangulation from two camera views.
+In another four pair assembly execution, the agent created
+triangulate.py. It converted selected wrist and overhead pixels into calibrated rays in the robot
+base frame. Given ray origins t1 and t2 and unit directions d1 and d2, the program computed the
+closest points on the two rays using the following operations.
+ab = np.linalg.lstsq(
+np.stack([d1, -d2], 1), t2 - t1, rcond=None
+21
+
+
+Agent as Policy
+)[0]
+p1 = t1 + ab[0] * d1
+p2 = t2 + ab[1] * d2
+It returned their midpoint as the position estimate and their separation as a consistency measure.
+The agent subsequently called the same program on additional targets. Pixel correspondences were
+supplied by the agent, and the ray separation measures agreement between those inputs under the
+saved calibration. Position accuracy also depends on correspondence and calibration error.
+Visual processing and execution helpers.
+Other executions contain inline programs for color
+segmentation, circle detection with multiple thresholds, and demonstration frame montages. During
+bimanual towel folding, the agent created step.py to read both arm states, dispatch one operation
+per arm concurrently, and capture observations after the operations. It also retained full responses in
+a local log while printing compact results. Concurrent arm control was documented by the interface,
+and this session received inherited tools and execution guidance. The example illustrates how the
+agent composed available operations into a program suited to its execution loop. Together, these
+cases document task dependent computation and tool composition. Their effects on task performance
+require comparisons that control interface capabilities and inherited experience.
+F
+QUALITATIVE TASK EXAMPLES
+F.1
+FOUR PAIR ASSEMBLY
+Figure 5 shows the input demonstration and a recorded execution of the four pair assembly task in
+Section 4.1.2. Eight separate parts must form four assemblies in the demonstrated order. A ridged
+sleeve fits over a broad round base, a hexagonal nut fits over a short post, a smooth sleeve fits over a
+stepped cylinder, and a long pin enters a hollow tube. The upper panel shows the human completing
+these four relationships. The lower panel shows the robot grasping, aligning, and inserting the
+corresponding parts in its own workspace.
+This case illustrates following video instructions through the translation of demonstrated part rela-
+tionships into robot actions. It also illustrates long horizon reasoning through the completion of all
+four pairs while preserving earlier assemblies. During the second assembly, unsuccessful insertion
+displaces the nut onto the table. The dark red segment marks this failure, and the yellow segment
+shows the subsequent grasp retries. The agent adjusts its grasp position and gripper orientation, seats
+the nut, and continues with the remaining two assemblies. The final frame shows all four assembled
+pairs after release and arm withdrawal.
+The upper panel contains 20 human demonstration frames, with one row per assembly. The lower
+panel contains 40 robot execution frames. Read each panel from left to right and then from top to
+bottom. Unequal sampling intervals highlight changes in the physical task state. Timestamps measure
+elapsed time in each source video, including observation, reasoning, computation, and waiting during
+the robot execution.
+22
+
+
+Agent as Policy
+Figure 5: Four pair assembly from a human demonstration video. The upper panel shows four
+demonstrated assemblies. The lower panel shows the robot assembling eight parts into four pairs,
+illustrating video instruction following and long horizon reasoning. Dark red bars mark failed nut
+insertion and displacement. Yellow bars mark grasp retries. Read each panel row by row. Timestamps
+give elapsed minutes and seconds in each video at unequal intervals.
+23
+
+
+Agent as Policy
+F.2
+BLOCK CONSTRUCTION
+Figure 6 shows the three configurations in Section 4.1.2, ordered as in Table 1. Each starts with
+six separate cubes and a static goal image specifying colors and support relations. The agent uses
+workspace observations to choose successive placements, illustrating image instruction following and
+long horizon reasoning.
+In the pyramid, three blue cubes form the base, two grey cubes bridge the base seams, and one grey
+cube forms the peak. The robot completes each tier before building the next. For the two towers, the
+color orders from bottom to top are blue, grey, blue and grey, blue, grey. The robot places both bases,
+both middle cubes, and then both top cubes, preserving the distinct color orders. The six block tower
+alternates grey and blue above a retained grey base. The robot adds five cubes while maintaining
+alignment and stability. All three final structures remain standing after release and arm withdrawal.
+Figure 6: Block construction from static goal images. From top to bottom are the pyramid, two
+towers, and six block tower. Each occupies two rows of five images, beginning with the goal image
+labeled Demo and followed by nine execution frames read row by row. Timestamps give elapsed
+minutes and seconds in each recording at unequal intervals.
+24
+
+
+Agent as Policy
+F.3
+DIE FLIPPING
+Figure 7 shows a recorded execution of the die flipping task in Section 4.1.2. The scene contains
+three black and three light blue dice with different initial upward faces. The supplied goal photograph
+specifies six pips upward on every die. Positions and rotations within the table plane are unrestricted,
+so completion depends on the upward faces of all six dice.
+The agent inspects the dice, selects grasps according to the visible faces, and rotates each grasped
+die before releasing it near the table. The execution record describes adjustments to the grasp axis
+and a reachable 60◦tilt followed by a low release that allows the die to settle onto the intended face.
+Further observations guide regrasping and verify the resulting orientation. This case illustrates action
+diversity through grasp dependent reorientation and adaptation to the arm’s reachable poses. The
+final frame shows all six dice with six pips upward after the arm withdraws.
+The figure uses two rows of five images. The first cell, labeled Demo, contains the supplied goal
+photograph. The remaining nine cells show the initial scene, intermediate manipulations, and final
+state in chronological order. Timestamps give elapsed minutes and seconds in the overhead recording,
+including observation and waiting between actions.
+Figure 7: Die flipping across six dice. The goal photograph in the cell labeled Demo specifies six
+pips upward on each of three black and three light blue dice. Nine overhead execution frames show
+the initial faces, successive manipulations, and final state with all six target faces upward. The task
+requires selecting grasps and rotations that produce the requested orientation after release. Read the
+execution frames row by row. Timestamps show elapsed minutes and seconds in the source video.
+25
+
+
+Agent as Policy
+F.4
+TARGETED THROWING
+Figure 8 shows a recorded case of targeted throwing from the action diversity group in Section 4.1.2.
+The language instruction asks the agent to grasp a potato shaped object and throw it into a stationary
+bowl. The required motion is a circular swing driven by joint 4, with the other five joint targets held
+fixed and the gripper opening during the swing. The sequence makes the task geometry visible, from
+the object and bowl on the table to the grasp, launch posture, swing, release, and final bowl outcome.
+The agent selects the grasp, motion profile, and opening schedule from observations and execution
+feedback. It first performs two motion probes while retaining the object, then adjusts the swing
+extent and coordinates the swing and gripper opening in a buffered program. This case illustrates
+the dynamic release component of action diversity, where the physical outcome depends on the
+relationship between arm motion and release timing. The sampled views show the object separating
+from the gripper and subsequently resting inside the bowl. Occlusion leaves the complete rising
+segment and apex unresolved, so assessment of the full throwing criterion also requires the execution
+records and video described in Appendix B.1.
+The upper grid contains 20 overhead frames showing the arm, object, and bowl. The lower grid
+contains 18 wrist frames providing a closer view of retention and separation at the fingers. Read each
+grid from left to right and then from top to bottom. Timestamps use a common recording clock, with
+denser sampling around release and landing to make the rapid motion visible.
+26
+
+
+Agent as Policy
+Figure 8: Targeted throwing from a language instruction. The task requires a joint driven circular
+swing and timed gripper release toward a bowl, illustrating the dynamic release component of action
+diversity. The overhead sequence shows the initial arrangement, grasp, swing, and final object
+position inside the bowl. The wrist sequence shows retention and separation at the gripper. Occlusion
+limits the visible flight trajectory. Read each grid row by row. Timestamps show elapsed minutes,
+seconds, and milliseconds on a common clock, with denser sampling around release and landing.
+27
+
+
+Agent as Policy
+F.5
+BIMANUAL TOWEL FOLDING
+Figures 9 and 10 illustrate the Sequential and Simultaneous configurations of the towel folding task
+in Section 4.1.2.
+Sequential folding.
+Figure 9 shows the human demonstration and a recorded bimanual execution
+of Sequential folding. The demonstration first brings the near long edge onto the far long edge to
+form a doubled strip. It then folds the right short end inward toward the center, followed by the left
+short end. The resulting towel has two adjacent flaps meeting near a central seam. The task specifies
+these fold relationships and their order while leaving grasp selection, arm coordination, and final
+position on the table to the agent.
+Both arms initially grasp the near corners. When the right corner slips during transport, the agent
+observes the changed towel shape and recovers that corner before completing the paired carry. A
+further grasp corrects a turned back edge. The arms then move the doubled strip closer to their bases.
+The left arm holds one end while the right folds its end inward, after which the left performs the
+remaining fold. Subsequent grasps and pulls flatten the raised left corner and attempt to improve
+the right flap. This case illustrates object diversity through manipulation of deformable material and
+following video instructions through translation of the demonstrated folds into coordinated robot
+actions. The session also provides notes from earlier towel trials for the agent to consult.
+The final frame shows both arms withdrawn and the towel released with all three folds in place. The
+left flap is substantially flatter after correction, while the right flap retains a visible buckle and the
+far edges remain offset. The execution report therefore judges the result a partial visual match. The
+sequence documents the completed fold order together with the remaining alignment errors.
+The upper panel contains 15 demonstration frames in three rows of five. The lower panel contains 30
+execution frames in six rows of five. Read each panel from left to right and then from top to bottom.
+Unequal sampling intervals show the initial state, folding actions, recovery, and final configuration.
+Timestamps measure elapsed minutes and seconds in each source video. The final sampled frames
+occur at 20 seconds in the demonstration and 35 minutes 32 seconds in the execution recording. The
+execution timestamps include observation, reasoning, computation, and waiting between actions.
+28
+
+
+Agent as Policy
+Figure 9: Sequential bimanual towel folding from a human demonstration video. The upper
+panel contains 15 frames showing the long edge fold followed by the right and left ends folding
+inward. The lower panel contains 30 frames showing coordinated grasping, recovery after a corner
+slips, the three folds, and subsequent adjustments. The final towel preserves the demonstrated fold
+arrangement with a remaining buckle and edge offsets. Read each panel row by row. Timestamps
+show elapsed minutes and seconds in the respective source videos, with unequal sampling intervals.
+29
+
+
+Agent as Policy
+Simultaneous folding.
+Figure 10 shows the second human demonstration and a successful robot
+trial under the Simultaneous configuration. The demonstrator first folds the near long edge onto the
+far long edge, then brings both short ends inward together to form two adjacent flaps. The robot
+initially grasps the two near corners with separate arms. After the right corner slips during transport,
+the left arm holds its corner while the right arm recovers the displaced edge. Both arms then complete
+the long edge fold.
+The agent moves the doubled towel closer to the arm bases, then carries both short ends inward
+concurrently to separated staging positions. It places and releases the left flap before placing the right
+flap to maintain arm clearance. A subsequent correction uses the left arm to anchor an outer edge
+while the right arm draws a raised inner hem toward the center. The final overhead image shows the
+towel released and both arms withdrawn, with both inward folds completed. The right flap retains
+skew and a curled inner edge, with a gap near the far side of the central seam. This trial is counted as
+successful in Table 1 under the physical outcome assessment described in Appendix B.2.
+The upper panel contains 15 human demonstration frames and the lower panel contains 30 robot
+execution frames. Timestamps are relative to the start of each source video. The last sampled
+frames occur at 22 seconds and 18 minutes 47 seconds, respectively. The robot recording includes
+observation, reasoning, recovery, final verification, and the interval after the arms withdraw.
+30
+
+
+Agent as Policy
+Figure 10: Simultaneous bimanual towel folding from a human demonstration video. The upper
+panel shows the long edge fold followed by both short ends folding inward together. The lower panel
+shows the robot execution, including recovery of a slipped corner, the long edge fold, inward transport
+of both ends, staged placement of the flaps, and alignment correction. The final state contains both
+inward folds with residual skew and edge offsets, with both arms withdrawn. Read each panel row by
+row. Timestamps show elapsed minutes and seconds in the respective source videos, with unequal
+sampling intervals.
+31
+
+
+Agent as Policy
+G
+EXECUTION ACROSS ARM AND END EFFECTOR EMBODIMENTS
+We examine AGP on a different arm and end effector through the task of picking up a bottle from
+a tabletop. The setup in Figure 11 replaces the six joint I2RT YAM arm and parallel gripper with
+a seven joint P7 arm and a RealHand L6 dexterous hand. The hand has five fingers and six control
+channels, comprising thumb flexion, thumb abduction, and one channel for each remaining finger.
+The experiment uses the left arm and hand, with observations from a fixed overhead RealSense D435i
+and a wrist mounted RealSense D435. Both color streams are configured at 640 × 480 pixels and
+15 Hz. The agent inspects these views and robot feedback to choose successive arm motions and
+finger targets through the P7 and L6 control interfaces. This setup changes both arm kinematics and
+the dimensionality of end effector control while retaining the observation and action loop.
+P7 arm
+Seven revolute joints
+RealHand L6
+Five fingers
+Six control channels
+Overhead camera
+RealSense D435i
+Wrist camera
+RealSense D435
+Figure 11: P7 and L6 platform for the cross embodiment experiment. The annotations identify
+the P7 arm, RealHand L6 dexterous hand, overhead RealSense D435i, and wrist mounted RealSense
+D435. The illustrated station contains two arms. The bottle task uses the left arm and hand with the
+overhead and left wrist views.
+Figure 12 shows the grasp and lift sequence. From a stationary tabletop preparation pose, the
+agent reorients the wrist, opens the thumb, and approaches the bottle through successive position
+adjustments. It then closes the fingers in stages and commands a 2 cm upward wrist motion to raise
+the bottle. Approximately 4.6 minutes elapse from the first grasp action to the displayed lift, including
+observation, reasoning, and waiting between motions. The bottle slips during subsequent holding.
+The demonstrated grasp and lift provides qualitative evidence that AGP can coordinate a different
+arm and dexterous hand through their available interfaces.
+32
+
+
+Agent as Policy
+Figure 12: Bottle grasp and lift with the P7 arm and L6 hand. The upper panel contains 15
+overhead frames read row by row, showing wrist reorientation, approach, finger closure, and lifting.
+The lower panel shows five corresponding stages from the wrist camera. Timestamps measure elapsed
+minutes and seconds from the first grasp action after stationary preparation. Frames are sampled at
+unequal intervals, with the last frame at 04:36. The two views are approximately aligned using their
+recorded host timestamps.
+33
+
+
+Agent as Policy
+H
+ERROR AND RECOVERY STUDY
+We examine execution errors and recovery attempts to understand how local mistakes affect task
+completion.
+H.1
+SIX BLOCK TOWER COLLAPSE DURING WITHDRAWAL
+The task requires six cubes stacked in alternating grey and blue layers. After the fourth cube turned
+out of alignment during placement, the agent regrasped and corrected it. To overcome limited reach at
+the sixth level, it assembled the top two cubes on the table and transferred them together by grasping
+the lower cube. All six cubes stood after release, but the tower collapsed during the subsequent
+arm withdrawal. The observations establish when the collapse occurred, while the exact contact or
+instability that caused it remains unresolved.
+The agent then localized the scattered cubes to assess whether it could rebuild. Both overhead
+geometry and wrist depth placed one grey cube near x = 0.70 m in the robot base frame, beyond the
+interface’s 0.65 m radial grasp limit. It ended the attempt as unsuccessful despite having time and
+command budget remaining.
+This case shows why withdrawal is part of task execution. A completed placement must remain stable
+as the arm moves clear. It also illustrates a limit of recovery through reobservation and regrasping.
+The earlier alignment error was corrected while the stack remained intact, whereas the collapse
+moved a required cube beyond grasp reach and prevented rebuilding.
+34
+
+
+Agent as Policy
+I
+BROADER IMPACT
+AGP explores how general purpose agents can support physical manipulation through observation,
+runtime programming, and adaptation to execution feedback. This approach may reduce the task
+specific engineering required to develop robot behaviors and make it easier for researchers to prototype
+manipulation tasks from video, image, and language instructions. Persistent programs and execution
+records also provide a basis for studying how robots can retain and reuse practical experience.
+A potential application is collecting robot trajectories for policy learning through repeated AGP
+execution. Synchronized visual observations, actions, and measured robot states could provide
+demonstrations for training vision language action policies, while failed attempts and recovery
+segments could support research on robustness. This approach could reduce the human effort required
+to produce demonstrations. Its practical value would depend on trajectory quality, collection costs,
+and the performance of policies trained on these data.
+Applying agents to physical systems introduces risks from inaccurate perception, faulty programs,
+and inappropriate motion requests, which can cause equipment damage or injury. Our implementation
+separates agent reasoning from motion execution and applies workspace and motion limits through the
+robot runtime. Deployment in settings involving people or unfamiliar environments requires additional
+safety evaluation, appropriate supervision, and independent protective mechanisms. Inference costs
+and execution latency also affect the practicality and accessibility of this approach. Evaluating these
+constraints alongside task performance is essential to understanding where AGP can provide practical
+benefits.
+35

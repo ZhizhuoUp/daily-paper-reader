@@ -6,73 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-14
-- 运行时间：2026-09-14 22:39:58 UTC
+- 最新运行日期：2026-09-15
+- 运行时间：2026-09-15 22:07:07 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 17 篇机器人前沿论文，聚焦轮式人形机器人运动重定向与强化学习安全适应。
-重点关注形态感知运动控制与动态环境下的安全技能迁移，这些研究显著提升了复杂任务的鲁棒性。
-建议优先研读这两篇高分论文，深入理解机器人如何通过形态适配与安全约束实现更智能的自主作业。
-- 详情：[/202609/14/README](/202609/14/README)
+今日精选 17 篇机器人前沿论文，聚焦自动驾驶与移动机器人在不确定环境下的避障与导航规划。
+重点推荐《Chance-Constrained》与《BIG-CBF》，两项研究在处理复杂动态环境的安全性与不确定性控制上表现卓越。
+建议优先研读这两篇高分论文，深入理解基于概率约束与行为想象的控制屏障函数（CBF）设计思路。
+- 详情：[/202609/15/README](/202609/15/README)
 
 ### 精读区论文标签
-1. [Morphology-Aware Human Motion Retargeting for Wheeled-Humanoid Loco-Manipulation](/202609/14/2609.11357v1-morphology-aware-human-motion-retargeting-for-wheeled-humanoid-loco-manipulation)  
+1. [Chance-Constrained Belief-Space Maneuver Planning for Autonomous Collision Avoidance Under Uncertainty](/202609/15/2609.13428v1-chance-constrained-belief-space-maneuver-planning-for-autonomous-collision-avoidance-under-uncertainty)  
+   标签：评分：9.0/10、query:q9
+   evidence：轨道自主避障的信念空间机动规划
+2. [BIG-CBF: Behavior-Imagination-Guided Control Barrier Function with Shared Uncertainty for Mobile Robot Navigation](/202609/15/2609.14343v1-big-cbf-behavior-imagination-guided-control-barrier-function-with-shared-uncertainty-for-mobile-robot-navigation)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：基于控制屏障函数的优化避障
+3. [Conflict-Predictive Variable Horizons in Multi-Drone Distributed Model Predictive Control](/202609/15/2609.13270v1-conflict-predictive-variable-horizons-in-multi-drone-distributed-model-predictive-control)  
    标签：评分：8.0/10、query:profile-1
-   evidence：轮式类人机器人的移动-操作行为
-2. [Safety-aware Skill Adaptation for Reinforcement Learning in Dynamic Environments](/202609/14/2609.11433v1-safety-aware-skill-adaptation-for-reinforcement-learning-in-dynamic-environments)  
+   evidence：用于避障的分布式模型预测控制
+4. [Learning Communication-Conditioned Generative Policies for Decentralized Multi-Agent Collision Avoidance](/202609/15/2609.14268v1-learning-communication-conditioned-generative-policies-for-decentralized-multi-agent-collision-avoidance)  
    标签：评分：8.0/10、query:q1
-   evidence：动态环境下基于安全引导强化学习的轨迹自适应
-3. [Battery-Aware Predictive Trajectory Planning and Control for Multirotors Under Disturbances](/202609/14/2609.12188v1-battery-aware-predictive-trajectory-planning-and-control-for-multirotors-under-disturbances)  
-   标签：评分：8.0/10、query:q3
-   evidence：预测性轨迹规划与控制
-4. [Driving Context-guided Model Predictive Planning and Control for Autonomous Car Racing at the Limit and Beyond](/202609/14/2609.12660v1-driving-context-guided-model-predictive-planning-and-control-for-autonomous-car-racing-at-the-limit-and-beyond)  
-   标签：评分：8.0/10、query:q2
-   evidence：基于模型预测控制的运动规划与控制流水线
-5. [VertexCBF: Improving Neural Control Barrier Functions via Vertex-Restricted Control Search](/202609/14/2609.12831v1-vertexcbf-improving-neural-control-barrier-functions-via-vertex-restricted-control-search)  
-   标签：评分：8.0/10、query:q1
-   evidence：用于安全和避障的神经控制屏障函数
-6. [ASTRIL-MPC: Autonomous Traversal Framework of Articulated Tracked Robots with Language-Guided Neural-Kinematic MPC](/202609/14/2609.13083v1-astril-mpc-autonomous-traversal-framework-of-articulated-tracked-robots-with-language-guided-neural-kinematic-mpc)  
+   evidence：使用生成策略的分布式多智能体避障
+5. [Primitive-Informed Sampling-Based MPC for Multi-Fingered Dexterous Manipulation](/202609/15/2609.14868v1-primitive-informed-sampling-based-mpc-for-multi-fingered-dexterous-manipulation)  
    标签：评分：8.0/10、query:profile-1
-   evidence：用于自主穿越的神经运动学模型预测控制
+   evidence：基于采样的MPC用于具有轨迹约束的灵巧操作
+6. [Distributed Safe Cooperative Vector Field for Trajectory Curvature Constrained Multi-Robot Systems](/202609/15/2609.15266v1-distributed-safe-cooperative-vector-field-for-trajectory-curvature-constrained-multi-robot-systems)  
+   标签：评分：8.0/10、query:q1
+   evidence：多机器人系统的安全导向避障向量场
 
 ### 速读区论文标签
-1. [Trajectory Bundle Method in SE(3) for Black-Box Fixed-Wing Aircraft Trajectory Optimization](/202609/14/2609.12248v1-trajectory-bundle-method-in-se3-for-black-box-fixed-wing-aircraft-trajectory-optimization)  
-   标签：评分：8.0/10、query:q3
-   evidence：SE(3)上刚体系统的轨迹优化
-2. [Distributed Stochastic Optimal Control for Pattern-Oriented Swarms](/202609/14/2609.12959v1-distributed-stochastic-optimal-control-for-pattern-oriented-swarms)  
-   标签：评分：8.0/10、query:q1
-   evidence：用于导航的安全感知避障模块
-3. [TASG-Explore: Traversability-Aware Sector-Guided Exploration for Ground Robot on Uneven Terrain](/202609/14/2609.08512v1-tasg-explore-traversability-aware-sector-guided-exploration-for-ground-robot-on-uneven-terrain)  
-   标签：评分：7.0/10、query:q4
-   evidence：地面机器人在崎岖地形上的可通行性感知探测
-4. [Predefined-Time Resilient Integral Reinforcement Learning for Input-Constrained Unknown Nonlinear Systems Under FDI Attacks and Disturbances: A Fully Data-Driven Approach](/202609/14/2609.11815v1-predefined-time-resilient-integral-reinforcement-learning-for-input-constrained-unknown-nonlinear-systems-under-fdi-attacks-and-disturbances-a-fully-data-driven-approach)  
-   标签：评分：7.0/10、query:q2
-   evidence：输入受限未知非线性系统的最优控制
-5. [DATAFARM: Distribution-Aligned Task and Motion Planning for Fine-Tuning Vision-Language-Action Models](/202609/14/2609.12316v1-datafarm-distribution-aligned-task-and-motion-planning-for-fine-tuning-vision-language-action-models)  
-   标签：评分：7.0/10、query:q4
-   evidence：用于机器人基础模型的任务与运动规划 (TAMP)
-6. [DWMP: Leveraging Dual World Models for Humanoid Obstacle Traversal](/202609/14/2609.12347v1-dwmp-leveraging-dual-world-models-for-humanoid-obstacle-traversal)  
-   标签：评分：7.0/10、query:q4
-   evidence：类人机器人障碍物穿越与运动规划
-7. [Understanding Whole-Body Robot Teleoperation Strategies Under Diverse Task Objectives and Constraints](/202609/14/2609.12384v1-understanding-whole-body-robot-teleoperation-strategies-under-diverse-task-objectives-and-constraints)  
-   标签：评分：7.0/10、query:q4
-   evidence：全身机器人遥操作与操作的控制策略
-8. [ArtManip: Category-Level Articulated In-Hand Manipulation](/202609/14/2609.12498v1-artmanip-category-level-articulated-in-hand-manipulation)  
+1. [ActSafeGuard: Differentiable and Training-Aligned Constraint Enforcement for Flow-Matching Policies](/202609/15/2609.11697v2-actsafeguard-differentiable-and-training-aligned-constraint-enforcement-for-flow-matching-policies)  
+   标签：评分：8.0/10、query:q6
+   evidence：机器人操作的可微约束执行
+2. [Arborist: Algorithm-Hardware Co-Design for Fast and Efficient Motion Planning](/202609/15/2609.13420v1-arborist-algorithm-hardware-co-design-for-fast-and-efficient-motion-planning)  
+   标签：评分：8.0/10、query:q5
+   evidence：具有严格延迟约束的实时运动规划
+3. [Mobile Multi-Robot Navigation under Runtime Uncertainty via Koopman Operator Learning and Nonlinear Model Predictive Control](/202609/15/2609.14058v1-mobile-multi-robot-navigation-under-runtime-uncertainty-via-koopman-operator-learning-and-nonlinear-model-predictive-control)  
+   标签：评分：8.0/10、query:q2
+   evidence：用于带障碍物多机器人导航的非线性模型预测控制
+4. [Real-World Reinforcement Learning with MPC Scaffolding for Dexterous Manipulation](/202609/15/2609.14878v1-real-world-reinforcement-learning-with-mpc-scaffolding-for-dexterous-manipulation)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：MPC引导的灵巧操作强化学习
+5. [Agent as Policy for Robotic Manipulation](/202609/15/2609.12541v1-agent-as-policy-for-robotic-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：机器人手的类别级关节内手部操纵
-9. [Lie bracket approximations of RMSprop for Extremum Seeking Control](/202609/14/2609.06505v1-lie-bracket-approximations-of-rmsprop-for-extremum-seeking-control)  
+   evidence：用于机器人操作任务规划与执行的通用智能体
+6. [Agent as Policy for Robotic Manipulation](/202609/15/2609.12541v2-agent-as-policy-for-robotic-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：基于智能体的真实世界机器人操作策略与运动指令
+7. [A Hierarchical Coverage Path Planning Algorithm for Unknown Environments](/202609/15/2609.12595v1-a-hierarchical-coverage-path-planning-algorithm-for-unknown-environments)  
+   标签：评分：7.0/10、query:q4
+   evidence：未知环境下的在线覆盖路径规划
+8. [Distributed Stochastic Optimal Control for Pattern-Oriented Swarms](/202609/15/2609.12959v2-distributed-stochastic-optimal-control-for-pattern-oriented-swarms)  
+   标签：评分：7.0/10、query:q1
+   evidence：用于导航的安全感知避障模块
+9. [Entropy-Regularized Optimal Transport for Time-Varying Multi-Agent Coverage Control](/202609/15/2609.09829v1-entropy-regularized-optimal-transport-for-time-varying-multi-agent-coverage-control)  
    标签：评分：6.0/10、query:q2
-   evidence：使用李括号近似的极值寻求控制设计
-10. [Diagnosing and Dynamically Filtering Occupancy World Models for Active Mapping](/202609/14/2609.06820v2-diagnosing-and-dynamically-filtering-occupancy-world-models-for-active-mapping)  
-   标签：评分：6.0/10、query:q4
-   evidence：用于机器人运动规划的占据世界模型
-11. [CASD: Chunk-Aligned Semantic Distillation for Multi-StageRobot Manipulation](/202609/14/2609.08638v1-casd-chunk-aligned-semantic-distillation-for-multi-stagerobot-manipulation)  
+   evidence：基于优化的多智能体系统控制
+10. [Control Architecture for Safe Grasping of Fragile Objects Using a Coarse Position-Controlled Gripper](/202609/15/2609.12737v1-control-architecture-for-safe-grasping-of-fragile-objects-using-a-coarse-position-controlled-gripper)  
    标签：评分：6.0/10、query:q6
-   evidence：多阶段机器人操作策略学习
+   evidence：机器人操作与抓取的自适应控制
+11. [Global Path Planner with Multi-Model Switching](/202609/15/2609.13015v1-global-path-planner-with-multi-model-switching)  
+   标签：评分：6.0/10、query:q1
+   evidence：具有实时运动学切换的全局路径规划器
 
 
 <div class="dpr-home-promo-card">
