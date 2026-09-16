@@ -1,0 +1,1951 @@
+Title: A hybrid crossover kangaroo escape optimization framework for engineering optimization and UAV path planning
+
+URL Source: https://arxiv.org/pdf/2609.14249v1
+
+Published Time: Tue, 15 Sep 2026 01:05:48 GMT
+
+Number of Pages: 57
+
+Markdown Content:
+# A hybrid crossover kangaroo escape optimization framework for engineering optimization and UAV path planning 
+
+Han-Bin Liu a, Huayi Wei a,b, ∗
+
+> aSchool of Mathematics and Computational Science, Xiangtan University, Xiangtan 411105, China
+> bNational Center of Applied Mathematics in Hunan, Hunan Key Laboratory for Computation and Simulation in Science and Engineering, Xiangtan 411105, China
+
+Abstract 
+
+Complex engineering optimization problems are often characterized by multimodality, high dimensionality, and nonlinear constraints, posing significant challenges for efficient and reli-able computation. To address these challenges, this paper develops a hybrid crossover-based optimization framework that enhances population interaction and improves search efficiency. The proposed framework integrates two complementary mechanisms, namely a L´ evy long jump crossover strategy for global exploration and a horizontal–vertical crossover strategy for effective information exchange and local refinement, thereby improving convergence be-havior and robustness. To support scalable computation, the method is implemented within a unified multi-backend computational framework based on FEALPy, enabling consistent and efficient execution across heterogeneous platforms, including NumPy and PyTorch on both CPU and GPU. This design enhances portability, reproducibility, and computational efficiency in large-scale optimization tasks. Extensive experiments on the IEEE CEC2022 benchmark suite demonstrate that the proposed framework achieves competitive or superior performance compared with several representative metaheuristic algorithms, as validated by Wilcoxon rank-sum and Friedman statistical tests. In addition, the method shows strong performance on constrained engineering design problems. Finally, the proposed framework is applied to UAV path planning, formulated as a constrained optimization problem, demon-strating its effectiveness and scalability in complex engineering scenarios. 
+
+Keywords: Hybrid Crossover Kangaroo Escape Optimizer, Engineering optimization, UAV path planning, Multi-backend implementation 
+
+1. Introduction 
+
+Complex optimization problems in engineering and autonomous systems are often char-acterized by high dimensionality, multimodality, and nonlinear constraints, posing significant challenges for efficient computation. These challenges become more critical in large-scale or    
+
+> ∗Corresponding author.
+> Email address: weihuayi@xtu.edu.cn (Huayi Wei)
+> Preprint submitted to Elsevier September 15, 2026 arXiv:2609.14249v1 [math.OC] 13 Sep 2026
+
+real-time scenarios where both solution quality and computational efficiency are required. In particular, problems such as UAV path planning can be formulated as constrained opti-mization tasks involving obstacle avoidance, trajectory smoothness, and dynamic feasibility requirements. Solving such problems requires not only robust optimization strategies but also scalable computational frameworks capable of operating efficiently across heterogeneous computing environments. Path planning in unmanned aerial vehicle (UAV) systems is a representative application of constrained optimization that directly affects mission efficiency and operational safety. It aims to determine an optimal trajectory under multiple constraints, including obstacle avoidance, path smoothness, and vehicle dynamic feasibility. Various approaches have been proposed for UAV path planning, including graph-based methods such as Voronoi diagrams and probabilistic roadmap (PRM) [2–4], sampling-based techniques such as rapidly explor-ing random trees (RRT) [5], grid-based search methods such as A* [6, 7], and potential field approaches [8, 9]. Despite their effectiveness in specific scenarios, these methods of-ten face challenges in scalability, handling complex constraints, or avoiding local optima in high-dimensional environments. As a result, optimization-based approaches, particularly metaheuristic algorithms, have become an important direction for solving UAV path plan-ning problems in complex and dynamic scenarios. In recent years, metaheuristic algorithms have been widely adopted for solving com-plex engineering optimization problems due to their flexibility and ability to handle high-dimensional and non-differentiable search spaces. Representative methods include Particle Swarm Optimization (PSO) [10], Genetic Algorithm (GA) [11], and Differential Evolution (DE) [12]. Among recent developments, the Kangaroo Escape Optimizer (KEO), proposed by Almutairi et al. [13], is a metaheuristic algorithm that models escape behaviors to bal-ance exploration and exploitation. Although KEO has demonstrated promising performance across various optimization problems [14, 15], it may still suffer from premature convergence and insufficient exploration capability when dealing with high-dimensional or complex opti-mization landscapes. From a methodological perspective, existing KEO variants primarily rely on movement-based search mechanisms, which limits the diversity of information ex-change among individuals. In particular, the potential of crossover-based interactions for enhancing population diversity and accelerating convergence has not been fully explored. In addition, most existing implementations are tightly coupled to specific programming envi-ronments, restricting scalability and portability in heterogeneous computing settings. To address these limitations, this study develops a hybrid crossover-based optimization framework, referred to as HCKEO. The proposed framework introduces two complementary crossover strategies to enhance information exchange among individuals and improve the balance between global exploration and local exploitation, thereby mitigating premature convergence and insufficient exploration in complex search spaces. Furthermore, a unified multi-backend computational framework is constructed based on FEALPy, enabling efficient and consistent execution across heterogeneous platforms. The effectiveness of the proposed framework is validated through experiments on the IEEE CEC2022 benchmark suite and constrained engineering optimization problems. In addition, it is applied to UAV path planning formulated as a constrained optimization problem, demonstrating its applicability 2in complex real-world scenarios. The main contributions of this study are summarized as follows: 
+
+• A hybrid crossover-based optimization framework is developed to address complex engineering optimization problems characterized by multimodality, high dimensional-ity, and nonlinear constraints. The framework enhances population interaction and improves overall search efficiency. 
+
+• Two complementary crossover strategies, namely the L´ evy long jump crossover and the horizontal–vertical crossover, are integrated within the framework to achieve a better balance between global exploration and local exploitation, leading to improved convergence behavior and robustness. 
+
+• A unified multi-backend computational framework is established based on FEALPy, enabling consistent and efficient execution across heterogeneous platforms (NumPy and PyTorch on CPU and GPU), thereby improving scalability, portability, and re-producibility. 
+
+• Comprehensive evaluations on the IEEE CEC2022 benchmark suite and constrained engineering optimization problems demonstrate the effectiveness and robustness of the proposed framework compared with representative metaheuristic methods. 
+
+• The proposed framework is applied to UAV path planning formulated as a constrained optimization problem, demonstrating its capability in handling complex real-world engineering scenarios. The structure of the remainder of this paper is summarized as follows. Section 2 provides a brief review of related studies. Section 3 describes the basic KEO framework and details the proposed HCKEO algorithm. Section 4 reports the experimental evaluation on benchmark functions and engineering optimization problems. Section 5 discusses the UAV path planning application. Section 6 presents the multi-backend implementation of HCKEO based on the FEALPy framework and analyzes its computational performance across different computing platforms. Finally, Section 7 concludes the paper. 
+
+2. Related Work 
+
+2.1. Metaheuristic algorithms in optimization 
+
+In recent years, many real-world engineering and scientific problems have been formu-lated as optimization problems whose complexity continues to increase. To address such challenges, MHAs have gained widespread attention in recent years because of their flexi-bility and strong global optimization capability. MHAs are population-based optimization methods inspired by natural, biological, or social phenomena [17], and have become effective tools for solving complex optimization problems. Over the past decades, a large number of MHAs have been proposed and can be broadly classified into several categories [18], including evolutionary algorithms (Genetic Algorithm 3[11]), swarm-based algorithms (Crayfish optimization algorithm [19]), physics-based algo-rithms (Snow ablation optimizer [20]), chemistry-based algorithms (Chemical Reaction Op-timization [21]), plant-based algorithms (Strawberry Algorithm [22]), human-based algo-rithms (Society Civilization Algorithm [23]), art-based algorithms (Musical Composition Algorithm [24]), sport-based algorithms (Running City game optimizer [25]), mathematics-based algorithms (Stochastic Fractal Search [26]), single-solution-based algorithms (Large Neighbourhood Search [27]), and hybrid algorithms (Cuckoo Search and Quantum-Behavior Particle Swarm Optimization [28], Butterfly Optimization Algorithm Combined with Black Widow Optimization [29]), as illustrated in Fig. 1. 
+
+> Figure 1: Classification of metaheuristic algorithms.
+
+The popularity of MHAs can be attributed to several advantages, including simple im-plementation, derivative-free search capability, and strong adaptability to complex and non-linear optimization problems [30]. Unlike gradient-based optimization methods, MHAs rely on stochastic population evolution to explore the search space, which helps avoid premature convergence and improves robustness. However, according to the No Free Lunch (NFL) theorem [31], no single algorithm performs best for all optimization problems. Therefore, continuous development of new metaheuristics and hybrid strategies remains an important research direction in optimization. Among recently proposed MHAs, the Kangaroo Es-cape Optimizer has attracted increasing attention due to its adaptive escape-inspired search mechanisms and promising optimization performance. 42.2. Kangaroo Escape Optimizer and its variants 
+
+Recently, the Kangaroo Escape Optimizer (KEO) has been proposed as a nature-inspired metaheuristic algorithm that simulates the escape strategies of kangaroos when facing po-tential threats. In KEO, each kangaroo represents a candidate solution that dynamically moves within the search space to locate a safer region corresponding to a better objective value. The algorithm models three main behavioral mechanisms, including zigzag motion, long-jump escape, and decoy drop strategies, which collectively balance global exploration and local exploitation during the optimization process [15]. Due to its simple structure and adaptive search mechanism, KEO has recently attracted increasing attention in engineering optimization problems. For example, Aljumah and Ab-dullah [15] applied KEO to parameter extraction of photovoltaic models based on different equivalent circuit configurations, demonstrating improved accuracy and convergence effi-ciency compared with several state-of-the-art optimizers. Similarly, Sulaiman et al. [14] introduced a Kangaroo Escape Algorithm (KEA) for solving combined heat and power eco-nomic dispatch problems, showing promising performance in large-scale energy management scenarios. In addition, Almutairi and Shaheen [13] proposed a Kangaroo Escape Optimiza-tion to optimize fractional-order PID controller in load frequency control of interconnected power systems. Despite the encouraging results reported in engineering applications, existing research on KEO mainly focuses on practical implementations and parameter tuning rather than al-gorithmic enhancement. The potential of integrating crossover-based information exchange mechanisms to enhance population diversity and search capability has received limited at-tention. However, the original KEO primarily relies on movement-based search strategies such as zigzag motion and long-jump escape, which may limit information exchange among kangaroos and reduce population diversity in complex optimization problems. Motivated by this observation, the present work introduces two crossover-based strategies to improve the exploration–exploitation balance of the original KEO framework. 
+
+2.3. Hybrid and crossover-based strategies 
+
+Hybridization strategies have been widely adopted to enhance the performance of MHAs by integrating complementary search mechanisms. By combining different operators or search behaviors, hybrid metaheuristics can effectively improve exploration capability, con-vergence speed, and solution robustness in complex optimization problems [32, 33]. Among various hybridization techniques, crossover-based operators play a crucial role in promoting information exchange among agents and maintaining population diversity. Originally introduced in evolutionary algorithms such as GA, crossover operations enable candidate solutions to share useful information, thereby improving the global search ability of population-based optimization methods. Recent studies have demonstrated that incor-porating crossover mechanisms into swarm intelligence and other metaheuristic frameworks can significantly enhance convergence stability and reduce the risk of premature convergence [34]. In addition, L´ evy flight has been widely employed in MHAs to improve global explo-ration performance [35, 36]. Due to its heavy-tailed step-length distribution governed by 5a power law, L´ evy flight enables a combination of frequent short moves and occasional long-distance jumps, which helps algorithms escape from local optima and explore distant promising regions. Therefore, incorporating L´ evy-based search steps into existing meta-heuristic frameworks has become an effective approach for enhancing global exploration capability. Therefore, integrating crossover mechanisms and L´ evy-based exploration into the KEO framework is expected to enhance both population diversity and global search capability. Motivated by these observations, this study introduces two crossover-based enhancement strategies into the original KEO framework, namely the L´ evy Long Jump Crossover (LLJC) strategy and the Horizontal–Vertical Crossover (HVC) strategy. These mechanisms aim to improve information exchange among individuals and achieve a better balance between global exploration and local exploitation. 
+
+3. The Proposed Algorithm 
+
+In this section, we first present a brief overview of the original KEO to clarify its core mechanisms and optimization principles. Then, we introduce the proposed HCKEO, which improves the exploration–exploitation balance of the standard KEO by integrating two enhanced strategies: the L´ evy Long Jump Crossover (LLJC) strategy and the Horizon-tal–Vertical Crossover (HVC) strategy. The overall framework, algorithmic improvements, and computational procedure of HCKEO are described in detail in the following subsections. 
+
+3.1. Kangaroo Escape Optimizer 
+
+The KEO [13] is a nature-inspired MHA that emulates the escape behavior of kangaroos when facing predators. In nature, kangaroos exhibit adaptive and cooperative movement strategies that enable them to efficiently evade threats. Motivated by this behavior, KEO models the optimization process as a group of kangaroos that dynamically adjust their positions in the search space through three coordinated mechanisms: Energy-Based Decision to adaptive search strategy, zigzag motion to avoid direct pursuit, long jumps to traverse distant regions, and decoy drops to mislead predators. These mechanisms collectively achieve a balance between global exploration and local exploitation during the search process. 
+
+3.1.1. Energy-Based Decision 
+
+In the original KEO algorithm, the chaotic logistic map is used to model the energy of each kangaroo to represent the dynamic energy variation of kangaroos during the search process. The energy value at t iteration is defined as: 
+
+energy (t) = 
+
+
+
+1 − r · tT
+
+
+
+·
+
+
+
+0.95 + 5 · λ(t)100 
+
+
+
+, (3.1) where t and T denote the current and maximum iteration numbers, respectively; r ∈ [0 , 1] is a random number; and λ(t) is updated according to the logistic map: 
+
+λ(t + 1) = 4 · λ(t) · (1 − λ(t)) , (3.2) 6with the initial value λ(0) = 0 .7. This mechanism enables kangaroos to exhibit varying activity levels throughout the optimization process, maintaining a controlled degree of ran-domness while gradually reducing their energy as the iterations proceed. 
+
+3.1.2. Zigzag Motion 
+
+Let Xti denote the position of the ith kangaroo at iteration t. The zigzag motion is mathematically modeled as: 
+
+Xt+1  
+
+> i
+
+= Xti + sin( θ) β v rotate N1, (3.3) where the second term on the right-hand side represents the zigzag step, β = 0 .5 is a scaling coefficient, N1 is a random vector drawn from a standard normal distribution, and vrotate is the rotated direction vector defined as: 
+
+vrotate = sin( θ) U ∥Vi∥ + cos( θ) Vi, (3.4) where U is an orthogonal unit vector perpendicular to Vi, the direction vector from Xi to the global best position ( gbest ). The rotation angle θ is given by: 
+
+θ = θmax (2 r1 − 1) , (3.5) where θmax = π/ 6 denotes the maximum allowable rotation angle, and the random variable 
+
+r1 sampled from the uniform distribution over (0 , 1). This mechanism introduces directional perturbations to maintain diversity while guiding the population toward promising regions. 
+
+3.1.3. Decoy Drops 
+
+When no immediate threat is perceived, kangaroos tend to move toward safer and resource-rich regions. This behavior is modeled as: 
+
+Xt+1  
+
+> i
+
+= Xsaf e + decoy drop N3 (Xti − Xsaf e ), (3.6) where Xsaf e denotes a position considered safe, determined under three movement modes: 
+
+(i) exploration – selecting a random kangaroo position; (ii) exploitation – adopting a locally best position within a small group; and (iii) deep exploitation – moving toward the global best position. The term decoy drop characterizes the decoy-dropping behavior and is defined as: 
+
+decoy drop =
+
+
+
+round( r2 × r3), if r5 ≥ 2/3,
+
+round( r4), if 2 /3 > r 5 ≥ 1/3,
+
+[1 , 1, . . . , 1] 1×D, otherwise, (3.7) where r2, r3, and r4 are random vectors within [0 , 1], and r5 ∈ [0 , 1] is a scalar random variable. This mechanism enhances stochasticity and enables individuals to exhibit diverse adaptive behaviors, thereby mitigating the risk of premature convergence. 73.1.4. Long Jump 
+
+Kangaroos may search for distant areas through long-distance jump, which can be for-mulated as: 
+
+Xt+1  
+
+> i
+
+= Xti + 2 Xti · N2 · decoy drop , (3.8) where N2 denotes a random vector sampled from a standard normal distribution. The inclusion of decoy drop introduces controlled randomness, enhancing the algorithm’s global exploration ability and enabling individuals to effectively escape from local optima. 
+
+3.2. Hybrid Crossover Kangaroo Escape Optimizer 
+
+Although KEO adopts three strategies to balance exploration and exploitation, its con-vergence speed and local refinement capability can still be further improved, particularly in high-dimensional or complex search spaces. To address these limitations, we propose the Hybrid Crossover Kangaroo Escape Optimizer (HCKEO), which integrates two key mechanisms: the L´ evy Long Jump Crossover (LLJC) strategy and the Horizontal–Vertical Crossover (HVC) strategy. By combining these crossover-based improvements with the orig-inal KEO framework, HCKEO achieves a more robust and adaptive optimization process. The details of these strategies and their computational procedures are elaborated in the following subsections. 
+
+3.2.1. L´ evy Long Jump Crossover Strategy 
+
+To address the exploration–exploitation imbalance and reduce premature convergence in KEO, a L´ evy Long Jump Crossover (LLJC) strategy is introduced. This strategy leverages the statistical characteristics of L´ evy flights, which generate a combination of frequent short moves and occasional long-distance jumps. Such long-tailed step-size distributions, governed by a power-law behavior, have been demonstrated to significantly enhance global search abil-ity and improve convergence robustness in swarm intelligence and evolutionary algorithms [37]. Furthermore, recent studies suggest that combining L´ evy-based movements with other search strategies can effectively balance diversification and intensification, thereby improv-ing overall optimization efficiency [28]. By embedding the L´ evy-based crossover operator within KEO, the proposed approach enables non-Gaussian stochastic movements that facil-itate escaping local optima and exploring distant promising regions, ultimately enhancing adaptability and convergence performance. The mathematical model of the LLJC strategy is formulated as: 
+
+Xt+1  
+
+> i
+
+= Xti + 2 · N2 · decoy drop · (Xtr1 − gbest ) + k · l(λ) · (Xtr2 − Xti ), (3.9) where Xtr1 and Xtr2 are two randomly selected kangaroos at iteration t, and k ·l(λ) represents the L´ evy crossover factor defined as: 
+
+k = 2 r6 · T − tT , (3.10) 
+
+l(λ) = ra
+
+∥rb∥1/α ·
+
+ Γ(1 + α) sin( πα/ 2) Γ((1 + α)/2) α 2(α−1) /2
+
+1/α 
+
+, (3.11) 8where T is the maximum number of iterations, Γ( ·) denotes the Gamma function, r6 ∈ [0 , 1] is a random variable, ra and rb represent Gaussian random variables with zero mean and unit variance, and α is a constant coefficient whose value is fixed at 1.5 in HCKEO. This mechanism integrates the exploratory characteristics of L´ evy flight–like movements with the information-sharing capability introduced by crossover operations. Consequently, individu-als are able to perform adaptive large-step movements guided by high-quality solutions, while preserving stochastic perturbations that help the population avoid premature convergence. It is worth noting that the effective step length induced by the L´ evy flight is iteration-dependent. At early stages, larger step sizes dominate the search process to enhance global exploration, whereas the step length gradually shrinks as the iteration progresses, promoting local exploitation. This dynamic behavior is illustrated in Fig. 2. 
+
+> Figure 2: Illustration of L´ evy flight step-length distribution at different iteration stages. Larger steps occur with higher probability during early iterations, facilitating global exploration, while the step size gradually decreases as the iteration proceeds, encouraging local exploitation and convergence.
+
+3.2.2. Horizontal–Vertical Crossover Strategy 
+
+To further enhance information exchange within the population, the Horizontal–Vertical Crossover (HVC) strategy [39] is incorporated into the proposed HCKEO framework. The HVC operator introduces two complementary crossover mechanisms that operate from dif-ferent perspectives of the search space, namely horizontal crossover and vertical crossover. The horizontal crossover mechanism focuses on interactions between different individu-als. In this operation, two individuals are randomly selected from the population and their position vectors are combined to generate new candidate solutions. By allowing individuals 9to exchange useful search information, horizontal crossover helps improve the global explo-ration capability of the algorithm and accelerates convergence toward promising regions. Let Xi1 and Xi2 denote two kangaroos selected from the population. The offspring generated through horizontal crossover can be expressed as: 
+
+Xhc i1 = r7Xi 1 + (1 − r7)Xi2 + c1(Xi1 − Xi2), (3.12) 
+
+Xhc i2 = r8Xi 2 + (1 − r8)Xi1 + c2(Xi2 − Xi1), (3.13) where r7 and r8 are uniformly distributed random numbers in (0 , 1), and c1 and c2 are random coefficients sampled from ( −1, 1). Different from horizontal crossover, the vertical crossover mechanism operates across dif-ferent dimensions of the same individual. During the search process, certain dimensions may stagnate and limit the algorithm’s ability to further improve the solution. Vertical crossover alleviates this issue by introducing interactions among dimensions within an individual. Specifically, two dimensions of an individual are randomly selected and combined to update one target dimension, while the remaining dimensions remain unchanged. This dimension-level recombination introduces additional variation into the population and helps the algorithm escape from locally trapped regions of the search space. The vertical crossover operation is defined as: 
+
+Xvc i,j 1 = r9 · Xi,j 1 + (1 − r9) · Xi,j 2 (3.14) where j1 and j2 represent two randomly selected dimensions and r9 ∈ (0 , 1) is a uniformly distributed random coefficient. By jointly employing horizontal and vertical crossover mech-anisms, the HVC strategy promotes both inter-individual information exchange and intra-individual dimensional interaction. This dual interaction mechanism enhances population diversity, improves the ability to escape premature convergence, and ultimately strengthens the overall search performance of HCKEO. 
+
+3.2.3. HCKEO Algorithmic Process 
+
+The flowchart of the proposed HCKEO algorithm is shown in Fig. 3. The corresponding pseudo-code is presented in Algorithm 1. 
+
+3.2.4. HCKEO Performance Analysis 
+
+This section analyzes the computational complexity and memory requirements of HCKEO, corresponding to the algorithm’s time and space complexity, respectively. 
+
+Computational Complexity. The computational cost of the proposed HCKEO algorithm mainly arises from population initialization, fitness evaluation, position updating, and the HVC operations. Before discussing the computational complexity of the algorithm, it is agreed that N represents the population size, Drepresents the dimension, and T represents the maximum number of iterations. During initialization, the population is randomly gen-erated within the search space, producing an ( N × D) matrix of candidate solutions. This step requires ( O(N D )) time. For each iteration of the optimization process, the algorithm evaluates the fitness of all individuals and updates their positions according to the movement 10 Algorithm 1: Hybrid Crossover Kangaroo Escape Optimizer (HCKEO) 
+
+Input: Population size, problem dimension, and maximum number of iterations 
+
+Output: Optimal solution  
+
+> 1
+
+Initialize the population;  
+
+> 2
+
+while the termination criterion is not satisfied do  
+
+> 3
+
+for each kangaroo do  
+
+> 4
+
+if rand > 0.5 then  
+
+> 5
+
+% Decoy Drops Mechanism ; 
+
+> 6
+
+Compute decoy drop using Eq. (3.7);  
+
+> 7
+
+Update position using Eq. (3.6);  
+
+> 8
+
+else  
+
+> 9
+
+Evaluate energy using Eq. (3.1);  
+
+> 10
+
+if energy > 0.5 then  
+
+> 11
+
+% Long Jump Mechanism ; 
+
+> 12
+
+Compute decoy drop using Eq. (3.7);  
+
+> 13
+
+Execute the L´ evy Long Jump Crossover Strategy using Eq. (3.9);  
+
+> 14
+
+else  
+
+> 15
+
+% Zigzag Motion Mechanism ; 
+
+> 16
+
+Update position using Eq. (3.3);  
+
+> 17
+
+end  
+
+> 18
+
+end  
+
+> 19
+
+end  
+
+> 20
+
+% Population Update ; 
+
+> 21
+
+Apply the Horizontal-Vertical Crossover Strategy to update kangaroo states;  
+
+> 22
+
+Update the population by retaining the best current positions;  
+
+> 23
+
+end 
+
+mechanisms of KEO together with the proposed crossover operators. Both the fitness com-putation and the position update involve operations across all individuals and dimensions, leading to a complexity of ( O(N D )) per iteration. In addition, the HVC strategy performs arithmetic operations on solution vectors with the same order of computational cost, i.e., (O(N D )). Consequently, the dominant cost of the algorithm occurs during the iterative search stage, and the omputational complexity of HCKEO can be calculated as: 
+
+O(N D ) + O(N D ) + O(T N D ) + O(T N D ) = O(T N D ).
+
+Since the original KEO algorithm follows a similar population update mechanism, it shares the same asymptotic time complexity ( O(T N D )). Therefore, incorporating the crossover operators does not change the order of computational complexity, although it introduces additional constant-level arithmetic operations within each iteration. 11 Start Set parameters and randomly initialize population Termination criterion satisfied? Output the optimal solution    
+
+> Yes
+> End Rand > 0.5 ? No
+> Evaluate decoy drop by Eq. (3.7)
+> Yes
+> Update location by Eq. (3.6) Decoy Drops Mechanism Evaluate energy by Eq. (3.1)
+> No
+> energy > 0.5 ? Evaluate decoy drop by Eq. (3.7)
+> Yes
+> Execution Levy Long Jump Crossover Strategy to update location by Eq. (3.9) Long Jump Mechanism Update location by Eq. (3.3) Zigzag Motion Mechanism
+> No
+> Execution Horizontal– Vertical Crossover Strategy to update location by Eq. (3.12) - (3.14)
+
+Figure 3: Flowchart of the proposed HCKEO algorithm. 
+
+Memory Efficiency. Space complexity measures the amount of memory resources required by an algorithm. It measures the amount of additional memory required during the execution of the algorithm and how this requirement grows with the problem size. In the analysis of space complexity, attention is mainly given to the memory usage associated with data structures, variables, pointers, and potential recursive operations. This analysis provides insight into memory utilization, facilitates the selection of appropriate data structures, and supports improvements in memory efficiency. The parameter settings of HCKEO occupy a constant amount of memory, which is independent of the problem size. The overall space complexity of HCKEO is O(N ), where N
+
+denotes the population size. This memory requirement mainly originates from maintaining and updating the population throughout the iterative optimization process. Since the space complexity of KEO is also O(N ), the two algorithms share the same linear space complexity property. In summary, HCKEO maintains the same order of time and space complexity as KEO, i.e., O(T N D ) and O(N ), respectively. This indicates that the additional mechanisms in HCKEO enhance optimization performance without increasing the algorithm’s computa-tional or memory burden. 
+
+4. Experimental Evaluation and Statistical Analysis 
+
+In this section, the performance of the proposed HCKEO algorithm is comprehensively evaluated through a series of benchmark experiments. The evaluation includes four aspects: (1) effectiveness verification of the proposed components, (2) exploration–exploitation analy-sis, (3) testing on the CEC2022 benchmark suite, and (4) validation on real-world engineering optimization problems. 12 Experimental Environment and Settings. The experimental environment is summarized in Table 1. Unless otherwise specified, all algorithms were run using the same maximum number of iterations and population size to guarantee consistency across comparisons. The performance was evaluated in terms of convergence accuracy, robustness, and computational efficiency. 
+
+> Table 1: Experimental environment.
+
+Component Specification 
+
+CPU 11th Gen Intel(R) Core(TM) i7-11800H (2.30 GHz) RAM 16 GB (2 × 8 GB) Operating System Ubuntu 24.04 Implementation Python 3.10.14 
+
+4.1. Effectiveness Verification of Different Strategies 
+
+To enhance the optimization performance of KEO, two improvement strategies are in-troduced: the LLJC Strategy and the HVC Strategy. To verify the effectiveness of each component, two algorithmic variants, namely LLJC-KEO and HVC-KEO, are designed, as summarized in Table 2. In this table, “+” indicates that the corresponding strategy is incorporated, while “–” means it is not applied. 
+
+> Table 2: Different KEO variants with incorporated improvement strategies.
+
+Parameters LLJC-KEO HVC-KEO HCKEO L´ evy Long Jump Crossover Strategy + – +Horizontal–Vertical Crossover Strategy – + +All algorithms were tested on the 10-dimensional CEC2022 benchmark suite [40] with a population size of 50 and a maximum of 500 iterations, which is given in Table 3. The same parameter settings are maintained for the subsequent experiments for consis-tency. Friedman’s non-parametric test was employed as the performance evaluation criterion. The comparative results are presented in Table 4. 
+
+Result Analysis. As observed from Table 4, HCKEO exhibits the best overall performance, obtaining the lowest Friedman ranking [41] value of 1.833, indicating that the combination of both strategies provides complementary advantages. Although the individual variants (LLJC-KEO and HVC-KEO) exhibit competitive results in certain benchmark functions, the hybrid version (HCKEO) consistently maintains superior average performance across most test functions. The LLJC component enhances the algorithm’s global exploration ability by introducing stochastic long jumps, while the HVC mechanism promotes efficient local exploitation through structured crossover in both horizontal and vertical directions. Therefore, the integration of these two strategies significantly improves the balance between exploration and exploitation, leading to enhanced optimization robustness and convergence efficiency. 13 Table 3: CEC2022 Benchmark Functions                                             
+
+> Category Function Description Dimension Optimum
+> Unimodal F1 Shifted and rotated Zakharov function 10/20 300 Multimodal F2 Shifted and rotated Rosenbrock function 10/20 400 F3 Shifted and rotated Rastrigin function 10/20 600 F4 Shifted and rotated non-continuous Rastrigin function 10/20 800 F5 Shifted and rotated Levy function 10/20 900 Hybrid F6 Hybrid function (N = 3) 10/20 1800 F7 Hybrid function (N = 6) 10/20 2000 F8 Hybrid function (N = 5) 10/20 2200 Composition F9 Composition function (N = 5) 10/20 2300 F10 Composition function (N = 4) 10/20 2400 F11 Composition function (N = 5) 10/20 2600 F12 Composition function (N = 6) 10/20 2700
+> Table 4: Performance comparison of KEO variants on the 10-dimensional CEC2022 benchmark functions.
+
+Function Metric LLJC-KEO HVC-KEO HCKEO F1 Ave 3.00E+02 3.00E+02 3.00E+02 
+
+F2 Ave 402.9083 403.6444 405.3619 F3 Ave 600.0512 600.0005 600.0000 
+
+F4 Ave 814.6590 813.8962 810.5417 
+
+F5 Ave 901.2022 900.1083 900.0392 
+
+F6 Ave 1808.0229 2053.7615 1811.2306 F7 Ave 2012.5819 2008.3568 2015.3281 F8 Ave 2220.3490 2218.4813 2215.1911 
+
+F9 Ave 2497.7294 2501.2772 2529.2844 F10 Ave 2522.9880 2504.1033 2500.3522 
+
+F11 Ave 2646.7467 2615.0442 2645.1511 F12 Ave 2856.1626 2857.7005 2862.1113 Friedman average rank 2.1667 2.0000 1.8333 
+
+Overall rank 3 2 1
+
+4.2. Exploration–Exploitation Analysis 
+
+To investigate the search dynamics of the proposed HCKEO algorithm, the balance between exploration and exploitation is examined on the CEC2022 benchmark suite with 20-dimensional problems. In population-based optimization algorithms, the search process typically alternates be-tween two complementary behaviors. One aims to explore new areas of the search space in order to discover potential candidate solutions, while the other concentrates on improving the quality of solutions within promising regions. An appropriate balance between these two behaviors is essential for achieving both effective global search and reliable convergence. To quantitatively evaluate this behavior, the dimensional diversity metric proposed by 14 Kashif et al. [42] is adopted. This metric reflects the dispersion of individuals across different dimensions of the population. Based on the diversity value at each iteration, the proportions of exploration and exploitation during the search process can be estimated as: 
+
+Exploration (%) = Div (t)
+
+Div max 
+
+× 100 , (4.1) 
+
+Exploitation (%) = |Div (t) − Div max |
+
+Div max 
+
+× 100 , (4.2) 
+
+Div (t) = 1
+
+Dim 
+
+> Dim
+
+X
+
+> d=1
+
+1
+
+N
+
+> N
+
+X
+
+> i=1
+
+median( xd(t)) − xid (t)
+
+!
+
+, (4.3) where xid (t) denotes the value of the (d)-th dimension of the ith individual at iteration 
+
+t, Dim is the problem dimension, and median( xd(t)))represents the median value of the 
+
+dth dimension across the population. This formulation measures the average deviation of individuals from the population median, thereby characterizing the distribution of solutions in the search space. Fig. 4 presents the variation of exploration and exploitation during the optimization process in HCKEO for all benchmark functions. According to Bernardo et al. [43], an ideal balance during the search process is often associated with approximately 10% exploration and 90% exploitation. However, rather than maintaining a fixed ratio between exploration and exploitation, an effective optimization process typically involves a gradual transition from exploration-dominated search in the early stages to exploitation-oriented refinement in the later stages. As can be observed from the figure, the exploration and exploitation curves of HCKEO intersect mainly during the early stages of the optimization, indicating strong exploration ability at the beginning. In later iterations, the exploration level gradually decreases while exploitation becomes dominant, enabling the algorithm to refine solutions and improve convergence accuracy. The results indicate that HCKEO is able to maintain a balanced and smooth transition between exploration and exploitation throughout the entire search procedure. 
+
+4.3. Experiments on the CEC2022 Benchmark Suite 
+
+This paper used the CEC2022 benchmark test suite and conducts comparative experi-ments to verify the optimization capability of HCKEO. The algorithm was evaluated against several representative optimization methods, including classical algorithms, recently pro-posed metaheuristic techniques, and the original KEO framework. In addition to KEO in 2025, the comparison algorithms also encompass classical methods such as Particle Swarm Optimization (PSO) [10] and Genetic Algorithm (GA) [11]. 5 State-of-the-art algorithms utilized for comparison include the Starling Murmuration Optimizer (SMO) [44] introduced in 2021, the White Shark Optimizer (WSO) [45] developed in 2022, the Snow Ablation Optimizer (SAO) [20] from 2023, and the Black-winged Kite Algorithm (BKA) [46] re-leased in 2024. Furthermore, advanced optimizers employed for comparison consist of the 15 0 100 200 300 400 500 Iteration 020 40 60 80 100 Per centage Exploration:14.44% Exploitation:85.56% (a) F1 0 100 200 300 400 500 Iteration 020 40 60 80 100 Per centage Exploration:5.57% Exploitation:94.43% (b) F2 0 100 200 300 400 500 Iteration 020 40 60 80 100 Per centage Exploration:4.87% Exploitation:95.13% (c) F3 0 100 200 300 400 500 Iteration 020 40 60 80 100 Per centage Exploration:9.08% Exploitation:90.92% 
+
+(d) F4 0 100 200 300 400 500 Iteration 020 40 60 80 100 Per centage Exploration:5.22% Exploitation:94.78% (e) F5 0 100 200 300 400 500 Iteration 020 40 60 80 100 Per centage Exploration:9.79% Exploitation:90.21% (f) F6 0 100 200 300 400 500 Iteration 020 40 60 80 100 Per centage Exploration:12.78% Exploitation:87.22% 
+
+(g) F7 0 100 200 300 400 500 Iteration 020 40 60 80 100 Per centage Exploration:9.55% Exploitation:90.45% (h) F8 0 100 200 300 400 500 Iteration 020 40 60 80 100 Per centage Exploration:5.91% Exploitation:94.09% (i) F9 0 100 200 300 400 500 Iteration 020 40 60 80 100 Per centage Exploration:9.52% Exploitation:90.48% 
+
+(j) F10 0 100 200 300 400 500 Iteration 020 40 60 80 100 Per centage Exploration:3.63% Exploitation:96.37% (k) F11 0 100 200 300 400 500 Iteration 020 40 60 80 100 Per centage Exploration:6.06% Exploitation:93.94% (l) F12 
+
+Figure 4: Exploration–exploitation balance of HCKEO on selected CEC2022 functions (Dim=20). 
+
+Linear Population Size Reduction Differential Evolution with Success-History based Adap-tation (LSHADE) [47] and the Quantum Squirrel Search Algorithm (QSSA) [48]. These algorithms were selected because they represent widely used optimization approaches and recent developments in population-based metaheuristics. 16 To ensure a fair comparison, the parameter settings of all algorithms follow the config-urations reported in their original studies. The detailed parameter values are summarized in Table 5: The experiments were carried out on the CEC2022 benchmark suite using two                                        
+
+> Table 5: Control parameters of the compared algorithms.
+> Algorithm Parameter Value GA Crossover probability ( Pc)0.8 Mutation probability ( Pm)0.1 PSO Cognitive coefficient ( C1)2Social coefficient ( C2)2SMO λ20
+> μ0.5 WSO f(0 .07 ,0.075)
+> τ4.11
+> p(0 .5,1.5)
+> a0, a 1, a 26.25 ,100 ,0.0005 SAO Parameter setting Default BKA P0.9 QSSA ω1, ω 20.6,0.9
+> C1, C 20.6,0.9
+> Pdp 0.2
+> P0.5
+> sf 32.8 LSHADE Prate 0.11
+> Arc rate 1.4 KEO Parameter setting Default HCKEO Parameter setting Default
+
+commonly adopted problem dimensions, namely (D=10) and (D=20), which allow the algo-rithms to be evaluated under different levels of search complexity. Tables 6 and 7 present the comparative results of the proposed HCKEO algorithm and seven other algorithms on the CEC2022 benchmark functions with 10 and 20 dimensions, respectively. The metrics include the mean, best, worst, and standard deviation (Std) of the final fitness values obtained after 30 independent runs. In Table 7, the overall perfor-mance trend remains consistent. HCKEO exhibits excellent robustness and global search capability even in higher-dimensional spaces. In most function experiments (e.g., F1, F3, F4, F6, and F7), HCKEO’s mean and optimal fitness values are significantly better than comparison algorithms. Specifically, on the F1 function, HCKEO achieves a mean value of 301 .74, remarkably outperforming the other methods whose means exceed 900. In addi-tion, the small standard deviations across almost all functions confirm the stability of the proposed algorithm under increased problem dimensionality. These results verify that the hybrid strategy combining chaotic initialization and kernel updating significantly enhances the convergence precision and exploration–exploitation balance of the original KEO. Across both 10D and 20D test suites, HCKEO demonstrates the best overall optimization perfor-17 Table 6: Statistical performance of the compared algorithms on the CEC2022 benchmark functions (10D). 
+
+Function Metric GA PSO SMO WSO SAO BKA QSSA LSHADE KEO HCKEO F1 Mean 2683.492 300.0011 300.1723 328.4874 301.6204 300.4817 9769.695 300.0803 300.0028 300.0000 Best 479.3674 300.0000 300.0001 300.0000 300.0000 300.0211 628.2560 300.0004 300.0000 300.0000 Worst 8077.836 300.0075 302.1188 598.0290 347.8756 303.6512 23454.85 300.7740 300.0325 300.0000 Std 1699.888 0.001893 0.406482 73.63505 8.736884 0.729447 6499.785 0.148412 0.007318 6.06E-14 F2 Mean 430.2422 412.8810 407.8281 403.2120 406.9057 407.8432 596.3323 406.3384 405.9879 405.9595 Best 400.7336 400.0045 400.0002 400.0000 400.0019 400.0033 402.9028 400.0533 400.0109 400.0000 Worst 475.7380 472.2589 491.0057 470.9449 408.9161 471.8784 1041.769 408.9161 408.9161 408.9161 Std 31.10451 20.45451 16.10447 12.89332 3.377306 13.23624 159.1483 2.818537 3.240954 3.277361 F3 Mean 600.4334 600.7363 600.0376 601.0015 600.0003 619.9046 641.2472 600.0000 600.0808 600.0000 Best 600.1861 600.0000 600.0000 600.0010 600.0000 603.8774 614.1057 600.0000 600.0000 600.0000 Worst 600.8509 612.1389 600.8613 603.7398 600.0078 637.1418 670.3612 600.0000 600.6555 600.0000 Std 0.170175 2.307255 0.160261 1.117901 0.001418 10.80939 12.75370 1.87E-09 0.162208 2.59E-07 F4 Mean 828.5288 813.2329 816.7459 815.0684 812.0968 815.3374 835.3702 817.9605 821.1263 812.2380 Best 809.0986 804.9748 806.9647 803.2638 803.9798 805.0406 812.8771 809.7094 809.9496 803.9798 Worst 857.8537 823.8790 833.8285 834.2472 825.8689 828.8661 874.6216 824.5849 836.8134 823.8790 Std 11.66958 4.006752 7.241736 9.371571 5.070975 5.860810 16.18016 3.925013 7.077403 5.400205 F5 Mean 1109.352 900.1100 900.8610 901.2764 900.0422 1012.120 1376.006 900.0000 902.0522 900.0000 Best 904.5327 900.0000 900.0000 900.0000 900.0000 905.7471 973.5272 900.0000 900.0000 900.0000 Worst 3062.927 900.5439 912.7252 907.8182 900.5439 1353.681 2489.293 900.0000 915.1903 900.0000 Std 413.7847 0.158087 2.394438 2.042119 0.127677 86.29854 293.4764 0.000000 3.674741 0.000000 F6 Mean 11284.77 3268.917 7.53E+05 1820.721 4788.522 1963.865 15947.52 1820.805 1969.261 1806.114 Best 2240.471 1822.002 1812.222 1801.518 1819.183 1859.317 1882.410 1805.393 1804.588 1800.101 Worst 50302.40 8065.210 1.76E+07 1850.667 7897.379 2559.443 395048.7 1856.456 3750.878 1830.040 Std 10381.10 1840.758 3.23E+06 13.70603 2251.593 128.7054 71614.91 13.03945 405.6685 6.348536 F7 Mean 2014.197 2018.783 2018.504 2017.327 2021.465 2034.748 2074.128 2008.942 2017.466 2012.490 Best 2001.090 2001.990 2000.176 2001.105 2000.996 2020.641 2026.000 2001.640 2000.000 2000.000 Worst 2022.480 2030.698 2023.982 2030.877 2031.936 2073.558 2163.616 2021.366 2024.598 2021.618 Std 8.807140 9.799195 6.821683 10.60948 4.476896 13.81353 33.41550 5.752513 7.873875 9.580332 F8 Mean 2219.411 2231.809 2219.827 2222.833 2220.939 2226.493 2232.135 2216.039 2220.973 2215.220 Best 2202.232 2200.094 2201.952 2204.817 2218.695 2212.321 2224.189 2206.800 2218.579 2200.067 Worst 2222.457 2341.862 2226.940 2233.699 2224.800 2244.714 2259.128 2223.924 2222.349 2221.617 Std 4.486108 37.07464 7.538526 6.837663 1.022231 5.625041 8.493838 5.969250 0.763433 8.837725 F9 Mean 2534.926 2529.321 2505.369 2529.445 2529.284 2539.081 2670.452 2529.284 2529.284 2529.284 Best 2529.461 2529.284 2493.347 2529.287 2529.284 2529.284 2529.821 2529.284 2529.284 2529.284 Worst 2548.099 2529.840 2541.847 2530.506 2529.284 2676.218 2787.655 2529.284 2529.284 2529.284 Std 4.706392 0.141063 8.688296 0.270915 0.000000 37.27778 59.73417 0.000000 8.33E-12 0.000000 F10 Mean 2525.437 2553.617 2523.155 2525.672 2538.155 2571.479 2604.392 2526.836 2523.993 2500.359 Best 2400.540 2500.162 2500.261 2500.210 2500.240 2500.500 2500.621 2500.269 2500.342 2500.235 Worst 2636.947 2626.143 2621.868 2609.631 2621.358 3260.697 3373.651 2621.104 2624.679 2500.549 Std 80.08988 58.04875 46.31690 46.45799 54.44259 143.4459 164.0188 48.86223 47.92314 0.071315 F11 Mean 2746.662 2706.223 2691.884 2689.163 2670.137 2685.907 3025.557 2615.014 2663.522 2640.137 Best 2604.554 2600.000 2600.000 2600.004 2600.000 2600.462 2757.086 2600.000 2600.000 2600.000 Worst 3184.174 3176.586 3000.100 3000.001 2900.000 3183.986 3562.037 2900.000 3000.000 2751.075 Std 152.1320 183.0775 111.6070 130.3398 102.3279 156.8790 267.5875 60.41966 95.70967 67.69738 F12 Mean 2868.155 2872.268 2856.592 2868.734 2864.155 2865.067 2904.812 2862.674 2863.780 2858.618 Best 2863.267 2863.851 2852.572 2862.700 2861.435 2862.287 2865.133 2858.618 2859.682 2751.075 Worst 3184.174 3176.586 2866.985 3000.001 2900.000 3183.986 3102.055 2900.000 3000.000 2862.328 Std 2.654030 13.14142 3.395383 11.20498 1.411175 1.952986 55.47136 1.657132 1.396138 1.401152 (L/T/W) (0/0/12) (0/0/12) (0/0/12) (2/0/10) (2/0/10) (0/0/12) (0/2/10) (1/2/9) (0/0/12) 
+
+mance, outperforming seven baseline algorithms in terms of accuracy, convergence stability, and scalability. Compared with classical methods (GA, PSO), HCKEO converges faster and reaches better global minima. Compared with recent metaheuristics (WSO, SAO, BKA), it achieves more reliable convergence with smaller fluctuations. Even when compared with the advanced LSHADE algorithm, HCKEO maintains competitive or superior results on most functions, highlighting its potential as a robust optimizer for complex and high-dimensional 18 Table 7: Statistical performance of the compared algorithms on the CEC2022 benchmark functions (20D). 
+
+Function Metric GA PSO SMO WSO SAO BKA QSSA LSHADE KEO HCKEO F1 Mean 10945.54 971.2756 10914.11 9060.090 17432.06 1626.722 40847.59 9803.456 1785.563 301.7422 Best 3451.392 464.3323 1862.353 2617.096 6822.308 525.0722 24187.42 5044.454 794.6222 300.0485 Worst 22373.28 2017.952 34185.71 20239.26 33876.94 3544.859 59426.11 17704.83 4151.324 306.7600 Std 4748.447 379.0005 7763.654 4567.043 7259.164 764.3025 10514.24 3097.586 933.6172 2.055797 F2 Mean 467.8963 456.6098 466.8967 520.2429 450.5928 484.9500 1453.752 448.6656 455.6984 456.5544 Best 439.0728 411.0092 434.7607 473.6702 429.0133 425.7750 824.3681 444.8955 402.9115 444.8955 Worst 570.8365 553.5791 553.5909 608.3047 472.1735 596.4861 2272.146 449.0845 504.5142 475.0196 Std 25.98132 24.98771 28.40320 38.59635 7.794733 37.54182 388.9540 1.278186 19.34183 11.49435 F3 Mean 601.4026 602.9482 601.8135 627.7275 600.0392 646.2505 665.9026 600.0000 602.6907 600.0056 Best 600.6009 600.0296 600.1947 608.4489 600.0000 632.8501 639.3851 600.0000 600.2740 600.0001 Worst 602.0737 627.9980 609.2663 650.7990 600.5770 660.7498 695.4861 600.0000 613.0082 600.0623 Std 0.410557 5.299602 1.847030 9.058023 0.144835 7.531078 13.25208 7.76E-06 2.723341 0.014175 F4 Mean 873.2619 850.7535 845.1869 848.8149 842.7550 871.9826 930.3689 888.7568 852.6664 831.5187 Best 833.5051 826.8639 828.9117 817.3690 814.9244 838.3329 887.5014 865.9185 828.8538 812.9345 Worst 935.1136 898.5010 883.5987 913.8315 934.8497 895.1019 1024.855 904.9961 884.5712 852.7327 Std 22.41393 15.73614 11.68080 21.11926 32.60343 15.51227 30.11453 9.609513 15.35370 10.40263 F5 Mean 1943.649 907.0274 1049.664 1521.799 900.6166 1959.114 3461.775 900.0030 1210.476 904.1335 Best 1038.961 900.1004 908.5853 995.7836 900.0000 1477.613 1911.945 900.0000 911.7124 900.0000 Worst 2786.740 932.6981 1457.254 2973.184 904.2687 2500.972 5425.717 900.0895 2324.640 936.1301 Std 536.9347 6.355236 144.6286 422.7810 1.074520 240.7493 919.3704 0.016346 313.8326 6.691075 F6 Mean 150870.7 4344.141 21277.57 2030.931 3707.810 7277.250 3.69E+08 153121.9 4913.264 3669.385 Best 7350.626 1853.130 1995.864 1854.048 2002.609 2057.705 2261.017 40520.20 1892.537 1854.100 Worst 673596.5 13828.79 332578.8 2462.086 9077.567 25353.86 2.23E+09 424102.1 18105.32 14160.21 Std 143865.3 3308.016 60321.66 160.8989 1579.844 6664.396 4.92E+08 91386.23 3880.783 2972.937 F7 Mean 2070.231 2077.439 2050.973 2068.845 2051.642 2115.401 2213.394 2059.661 2056.175 2049.516 Best 2029.754 2031.725 2023.187 2028.620 2025.290 2053.918 2108.151 2039.931 2026.049 2021.309 Worst 2186.075 2232.582 2120.014 2138.518 2175.875 2172.842 2384.581 2083.133 2145.447 2166.803 Std 33.40676 47.21851 23.11200 30.85958 27.86789 32.96045 60.61582 9.180605 24.13267 28.04217 F8 Mean 2227.508 2274.137 2229.003 2236.369 2228.441 2282.436 2302.004 2234.832 2233.329 2221.915 Best 2222.861 2221.597 2221.750 2227.058 2220.416 2226.364 2229.994 2228.851 2221.073 2220.537 Worst 2241.329 2462.379 2242.439 2347.568 2339.294 2473.332 2462.100 2238.894 2356.458 2237.549 Std 6.718385 73.96457 6.000294 21.27199 21.82776 74.70743 74.60914 2.233858 31.92022 2.990461 F9 Mean 2486.541 2493.727 2482.437 2508.725 2480.783 2490.756 2896.628 2480.781 2480.806 2480.781 Best 2482.223 2480.782 2473.808 2486.606 2480.781 2481.328 2669.696 2480.781 2480.781 2480.781 Worst 2493.840 2549.062 2508.599 2547.784 2480.803 2533.682 3252.109 2480.781 2480.948 2480.781 Std 3.681514 20.96695 8.475978 14.02898 0.004557 11.27802 157.8898 2.87E-11 0.041477 5.97E-07 F10 Mean 2437.508 3062.900 2872.348 2815.575 2993.435 4077.370 5016.947 2666.355 2655.501 2530.986 Best 2404.446 2500.405 2500.468 2500.889 2500.528 2501.061 2509.998 2500.380 2500.473 2403.891 Worst 2669.909 3775.970 3723.513 6886.930 4421.093 5548.350 6596.323 4535.105 3146.860 3857.017 Std 57.18316 462.9929 401.3427 997.7101 632.4629 935.0873 1439.041 492.3086 231.0757 254.5261 F11 Mean 3168.026 3055.325 2979.358 3457.643 2893.345 3176.766 6359.105 2906.679 2941.204 2916.667 Best 2663.937 2600.107 2604.762 3050.253 2600.000 2630.716 4747.253 2900.000 2600.120 2900.000 Worst 5921.992 3565.915 3388.977 3977.275 3000.351 3842.202 8492.389 3000.365 3360.572 3000.000 Std 711.0581 257.0948 191.0623 207.1374 86.84942 290.9062 928.5483 25.41715 112.9617 37.90491 F12 Mean 2973.267 2983.370 2900.005 3028.017 2949.316 3027.433 3162.235 2939.420 2956.337 2943.224 Best 2945.637 2945.623 2900.004 2965.101 2932.627 2955.125 3008.565 2932.008 2939.866 2933.974 Worst 3006.194 3077.369 2900.005 3113.293 2993.027 3243.460 3487.975 2950.508 3002.472 2965.384 Std 16.53742 31.67861 0.000137 47.34230 12.31073 65.33425 126.1453 5.607964 14.29076 6.067805 (L/T/W) (1/0/11) (0/0/12) (1/0/11) (1/0/11) (2/0/10) (0/0/12) (0/0/12) (5/1/6) (1/0/11) 
+
+search spaces. Figure 5 and Figure 6 present the convergence curves from partial tests, indicating that the HCKEO algorithm exhibits superior convergence speed in most of the tests. 19 0 100 200 300 400 500 
+
+> Iteration
+
+10 3
+
+10 4
+
+10 5
+
+10 6
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (a) F1(D=10) 0 100 200 300 400 500 
+
+> Iteration
+
+10 3
+
+10 4
+
+10 5
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (b) F2(D=10) 0 100 200 300 400 500 
+
+> Iteration
+
+6 × 10 2
+
+7 × 10 2
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (c) F3(D=10) 0 100 200 300 400 500 
+
+> Iteration
+
+8. 2 × 10 2
+
+8.4 × 10 2
+
+8.6 × 10 2
+
+8. 8 × 10 2
+
+9 × 10 2
+
+9. 2 × 10 2
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO 
+
+(d) F4(D=10) 0 100 200 300 400 500 
+
+> Iteration
+
+10 3
+
+2 × 10 3
+
+3 × 10 3
+
+4 × 10 3
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (e) F5(D=10) 0 100 200 300 400 500 
+
+> Iteration
+
+10 3
+
+10 4
+
+10 5
+
+10 6
+
+10 7
+
+10 8
+
+10 9
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (f) F6(D=10) 0 100 200 300 400 500 
+
+> Iteration
+
+2 × 10 3
+
+2.05 × 10 3
+
+2.1 × 10 3
+
+2.15 × 10 3
+
+2. 2 × 10 3
+
+2. 25 × 10 3
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO 
+
+(g) F7(D=10) 0 100 200 300 400 500 
+
+> Iteration
+
+2. 2 × 10 3
+
+2.3 × 10 3
+
+2.4 × 10 3
+
+2.5 × 10 3
+
+2.6 × 10 3
+
+2. 7 × 10 3
+
+2. 8 × 10 3
+
+2.9 × 10 3
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (h) F8(D=10) 0 100 200 300 400 500 
+
+> Iteration
+
+2.5 × 10 3
+
+2.6 × 10 3
+
+2. 7 × 10 3
+
+2. 8 × 10 3
+
+2.9 × 10 3
+
+3 × 10 3
+
+3.1 × 10 3
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (i) F9(D=10) 0 100 200 300 400 500 
+
+> Iteration
+
+2.6 × 10 3
+
+2. 8 × 10 3
+
+3 × 10 3
+
+3. 2 × 10 3
+
+3.4 × 10 3
+
+3.6 × 10 3
+
+3. 8 × 10 3
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO 
+
+(j) F10(D=10) 0 100 200 300 400 500 
+
+> Iteration
+
+3 × 10 3
+
+4 × 10 3
+
+5 × 10 3
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (k) F11(D=10) 0 100 200 300 400 500 
+
+> Iteration
+
+2. 85 × 10 3
+
+2.9 × 10 3
+
+2.95 × 10 3
+
+3 × 10 3
+
+3.05 × 10 3
+
+3.1 × 10 3
+
+3.15 × 10 3
+
+3. 2 × 10 3
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (l) F12(D=10) 
+
+Figure 5: CEC2022 test functions convergence curve (Dim=10). 
+
+4.3.1. Statistical test 
+
+This work uses Wilcoxon rank sum test and Friedman test to further verify the statistical significance of the experiment and explain whether there is statistical significance between HCKEO and the comparative algorithm. 
+
+Wilcoxon rank sum test. The Wilcoxon rank-sum test [49] is conducted to perform pairwise comparisons between HCKEO and each competing algorithm. This nonparametric test does not assume a specific distribution of the data and is widely adopted in optimization studies for evaluating algorithmic performance. In this work, the significance level is set to α = 0 .05. For each pairwise comparison, the null hypothesis H0 assumes that there is no significant difference in the performance of the two algorithms statistically. If the P-value is less than 0.05, it indicates that the performance 20 0 100 200 300 400 500 
+
+> Iteration
+
+10 3
+
+10 4
+
+10 5
+
+10 6
+
+10 7
+
+10 8
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (a) F1(D=20) 0 100 200 300 400 500 
+
+> Iteration
+
+10 3
+
+10 4
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (b) F2(D=20) 0 100 200 300 400 500 
+
+> Iteration
+
+6 × 10 2
+
+7 × 10 2
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (c) F3(D=20) 0 100 200 300 400 500 
+
+> Iteration
+
+10 3
+
+8.5 × 10 2
+
+9 × 10 2
+
+9.5 × 10 2
+
+1.05 × 10 3
+
+1.1 × 10 3
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO 
+
+(d) F3(D=20) 0 100 200 300 400 500 
+
+> Iteration
+
+10 3
+
+10 4
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (e) F4(D=20) 0 100 200 300 400 500 
+
+> Iteration
+
+10 3
+
+10 4
+
+10 5
+
+10 6
+
+10 7
+
+10 8
+
+10 9
+
+10 10 
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (f) F6(D=20) 0 100 200 300 400 500 
+
+> Iteration
+
+2.1 × 10 3
+
+2. 2 × 10 3
+
+2.3 × 10 3
+
+2.4 × 10 3
+
+2.5 × 10 3
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO 
+
+(g) F7(D=20) 0 100 200 300 400 500 
+
+> Iteration
+
+10 4
+
+3 × 10 3
+
+4 × 10 3
+
+6 × 10 3
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (h) F8(D=20) 0 100 200 300 400 500 
+
+> Iteration
+
+3 × 10 3
+
+4 × 10 3
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (i) F9(D=20) 0 100 200 300 400 500 
+
+> Iteration
+
+3 × 10 3
+
+4 × 10 3
+
+6 × 10 3
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO 
+
+(j) F10(D=20) 0 100 200 300 400 500 
+
+> Iteration
+
+10 4
+
+3 × 10 3
+
+4 × 10 3
+
+6 × 10 3
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (k) F11(D=20) 0 100 200 300 400 500 
+
+> Iteration
+
+3 × 10 3
+
+4 × 10 3
+
+> Fitness  value
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (l) F12(D=20) 
+
+Figure 6: CEC2022 test functions convergence curve (Dim=20). 
+
+difference between the two algorithms is statistically significant. The resulting (p)-values obtained from the comparisons on the CEC2022 benchmark functions with dimensions (D=10) and (D=20) are reported in Tables 8-9. As shown in Tables 8 and 9, most of the p-values between HCKEO and other algorithms are smaller than 0.05, indicating significant differences in optimization performance. Only a few functions, such as F2, F4, F6, and F8, exhibit p-values greater than 0.05 when compared with PSO, SAO, or LSHADE, suggesting comparable performance in these specific cases. Overall, the statistical evidence confirms that HCKEO outperforms the comparison algo-rithms in most benchmark functions across both 10- and 20-dimensional test sets, validating the robustness and superiority of the proposed improvements. 21 Table 8: Wilcoxon rank-sum test p-values for pairwise comparisons on the CEC2022 benchmark functions (10D). 
+
+Function GA PSO SMO WSO SAO BKA QSSA LSHADE KEO 
+
+F1 1.6040e-11 1.6040e-11 1.6040e-11 1.6040e-11 1.7746e-11 1.6040e-11 1.6040e-11 1.6040e-11 1.6040e-11 F2 4.9726e-03 8.2007e-01 4.0824e-01 2.0701e-07 2.1134e-01 5.4619e-01 3.0623e-10 5.5021e-02 3.9010e-02 F3 1.4498e-11 2.1925e-10 1.6342e-10 1.9762e-11 8.0625e-02 1.4498e-11 1.4498e-11 4.8728e-09 9.0261e-11 F4 9.7037e-10 3.4019e-01 2.8333e-04 2.5181e-01 4.5911e-01 5.9565e-05 3.4547e-10 1.0972e-08 4.8951e-05 F5 1.6040e-11 6.2937e-09 3.6637e-09 1.1042e-09 6.4763e-02 1.6040e-11 1.6040e-11 7.6872e-12 2.5431e-09 F6 3.0199e-11 3.3384e-11 6.6955e-11 3.0939e-06 1.6132e-10 3.0199e-11 3.0196e-11 8.3520e-08 1.4110e-09 F7 4.4642e-01 1.0233e-01 2.8789e-06 6.9125e-04 1.8731e-07 3.0199e-11 3.0199e-11 1.0035e-03 1.4412e-02 F8 7.6973e-04 5.2640e-04 1.8681e-05 4.0839e-05 2.2360e-02 5.4617e-09 3.0199e-11 7.6171e-03 1.2362e-03 F9 1.2118e-12 4.1926e-02 3.3592e-11 1.2118e-12 1 1.2118e-12 1.2117e-12 1 5.5419e-03 F10 3.9881e-04 1.8368e-02 2.3884e-04 4.7138e-04 1.4423e-03 7.3803e-10 1.3288e-10 3.0317e-02 3.5201e-07 F11 3.4737e-10 5.7470e-09 1.0931e-09 2.8125e-08 2.0471e-01 9.8351e-09 1.2590e-11 8.3657e-01 1.2822e-08 F12 1.7162e-10 3.7407e-09 5.7964e-09 2.5222e-10 4.5259e-07 1.4621e-06 2.9082e-11 3.3897e-03 5.3323e-06 
+
+Table 9: Wilcoxon rank-sum test p-values for pairwise comparisons on the CEC2022 benchmark functions (20D). 
+
+Function GA PSO SMO WSO SAO BKA QSSA LSHADE KEO 
+
+F1 3.0199e-11 3.0199e-11 3.0199e-11 3.0198e-11 3.0199e-11 3.0199e-11 3.0199e-11 3.0199e-11 3.0199e-11 F2 4.1127e-07 2.0095e-01 1.7612e-01 8.1014e-10 8.7710e-02 7.6950e-08 3.0198e-11 5.0912e-06 8.1200e-04 F3 3.0199e-11 6.6955e-11 3.0199e-11 3.0199e-11 8.1465e-05 3.0199e-11 3.0198e-11 3.0199e-11 3.0199e-11 F4 4.1784e-09 1.1929e-06 4.2159e-04 7.6947e-04 7.6182e-01 3.4703e-10 3.0161e-11 3.0161e-11 1.3359e-05 F5 3.0199e-11 1.2597e-01 2.4386e-09 5.4941e-11 2.6784e-06 3.0199e-11 3.0198e-11 3.0066e-11 1.9568e-10 F6 3.0199e-11 8.0727e-01 1.1710e-02 4.9818e-04 7.1719e-01 5.1877e-02 4.1997e-10 3.0199e-11 8.3026e-01 F7 1.9963e-05 1.3249e-04 1.2212e-02 1.1747e-04 6.7869e-02 3.8202e-10 3.0198e-11 2.4913e-06 1.4932e-04 F8 6.0658e-11 3.1589e-10 3.1588e-10 3.0199e-11 1.1882e-01 3.0199e-11 3.0198e-11 3.0199e-11 6.5486e-04 F9 3.0199e-11 3.0199e-11 1.8576e-01 3.0199e-11 4.5043e-11 3.0199e-11 3.0198e-11 3.0123e-11 3.0199e-11 F10 1.5014e-02 3.9881e-04 9.7917e-05 4.3531e-05 5.0842e-03 8.4848e-09 2.2273e-09 1.2597e-01 2.4994e-03 F11 4.2175e-04 3.3681e-05 1.9526e-02 2.8314e-08 3.2651e-02 1.6980e-08 3.0198e-11 5.6073e-05 7.2884e-03 F12 8.9934e-11 3.1589e-10 3.0199e-11 3.0199e-11 3.3679e-04 6.0658e-11 3.0198e-11 4.8413e-02 3.2555e-07 
+
+Freideman’s test. To further evaluate the performance of HCKEO, the non-parametric Fried-man average rank test is adopted to compare the results obtained by HCKEO and other algorithms on the CEC2022 benchmark suite. This statistical test does not require as-sumptions about the underlying data distribution, which makes it well suited for comparing optimization algorithms over multiple benchmark functions. According to the Friedman test results in Table 10, HCKEO achieves the lowest mean rank among all compared algorithms in both 10- and 20-dimensional problems, ranking first overall. In contrast, conventional algorithms such as GA, PSO, and BKA obtain compara-tively larger ranking values, suggesting weaker global search capability and slower conver-gence behavior. This demonstrates that HCKEO consistently performs better than other algorithms across the majority of test functions. The high rank values of GA, PSO, and BKA indicate that their global search ability is weaker compared to other algorithms. Meanwhile, advanced optimizers like LSHADE and SAO achieve moderate ranks but still fall behind HCKEO in overall performance. Therefore, the Friedman analysis provides further statisti-cal evidence supporting that HCKEO maintains superior optimization accuracy and stability across different dimensional settings. 22 Table 10: Friedman ranking results on the CEC2022 benchmark functions. 
+
+Algorithm 10D (Rank) 20D (Rank) 
+
+GA 7.0000 (8) 6.0000 (6) PSO 6.4167 (7) 6.0000 (6) SMO 4.7500 (3) 4.6667 (5) WSO 5.5000 (6) 6.5833 (8) SAO 4.7500 (3) 3.5000 (2) BKA 7.8833 (9) 7.6667 (9) QSSA 9.9167 (10) 10.0000 (10) LSHADE 3.0000 (2) 3.9167 (3) KEO 4.7500 (3) 4.5833 (4) HCKEO 1.8333 (1) 2.0833 (1) 
+
+4.3.2. Analysis of population diversity 
+
+Figure 7 presents the population diversity curves for the eight metaheuristic algorithms on the CEC2022 benchmark functions in 20 dimensions, calculated using Eq. (4.3). All algorithms begin with similar high diversity levels (around 10 4), reflecting the initial ran-dom population distribution. As iterations progress, diversity generally decreases due to convergence toward optimal solutions, but the rate and pattern vary across algorithms and functions, highlighting differences in exploration-exploitation balance. The proposed HCKEO algorithm consistently demonstrates improved diversity mainte-nance compared to its baseline KEO and other competitors in most functions. For unimodal and basic functions (F1–F3), HCKEO exhibits a more gradual decline in diversity, remaining higher than KEO, LSHADE, and BKA in the mid-to-late stages (e.g., after 200 iterations), which supports better exploration and avoids premature convergence. In the expanded func-tion F4 and hybrid functions F5–F7, HCKEO shows fluctuations in diversity, particularly in F6 and F7, indicating adaptive mechanisms that reinvigorate exploration when needed, outperforming PSO and SAO, which drop rapidly to low levels ( < 10 −4). For composition functions F8–F12, HCKEO maintains relatively stable and higher diversity longer than GA, WSO, and KEO, especially in F9, F10, and F12, where it ends at intermediate levels (10 −2
+
+to 10 0), facilitating escape from local optima. In contrast, algorithms like LSHADE often converge too aggressively, reaching very low diversity early (e.g., 10 −6 or below in F11), while HCKEO balances convergence with sustained diversity, contributing to its superior overall performance. 
+
+4.4. Experiments on Real-World Engineering Optimization Problems 
+
+To verify the ability of HCKEO to solve practical problems, this paper selected 10 real-world constrained engineering optimization problems. These benchmark problems are widely used in the literature to assess the performance of MHAs under complex constraint condi-tions. The selected problems include pressure vessel design, tension/compression spring design, speed reducer design, welded beam design, heat exchanger network design, three-bar 23 truss design, step-cone pulley design, robot gripper design, planetary gear train design, and reactor network design [50]. Compared with standard benchmark functions, engineering optimization problems are typically characterized by nonlinear objective functions together with multiple inequality or equality constraints. Therefore, an effective constraint-handling mechanism is required to guide the search process toward feasible regions. In this work, a simple yet widely adopted constraint-handling approach, known as the death penalty method [51], is employed. Under this strategy, infeasible solutions are assigned a sufficiently large objective value when the optimization objective is minimization, which discourages their selection during the evolutionary process and promotes convergence toward feasible solutions. 
+
+4.4.1. Pressure vessel design problem 
+
+The pressure vessel design problem is a well-known constrained optimization benchmark in engineering design. The objective is to determine an optimal configuration that minimizes the fabrication cost of a cylindrical pressure vessel while satisfying structural and volume constraints. The design involves four decision variables, namely the shell thickness ( Ts), the head thickness ( Th), the inner radius ( R), and the length of the cylindrical section ( L). The schematic illustration of the pressure vessel is shown in Fig. 8. This problem’s mathematical model is as follows: 
+
+• Consider the variables: 
+
+X = [ x1, x 2, x 3, x 4] = [ Ts, T h, R, L ].
+
+• The optimization problem is formulated as: Minimize: f (x) = 0 .6224 x1x3x4 + 1 .778 x2x23 + 3 .1661 x21x4 + 19 .84 x21x3.
+
+Subject to: g1(x) = −x1 + 0 .0193 x3 ≤ 0,g2(x) = −x2 + 0 .00954 x3 ≤ 0,g3(x) = −πx 23x4 − 43πx 33 + 1 ,296 ,000 ≤ 0,g4(x) = x4 − 240 ≤ 0.
+
+With bounds: 0 ≤ x1, x 2 ≤ 100 and 10 ≤ x3, x 4 ≤ 200 .
+
+4.4.2. Tension/compression spring design problem 
+
+The classic constraint optimization problem in this experiment is tension/compression spring design problem, whose optimization objective is to obtain the lightest spring structure while meeting different mechanical requirements. A schematic representation of the spring structure is shown in Fig. 9. 24 Table 11: Optimization results for the pressure vessel design problem. 
+
+Algorithm Optimal values for variables Optimal value 
+
+Ts Th R L
+
+GA 1.263285628 0.670982883 63.88312924 16.02998820 7777.870937 PSO 4.189655760 20.40674138 70.52963736 195.9236791 251982.6757 SMO 0.852086386 0.431481982 44.14003262 152.9108038 6061.652003 WSO 0.778168642 0.384649163 40.31961877 199.9999993 5885.332775 SAO 0.894747549 0.442274180 46.35997664 130.1281218 6115.948600 BKA 0.778172825 0.384673488 40.31962084 200.0000000 5885.433773 QSSA 0.955915621 0.472506305 49.52895598 102.1268451 6263.865463 LSAHDE 0.778170365 0.384650698 40.31970279 199.9990555 5885.343249 KEO 0.938591962 0.456198333 46.195713815 134.801356900 6552.296264 
+
+HCKEO 0.778168641 0.384649163 40.31961872 200.000000 5885.332774 
+
+The design process involves three decision variables: the wire diameter ( d), the mean coil diameter ( D), and the number of active coils ( N ). These parameters directly affect the structural strength, deformation characteristics, and vibration behavior of the spring. During optimization, several engineering constraints must be satisfied, including limitations on shear stress, deflection, and surge frequency. These constraints ensure that the result-ing design maintains acceptable mechanical performance under operating conditions. The mathematical model is as follows: 
+
+• Consider the variables: 
+
+X = [ x1, x 2, x 3] = [ d, D, N ].
+
+• The optimization problem is formulated as: Minimize: f (x) = ( x3 + 2) x2x21.
+
+Subject to: g1(x) = 1 − x32x3
+
+71785 x41
+
+≤ 0,g2(x) = 4x22 − x1x2
+
+12566( x2x31) + 15108 x21
+
+− 1 ≤ 0,g3(x) = 1 − 140 .45 x1
+
+x22x3
+
+≤ 0,g4(x) = x1 + x2
+
+1.5 − 1 ≤ 0.
+
+With bounds: 0.05 ≤ x1 ≤ 2 0.25 ≤ x2 ≤ 1.3 and 2 ≤ x3 ≤ 15 .
+
+25 Table 12: Optimization results for the tension/compression spring design problem. 
+
+Algorithm Optimal values for variables Optimal value 
+
+d D N
+
+GA 0.070246839 0.917461209 2.264891525 0.019308532 PSO 0.067758313 0.750177860 4.444386828 0.022195810 SMO 0.053532910 0.402718561 9.027283172 0.012726585 WSO 0.052002309 0.364300097 10.85792520 0.012666932 SAO 0.062441594 0.674810594 3.551272119 0.014605699 BKA 0.055281082 0.449342903 7.389349163 0.012893370 QSSA 0.050000000 0.317399111 14.03125773 0.01272076 LSAHDE 0.051688218 0.356697481 11.29015351 0.01266523 KEO 0.050000000 0.317423896 14.0279719 0.012719153 
+
+HCKEO 0.051691219 0.35676965 11.28592329 0.012665233 
+
+4.4.3. Speed reducer design problem 
+
+The speed reducer design problem is a widely studied benchmark in mechanical engineer-ing optimization. The objective is to determine a configuration of the reducer components that minimizes the total weight of the transmission system while satisfying a set of mechan-ical and geometric constraints. A schematic illustration of the speed reducer structure is presented in Fig. 10. The design involves several structural parameters related to the gear train and shaft configura-tion, which jointly influence the strength, stability, and manufacturability of the reducer. The corresponding mathematical formulation of the speed reducer design problem can be expressed as follows.: 
+
+• Consider the variables: 
+
+X = [ x1, x 2, x 3, x 4, x 5, x 6, x 7] = [ b, m, p, l 1, l 2, d 1, d 2].
+
+26 • The optimization problem is formulated as: Minimize: f (x) = 0 .7854 x1x22(3 .3333 x23 + 14 .9334 x3 − 43 .0934) 
+
+− 1.508 x1(x26 + x27) + 7 .4777( x36 + x37)+ 0 .7854( x4x26 + x5x27).
+
+Subject to: 
+
+g1(x) = 27 
+
+x1x22x3
+
+− 1 ≤ 0,g2(x) = 397 .5
+
+x1x22x23
+
+− 1 ≤ 0,g3(x) = 1.93 x34
+
+x2x3x46
+
+− 1 ≤ 0,g4(x) = 1.93 x35
+
+x2x3x47
+
+− 1 ≤ 0,g5(x) = 1110 x36
+
+s745 x4
+
+x2x3
+
+2
+
++ 16 .9 × 10 6 − 1 ≤ 0,g6(x) = 185 x37
+
+s745 x5
+
+x2x3
+
+2
+
++ 157 .5 × 10 6 − 1 ≤ 0,g7(x) = x2x3
+
+40 − 1 ≤ 0,g8(x) = 5x2
+
+x1
+
+− 1 ≤ 0,g9(x) = x1
+
+12 x2
+
+− 1 ≤ 0,g10 (x) = 1.5x6 + 1 .9
+
+x4
+
+− 1 ≤ 0,g11 (x) = 1.1x7 + 1 .9
+
+x5
+
+− 1 ≤ 0.
+
+With bounds: 2.6 ≤ x1 ≤ 3.6, 0.7 ≤ x2 ≤ 0.8, 17 ≤ x3 ≤ 28 ,
+
+7.3 ≤ x4 ≤ 8.3, 7.3 ≤ x5 ≤ 8.3, 2.9 ≤ x6 ≤ 3.9,
+
+and 5 ≤ x7 ≤ 5.5.
+
+4.4.4. Welded beam design problem 
+
+Welded beam design focuses on minimizing costs by optimizing the design of a welded beam. The design process encompasses four variables: height(h), length(l), thickness(t) and breadth(b). The schematic representation of the welded beam is illustrated in Fig. 11. The mathematical formulation of the optimization problem associated with welded beam design is presented as follows: 
+
+• Consider the variables: 
+
+X = [ x1, x 2, x 3, x 4] = [ h, l, t, b ].
+
+27 Table 13: Optimization results for the speed reducer design problem. 
+
+Algorithm Optimum variables Optimum cost 
+
+b m p l1 l2 d1 d2
+
+GA 3.500468106 0.700051444 17.00230823 7.300195341 7.716471632 3.350620984 5.287121979 2995.713913 PSO 3.395686519 0.711580678 27.06970830 7.818530060 7.984860605 3.328936322 5.236036583 3.36291E+98 SMO 3.60000000 0.70000000 15.3772941 7.69503073 8.30000000 3.503266761 5.33716 2847.385749 WSO 3.500000006 0.700000001 17.0000005 7.30000000 7.715356853 3.350214948 5.286654545 2994.471999 SAO 3.500011324 0.700000000 17.0000000 7.30000000 7.715327163 3.350222934 5.286654641 2994.477895 BKA 3.500000124 0.700000000 17.0000000 7.95549509 7.953650139 3.372574947 5.288299759 3012.343349 QSSA 3.500000138 0.70000000 17.0000000 7.560290190 8.171001745 3.350709256 5.286813266 3006.996505 LSAHDE 3.500000000 0.70000000 17.0000000 7.30000000 7.715319911 3.350214666 5.286654464 2994.471066 KEO 3.500000003 0.70000000 17.0000000 7.30000000 7.808771427 3.350214673 5.286686233 2996.542621 
+
+HCKEO 3.50000000 0.70000000 17.0000000 7.30000000 7.71531991147825 3.35021466609645 5.28665446498022 2994.47106614682 
+
+• The optimization problem is formulated as: Minimize: f (x) = 0 .04811 x3x4(x2 + 14) + 1 .10471 x21x2
+
+Subject to: 
+
+g1(x) = x1 − x4 ≤ 0
+
+g2(x) = δ(x) − δmax ≤ 0
+
+g3(x) = P − Pc(x) ≤ 0
+
+g4(x) = τ (x) − τmax ≤ 0
+
+g5(x) = σ(x) − σmax ≤ 0
+
+g5(x) = 1110 x36
+
+s745 x4
+
+x2x3
+
+2
+
++ 16 .9 × 10 6 − 1 ≤ 0,g6(x) = 185 x37
+
+s745 x5
+
+x2x3
+
+2
+
++ 157 .5 × 10 6 − 1 ≤ 0,
+
+With bounds: 0.125 ≤ x1 ≤ 2, 0.1 ≤ x2, x 3 ≤ 10 , 0.1 ≤ x4 ≤ 2.
+
+Table 14: Optimization results for the welded beam design problem. 
+
+Algorithm Optimal values for variables Optimal value 
+
+Ts Th R L
+
+GA 0.310085068845545 2.59294439090531 6.44114431410583 0.405346825609125 2.35966918896065 PSO 0.437019933412312 2.28566439992982 6.44674625531403 0.742669104399893 4.23349660745509 SMO 0.348377307815625 3.96309536657826 8.58108179456618 0.578412600289239 4.82074999933099 WSO 0.205729649397326 3.01039888580124 9.03662333452380 0.205729677172381 1.66218893444694 SAO 0.205729639784955 3.01039750927435 9.03662391085411 0.205729639788443 1.66218887323887 BKA 0.205084248243580 3.02128289060828 9.03626598683563 0.205849313274611 1.66361176407930 QSSA 0.125000000000000 5.23514231996968 9.03662197950160 0.205729727786598 1.81078208357137 LSAHDE 0.205729639780189 3.01039750950179 9.03662391035895 0.205729639786136 1.66218887316290 KEO 0.205727608117569 3.01030933005766 9.03700827772803 0.205727722212788 1.66222461471345 
+
+HCKEO 0.205729639786079 0.205729639786079 9.03662391035763 0.205729639786080 1.66218887315602 
+
+28 4.4.5. Heat Exchanger Network Design (Case 2) 
+
+The Heat Exchanger Network (HEN) design problem is a representative large-scale non-linear programming (NLP) problem widely studied in chemical engineering optimization. The objective is to minimize the total investment and operating costs of the heat exchanger network while satisfying energy balance constraints and heat transfer requirements. Due to the presence of multiple equality constraints, nonlinear logarithmic terms, and decision variables with significantly different scales, this problem poses considerable challenges for metaheuristic optimization algorithms. In this study, the considered HEN design model consists of 11 continuous decision vari-ables and 9 nonlinear equality constraints. The mathematical formulation involves logarith-mic functions related to temperature differences and heat transfer areas, making the feasible region highly nonlinear and sensitive to constraint violations. This problem’s mathematical model is as follows: 
+
+• The decision variable vector is defined as 
+
+X = [ x1, x 2, x 3, x 4, x 5, x 6, x 7, x 8, x 9, x 10 , x 11 ],
+
+• the optimization problem is formulated as follows: Minimize: f (x) = 
+
+ x1
+
+120 x4
+
+0.6
+
++
+
+ x2
+
+80 x5
+
+0.6
+
++
+
+ x3
+
+40 x6
+
+0.6
+
+,
+
+Subject to: 
+
+h1(x) = x1 − 10 4(x7 − 100) = 0 ,h2(x) = x2 − 10 4(x8 − x7) = 0 ,h3(x) = x3 − 10 4(500 − x8) = 0 ,h4(x) = x1 − 10 4(300 − x9) = 0 ,h5(x) = x2 − 10 4(400 − x10 ) = 0 ,h6(x) = x3 − 10 4(600 − x11 ) = 0 ,h7(x) = x4 ln( x9 − 100) − x4 ln(300 − x7) − x9 − x7 + 400 = 0 ,h8(x) = x5 ln( x10 − x7) − x5 ln(400 − x8) − x10 + x7 − x8 + 400 = 0 ,h9(x) = x6 ln( x11 − x8) − x6 ln(100) − x11 + x8 + 100 = 0 ,
+
+With bounds: 0 ≤ x1 ≤ 81 .9 × 10 4, 10 4 ≤ x2 ≤ 113 .1 × 10 4,
+
+10 4 ≤ x3 ≤ 205 × 10 4, 0 ≤ x4, x 5, x 6 ≤ 5.074 × 10 −2,
+
+100 ≤ x7 ≤ 200 , 100 ≤ x8, x 9, x 10 ≤ 300 , 100 ≤ x11 ≤ 400 .
+
+A schematic illustration of the Heat Exchanger Network configuration for Case 2 is shown in Fig. 12. Table 15 summarizes the results of HCKEO and other comparative algorithms in this experiment, which lists the optimal design variables together with their corresponding ob-jective function values. 29 Table 15: Optimization results for the heat exchanger network design (case 2) problem.                                                            
+
+> Algorithm Optimal values for variables Optimal value
+> TsThRL
+> GA 809461.060933405 1130854.62691484 2049565.26951451 0.0507391201276824 5.29866533597473 ×10 15
+> PSO 746016.607355141 1009450.12983996 2050000.00000000 0.0266502188375417 8.90122617984458 ×10 18
+> SMO 818493.135665050 1144403.23753470 2012052.99661648 0.0300720209858634 3.49188577751531e+16 WSO 818999.998409066 1130999.99899977 2049999.99966074 0.0477233533823672 10244.2763837370 SAO 819000.000000000 1131000.00000000 2050000.00000000 0.0507400000000000 7049.03695431410 BKA 818999.964829814 1130998.66989143 2049999.99999964 0.0507127174194137 62322786.4893148 QSSA 818290.158391332 1130999.99891003 2047742.80404034 0.0506764712460471 2.42460500010439e+19 LSAHDE 819000.000000000 1131000.00000000 2050000.00000000 0.0507400000000000 7049.03695431410 KEO 819000.000000000 1131000.00000000 2050000.00000000 0.0507400000000000 7049.03695431410
+> HCKEO 819000.000000000 1131000.00000000 2050000.00000000 0.0507400000000000 7049.03695431410
+
+4.4.6. Three-bar truss design problem 
+
+This case study represents a classic structural engineering task characterized by a linear objective function coupled with highly non-linear stress constraints. Although the search space is limited to two dimensions, the ”accidented” nature of the constrained feasible region makes it a challenging benchmark for testing the precision of the HCKEO algorithm. It evaluates whether the algorithm can push the solution toward the constraint boundary without violating the safety limits ( g1, g 2, g 3). This problem’s mathematical model is as follows: 
+
+• Consider the variables: 
+
+X = [ x1, x 2].
+
+• The optimization problem is formulated as: Minimize: f (x) = L(x2 + 2 √2x1),
+
+Subject to: 
+
+g1(x) = x2
+
+2x2x1 + √2x21
+
+P − σ ≤ 0
+
+g2(x) = x2 + √2x1
+
+2x2x1 + √2x21
+
+P − σ ≤ 0
+
+g3(x) = 1
+
+x1 + √2x2
+
+P − σ ≤ 0,
+
+Parameters: L = 100 , P = 2 , σ = 2 .
+
+With bounds: 0 ≤ x1, x 2 ≤ 1.
+
+4.4.7. Step-cone pulley problem 
+
+The step-cone pulley problem is a representative mechanical design benchmark featur-ing a highly constrained nonlinear optimization landscape. The main difficulty arises from 30 Table 16: Optimization results for the three-bar truss design problem. 
+
+Algorithm Optimal values for variables Optimal value 
+
+x1 (A1) x2 (A2) GA 0.79099573 0.40234393 263.96176997 PSO 0.79563224 0.50790109 275.82889047 SMO 0.78867514 0.40824827 263.89584338 WSO 0.78867504 0.40824855 263.89584338 SAO 0.78648329 0.41448333 263.89940072 BKA 0.78811921 0.40982297 263.89607093 QSSA 0.78493853 0.41892094 263.90623799 LSAHDE 0.78867513 0.40824829 263.89584338 KEO 0.78866712 0.40827095 263.89584342 
+
+HCKEO 0.78867513 0.40824829 263.89584338 
+
+the requirement that a single belt must maintain identical effective lengths across four dis-tinct transmission stages, which is enforced through a set of equality constraints. From an optimization standpoint, these constraints restrict the feasible solutions to a very narrow manifold embedded in a five-dimensional decision space. In addition, the presence of tran-scendental functions, including exponential and inverse trigonometric terms, in the stress and power constraints substantially increases the numerical complexity and the risk of pre-mature convergence to local optima. Fig. 14 presents a schematic illustration of the step-cone pulley system. A single belt with width w transmits power between two stepped pulleys with four diameter levels d1–d4 under different transmission ratios. The center distance between the pulleys is fixed, and belt-length consistency is enforced across all transmission stages. The problem’s mathematical model is as follows: 
+
+• The decision variable vector is defined as 
+
+X = [ d1, d 2, d 3, d 4, w ].
+
+31 • The optimization problem is formulated as follows: Minimize: f (x) = ρw π
+
+4
+
+> 4
+
+X
+
+> i=1
+
+d2
+
+> i
+
+"
+
+1 + 
+
+Ni
+
+N
+
+2#
+
+,
+
+Subject to: 
+
+h1(x) = C1 − C2 = 0 ,h2(x) = C1 − C3 = 0 ,h3(x) = C1 − C4 = 0 ,g1,2,3,4(x) = Ri − 2 ≤ 0,g5,6,7,8(x) = 0 .75 × 745 .7 − Pi ≤ 0,
+
+Parameters: 
+
+Ci = πd i
+
+2
+
+
+
+1 + Ni
+
+N
+
+
+
++ (Ni/N − 1) 2d2
+
+> i
+
+4a + 2 a, Ri = exp 
+
+
+
+μ
+
+
+
+π − 2 arcsin 
+
+(Ni/N − 1) di
+
+2a
+
+ 
+
+,Pi = stw (1 − Ri) πd iN
+
+60000 ,ρ = 7200 , N = 250 , Ni = {100 , 150 , 200 , 250 },a = 3 , μ = 0 .35 , s = 1 .75 , t = 8 ,
+
+With bounds: 1 ≤ di, w ≤ 100 .
+
+The optimization results of HCKEO and the seven comparison algorithms are summa-rized in Table 17. 
+
+> Table 17: Optimization results for the step-cone pulley problem.
+
+Algorithm Optimal values for variables Optimal value 
+
+d1 d2 d3 d4 w
+
+GA 39.3750 54.1773 72.2306 86.6130 88.0906 6.60 × 10 91 
+
+PSO 45.6943 60.0000 90.0000 90.0000 90.0000 9.41 × 10 97 
+
+SMO 40.7969 56.1402 74.8475 89.7363 89.9784 18.1448 WSO 40.0594 55.1246 73.4935 88.1145 87.6804 8.80 × 10 73 
+
+SAO 40.9086 56.2941 75.0525 89.9819 84.4974 17.1329 BKA 40.7671 56.0992 74.7928 89.6708 88.9354 17.9082 QSSA 40.5094 55.7443 74.3196 89.1040 88.9900 1.11 × 10 78 
+
+LSAHDE 39.6825 54.6056 72.8015 87.2855 88.4048 4.63 × 10 78 
+
+KEO 40.4146 55.6138 74.1456 88.8956 85.5331 16.9265 
+
+HCKEO 40.0141 55.0621 73.4102 88.0147 86.3916 16.7591 
+
+4.4.8. Robot gripper problem 
+
+The robot gripper problem is a classical benchmark in mechanical linkage synthesis, widely used to evaluate the performance of optimization algorithms under strong geometric 32 and nonlinear constraints. The primary objective is to minimize the fluctuation of the gripping force by reducing the difference between its maximum and minimum values over the allowable operating displacement range of the gripper. This problem is particularly challenging due to the following characteristics: 1. Transcendental nonlinearity : The mathematical model contains nested inverse trigono-metric functions (cos −1, tan −1) combined with sinusoidal terms, which imposes high requirements on numerical stability during optimization. 2. Geometric feasibility : The design variables must strictly satisfy triangle inequality conditions to ensure the validity of angular computations; otherwise, the objective function becomes undefined. 3. Strongly coupled constraints : The displacement constraints and force requirements are highly interdependent, resulting in a narrow and fragmented feasible region within the search space. The problem’s mathematical model is as follows: 
+
+• The decision variable vector is defined as 
+
+X = [ a, b, c, e, f, l, δ ].
+
+• The optimization problem is formulated as follows: Minimize: f (x) = max  
+
+> z
+
+Fk(x, z ) − min  
+
+> z
+
+Fk(x, z ),
+
+Subject to: 
+
+g1(x) = Ymin − y(x, Z max ) ≤ 0,g2(x) = −y(x, Z max ) ≤ 0,g3(x) = y(x, 0) − Ymax ≤ 0,g4(x) = YG − y(x, 0) ≤ 0,g5(x) = ( a + b)2 − l2 − e2 ≤ 0,g6(x) = ( a − e)2 + ( l − Zmax )2 − b2 ≤ 0,g7(x) = Zmax − l ≤ 0.
+
+Parameters: 
+
+Fk = P b sin( α + β + δ)2c cos α , y(x, z ) = 2( f + e + c sin( β + δ)) ,α = cos −1
+
+a2 + g2 − b2
+
+2ag 
+
+
+
++ ϕ, β = cos −1
+
+b2 + g2 − a2
+
+2bg 
+
+
+
+− ϕ, g = pe2 + ( z − l)2, ϕ = tan −1
+
+ el − z
+
+
+
+,Ymin = 50 , Y max = 100 , Y G = 150 , Z max = 100 , P = 100 With bounds: 0 ≤ a, b, f ≤ 150 ,
+
+100 ≤ c ≤ 200 ,
+
+0 ≤ e ≤ 50 1 ≤ δ ≤ 3.14 ,
+
+100 ≤ l ≤ 300 33 Figure 15 illustrates a schematic diagram of the robot gripper mechanism. The design variables a, b, c, e, f, l, and δ define the geometric configuration of the linkage system. The vertical opening distance y(x, z ) varies with the prismatic displacement z, and the opti-mization objective is to minimize the variation of the gripping force throughout the entire operating range. Table 18 summarizes the experimental results obtained by eight optimization algorithms on the robot gripper problem.                                                                                         
+
+> Table 18: Optimization results for the robot gripper problem.
+> Algorithm Optimal values for variables Optimal value
+> abceflδ
+> GA 142.2758 119.1540 148.2965 15.5537 80.6864 169.1391 2.4368 5.7103 PSO 150.0000 129.1068 200.0000 46.8871 114.3722 217.2609 3.1400 67.3019 SMO 280.6236 178.6229 264.8124 86.2115 173.4440 268.9487 3.1202 2.0257 WSO 149.7431 146.4406 199.7222 2.5334 138.6806 128.3933 2.3743 2.9272 SAO 149.8850 149.6754 199.9815 0.0918 149.6032 100.9752 2.2965 2.5474 BKA 149.9934 149.8454 184.2192 0.0097 53.0803 102.9344 1.8082 2.8002 QSSA 149.9999 146.1486 176.4694 3.2526 26.7694 123.8566 1.7483 3.3371 LSHADE 148.2569 141.4447 200.0000 6.6377 150.0000 104.8494 2.3948 2.7165 KEO 149.9990 149.8651 200.0000 0.0167 150.0000 100.9442 2.2975 2.5440
+> HCKEO 149.9383 148.9958 200.0000 0.8335 150.0000 100.0000 2.3002 2.5338
+
+4.4.9. Planetary Gear Train Design 
+
+The planetary gear train design problem aims to minimize the maximum deviation be-tween the achieved gear ratios and their prescribed target values in an automatic trans-mission system. This benchmark problem is widely used in automotive engineering, as it determines the optimal combination of gear tooth numbers and modules to ensure accurate speed ratios and efficient torque transmission. The design space is mixed-integer and discrete in nature, consisting of six integer variables representing gear tooth numbers, one discrete variable indicating the number of planet gears, and two discrete variables corresponding to gear modules. A total of eleven constraints are imposed to satisfy geometric feasibility and assembly requirements. The problem’s mathematical model is as follows: 
+
+• The decision variable vector is defined as 
+
+x = [ p, N 6, N 5, N 4, N 3, N 2, N 1, m 3, m 1],
+
+where Ni denotes the number of teeth of the corresponding gear, p is the number of planet gears, and m1, m3 are the selected gear modules. 34 • The optimization problem is formulated as Minimize: f (x) = max  
+
+> k=1 ,...,R
+
+|ik − i0k| ,
+
+Subject to: 
+
+g1(x) = m3(N6 + 2 .5) − Dmax ≤ 0,g2(x) = m1(N1 + N2) + m1(N2 + 2) − Dmax ≤ 0,g3(x) = m3(N4 + N5) + m3(N5 + 2) − Dmax ≤ 0,g4(x) = |m1(N1 + N2) − m3(N6 − N3)| − m1 − m3 ≤ 0,g5(x) = −(N1 + N2) sin( π/p ) + N2 + 2 + δ22 ≤ 0,g6(x) = −(N6 − N3) sin( π/p ) + N3 + 2 + δ33 ≤ 0,g7(x) = −(N4 + N5) sin( π/p ) + N5 + 2 + δ55 ≤ 0,g8(x) = ( N3 + N5 + 2 + δ35 )2 − (N6 − N3)2 − (N4 + N5)2
+
++ 2( N6 − N3)( N4 + N5) cos 
+
+2πp − β
+
+
+
+≤ 0,g9(x) = N4 − N6 + 2 N5 + 2 δ56 + 4 ≤ 0,g10 (x) = 2 N3 − N6 + N4 + 2 δ34 + 4 ≤ 0,h1(x) = N6 − N4
+
+p ∈ Z.
+
+• The corresponding gear ratios are defined as 
+
+i1 = N6
+
+N4
+
+, i2 = N6(N1N3 + N2N4)
+
+N1N3(N6 − N4) , iR = −N2N6
+
+N1N3
+
+,
+
+with target values 
+
+i01 = 3 .11 , i02 = 1 .84 , i0R = −3.11 .
+
+• Variable bounds 
+
+Ni ∈ Z, p ∈ { 3, 4, 5},
+
+17 ≤ N1 ≤ 96 , 14 ≤ N2 ≤ 54 , 14 ≤ N3 ≤ 51 ,
+
+17 ≤ N4 ≤ 46 , 14 ≤ N5 ≤ 51 , 48 ≤ N6 ≤ 124 ,m1, m 3 ∈ { 1.75 , 2.0, 2.25 , 2.5, 2.75 , 3.0}.
+
+Figure 16 illustrates the schematic configuration of the planetary gear train, consisting of a central sun gear, multiple planet gears mounted on a carrier, and an internal ring gear. Table 19 reports the comparative performance of different optimization algorithms on the planetary gear train design problem. 35 Table 19: Comparison of experimental results for the planetary gear train design problem. 
+
+Algorithm Optimal values for variables Optimal value 
+
+p N6 N5 N4 N3 N2 N1 m3 m1
+
+GA 30 21 21 22 17 78 2 1.75 4 0.5742857143 PSO 20 29 15 17 15 54 3 3.00 3 1.13 × 10 104 
+
+WSO 44 28 20 24 21 84 2 2.25 4 0.5328468900 SAO 23 14 14 17 14 56 2 1.75 3 0.6752173913 BKA 32 20 15 17 18 62 1.75 2.00 3 0.5370588235 LSHADE 37 22 20 24 19 87 2.25 2.00 3 0.5262805663 KEO 35 28 28 25 20 91 2.25 2.25 3 0.5300000000 
+
+HCKEO 41 28 24 25 22 91 2.00 2.00 3 0.5257687075 
+
+4.4.10. Reactor network design 
+
+The reactor network design problem is a benchmark optimization task in chemical engi-neering. The core objective is to design an optimal sequence consisting of two Continuously Stirred Tank Reactors (CSTRs). The primary goal of this optimization is to maximize the final concentration of the desired product through the manipulation of various process variables. The problem’s mathematical model is formulated as follows: 
+
+• The decision variable vector is defined as 
+
+x = [ x1, x 2, x 3, x 4, x 5, x 6],
+
+where x1–x4 are continuous design variables bounded in [0 , 1], and x5, x6 are auxiliary positive variables associated with nonlinear constraints. 
+
+• The optimization problem is stated as Minimize: f (x) = x4,
+
+Subject to: 
+
+h1(x) = k1x5x2 + x1 − 1 = 0 ,h2(x) = k3x5x3 + x3 + x1 − 1 = 0 ,h3(x) = k2x6x2 − x1 + x2 = 0 ,h4(x) = k4x6x4 + x2 − x1 + x4 − x3 = 0 ,g1(x) = √x5 + √x6 − 4 ≤ 0.
+
+• The model parameters are fixed as 
+
+k1 = 0 .09755988 , k2 = 0 .99 k1, k3 = 0 .0391908 , k4 = 0 .9 k3.
+
+• The variable bounds are given by 0 ≤ x1, x 2, x 3, x 4 ≤ 1,
+
+10 −5 ≤ x5, x 6 ≤ 16 .
+
+36 Table 20: Optimization results for the reactor network design problem. 
+
+Algorithm Optimal values for variables Optimal value 
+
+x1 x2 x3 x5 x6
+
+GA 0.4940 0.4925 0.3576 10.5462 0.0234 -0.3472 PSO 0.6718 0.5864 0.2804 4.5071 4.0056 1127.0736 SMO 0.7402 0.6094 0.3605 5.0385 2.8299 651.36910 WSO 0.5937 0.5268 0.3102 7.9033 1.3149 -0.3604 SAO 0.9628 0.8295 0.0366 0.4600 1.6624 -0.1604 BKA 1.0000 1.0000 0.0000 0.0000 0.0000 1.88 × 10 −8
+
+QSSA 0.9993 0.9986 0.0006 0.0064 0.0072 -0.0013 LSHADE 0.7717 0.5628 0.1963 4.1576 3.8445 -0.3569 KEO 0.9600 0.8771 0.0391 0.4580 0.9766 -0.1100 
+
+HCKEO 1.0000 0.3933 0.0000 0.0000 15.9742 -0.3881 
+
+4.4.11. Experimental analysis and discussion 
+
+The experimental results (Table 11–20) on ten real-world engineering optimization prob-lems demonstrate the overall robustness and effectiveness of the proposed HCKEO algorithm when compared with a variety of state-of-the-art metaheuristic methods. These bench-mark problems cover a wide range of engineering characteristics, including structural weight minimization, system and network synthesis, and mechanical transmission design, thereby providing a comprehensive evaluation of algorithmic performance. For structural and weight minimization problems, including the pressure vessel, ten-sion/compression spring, speed reducer, and welded beam design cases, HCKEO consis-tently achieved either the best or near-optimal solutions. In the pressure vessel problem, HCKEO obtained the lowest cost value, slightly outperforming advanced differential evo-lution variants and significantly surpassing GA and PSO, indicating its capability in han-dling variables with discrete-like behavior. Similar stability was observed in the spring design problem, where HCKEO matched the best-known solution under highly nonlinear stress and frequency constraints. In the speed reducer and welded beam problems, HCKEO demonstrated superior precision and feasibility, whereas several baseline algorithms failed to converge or violated constraints, highlighting its reliability in tightly constrained structural optimization tasks. In network and system synthesis problems, such as the heat exchanger network and reac-tor network design, the presence of multiple nonlinear equality constraints poses significant challenges to conventional metaheuristics. The results show that GA and PSO frequently diverged or produced infeasible solutions with extremely large objective values, reflecting their limited constraint-handling capability. In contrast, HCKEO consistently obtained high-quality feasible solutions and achieved the best-known objective values, particularly in the reactor network problem, where mass balance equations must be strictly satisfied. These results indicate that the hybrid search strategy embedded in HCKEO is effective in 37 navigating narrow feasible regions defined by coupled equality constraints. For mechanical linkage and transmission problems, including the three-bar truss, step-cone pulley, robot gripper, and planetary gear train design, HCKEO again exhibited strong performance. In the three-bar truss problem, the algorithm successfully converged to the theoretical minimum located on the boundary of stress constraints. The step-cone pulley problem proved especially challenging for traditional algorithms, many of which returned excessively large objective values due to constraint violations. HCKEO, however, achieved the best feasible solution, demonstrating its ability to handle narrow feasible manifolds and complex geometric relationships. In the robot gripper and planetary gear train problems, which involve geometric feasibility conditions and mixed-integer decision variables, HCKEO attained the lowest objective values, indicating stable performance in discrete and hybrid search spaces. Overall, the experimental evidence suggests that HCKEO exhibits strong constraint-handling capability, high numerical precision, and stable convergence behavior across di-verse engineering problem categories. These characteristics make it a reliable and compet-itive optimization framework for complex real-world engineering design problems involving nonlinear, constrained, and mixed-variable search spaces. 38 0 00 00 00 00 00 0   
+
+0   
+
+0 0
+
+0 
+
+0 
+
+0 
+
+> "!#  !$
+
+            (a) F1 0 00 00 00 00 00 0   
+
+0   
+
+0   
+
+0   
+
+0   
+
+0 0
+
+0 
+
+0 
+
+0 
+
+> "!#  !$
+
+             (b) F2 0 00 00 00 00 00 0   
+
+0   
+
+0   
+
+0   
+
+0 0
+
+0 
+
+0 
+
+0 
+
+> "!#  !$
+
+             (c) F3 0 00 00 00 00 00 0   
+
+0   
+
+0   
+
+0 
+
+0 
+
+> "!#  !$
+
+            
+
+(d) F4 0 00 00 00 00 00 0   
+
+0   
+
+0   
+
+0   
+
+0   
+
+0 0
+
+0 
+
+0 
+
+0 
+
+> "!#  !$
+
+             (e) F5 0 00 00 00 00 00 0   
+
+0 0
+
+0 
+
+0 
+
+0 
+
+> "!#  !$
+
+             (f) F6 0 00 00 00 00 00 0   
+
+0   
+
+0   
+
+0   
+
+0 0
+
+0 
+
+0 
+
+0 
+
+> "!#  !$
+
+            
+
+(g) F7 0 00 00 00 00 00 0   
+
+0   
+
+0 0
+
+0 
+
+0 
+
+0 
+
+> "!#  !$
+
+             (h) F8 0 00 00 00 00 00 0   
+
+0   
+
+0   
+
+0 0
+
+0 
+
+0 
+
+0 
+
+> "!#  !$
+
+             (i) F9 0 00 00 00 00 00 0   
+
+0   
+
+0   
+
+0 0
+
+0 
+
+0 
+
+0 
+
+> "!#  !$
+
+            
+
+(j) F10 0 00 00 00 00 00 0  
+
+0   
+
+0   
+
+0   
+
+0 0
+
+0 
+
+>  $#  diversity
+
+GA PSO SMO WSO S AO BKA QSS A LSHADE KEO HCKEO (k) F11 0 00 00 00 00 00 0   
+
+0   
+
+0 0
+
+0 
+
+0 
+
+> "!#  !$
+
+             (l) F12 
+
+Figure 7: Evolution of population diversity on the CEC2022 benchmark functions (20D). 
+
+39 Figure 8: Pressure Vessel Schematic 
+
+Figure 9: Pressure Vessel Schematic 
+
+Figure 10: Pressure Vessel Schematic 
+
+40 Figure 11: Welded Beam Design 
+
+HX 1 HX 2 HX 3
+
+Hot in Hot out Cold out Cold in 
+
+x1, x 4 x2, x 5 x3, x 6
+
+x7 x8
+
+x9 x10 x11 
+
+Figure 12: Schematic diagram of the Heat Exchanger Network (HEN) design problem for Case 2. The network consists of three heat exchangers connected in series, with a hot stream flowing from left to right and a cold stream flowing in the opposite direction. The decision variables x1–x3 represent the heat duties, 
+
+x4–x6 denote heat transfer area-related parameters, and x7–x11 correspond to intermediate temperature variables. 
+
+Px1 x1
+
+x2
+
+g1 g2
+
+g3
+
+LL/ √2
+
+Figure 13: Schematic diagram of the three-bar truss design problem. The structure consists of two symmetric diagonal members and one horizontal member. The design variables x1 and x2 represent the cross-sectional areas of the diagonal and horizontal bars, respectively. A vertical load P is applied at the top joint, and stress constraints g1, g2, and g3 are imposed on the corresponding members. 
+
+41 d1
+
+d2
+
+d3
+
+d4
+
+waN Ni
+
+Figure 14: Schematic diagram of the step-cone pulley design problem. A single belt with width w transmits power between two stepped pulleys with four diameter levels d1–d4. The center distance a is fixed, and belt-length consistency constraints enforce identical belt lengths across all transmission stages. 
+
+abce
+
+y(x, z )
+
+zδ
+
+Gripper Gripper 
+
+Figure 15: Schematic diagram of the robot gripper mechanism. The design variables a, b, c, e, f, l, δ define the geometric configuration of the linkage. The vertical opening distance y(x, z ) varies with the prismatic displacement z, and the objective is to minimize the fluctuation of gripping force over the operating range. 
+
+42 N1
+
+Ring gear N6
+
+N2N3
+
+N4 N5
+
+Carrier ( p = 4) 
+
+ik
+
+Figure 16: Schematic diagram of the planetary gear train design problem. The system consists of a sun gear (N1), four planet gears ( N2–N5) mounted on a carrier, and an internal ring gear ( N6). The carrier holds 
+
+p = 4 equally spaced planets, and the gear ratios ik are determined by the corresponding tooth numbers and module selections. 
+
+CSTR 1 CSTR 2 
+
+Feed Product 
+
+x5 x6
+
+x1, x 2 x3, x 4
+
+Figure 17: Schematic diagram of the reactor network design problem. The system consists of two contin-uously stirred tank reactors (CSTRs) connected in series. The residence times x5 and x6 are the primary decision variables, while the state variables x1–x4 represent the component concentrations. The objective is to maximize the final product concentration at the outlet of the second reactor. 
+
+43 5. UAV Path Planning: Experimental Results and Analysis 
+
+In this study, the UAV path planning problem is formulated through a comprehensive cost function that integrates optimality criteria and operational constraints, as described in this section. 
+
+5.1. Mathematical Model Definition 
+
+To ensure safe and efficient flight operations, the UAV path planning task can be modeled as a constrained multi-objective optimization problem. The objective is to determine an optimal trajectory that minimizes flight distance and energy consumption while satisfying environmental and physical constraints. In this study, the UAV flight path is represented as a sequence of discrete waypoints in three-dimensional space, each corresponding to a feasible position that the vehicle can reach. The mathematical model integrates four primary components: (1) path optimality, which ensures the trajectory is as short as possible; (2) safety and feasibility constraints, which prevent collisions with obstacles and maintain an adequate safety margin; (3) altitude constraints, which keep the UAV within allowable operational height limits; and (4) path smoothness, which guarantees dynamic feasibility by restricting excessive turning and climbing maneuvers. The overall cost function is then formulated as a weighted combination of these components, serving as the optimization objective for the proposed algorithm. 
+
+5.1.1. Path Optimality 
+
+For practical UAV missions, the generated flight trajectory should be optimized according to specific performance criteria determined by the operational objectives. In aerial photog-raphy, mapping, and surface inspection applications, minimizing the total path length is typically the primary objective. Let the flight path of the i-th UAV be denoted as Ti =
+
+{Ti1, T i2, . . . , T in }, where each waypoint Tij = ( xij , y ij , z ij ) represents a node in the search space. The Euclidean distance between two consecutive nodes is expressed as ∥Tij Ti,j +1 ∥.Thus, the path length cost F1 can be defined as 
+
+F1(Ti) = 
+
+> n−1
+
+X
+
+> j=1
+
+∥Tij Ti,j +1 ∥ . (5.1) 
+
+5.1.2. Safety and Feasibility Constraints 
+
+In addition to optimality, the generated path must ensure safe and feasible UAV navi-gation by avoiding threats or obstacles within the operating space. Let K denote the set of all threats, each modeled as a cylinder whose projection is characterized by its center coor-dinate Ck and radius Rk, as illustrated in Fig. 18. For each path segment ∥Tij Ti,j +1 ∥, the corresponding threat cost depends on its distance dk to the threat center Ck. By considering the UAV diameter D and a safety margin S, the total threat cost F2 is formulated as 44 
+
+F2(Ti) = 
+
+> n−1
+
+X
+
+> j=1
+> K
+
+X
+
+> k=1
+
+Ok (Tij Ti,j +1 ) ,Ok (Tij Ti,j +1 ) = 
+
+
+
+0, dk > S + D + Rk,
+
+(S + D + Rk) − dk, D + Rk < d k ≤ S + D + Rk,
+
+∞, dk ≤ D + Rk.
+
+(5.2) Here, D depends on the UAV’s physical dimensions, whereas S is related to mission type, environmental complexity, and GPS accuracy. Typically, S can range from tens of meters in static environments with strong GPS signals to hundreds of meters in dynamic or GPS-degraded environments. 
+
+> Figure 18: Determination of the threat cost.
+
+5.1.3. Altitude Constraint 
+
+During UAV operation, the flight altitude is often restricted between two extrema, namely the minimum and maximum allowable heights. For example, in aerial survey or search applications, the camera must operate within a specific range to guarantee the re-quired image resolution and field of view. Let hmin and hmax denote the minimum and maximum permissible heights, respectively. The altitude cost associated with each way-point Tij is defined as 
+
+Hij =
+
+
+
+hij − hmax + hmin 
+
+2 , if hmin ≤ hij ≤ hmax ,
+
+∞, otherwise, (5.3) where hij is the flight height relative to the ground, as illustrated in Fig. 19. This formulation maintains the flight altitude near the average height and penalizes out-of-range values. The total altitude cost is then expressed as 
+
+F3(Ti) = 
+
+> n
+
+X
+
+> j=1
+
+Hij . (5.4) 45 Figure 19: Illustration of the altitude cost computation. 
+
+5.1.4. Path Smoothness 
+
+Path smoothness evaluates the turning and climbing rates, which are crucial for gener-ating dynamically feasible UAV trajectories. As illustrated in Fig. 20, the turning angle ϕij 
+
+is defined as the angle between two consecutive path segments, T ′ 
+
+> ij
+
+T ′ 
+
+> i,j +1
+
+and T ′
+
+> i,j +1
+
+T ′
+
+> i,j +2
+
+,projected onto the horizontal plane. Let ⃗ k denote the unit vector along the z-axis. The projected vector can be obtained as 
+
+T ′ 
+
+> ij
+
+T ′ 
+
+> i,j +1
+
+=⃗ k ×
+
+
+
+Pij ⃗ Pi,j +1 ×⃗ k
+
+
+
+. (5.5) Hence, the turning angle is computed by 
+
+ϕij = arctan 
+
+⃗ Pij P ′ 
+
+> i,j +1
+
+×⃗ Pi,j +1 P ′
+
+> i,j +2
+
+⃗Pij P ′ 
+
+> i,j +1
+
+·⃗ Pi,j +1 P ′
+
+> i,j +2
+
+ . (5.6) Similarly, the climbing angle ψij represents the inclination between the 3D path segment 
+
+Pij Pi,j +1 and its horizontal projection P ′ 
+
+> ij
+
+P ′
+
+> i,j +1
+
+:
+
+ψij = arctan 
+
+ zi,j +1 − zij ⃗Pij P ′
+
+> i,j +1
+
+ . (5.7) The smoothness cost is therefore defined as 
+
+F4(Ti) = a1
+
+> n−2
+
+X
+
+> j=1
+
+ϕij + a2
+
+> n−1
+
+X
+
+> j=1
+
+|ψij − ψi,j −1| , (5.8) where a1 and a2 are weighting coefficients associated with the turning and climbing penalties, respectively. 
+
+5.1.5. Overall Cost Function 
+
+By integrating the optimality, safety, altitude, and smoothness considerations, the overall cost function for a given path Ti can be expressed as 
+
+F (Ti) = 
+
+> 4
+
+X
+
+> k=1
+
+bkFk(Ti), (5.9) 46 Figure 20: Calculation of turning and climbing angles. 
+
+where bk denotes the weight coefficient associated with each component. This overall cost function serves as the objective to be minimized in the UAV path planning process. 
+
+5.2. Scenario Setup 
+
+The scenario used for evaluation is based on a real digital elevation model (DEM) map obtained from a LiDAR sensor [52], which is further complicated. As shown in Fig 21, an area of Christmas Island in Australia was selected and 12 threat zones were added (as indicated by the red circular area in the Fig 22). x [m] 0 200 400 600 800 1000 y [m] 0200 400 600 800 z [m] 50 100 150 200 250 
+
+> Figure 21: Calculation of turning and climbing angles.
+
+47 0 200 400 600 800 1000 x [m] 0100 200 300 400 500 600 700 800 y [m]     
+
+> Ter rain Map with Thr eat Zones Figure 22: Calculation of turning and climbing angles.
+
+5.3. Result and Analysis 
+
+To comprehensively evaluate the performance of the proposed HCKEO algorithm in UAV path planning, a comparative study was conducted against several representative meta-heuristic algorithms, including GA, PSO, WSO, SAO, BKA, LSHADE, KEO and SPSO [10] (a various of PSO for UAV path planning). Each algorithm was executed under identical parameter settings and environmental conditions, with the weight coefficients b1, b2, b3, and 
+
+b4 in Eq. (5.9) set to 5, 1, 10, and 1, respectively. In addition, the infinite penalty values de-fined in Eq. (5.2) and Eq. (5.4) were represented by 1 × 10 16 in the program implementation to handle constraint violations numerically. Table 21 summarizes the fitness components obtained by all tested algorithms. It can be observed that HCKEO achieved the lowest overall cost ( F5) among all competitors, with a total value of 4667.4820, outperforming other metaheuristics by a considerable margin. Although PSO obtained the smallest path length ( F1 = 166.9197), its safety cost ( F2) and overall cost ( F5) reached the maximum penalty (1 × 10 17 ), indicating that the generated trajectory violated the threat avoidance constraint and thus was infeasible. Similarly, SAO and KEO exhibited extremely low altitude and smoothness costs, but their paths inter-sected with threat zones, resulting in infeasible solutions. In contrast, HCKEO successfully maintained a balance between path optimality, safety, and smoothness, yielding a feasible and collision-free trajectory with minimal constraint violations. Compared with the basic KEO, the introduction of the L´ evy long jump and horizontal–vertical crossover strategies 48 Table 21: Fitness values of the paths generated by HCKEO and other methods 
+
+Algorithm F1 F2 F3 F4 FGA 942.4542 30.4300 36.9316 0 51120.1691 PSO 166.9197 1.0000E+17 160.4703 459.0027 1.0000E+17 SMO 1330.2852 7.4906 252.0680 233.5092 9413.1057 WSO 939.3808 11.3319 28.1909 0 4986.3736 SAO 935.7081 1.0000E+17 0.7971 0 1.0000E+17 BKA 1052.6512 20.7338 78.7665 0 6071.6549 QSSA 1423.4461 1.0000E+17 227.4372 464.4064 7.0000E+17 LSHADE 941.2683 17.9923 27.0719 0 4995.0523 KEO 929.3484 1.0000E+17 0.5962 0 1.0000E+17 SPSO 1038.8484 50.9854 353.7158 150.4522 8932.8383 HCKEO 931.3509 9.4698 1.2419E-05 0 4667.4820 
+
+significantly improved global exploration capability and convergence stability, as evidenced by the markedly reduced F2 and F3 values. The specific path coordinates generated by HCKEO are listed in Table 22. It can be seen that the UAV departs from (200 , 100 , 150) and travels through ten intermediate waypoints before reaching the target point (800 , 800 , 150). Throughout the trajectory, the altitude re-mains nearly constant at approximately 150 m, satisfying the prescribed altitude constraint. The path exhibits smooth directional transitions without sharp turns, indicating good dy-namic feasibility for UAV motion control. Furthermore, the intermediate waypoints are spatially distributed along a gradually ascending diagonal direction, effectively avoiding all predefined threat zones. This demonstrates that HCKEO not only ensures safe and feasible flight but also minimizes unnecessary detours, achieving both efficiency and robustness. In summary, the proposed HCKEO demonstrates strong optimization capability in UAV path planning tasks. By enhancing both global exploration and local exploitation through dual crossover strategies, it achieves superior solution quality, robust constraint handling, and smooth trajectory generation compared with other state-of-the-art metaheuristics. The resulting feasible path effectively balances flight distance, safety, altitude stability, and smoothness, proving the algorithm’s potential for practical UAV navigation and mission planning applications. The specific path coordinates obtained by HCKEO are shown in Table 22. And the path optimized by HCKEO is shown in Fig 23. 49 Table 22: The path coordinates obtained by HCKEO 
+
+x y z
+
+Starting point 200.0000 100.0000 150.0000 1 292.1247 259.5185 150.0009 2 302.8170 271.7684 150.0007 3 412.9512 386.4542 149.8908 4 413.9689 387.4040 150.0027 5 546.6148 515.4863 149.9994 6 662.4394 629.6276 149.9921 7 665.1117 631.4551 149.9997 8 665.1143 631.4551 149.9999 9 665.9281 632.0249 150.0034 10 676.5317 642.3140 150.0000 End point 800.0000 800.0000 150.0000 0 200 400 600 800 1000 x [m] 0100 200 300 400 500 600 700 800 y [m]     
+
+> Path optimized by HCKEO algorithm
+
+Path coordinates Start Point End Point 
+
+Figure 23: The path optimized by HCKEO. 
+
+6. Multi-backend Implementation and Computational Performance 
+
+Metaheuristic algorithms have traditionally been implemented in high-level numerical environments such as MATLAB or NumPy-based Python, which provide convenient ab-stractions for vectorized computation and rapid algorithm prototyping [53]. With the grow-50 ing demand for large-scale and high-dimensional optimization, heterogeneous computing platforms, especially GPU-accelerated architectures, are increasingly adopted to improve computational efficiency [54]. In such environments, numerical acceleration is typically achieved through tensor-based computation. Notably, the population of metaheuristic algorithms is naturally represented in matrix form, while tensors can be regarded as higher-order generalizations that naturally extend such representations [55]. As a result, tensor-based abstractions provide a natural and unified representation for population-level operations, particularly when extending algorithm execution across different computing backends and hardware platforms. To address these requirements, the proposed HCKEO is implemented based on the FEALPy framework, which provides a unified backend abstraction layer for numerical com-putation. This design enables the same optimization logic to be executed seamlessly across different numerical libraries and computing platforms, including NumPy and PyTorch, as well as CPU- and GPU-based architectures, without modifying the core algorithmic struc-ture. To the best of our knowledge, this is the first implementation of the KEO family within a unified tensor-based multi-backend framework. Rather than emphasizing algorithmic competitiveness in this section, a simple benchmark function Step , defined as f (x) = PDi=1 (xi +0 .5) 2, is deliberately adopted to isolate the effects of backend implementation. This experimental design allows the numerical consistency and computational efficiency of HCKEO to be evaluated across different platforms, independent of problem-specific difficulty or search complexity. Experiments in this case are conducted using identical algorithmic parameters and stop-ping criteria to ensure a fair and consistent comparison across different implementations. The results, summarized in Table 23, show that the proposed implementation achieves consistent solution quality across all tested platforms. Moreover, significant computational speedups are observed on GPU-enabled backends, especially for large-scale and high-dimensional problem settings, highlighting the scalability and practical efficiency of the multi-backend HCKEO implementation. It should be emphasized that these speedups primarily stem from backend-level parallelism rather than algorithmic modifications. These results indicate that the proposed HCKEO is not only algorithmically effective but also implemented in an engineering-oriented manner, making it suitable for practical deployment in heterogeneous computing environments. 51 Table 23: Performance comparison of the proposed algorithm on a test function under different problem dimensions, population sizes, programming languages, and computing platforms 
+
+Problem setting ( D, N ) Backend / Platform Best fitness value Runtime (s) 
+
+D = 100, N = 10000 Matlab 4.4772 × 10 −24 1221.2508 NumPy (CPU) 0 53.4238 PyTorch (CPU) 0 18.0221 PyTorch (GPU) 0 1.3212 
+
+D = 50, N = 1000 Matlab 3.7286 × 10 −31 29.9382 NumPy (CPU) 0 1.2883 PyTorch (CPU) 0 1.1620 PyTorch (GPU) 0 1.1078 
+
+D = 30, N = 100 Matlab 0 2.9667 NumPy (CPU) 0 0.1340 
+
+PyTorch (CPU) 0 0.4913 PyTorch (GPU) 0 1.1226 Listing 1 shows the script of this example. It can be seen that seamless switching between computing backend and computing platform can be achieved with just one line of code. 
+
+> Listing 1: Example of backend-agnostic HCKEO usage based on FEALPy
+
+# import FEALPy backend manager from fealpy . backend import backend_manager as bm # import HCKEO algorithm from fealpy . opt import initialize , opt_alg_options , H y br i d CrossoverKangarooEscapeOpt # switch backend and computing device without changing algorithm code bm . set_backend ( ’ pytorch ’) bm . set_default_device ( ’ cuda ’) # define objective function def fobj ( x ) : return bm . sum (( x + 0.5) ** 2 , axis = -1) # parameter setting pop_size = 10000 dim = 100 ub = 100 * bm . ones (( dim ,) ) lb = -100 * bm . ones (( dim ,) ) # initialization 
+
+52 x0 = initialize ( pop_size , dim , ub , lb ) options = opt_alg_options ( x0 , fobj , ( lb , ub ) , pop_size ) optimizer = HybridCrossoverKangarooEscapeOpt ( options ) # run optimization optimizer . run () optimizer . print_optimal_result () 
+
+7. Conclusion and Future Work 
+
+This paper investigated the limitations of the original Kangaroo Escape Optimizer (KEO), particularly its insufficient local search capability and susceptibility to premature conver-gence when addressing complex and high-dimensional optimization problems. To overcome these shortcomings, a novel Hybrid Crossover Kangaroo Escape Optimizer (HCKEO) was proposed. By incorporating a LLC strategy and a HVC strategy, the proposed algorithm effectively enhances population diversity, strengthens global exploration, and improves the ability to escape from local optima. The performance of HCKEO was comprehensively evaluated on the IEEE CEC2022 benchmark suite as well as a set of real-world constrained engineering design problems. The experimental results demonstrate that HCKEO consistently outperforms nine state-of-the-art metaheuristic algorithms in terms of convergence speed, solution accuracy, and robustness. Furthermore, HCKEO was successfully applied to UAV path planning in a complex digital elevation model (DEM) environment, where it generated smooth, safe, and collision-free trajectories while achieving a favorable balance between flight cost and opera-tional safety. Beyond the algorithmic contributions, HCKEO was developed within a multi-backend computational framework based on FEALPy, enabling unified execution across different numerical backends and heterogeneous computing platforms, including CPU and GPU envi-ronments. This design facilitates fair performance comparison across platforms and enhances the practicality of the proposed algorithm for large-scale and engineering-oriented optimiza-tion tasks, without altering the core algorithmic structure. Future work will focus on extending HCKEO in two directions. First, adaptive mech-anisms such as entropy-based parameter control and ensemble hybridization strategies will be investigated to further improve scalability and adaptability when dealing with highly nonlinear, dynamic, and constrained optimization problems. Second, the multi-backend framework will be further exploited to explore efficient heterogeneous computing strategies, including task-level CPU–GPU cooperation and large-scale parallel optimization, thereby improving computational efficiency for real-world industrial applications. 
+
+CRediT authorship contribution statement 
+
+H.B.L and H.W designed the algorithm, H.B.L conducted the experiments, H.W guided the analysis of the experiment results. H.B.L wrote the main manuscript text, H.W modified 53 it. All authors reviewed the manuscript. 
+
+Declaration of competing interest 
+
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper. 
+
+Ethical and informed consent for data used 
+
+Our research is based on open source data, and there are no human subjects in the article, so ethical and informed consent are not applicable. 
+
+Acknowledgment 
+
+This work was supported by the National Natural Science Foundation of China (Grant Nos. 12371410, 12261131501), the Postgraduate Scientific Research Innovation Project of Hunan Province (Grant No. CX20250944), the Postgraduate Scientific Research Innovation Project of Xiangtan University (Grant No. XDCX2025Y205), and the Construction of Innovative Provinces in Hunan Province (Grant No. 2021GK1010). 
+
+Data availability 
+
+The data that support the findings of this study are available upon request. 
+
+References 
+
+[1] Hoang VT, Phung MD, Dinh TH and Ha QP. System architecture for real-time surface inspection using multiple UAVs. IEEE Systems Journal. 2020, 14(2): 2925-2936. [2] Beard RW, McLain TW, Goodrich MA and Anderson EP. Coordinated target assignment and intercept for unmanned air vehicles. IEEE Transactions on Robotics and Automation. 2002, 18(6): 911-922. [3] McLain TW and Beard RW. Coordination variables, coordination functions, and cooperative-timing missions. Journal of Guidance, Control, and Dynamics. 2005, 28(1): 150-161. [4] Pettersson PO and Doherty P. Probabilistic roadmap based path planning for an autonomous unmanned helicopter. Journal of Intelligent and Fuzzy Systems. 2006, 17(4): 395-405. [5] Lin Y and Saripalli S. Sampling-based path planning for UAV collision avoidance. IEEE Transactions on Intelligent Transportation Systems. 2017, 18(11): 3179-3192. [6] Penin B, Giordano PR and Chaumette F. Minimum-time trajectory planning under intermittent mea-surements. IEEE Robotics and Automation Letters. 2019, 4(1): 153-160. [7] Kwak J and Sung Y. Autonomous UAV flight control for GPS-based navigation. IEEE Access. 2018, 6: 37947-37955. [8] Heidari H and Saska M. Collision-free trajectory planning of multi-rotor UAVs in a wind condition based on modified potential field. Mechanism and Machine Theory. 2021, 156: 104140. [9] Di B, Zhou R and Duan H. Potential field based receding horizon motion planning for centrality-aware multiple UAV cooperative surveillance. Aerospace Science and Technology. 2015, 46: 386-397. [10] Phung MD and Ha QP. Safety-enhanced UAV path planning with spherical vector-based particle swarm optimization. Applied Soft Computing. 2021, 107: 107376. 
+
+54 [11] Roberge V, Tarbouchi M and Labonte G. Comparison of parallel genetic algorithm and particle swarm optimization for real-time UAV path planning. IEEE Transactions on Industrial Informatics. 2013, 9(1): 132-141. [12] Sun Z, Wu J, Yang J, Huang Y, Li C and Li D. Path planning for GEO-UAV bistatic SAR using con-strained adaptive multiobjective differential evolution. IEEE Transactions on Geoscience and Remote Sensing. 2016, 54(11): 6444-6457. [13] Almutairi SZ and Shaheen AM. A kangaroo escape optimizer-enabled fractional-order PID controller for enhancing dynamic stability in multi-area power systems. Fractal and Fractional. 2025, 9(8): 530. [14] Aljumah AS, Alqahtani MH, Ginidi AR and Shaheen AM. A novel kangaroo escape algorithm for effi-cient combined heat and power economic dispatch: feasibility analysis and validations. Energy Reports. 2025, 14: 2535-2556. [15] Almutairi SZ and Shaheen AM. A novel kangaroo escape optimizer for parameter estimation of solar photovoltaic cells/modules via one, two and three-diode equivalent circuit modeling. Scientific Reports. 2025, 15: 32669. [16] Wei H and Huang Y. FEALPy: Finite element analysis library in Python. Xiangtan University. Avail-able: https://github.com/weihuayi/fealpy. 2017-2026. [17] Ahmed AN, Lam TV, Hung ND, Thieu NV, Kisi O and El-Shafie A. A comprehensive comparison of recent developed meta-heuristic algorithms for streamflow time series forecasting problem. Applied Soft Computing. 2021, 105: 107282. [18] Peraza-Vazquez H, Pena-Delgado A, Merino-Trevino M, Morales-Cepeda AB and Sinha N. A novel metaheuristic inspired by horned lizard defense tactics. Artificial Intelligence Review. 2024, 57: 1-65. [19] Jia H, Rao H, Wen C and Mirjalili S. Crayfish optimization algorithm. Artificial Intelligence Review. 2023, 56: 1919-1979. [20] Deng L and Liu S. Snow ablation optimizer: a novel metaheuristic technique for numerical optimization and engineering design. Expert Systems with Applications. 2023, 225: 120069. [21] Lam AYS and Li VOK. Chemical reaction optimization: a tutorial. Memetic Computing. 2012, 4: 3-17. [22] Khan MS, Hassan CAU, Sadiq HA, Ali I, Rauf A and Javaid N. A new meta-heuristic optimization algorithm inspired from strawberry plant for demand side management in smart grid. In: Barolli L, Woungang I and Hussain OK (eds). Advances in Intelligent Networking and Collaborative Systems. Springer, Cham. 2018: 143-154. [23] Ray T and Liew KM. Society and civilization: an optimization algorithm based on the simulation of social behavior. IEEE Transactions on Evolutionary Computation. 2003, 7(4): 386-396. [24] Mora-Gutierrez RA, Ramirez-Rodriguez J and Rincon-Garcia EA. An optimization algorithm inspired by musical composition. Artificial Intelligence Review. 2014, 41: 301-315. [25] Ma B, Hu Y, Lu P and Liu Y. Running city game optimizer: a game-based metaheuristic optimization algorithm for global optimization. Journal of Computational Design and Engineering. 2023, 10(1): 65-107. [26] Salimi H. Stochastic fractal search: a powerful metaheuristic algorithm. Knowledge-Based Systems. 2015, 75: 1-18. [27] Pisinger D and Ropke S. Large neighborhood search. In: Gendreau M and Potvin JY (eds). Handbook of Metaheuristics. Springer, Boston. 2010: 399-419. [28] Mai X, Liu HB and Liu LB. A new hybrid cuckoo quantum-behavior particle swarm optimization algorithm and its application in Muskingum model. Neural Processing Letters. 2023, 55: 8309-8337. [29] Xu H, Lu Y and Guo Q. Application of improved butterfly optimization algorithm combined with black widow optimization in feature selection of network intrusion detection. Electronics. 2022, 11(21): 3531. [30] Kumar N, Shaikh AA, Mahato SK, Kumar S and Singh A. Applications of new hybrid algorithm based on advanced cuckoo search and adaptive Gaussian quantum behaved particle swarm optimization in solving ordinary differential equations. Expert Systems with Applications. 2021, 172: 114646. [31] Wolpert DH and Macready WG. No free lunch theorems for optimization. IEEE Transactions on Evo-lutionary Computation. 1997, 1(1): 67-82. [32] Yan J, Hu G, Jia H, Hussien AG and Abualigah L. GPSOM: group-based particle swarm optimization 
+
+55 with multiple strategies for engineering applications. Journal of Big Data. 2025, 12: 114. [33] Jia H and Li Z. Hybrid multistrategy remora optimization algorithm-based band selection for hyper-spectral image classification. IEEE Transactions on Geoscience and Remote Sensing. 2024, 62: 1-16. [34] Zhang Y, Chen G, Cheng L, Wang Q and Li Q. Methods to balance the exploration and exploitation in differential evolution from different scales: a survey. Neurocomputing. 2023, 561: 126899. [35] Xu X, Mao X and Zou W. An improved goose optimization algorithm (I-GOOSE) based on self-adapting attenuation factors and Levy flight. Neurocomputing. 2026, 671: 132717. [36] Wang Z, Chen Y, Ding S, Liang D and He H. A novel particle swarm optimization algorithm with Levy flight and orthogonal learning. Swarm and Evolutionary Computation. 2022, 75: 101207. [37] Liu HB, Liu LB, Mai X and Guo D. A new hybrid Levy quantum-behavior butterfly optimization algorithm and its application in NL5 Muskingum model. Electronic Research Archive. 2024, 32: 2380-2406. [38] Mai X, Yan Z and Ling L. The crossover strategy integrated secretary bird optimization algorithm and its application in engineering design problems. Electronic Research Archive. 2025, 33: 471-512. [39] Mai X, Yan Z, Liu LB and Liu HB. A new quantum differential squirrel search algorithm for global optimization problem. Cluster Computing. 2025, 33: 471-512. [40] Ahrari A, Elsayed S, Sarker R, Essam D and Coello C. Problem definition and evaluation criteria for the CEC’2022 competition on dynamic multimodal optimization. 2022 IEEE Congress on Evolutionary Computation. 2022. [41] MacFarland TW and Yates JM. Friedman two-way analysis of variance (ANOVA) by ranks. In: In-troduction to Nonparametric Statistics for the Biological Sciences Using R. Springer, Cham. 2016: 213-247. [42] Hussain K, Salleh MNM, Cheng S and Shi Y. On the exploration and exploitation in popular swarm-based metaheuristic algorithms. Neural Computing and Applications. 2019, 31: 7665-7683. [43] Morales-Castaneda B, Zaldivar D, Cuevas E, Fausto F and Rodriguez A. A better balance in meta-heuristic algorithms: does it exist?. Swarm and Evolutionary Computation. 2020, 54: 100671. [44] Zamani H, Nadimi-Shahraki MH and Gandomi AH. Starling murmuration optimizer: a novel bio-inspired algorithm for global and engineering optimization. Computer Methods in Applied Mechanics and Engineering. 2022, 392: 114616. [45] Braik M, Hammouri A, Atwan J, Al-Betar MA and Awadallah MA. White shark optimizer: a novel bio-inspired meta-heuristic algorithm for global optimization problems. Knowledge-Based Systems. 2022, 243: 108457. [46] Wang J, Wang WC, Hu X, Qiu L and Zang H. Black-winged kite algorithm: a nature-inspired meta-heuristic for solving benchmark functions and engineering problems. Artificial Intelligence Review. 2024, 57: 98. [47] Tanabe R and Fukunaga A. Success-history based parameter adaptation for differential evolution. In: Proceedings of the IEEE Congress on Evolutionary Computation. 2013: 71-78. [48] Yu Z and Du J. Constrained fault-tolerant thrust allocation of ship DP system based on a novel quantum-behaved squirrel search algorithm. Ocean Engineering. 2022, 266: 112994. [49] Dao PB. On Wilcoxon rank sum test for condition monitoring and fault detection of wind turbines. Applied Energy. 2022, 318: 119209. [50] Kumar A, Wu G, Ali MZ, Mallipeddi R, Suganthan PN and Das S. A test-suite of non-convex con-strained optimization problems from the real world and some baseline results. Swarm and Evolutionary Computation. 2020, 56: 100693. [51] Coello CAC. Theoretical and numerical constraint-handling techniques used with evolutionary algo-rithms: a survey of the state of the art. Computer Methods in Applied Mechanics and Engineering. 2002, 191(11): 1245-1287. [52] Geoscience Australia. Digital elevation model (DEM) of Australia derived from LiDAR 5 metre grid. Commonwealth of Australia, Canberra. 2015. [53] Boussaid I, Lepagnot J and Siarry P. A survey on optimization metaheuristics. Information Sciences. 2013, 237: 82-117. 
+
+56 [54] Crainic TG. Parallel meta-heuristic search. In: Marti R, Pardalos PM and Resende MGC (eds). Hand-book of Heuristics. Springer, Cham. 2025: 1087-1130. [55] Kossaifi J, Panagakis Y, Anandkumar A and Pantic M. TensorLy: tensor learning in Python. Journal of Machine Learning Research. 2019, 20(26): 1-6. 
+
+57

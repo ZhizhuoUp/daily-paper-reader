@@ -1,0 +1,441 @@
+Title: Diffusion-Based Multiple-Shooting Indirect Optimal Control for Fuel-Optimal Spacecraft Trajectory Generation
+
+URL Source: https://arxiv.org/pdf/2609.13990v1
+
+Published Time: Tue, 15 Sep 2026 00:47:52 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Diffusion-Based Multiple-Shooting Indirect Optimal Control for Fuel-Optimal Spacecraft Trajectory Generation 
+
+Saeid Tafazzol, Ehsan Taheri, and Ryne Beeson 
+
+Abstract — Diffusion-based generative models (DMs) have found applications in control problems, and in particular robotics, where the DMs enable exploration of possible control solutions. A critical shortcoming of these applications is that they have lacked optimality guarantees. This is a problem for their potential use in fuel-optimal spacecraft trajectories that are characterized with long time-horizons and bang-bang profiles. Alternatively, indirect optimal control meth-ods ensure explicit satisfaction of necessary conditions, but are highly sensitive to the initial costate estimation needed to solve the resulting Hamiltonian boundary-value problems (HBVPs). To alleviate this sensitivity and enlarge the con-vergence domain of HBVPs, advanced indirect methods have been developed that use smoothing approaches and continua-tion. We propose a diffusion-based multiple shooting indirect control method that combines the exploration capability of DMs with indirect method to generate fuel-optimal space-craft trajectories. We benchmark our method against an advanced indirect method on a fuel-optimal Earth-Mars low-thrust transfer problem, showing higher convergence robustness than the advanced indirect method that is based on random costate initialization. Code and visualizations are available at https://saeidtafazzol.github.io/Diffusion Indirect Control/. 
+
+I. I NTRODUCTION AND RELATED WORK 
+
+Diffusion models (DMs) are a type of generative model trained to produce samples from a data distribution. They have recently been used for policy learning, behavior gen-eration, and trajectory generation [1], [2]. In the control setting, these methods have primarily been applied to im-itation learning and behavior cloning; learning to reproduce expert demonstrations. While effective in these settings, the standard DM does not explicitly provide any guarantees on the optimality of sample solutions. To improve performance or diversity, many approaches incorporate guidance during the reverse diffusion process, including classifier guidance [3], classifier-free guidance [4], and task-specific value or policy guidance [1], [5]. Although such guidance has been used to steer the generated trajectories toward lower-cost solutions, explicitly guiding solutions to satisfy necessary conditions for optimality has been underexplored. Diffusion models have been trained on optimal costate data for low-thrust spacecraft trajectory problems [6]–[8], with the ability to produce costate samples for new and related problems that converge quickly and reliably. Unlike  
+
+> Saeid Tafazzol and Ehsan Taheri are with the Department of Aerospace Engineering, Auburn University; {szt0097,ezt0028 }@auburn.edu Ryne Beeson is with the Department of Mechanical and Aerospace Engineering, Princeton University; ryne@princeton.edu This work has been submitted to the IEEE for possible publication. Copyright may be transferred without notice, after which this version may no longer be accessible.
+
+the aforementioned literature, this work generates joint state– costate trajectory samples. This work also makes the novel contribution of providing context to a transformer-based DM in the form of the integrated state–costate trajectories with a one-step lag. This feature is hypothesized to provide implicit guidance to the diffusion process and encourage samples that nearly satisfy the necessary conditions for optimality. Several studies have used other forms of deep learning to warm-start indirect trajectory optimization [9]–[11]. Unlike this work, these studies used traditional machine learning and not a generative model. This means that the networks in the cited works are deterministic and therefore may be fragile in more complex control problems, which benefit from trialing several good initial guesses. Ref. [12] is similar to the present paper in that it predicts costates throughout the trajectory. Yet it differs in that it only predicts the costates; the network is deterministic and not as capable as the transformer-based approach used here for high-dimensional sequential data; the authors only test on a one-dimensional problem [12], whereas here we are considering problems with 7 states and 4 controls and apply a multiple-shooting transcription. The indirect method [13] guarantees that solutions satisfy necessary conditions, but is challenged by unknown costates that are numerically sensitive [14]. In this paper a novel complementary approach of DMs and the indirect approach are introduced. The DM is used to provide diverse initial guesses for the indirect method, exploring the admissible solution space and alleviating some difficulties in guessing the unknown costates. And in a complementary fashion, the indirect method provides implicit guidance to the transformer based DM via context learning, which helps to guide samples toward satisfaction of the necessary conditions. To re-iterate, the main contributions of this work include: 1) The first work (to the best of our knowledge) to introduce implicit one-step lag guidance to a diffusion model with multiple-shooting indirect methods to produce joint state– costate trajectories subject to boundary conditions; 2) The use of a transformer-based architecture that handles the high-dimensional sequential representation and naturally allows the context learning from the one-step lag guidance; 3) A novel modification to efficiently generate a diverse training dataset that satisfies the necessary conditions [15]. II. M ETHODOLOGY 
+
+A. Background on indirect optimal control 
+
+Indirect methods produce extremal trajectories by solving for state and costate variables that satisfy the Hamiltonian arXiv:2609.13990v1 [eess.SY] 12 Sep 2026 dynamics, boundary conditions, (any) transversality condi-tions, and in a multiple-shooting method, continuity between neighboring segments. Consider the optimal control problem (OCP): min   
+
+> x∈X ,u∈U
+
+J =
+
+Z tf
+
+> t0
+
+L(x(t), u(t), t ) dt, 
+
+subject to ,
+
+˙x(t) = f (x(t), u(t), t ), (state dynamics) 
+
+x(t0) = x0, ψ(x(tf )) = 0, (terminal conditions), (1) where x ∈ Rnx and u ∈ Rnu are the states and controls, with X , U their admissible sets, respectively. Let λ ∈ Rnx
+
+be the costate vector. Then the control Hamiltonian is 
+
+H(x, λ, u, t ) = L(x, u, t ) + λ⊤f (x, u, t ), (2) and the costate dynamics and extremal control derived using Pontryagin’s minimum principle (PMP) are 
+
+˙λ⊤(t) = − ∂H ∂x = g⊤(x, λ, u, t ), (3) 
+
+u∗(t) = arg min  
+
+> u∈U
+
+H(x, λ, u, t ). (4) Eqs. (3)–(4) and state dynamics along with the state boundary conditions and (any) transversality conditions form the optimality conditions (superscript ∗ denotes an extremal control). The necessary conditions result in an HBVP that is solved numerically for all practical OCPs. Defining the augmented state–costate vector as z⊤ = x⊤, λ⊤,In fuel-optimal spacecraft trajectory problems, bang-bang control profiles arise from PMP and introduce discontinuities in the dynamics that degrade the convergence performance of gradient-based solvers. To alleviate this issue, smoothing or regularization procedures [13], [16], [17] are often invoked. Two typical solution approaches are single-shooting and 
+
+multiple-shooting . In a conventional single-shooting formu-lation, a model would predict only the initial costate λ(t0)
+
+and rely on forward integration to produce the complete trajectory. This is a low-dimensional prediction problem, but it is also a sensitive one, where a small change in λ(t0) may lead to a dramatically different terminal state. Multiple shoot-ing [18] breaks the problem into multiple smaller-duration segments. Although this is a higher-dimensional prediction problem, it provides a substantially richer learning signal and gives the model considerably more control over the otherwise numerically sensitive process of costate recovery and aligns naturally with diffusion-based trajectory generation. The time is discretized as t0 < t 1 < · · · < t N −1, where 
+
+zi := z(ti). Furthermore, let 
+
+˙z(t) = F (z(t), t ) := 
+
+" f (x, u∗, t )
+
+g(x, u∗, λ, t )
+
+#
+
+, (5) denote the coupled Hamiltonian state–costate dynamics. For each shooting interval [ti, t i+1 ], the states and costates are propagated forward in time. An admissible multiple-shooting extremal must therefore satisfy 
+
+x0 = xinit , ψ(zN −1) = 0,
+
+zi+1 = zi +
+
+Z ti+1 
+
+> ti
+
+F (z(t), t ) dt, i = 0 , . . . , N − 2. (6) The final relation in Eq. (6) enforces continuity between adjacent shooting segments. The discrete trajectory is col-lected into the node matrix 
+
+z0, z1, · · · , zN −1
+
+ ∈ RN ×nz , (7) where nz = 2 nx. From this point onward, the column-wise vectorized form of the complete trajectory is denoted by 
+
+Z := vec   z0, z1, · · · , zN −1
+
+ ∈ RN n z . (8) To distinguish between trajectory and diffusion times, Z(j)
+
+denotes the complete vectorized trajectory at diffusion step 
+
+j, whereas zi is the state–costate value at shooting node i.
+
+B. Diffusion-based trajectory generation 
+
+We make use of a specific type of diffusion modeling formulation known as the denoising diffusion probabilistic model (DDPM) [19]. It consists of two complementary stochastic processes: a forward process and a reverse de-noising one. The forward process is chosen as a Markov chain with the ultimate aim of transforming the general data distribution to an easily sampled distribution, such as a Gaussian. This action is achieved by running each training data sample forward under the prescribed Markov chain. A generative model is then trained to learn a close approximation to the reverse process, which can be used at inference to generate new samples that “explore” the space of the original data distribution. Formally, the DDPM in this case operates as follows. Let Z(0) denote a “clean” trajectory drawn from the data distribution, represented in this work by a fixed dataset whose construction is explained later on. The forward process, defined by a homogeneous Markov chain that is iterated for 
+
+J-steps, is normally given by the transition density 
+
+q(Z(j)|Z(j−1) ) = N
+
+p 
+
+α(j) Z(j−1) , (1 − α(j))I
+
+
+
+, (9) where α(j) = 1 − β(j) and {β(j)}Jj=1 are predefined noise schedules. Any initial data distribution will asymptotically tend to a standard multivariate Gaussian under this Markov chain, but in practice this is only carried out for sufficiently high J steps. A key property of choosing a simple Markov chain is that the forward process admits a closed-form 
+
+q( ˜Z(j)|Z(0) ) = N
+
+p 
+
+¯α(j) Z(0) , (1 − ¯α(j))I
+
+
+
+, (10) where ¯α(j) = Qji=1 α(i). The closure of Gaussians under affine transformations yields the result 
+
+˜Z(j) =
+
+p
+
+¯α(j) Z(0) +
+
+p
+
+1 − ¯α(j) ϵ, ϵ ∼ N (0, I). (11) Here, we used ˜Z to differentiate between the “corrupted” trajectory that is normally used and what we use in this work. Here, to enforce the boundary conditions, we instead only corrupt the free variables along the trajectory and not the boundary conditions: 
+
+Z(j) = m ⊙ Z(0) + ( 1 − m) ⊙ eZ(j), (12) where m ∈ { 0, 1}N n z is the componentwise condition mask. The reverse process then begins with an initial sample from a standard multivariate Gaussian and after J-steps produces a new sample from the data distribution. The role of learning enters at this stage to approximate the reverse chain. In particular, the assumptions of the forward process mean that the reverse transition density is a Gaussian parameterized as 
+
+pθ (Z(j−1) |Z(j)) = N
+
+
+
+Z(j−1) ; μθ (Z(j), j ), ˜β(j)I
+
+
+
+, (13) with 
+
+μθ =
+
+√¯α(j−1) β(j)
+
+1 − ¯α(j) ¯Z(0)  
+
+> θ
+
++
+
+√α(j)(1 − ¯α(j−1) )1 − ¯α(j) Z(j),
+
+(14) 
+
+¯Z(0)  
+
+> θ
+
+= Z(j) − √1 − ¯α(j) ϵθ (Z(j), j )
+
+√¯α(j) , (15) and ˜β(j) = 1− ¯α(j−1)   
+
+> 1−¯α(j)
+
+β(j). This is the standard ϵ-prediction formulation [20], and we use a transformer-based neural network (NN) to learn ϵθ . To reduce computational demands during inference, a reduced timestep schedule for the reverse process is commonly used, such as 
+
+{j1, j 2, . . . , j M }, J = j1 > j 2 > · · · > j M = 0 , (16) with M ≪ J. The reverse transitions are then performed only between consecutive elements of the reduced schedule, 
+
+pθ (Z(jk+1 )|Z(jk )). Empirically, this can provide computa-tional speed-up with only subtle degradation in some prob-lems (see [21] for an extensive study on DM formulations applied for low-thrust spacecraft). A rigorous treatment to handle the reverse process transitioning to a non-Markovian process is often ignored, and as an initial study, this more complex treatment is also not included in this work. 
+
+C. Integrated State and Costate Signals 
+
+A standard diffusion transformer could operate only on the noisy state and costate nodes. We instead provide the model with an explicit view of what the Hamiltonian dynam-ics predict between neighboring nodes. This is the central dynamics-informed component of the proposed architecture. At diffusion step j, the noisy node values are written as z(j) 
+
+> i
+
+= [( x(j) 
+
+> i
+
+)⊤, (λ(j) 
+
+> i
+
+)⊤]⊤. For every segment i =0, . . . , N −2, the current noisy state and costate are integrated forward over [ti, t i+1 ]:
+
+bz(j) 
+
+> i+1
+
+= z(j) 
+
+> i
+
++
+
+Z ti+1 
+
+> ti
+
+F (z(t), t ) dt =
+
+"bx(j)
+
+> i+1
+
+bλ(j)
+
+> i+1
+
+#
+
+. (17) The sequences {bx(j)
+
+> i+1
+
+}N −2 
+
+> i=0
+
+and {bλ(j)
+
+> i+1
+
+}N −2 
+
+> i=0
+
+are not used to overwrite the current trajectory. Instead, they are embed-ded as two additional token streams. The model can therefore observe both the independently proposed node z(j) 
+
+> i+1
+
+and the value obtained by integrating its predecessor bz(j)
+
+> i+1
+
+.This gives the transformer direct access to the information underlying the multiple-shooting residual 
+
+r(j) 
+
+> i
+
+= z(j) 
+
+> i+1
+
+− z(j) 
+
+> i
+
+−
+
+Z ti+1 
+
+> ti
+
+F (z(j)(t), t ) dt. (18) We do not explicitly place ∥r(j) 
+
+> i
+
+∥ in the training loss. Instead, the propagated nodes are supplied as context, allow-ing self-attention to learn how local dynamic inconsistency should influence the global denoising update. In this sense, the numerical integrator does not solve the HBVP for the model; it merely shows the model where its present trajectory would go if the Hamiltonian dynamics were to be satisfied. The integrated values are treated as auxiliary, non-differentiated signals. Gradients are not propagated through the numerical ordinary differential equation (ODE) solution. If integration fails on a segment, the unavailable integrated state and costate are replaced with learned failure tokens rather than silently presenting zeros as physically meaningful predictions. It can then technically be said that the model is learning pθ (Z(jk+1 )|Z(jk ), bZ(jk )) where bZ(jk ) is the trajectory with one step-lag. 
+
+D. Transformer Architecture 
+
+The complete architecture is shown in Fig. 1. At every diffusion step, the model receives five token streams: 1) N noisy state tokens; 2) N noisy costate tokens; 3) N − 1 forward-integrated state tokens; 4) N − 1 forward-integrated costate tokens; and 5) one sinusoidal diffusion-step token. Each state and costate value is projected into the common embedding dimension using a learned linear map. Learned positional embeddings identify the associated shooting node, while learned condition embeddings indicate whether one or more components of that node are fixed by the boundary conditions. Integrated state and costate tokens use the posi-tional embedding of the node they predict, namely node i+1 
+
+for the integration beginning at node i.The concatenated token sequence is processed by L pre-normalized transformer encoder blocks. Each block consists of multi-head self-attention, dropout, a residual connection, LayerNorm, and a feed-forward network with GELU activa-tion. Following the final LayerNorm, hidden representations corresponding to the original state and costate tokens are passed through separate output heads to predict ˆϵx and 
+
+ˆϵλ. It should be noted that while DM gets very close to an admissible trajectory, some residuals remain. Therefore, we use a NonLinear Program (NLP) solver for numerical refinement, initialized with the trajectory generated by the diffusion model. 
+
+E. Admissible Trajectory Dataset 
+
+As mentioned, a dataset of trajectories satisfying the Hamiltonian dynamics and the relevant endpoint constraints is required. While there are methods for generating costates [22], an efficient strategy is to integrate backward from a condition that is common to all fuel-optimal trajectories, 
+
+λm(tf ) = 0 . Randomizing the final state x(tf ), and integrat-ing backward correspond to an extremal solution that satisfies the first-order necessary conditions for fuel-optimality, and will correspond to an arbitrary initial state x(t0).Inputs Token sequence Transformer encoder ϵ heads           
+
+> x(j)
+> noisy states
+> bx(j)
+> integrated states
+> λ(j)
+> noisy costates
+> bλ(j)
+> integrated costates
+> jdiffusion step
+> Embedding
+> NStates
+> NCostates
+> N−1Integrated States
+> N−1Integrated Costates Diffusion Step Token
+> ×L
+> LayerNorm Multi-Head Self-Attention Dropout
+> +
+> LayerNorm MLP GELU + Dropout
+> +
+> ˆϵx
+> predicted noise for states
+> ˆϵλ
+> predicted noise for costates
+> Fig. 1. transformer architecture used for the diffusion model.
+
+The resulting dataset is written as D = {Zm}Mm=1 , where every Zm contains the state and costate values at the same 
+
+N shooting nodes. Additional problem-dependent rejection, normalization, and filtering steps may be necessary to remove singular, numerically failed, or otherwise undesirable trajec-tories. Since these steps depend on the specific dynamical system, they are detailed in experimental sections. III. E XPERIMENT : E ARTH -TO -M ARS TRANSFER 
+
+A fixed-time fuel-optimal Earth-to-Mars benchmark prob-lem is considered. The spacecraft heliocentric trajectory is optimized using two-body dynamics assumptions. The state is defined as x⊤ = r⊤ v⊤ m⊤ ∈ Rnx=7 , where 
+
+r ∈ R3 and v ∈ R3 denote the heliocentric position and velocity vectors, respectively, and m is the spacecraft mass. The spacecraft departs from Earth and arrives at Mars after a transfer duration of 348 .795 days. The mission parameters and boundary conditions are summarized as follows [23]: 
+
+μ ≈ 1.3271244 × 10 11 (km 3/s2); m0 = 1000 (kg) ; Isp =2000 (s) ; Tmax = 0 .5 (N) . The position and velocity vectors for boundary conditions are taken from [23]. The control vector, u⊤ = [ ˆ α⊤, δ ] ∈ Rnu=4 consists of a thrust steering unit direction, ˆα ∈ S2 ⊂ R3, and a throttle input, δ ∈ [0 , 1] . The equations of motion are 
+
+˙r = v, ˙v = − μs
+
+r3 r + Tmax 
+
+m δ ˆα, ˙m = − Tmax 
+
+c δ, (19) where r = ∥r∥2, μs is the solar gravitational parameter, 
+
+Tmax is the maximum available thrust, and c = Isp g0 is the effective exhaust velocity with Isp denoting the specific impulse and g0 being the sea-level gravity magnitude. The fuel-optimal cost functional is 
+
+min  
+
+> ˆα,δ
+
+J =
+
+Z tf
+
+> t0
+
+Tmax 
+
+c δ(t) dt. (20) Let λ⊤ = [ λ⊤ 
+
+> r
+
+, λ⊤ 
+
+> v
+
+, λ m] denote the costate vector. From Sec. II and applying PMP yields the state–costate dynamics and optimal control laws. The optimal thrust direction is given by ˆα∗ = −λv /∥λv ∥2, while the throttle is determined by the switching function, S, as 
+
+δ∗ ∈
+
+(
+
+1, S > 0,
+
+0, S < 0, with S = c∥λv ∥2
+
+m + λm − 1. (21) Thus, fuel-optimal solutions exhibit bang-bang thrust pro-files. Trajectory generation and numerical integration were implemented in Python using Diffrax [24], while sym-bolic dynamics construction and compilation were performed using Jaxadi [25]. The multiple-shooting refinement stage was implemented using CasADi [26] with IPOPT [27]. 
+
+A. Training Dataset Generation 
+
+A final position vector is sampled within a bounded region of the normalized heliocentric state space. A dynamically admissible velocity magnitude is then computed using the vis-viva relation, v = ( μ   2 
+
+> r
+
+− 1
+
+> a
+
+)0.5, where a is a randomly selected semi-major axis. The velocity direction is chosen randomly within the plane orthogonal to the sampled position vector. A terminal spacecraft mass is sampled independently, and the costate for mass at final time is set to zero λm(tf ) = 0. while the remaining terminal costates are sampled from bounded distributions. The resulting terminal state–costate vector is then propagated backward using the Hamilto-nian dynamics to generate a complete extremal trajectory. Although this procedure generates dynamically admissible trajectories, most samples exhibit an undesirable behavior. In particular, backward propagation frequently produces ex-cessively large costate magnitudes near the beginning of the trajectory. Through the switching function, these large costates lead the throttle into δ(t) = 1 , producing trajectories without bang-bang thrust profiles. To address this issue, a gradient-descent refinement pro-cedure is applied to the sampled terminal conditions before a trajectory is accepted into the dataset. The optimization variables consist of the terminal position and velocity, along with their respective costates, while the terminal mass and terminal mass costate remain fixed. The objective is to reduce excessively large recovered costates and reject trajectories that produce unrealistic initial conditions after backward propagation. Empirically, this refinement step substantially improves dataset quality and yields trajectories exhibiting the expected bang-bang thrusting behavior; using this procedure, 
+
+49 , 152 trajectories were generated. To show their coverage one can look at Fig. 2; to plot this, only the masked states and costates that are given as fixed constraints to the model, namely x(t0), m (t0), x(tf ), λ m(tf ) which construct a 14 D-vector that is then projected down to a 2D space using multidimensional scaling [28] which tries to preserve their respective distances in the projected space. 
+
+B. Time-Shift Generalization Study 
+
+We perform a time-shift study to evaluate the ability of the diffusion model to generalize beyond the nominal Earth-to-Mars transfer window. The Earth-to-Mars transfer is used only for evaluation (and not as the training dataset). The model and solver parameters can be found in Table I. The heliocentric states of Earth and Mars are propagated MDS d1                                
+
+> MDS  d2
+> Shift
+> Dataset -700 -600 -500 -400 -300 -200 -100 -50 050 100 200 300 400 500 600 700 Fig. 2. Dataset Coverage: To visualize the training dataset, the 14 D
+> effective input to the model for each trajectory was projected down to a 2D space using multidimensional scaling, which attempts to preserve the distances between trajectories in this 2D space. TABLE I MODEL AND INFERENCE PARAMETERS .
+> Parameter Value Parameter Value
+> LR decay epochs (linear) 24 Batch size 256 Forward diffusion levels J5000 Epochs 30 Denoising steps (inference) 30 Weight decay 10 −6
+> Initial learning rate 3×10 −3Dropout 0.1 Final learning rate 10 −5Sequence length 32 IPOPT tolerance 10 −15 Embedding dimension 512 Sample clip range ±5.0Transformer layers 12 Attention heads 4MLP ratio 4
+
+forward (or backward) in time under two-body dynamics, while keeping the transfer duration fixed at 348 .795 days. For each shifted transfer window, the complete pipeline is executed 250 times using independent random seeds. Each trial begins from a newly sampled Gaussian latent trajectory and therefore produces a different diffusion-generated initial-ization before the multiple-shooting refinement stage. As a baseline, a variant of the works [13], [17] was used, where instead of using single shooting, the same IPOPT formulation used in the diffusion framework was employed to solve the multiple-shooting problem. For the baseline, a random initial costate vector is sampled, the corresponding trajectory is propagated, and its discretized version is fed to IPOPT as the initial guess. A trial is considered successful if the maximum multiple-shooting continuity residual satisfies 
+
+max k ∥F (zk, ∆tk) − zk+1 ∥2 < 10 −8, where F (·) denotes one integration interval of the augmented state–costate dynamics. Table II summarizes the convergence statistics across all tested shifts. For all successful transfer windows, the proposed method achieved a 100% convergence rate, whereas IPOPT initial-ized from random guesses failed to converge in some cases. The +400 -shift is an exception in which IPOPT found more admissible trajectories; this specific trajectory is similar to the +500 -shift trajectory (Fig. 3) with one revolution, but the engine operates for nearly the entire transfer. Several shifted transfer windows failed for both approaches. These regions correspond to combinations of spacecraft parameters and boundary conditions that either do not belong or are close to the boundary of the spacecraft reachable set [29]. All tests were run on a desktop computer with an Nvidia RTX 4090 GPU and an Intel i9-14900K CPU. On average, the diffusion pipeline (including refinement) took 18.5 seconds, while the baseline took 68.4 seconds. The baseline does not utilize GPU acceleration and only uses the CPU. Three trajectories, corresponding to transfer windows shifted by −300 , +100 , and +500 days relative to the nominal Earth-to-Mars departure epoch, are shown in Fig. 3. Direct transfers and solutions with one orbital revolution are generated. Despite the substantial variation in planetary geometry, our model successfully generates initial guesses that can be refined into fully converged solutions. Moreover, in Fig. 4, the diffusion solution is compared against its IPOPT-refined version for the −300 -day shift scenario.                                                                            
+
+> TABLE II CONVERGENCE RATES OVER 250 TRIALS AND OPTIMAL FINAL MASS PER DEPARTURE -DATE SHIFT .Shift Ours IPOPT mfShift Ours IPOPT mf
+> (d) (%) (%) (kg) (d) (%) (%) (kg)
+> −700 100 .057 .6730 .0+50 100 .056 .8659 .6
+> −600 100 .048 .8489 .2+100 100 .052 .4722 .7
+> −500 0.00.0—+200 0.00.0—
+> −400 0.00.0—+300 0.00.0—
+> −300 100 .018 .4354 .3+400 0.46.0285 .0
+> −200 100 .031 .2476 .9+500 100 .016 .8393 .5
+> −100 100 .054 .4544 .4+600 100 .032 .4450 .1
+> −50 100 .059 .2568 .9+700 100 .052 .8486 .4+0 100 .062 .0603 .9
+
+IV. C ONCLUSION 
+
+This work introduced a diffusion-based framework for solving multiple-shooting indirect optimal control problems. To our knowledge, it is the first framework that integrates implicit one-step lag guidance with diffusion modeling and multiple-shooting methods to generate joint state–costate trajectories satisfying boundary conditions. A transformer architecture enables efficient handling of the resulting high-dimensional sequential representation and contextual one-step lag guidance, while a novel dataset-generation procedure provides diverse samples satisfying the optimality conditions. Results show improved convergence while preserving the optimality structure imposed by Pontryagin’s Minimum Prin-ciple. The trained model also generalizes beyond the training dataset to Earth-to-Mars (7 states and 4 controls) direct-transfer trajectories, including one-revolution cases. REFERENCES [1] M. Janner, Y. Du, J. Tenenbaum, and S. Levine, “Planning with diffusion for flexible behavior synthesis,” in International Conference on Machine Learning . PMLR, 2022, pp. 9902–9915. −1.9 −1.0 −0.1 0.8 1.6 
+
+> X (AU)
+> −1.9 −1.0 −0.1 0.8 1.6
+> Y (AU)
+> -0.1 +0.1 -0.1 +0.1 -0.1 +0.1
+> -300 days 100 days 500 days
+> Z (AU)
+> Earth orbit Mars orbit IPOPT refined Diffusion
+
+Fig. 3. Representative converged trajectories for transfer windows shifted by −300 , +100 , and +500 days relative to the nominal departure epoch. AU denotes astronomical unit. 0 100 200 300 −1 01                               
+
+> r (AU) Position r(t) + Mass
+> 0100 200 300 −1 01
+> v (AU/TU) Velocity v(t)
+> 0100 200 300
+> time (days)
+> −1 01
+> λr
+> Costate λr(t) + λm
+> 0100 200 300
+> time (days)
+> −1 01
+> λv
+> Costate λv(t)
+> 050 100 150 200 250 300 350
+> time (days)
+> 0.0 0.5 1.0 1.5
+> S(t)Switching function S(t) and thrust δ(t)
+> 0.4 0.6 0.8 1.0
+> mass (norm)
+> 0.00 0.25 0.50 0.75 1.00
+> λm
+> 0.0 0.5 1.0
+> δ(t)
+> IPOPT Refinement Diffusion xyzmass / λmS(t)δ(t)
+
+Fig. 4. Comparison of states, costates, switching function and throttle plots before and after IPOPT refinement. The diffusion model provides a near admissible solution and IPOPT ensures full admissibility. [2] C. Chi, Z. Xu, S. Feng, E. Cousineau, Y. Du, B. Burchfiel, R. Tedrake, and S. Song, “Diffusion policy: Visuomotor policy learning via action diffusion,” The International Journal of Robotics Research , 2024. [3] P. Dhariwal and A. Nichol, “Diffusion models beat gans on image synthesis,” Advances in neural information processing systems , vol. 34, pp. 8780–8794, 2021. [4] J. Ho and T. Salimans, “Classifier-free diffusion guidance,” in NeurIPS 2021 Workshop on Deep Generative Models and Downstream Appli-cations .[5] M. T. Jackson, M. T. Matthews, C. Lu, B. Ellis, S. Whiteson, and J. Fo-erster, “Policy-guided diffusion,” arXiv preprint arXiv:2404.06356 ,2024. [6] J. Graebner and R. Beeson, “Global search for optimal low thrust spacecraft trajectories using diffusion models and the indirect method,” 
+
+The Journal of the Astronautical Sciences , vol. 72, no. 6, p. 62, 2025. [Online]. Available: https://doi.org/10.1007/s40295-025-00535-1 [7] ——, Gradient-Informed Monte Carlo Fine-Tuning of Diffusion Models for Low-Thrust Trajectory Design , 1 2026. [Online]. Available: https://arc.aiaa.org/doi/abs/10.2514/6.2026-1075 [8] ——, “Transfer learning of multiobjective indirect low-thrust trajectories using diffusion models and markov chain monte carlo,” 5 2026, accepted for publication in the Journal of the Astronautical Sciences. [Online]. Available: https://arxiv.org/abs/2605.09125 [9] Z. Chen, J. Luo, Q. Chen, Y. Zhao, Y. Bai, and X. Chen, “Fast estimation of initial costate for time-optimal trajectory based on surrogate model,” Journal of Aerospace Engineering , vol. 36, no. 6, p. 04023078, 2023. [10] J. Shi, J. Wang, L. Su, Z. Ma, and H. Chen, “A neural network warm-started indirect trajectory optimization method,” Aerospace , vol. 9, no. 8, p. 435, 2022. [11] S. Yin, J. Li, and L. Cheng, “Low-thrust spacecraft trajectory optimiza-tion via a dnn-based method,” Advances in Space Research , vol. 66, no. 7, pp. 1635–1646, 2020. [12] L. Lian and U. Inyang-Udoh, “Co-state neural network for real-time nonlinear optimal control with input constraints,” in 2025 American Control Conference (ACC) . IEEE, 2025, pp. 2617–2624. [13] E. Taheri and N. Li, “L2 norm-based control regularization for solving optimal control problems,” IEEE Access , vol. 11, pp. 125 959–125 971, 2023. [14] J. T. Betts, “Survey of numerical methods for trajectory optimization,” 
+
+Journal of guidance, control, and dynamics , vol. 21, no. 2, pp. 193– 207, 1998. [15] D. Izzo and E. ¨Ozt¨ urk, “Real-time guidance for low-thrust transfers using deep neural networks,” Journal of Guidance, Control, and Dynamics , vol. 44, no. 2, pp. 315–327, 2021. [16] E. Taheri and J. L. Junkins, “Generic smoothing for optimal bang-off-bang spacecraft maneuvers,” Journal of Guidance, Control, and Dynamics , vol. 41, no. 11, pp. 2470–2475, 2018. [17] S. Tafazzol, E. Taheri, and N. Li, “Comparison of control regulariza-tion techniques for minimum-fuel low-thrust trajectory design using indirect methods,” arXiv preprint arXiv:2409.01490 , 2024. [18] N. P. Nurre and E. Taheri, “Constrained fuel-and time-optimal six-degree-of-freedom powered descent guidance using indirect optimiza-tion,” Journal of Spacecraft and Rockets , pp. 1–22, 2025. [19] J. Sohl-Dickstein, E. Weiss, N. Maheswaranathan, and S. Ganguli, “Deep unsupervised learning using nonequilibrium thermodynamics,” in International conference on machine learning . pmlr, 2015, pp. 2256–2265. [20] J. Ho, A. Jain, and P. Abbeel, “Denoising diffusion probabilistic models,” Advances in neural information processing systems , vol. 33, pp. 6840–6851, 2020. [21] S. Elango, J. Graebner, and R. Beeson, “Comparative study of dif-fusion model variants for spacecraft trajectory optimization,” in 37th AAS/AIAA Astrodynamics Specialist Conference , no. 1049, Whistler, BC, 7 2026. [22] P. J. Ayyanathan and E. Taheri, “Mapped adjoint control transforma-tion method for low-thrust trajectory design,” Acta Astronautica , vol. 193, pp. 418–431, 2022. [23] E. Taheri, I. Kolmanovsky, and E. Atkins, “Enhanced smoothing technique for indirect optimization of minimum-fuel low-thrust trajec-tories,” Journal of Guidance, Control, and Dynamics , vol. 39, no. 11, pp. 2500–2511, 2016. [24] P. Kidger, “On Neural Differential Equations,” Ph.D. dissertation, University of Oxford, 2021. [25] I. Alentev, L. Kozlov, and S. Nedelchev, “Jaxadi: Bridging casadi and jax for efficient numerical computing,” 2024, accessed: [Insert Access Date]. [Online]. Available: https://github.com/based-robotics/jaxadi [26] J. A. E. Andersson, J. Gillis, G. Horn, J. B. Rawlings, and M. Diehl, “CasADi – A software framework for nonlinear optimization and optimal control,” Mathematical Programming Computation , vol. 11, no. 1, pp. 1–36, 2019. [27] A. W¨ achter and L. T. Biegler, “On the implementation of an interior-point filter line-search algorithm for large-scale nonlinear program-ming,” Mathematical programming , vol. 106, no. 1, pp. 25–57, 2006. [28] J. B. Kruskal and M. Wish, Multidimensional scaling . Sage, 1978, vol. 11. [29] S. Bowerfind and E. Taheri, “Rapid approximation of low-thrust space-craft reachable sets within complex two-body and cislunar dynamics,” 
+
+Aerospace , vol. 11, no. 5, p. 380, 2024.
