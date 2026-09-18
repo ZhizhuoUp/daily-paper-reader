@@ -1,0 +1,183 @@
+Title: DetAug: Obstacle-Blind Trajectory Augmentation for Zero-shot Obstacle Avoidance
+
+URL Source: https://arxiv.org/pdf/2609.18395v1
+
+Published Time: Thu, 17 Sep 2026 00:55:31 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# DetAug: Obstacle-Blind Trajectory Augmentation for Zero-shot Obstacle Avoidance 
+
+Reece O’Mahoney, Moritz Zoellner and Ioannis Havoutis 
+
+Abstract — Policies for robotic manipulation are produced by training on large teleoperated datasets. These datasets typically consist of free-space trajectories, making them difficult to transfer to test-time environments with obstacles. Previous methods for closing this gap have largely fallen into two groups. Dataset augmentation addresses it at training time but needs obstacle geometry in advance, whereas steering an existing checkpoint at inference time avoids that requirement but is limited in flexibility. Our method draws from both areas without inheriting either drawback. DetAug applies an obstacle-blind augmentation scheme to the transit phases of a free-space dataset, leaving object interactions untouched, and records the augmentation parameters as an explicit conditioning label. At inference it samples a batch of labels and executes the trajectory with the lowest collision cost. On the SafeLIBERO benchmark DetAug achieves a collision-free success rate more than 20pp above the next best method, and selecting over the label space outperforms guidance on the same policy by 26pp. On real hardware, inference-time steering methods collapse on tasks requiring large detours, while DetAug matches or exceeds an obstacle-conditioned baseline without ever seeing obstacles in training. 
+
+I. INTRODUCTION Manipulation policies are most often trained from demon-strations collected in free-space [1], [2], [3], [4], but real deployment environments frequently contain obstacles that are absent in the dataset, collapsing performance [5], [6]. Previous methods for dealing with this in the literature mainly fall into two camps. The first consists of inference-time techniques that modify the behaviour of a frozen policy. Since state-of-the-art policies are typically diffusion [2] or flow matching [7], [8], [9] based, these techniques normally use guidance [10], [11] to steer the policy output via a gradient derived from some collision signal [12], [13], [14], [15], [6]. The second involves synthetic data generation that samples a distribution of obstacles at training time, and augments the dataset with collision-free trajectories that are conditioned on the obstacle geometry [16]. While both of these approaches have shown some success they also have notable drawbacks. Inference-time methods are easy to apply to a pre-existing policy, and so can inherit the capabilities of a model trained on web-scale data [17], [18], [8], but suffer from limited flexibility, as the possible behaviours are limited to what already exists in the prior [5]. When significant detours from the default behaviour are required, these methods do not fail 
+
+> Reece O’Mahoney and Ioannis Havoutis are with the Oxford Robotics Institute, University of Oxford, Oxford, UK
+
+{reeceo,ioannis }@robots.ox.ac.uk 
+
+> Moritz Zoellner is with Purdue University, West Lafayette, IN, USA
+
+zoellner@purdue.edu Selected trajectory Sampled detours  
+
+> Fig. 1. DetAug on hardware. A policy trained only on free-space demos augmented with random detours avoids an obstacle never seen in training. At each replan, a batch of detours (grey) is sampled from the label space and the collision-free candidate (blue) is executed.
+
+by colliding but by trading task completion for safety: the steered policy stalls or times out rather than finding a path around the obstacle. Selection-based variants that search over the prior’s own samples [19] inherit the same ceiling, which we measure directly in Section IV-D. Train-time methods do not have this weakness, but are instead limited by requiring the obstacle geometry at training time: the detours they distil are fixed by the obstacles sampled during data generation, and we find that at a matched architecture and training budget, a policy conditioned on the obstacle geometry makes only weak use of it, even when the deployment obstacles are drawn from that same distribution [16]. The gap is widest when adapting a pre-existing policy: the relatively heavy conditioning required to capture 3D obstacle geometry is difficult to graft onto a frozen backbone through a lightweight conditioning pathway such as AdaLN-Zero [20], whereas a low-dimensional label is not. Our method, Detour Augmentation (DetAug) , builds on the strengths of both of these families of techniques while avoiding their weaknesses: steering methods assume the required modes already exist, and augmentation methods assume the obstacles are known; we assume neither. DetAug starts from a pre-collected teleoperation dataset and, following DemoGen [16], segments each demonstration into transit phases and interaction phases. Only the transit arXiv:2609.18395v1 [cs.RO] 16 Sep 2026 (a) Augment trajectories Noised Action Aug Label Clean Action (b) Inject augmentation label (c) Select at inference Fig. 2. Overview of DetAug. (a) Transit phases of free-space demos are replaced with random arcs, keeping grasp and release intact; the arc parameters form a low-dimensional label. (b) The label is injected into a flow-matching policy via AdaLN-Zero. (c) At inference, K labels are sampled, each yields a trajectory, and the lowest collision-cost candidate (blue) is executed. 
+
+phases are modified; the grasp and release windows are preserved exactly. As a result, avoidance can never corrupt a grasp or release, which is the dominant failure mode we observe on hardware for guidance and constraint-based corrections that perturb the whole trajectory (Section IV-E). In particular, we randomly generate arcs in Cartesian space, parameterised by the subtended angle and orientation, and substitute them for the existing segments. The parameters of the augmentation act as a conditioning variable that is used during training. At inference, instead of doing a single forward pass to generate an action, we batch these over a randomly sampled set of conditioning values and check for collisions. A fresh batch is drawn and re-scored at every replan. Section III contains a more detailed explanation of this implementation. By applying this method to a range of simulated and real tasks we show the following contributions: 1) Collision-free success on the SafeLIBERO benchmark more than 20pp above the next best method, including an obstacle-conditioned policy trained at a matched architecture and budget, despite having no access to obstacle geometry during training. 2) Superior task completion to inference-time methods in tasks requiring large deviations from the default behaviour, in simulation and on real hardware, where steering methods avoid the obstacle but fail to complete the task. 3) Selection over the augmentation label space outper-forms guidance on the same policy with the same collision cost by 26pp, and random labels dominate selection over the prior’s own samples at every batch size. 4) Far more effective compute-limited adaptation of a pre-trained policy than obstacle conditioning: with a frozen backbone and a 3M parameter adapter, DetAug reaches 35% success versus 2%. II. RELATED WORK 
+
+A. Inference-Time Steering of Frozen Policies 
+
+Guidance works by using the gradient of some differen-tiable cost function to steer a diffusion process [10], [11]. In the obstacle avoidance literature, MPD [12] guides a trajectory prior with collision and smoothness costs, and EDMP [13] guides sub-batches of a scene-agnostic prior with an ensemble of collision costs and keeps the lowest-cost candidate; it diversifies by collision model and hyperparameter schedule where we diversify by an explicit augmentation label. APEX [21] guides a latent prior trained on collision-free trajectories conditioned on the obstacle position. For visuomotor policies, Lan-o3dp [14], VLS [22] and OmniGu-ide [15] derive the steering signal from geometric costs, VLM-synthesised rewards and attractor/repeller energy fields respectively. EmbodiSteer [6] applies a CBF-QP correction in joint space at each denoising step, and AEGIS [23] solves a similar CBF-QP once on the final action of a frozen VLA, modelling the end effector and obstacles as ellipsoids in Cartesian space. ReGuide [24] steers with a learned dynamics model and recycles the guided rollouts into further training. Selection-based variants search over the noise trajectory and keep the highest-reward candidate at each step [19], and PDP [25] fits a behaviour latent learned from demonstrations to a new demonstration by gradient descent, so the adapted behaviour stays within or near the demonstrated space. All of these can only reweight, deflect or choose among modes the frozen prior already holds. CAPE [5] names this drawback explicitly, noting that guidance only works when the data already yields rich multimodal coverage, and attempts to mitigate it inference-side by re-noising and re-denoising the unexecuted remainder of the plan under collision guidance. 
+
+B. Train-Time Augmentation with Synthetic Obstacles 
+
+MimicGen [26] splits demonstrations into object-centric segments, rigidly transforms each to a new object pose and bridges them with interpolated motion; DemoGen [16] replans the free-space segments with a motion planner and, for obstacle avoidance, samples obstacle primitives, inserts them into the point cloud and plans a detour, yielding an obstacle-conditioned policy. GLIDE [27] likewise distils planner-generated trajectories into a policy, though without scene obstacles. These methods produce genuinely new behaviour, but avoidance is fixed at data-generation time by the sampled object distribution, with no test-time adaptation. Dense geometric conditioning also needs a heavier mechanism to graft onto a pre-trained model, such as a trainable encoder copy joined by zero convolutions [28]. DetAug is 
+
+obstacle-blind : the augmentation is parameterised by a low-dimensional arc descriptor rather than scene geometry; as such, the conditioning is small enough to add via a single zero-initialised modulation pathway [20]. 
+
+C. Trajectory Stitching and Splitting 
+
+Recombining segments is also studied as stitching to widen state coverage [29]. Previous work [30] re-noised and split the generated plan into halves at inference, re-denoising each under signed-distance and smoothness guidance; DetAug removes the splitting and moves the fix to the data, using geometry only to rank candidates rather than construct trajectories. III. METHOD 
+
+A. Overview 
+
+An overview of our method, shown in Figure 2, is as follows. First, we take a dataset of free-space demos and augment them with randomly generated arcs and record the augmentation parameters as a conditioning variable. We then train a flow-matching policy to recreate these trajectories, with the augmentation label injected into the model via AdaLN-Zero [20]. At inference we sample a batch of K plans with different randomly sampled labels from the training support, score them with an analytic collision cost, and execute the best trajectory. This allows us to get reliable zero-shot obstacle avoidance, without train-time knowledge of the obstacle geometry or assumptions about the coverage of the prior. The hyperparameters used across all experiments are listed in Table II. 
+
+B. Architecture 
+
+We use a DiT-style [20] transformer as our policy ar-chitecture, training with a conditional flow matching [7] loss. Our model outputs a chunk of H states and actions 
+
+τ = [ s1: H , a 1: H ], and we replan every N action steps like a standard action chunking model [1], [2]. Training windows are sampled at random positions within each demonstration, with windows that run past the end of an episode padded with its final state. The conditioning vector c = ϕt(t) + ϕz (z)
+
+is injected through AdaLN-Zero [20] conditioning, where t
+
+is the flow-matching time and z the augmentation label, with 
+
+ϕ being their respective networks. This is a common choice of conditioning method for DiT models, but we also found it makes it easy to graft our augmentation label onto an existing pre-trained policy, a setting we test in Section IV-B. demo augmented start grasp end    
+
+> Fig. 3. Example detour augmentations. Each panel shows an original end-effector demonstration and several augmented variants, with the approach and carry phases replaced by arcs of varying half-angle φand plane rotation
+> θ, while the grasp and release windows are left unchanged.
+
+C. Detour Augmentation 
+
+To generate augmented trajectories, we first split demonstra-tions into interaction and transit phases, similar to the motion and skill stages of DemoGen [16]. In our case interaction phases are a fixed window around each gripper transition and transit phases are the motion between them. Each grasp yields two transit phases: an approach from the start to the grasp, and a carry from the grasp to the release. We replace each of these, minus some margin on either side, with a sampled arc. These are generated by replacing the end-effector chord between the endpoints with a circular arc of half-angle φ ∈ [φmin , φ max ] in a plane rotated by θ ∈ [0 , π ]
+
+about the chord. The label for an arc is φ(cos θ, sin θ) ∈ R2,so a grasp carries a 4-dimensional label z ∈ R4 formed by concatenating the approach and carry labels. This gives us a smooth, continuous parameterisation that is zero for unbent demos. We then check samples for kinematic feasibility and joint motion smoothness, rejecting any samples that fail these criteria. For tasks with multiple grasps like some in the SafeLIBERO benchmark in Section IV-A, we augment each segment separately and concatenate the labels into a single descriptor. Figure 3 shows example augmentations produced by this procedure: the arcs sweep out a family of detours around the original chord while the grasp and release windows are preserved exactly. 
+
+D. Inference-Time Selection 
+
+To select a trajectory at inference time, we sample a batch of K augmentation labels uniformly from within the training support, and generate a trajectory for each sample, conditioned on the current observation and optional goal state. This is repeated with a fresh batch at every replan rather than latching the first choice; we found latching roughly halved collision-free success, as an early pick made under a partial view of the scene is rarely the best one later. We then score the trajectories with a collision cost, computed using points sampled along the robot’s surface against a signed distance field from the obstacle. Importantly, we score trajectories by penetration TABLE I QUANTITATIVE RESULTS ON THE SAFE LIBERO BENCHMARK , AGGREGATED BY SUITE .
+
+Spatial Object Goal Long Average 
+
+Method Clean Total Avoid Clean Total Avoid Clean Total Avoid Clean Total Avoid Clean Total Avoid DetAug (ours) 58.7 73.0 68.0 88.5 92.5 94.0 32.5 58.0 43.5 29.1 46.9 56.0 52.2 67.6 65.4 DemoGen [16] 19.4 51.7 24.5 32.4 80.7 33.5 22.5 56.8 24.8 7.0 30.2 22.4 20.3 54.9 26.3 CAPE [5] 42.0 46.7 71.2 52.2 57.1 87.2 25.8 37.2 61.2 2.2 3.0 79.0 30.6 36.0 74.7 
+
+AEGIS [23] 28.1 43.0 57.1 47.2 60.6 67.2 17.2 24.2 59.3 13.8 15.6 73.0 26.6 35.9 64.2       
+
+> All entries are percentages, averaged over the Level I (obstacle near the target) and Level II (obstacle on the motion path) scenarios of each suite.
+> Average is the mean over the four suites. Clean is the collision-free task success rate, Total is the task success rate irrespective of collisions, and
+> Avoid is the collision avoidance rate. The best result in each column is shown in bold. TABLE II DET AUG HYPERPARAMETERS . H ARDWARE VALUES GIVEN IN PARENTHESES WHERE THEY DIFFER .
+
+Parameter Value 
+
+Augmentation 
+
+Arc half-angle φ [0 .15 π, 0.85 π] ([0 .25 π, 0.6π])Arc plane rotation θ [0 , π ]
+
+Transit-phase margin 0.4 s (1.5 s) Augmented copies per demo 8 (6) 
+
+Architecture 
+
+Total parameters 10M Layers 8Hidden dimension 256 Attention heads 4Horizon H 50 Action steps N 10 (20) 
+
+Inference 
+
+Sampled labels K 32 (8) Integration steps 10 
+
+only, rather than by clearance. We found the latter tended to produce behaviour that would “game” the metric via overly circuitous paths and often hurt task success. IV. EXPERIMENTAL RESULTS 
+
+A. SafeLIBERO Benchmark 
+
+In order to get a broad and diverse benchmark of novel obstacle avoidance capabilities, we first run a series of experiments on the simulated SafeLIBERO [23] benchmark. The base dataset used for training contains the scenes from the standard LIBERO [31] benchmark, but at test time, random obstacles are inserted into the scene with varying levels of difficulty. For comparison, we try to pick a representative method from all of the alternative approaches mentioned previously. DemoGen [16] represents a “train-time oracle” with access to the obstacle geometries at training time; AEGIS [23] is the method from the original SafeLIBERO paper and is a purely inference-time technique, where a CBF-QP is applied to the output of a frozen policy; CAPE [5] represents another inference-time method, applying collision guidance to a re-noised copy of the unexecuted plan. For quick iteration and in order to highlight just the contribution of the obstacle avoidance method, we use a state-based policy with access to sim states instead of vision. All of these techniques can scale to vision-based methods, with view synthesis from augmented demos following the method from DemoGen [16], but their relative performances would likely be unchanged, as prior benchmarks report broadly consistent method rankings under state and image observations [32], [2]. The collision-free success rate, the overall success rate, and the collision avoidance rate for each of the test suites, averaged over 3 seeds, are reported in Table I. An important detail to note is that we found several of the tasks in the benchmark to be infeasible, due to the fact that there were no object interaction segments in the dataset that would not be in collision with the obstacles. As all methods scored close to 0% success on these, we chose to omit them entirely from the benchmark. In total this represented about 20% of the tasks. DetAug achieved a 52.2% clean success rate, more than 20pp higher than the next best method. Its advantage over the two families of methods is reflected in how this breaks down. The inference-time methods AEGIS and CAPE have high avoidance rates, with CAPE the best on average, but low success, and often end in timeouts as the policy is unable to find a feasible path. Conversely, the train-time method DemoGen, even though it has access to the obstacle geometry at test time, is conditioned on a single max-pooled point cloud embedding inherited from its DP3 backbone [33]. We found this was too weak a conditioning signal to push the trajectories along significantly different paths, hence the low avoidance rate. 
+
+B. Adapting a Pre-Trained Policy 
+
+We also test the performance of our method in a fine-tuned setting, where we want to add obstacle avoidance capabilities to an existing policy. To do this, we simulate a pre-existing policy by using the same state-based architecture described in Section III, but just trained on a base, unaugmented dataset. We then compare it to DemoGen [16] by using AdaLN [20] to inject the conditioning, i.e. a point cloud embedding for DemoGen and the augmentation label for DetAug. As we found DemoGen’s capacity was insufficient for the full range of obstacles in SafeLIBERO, we restrict the comparison to a single pick-and-place task in the Newton simulator [34], where a single cylindrical obstacle is added at test time. We test two different settings: adapter only , where we train the label encoder ϕz and the AdaLN modulation layers while 0.0 0.5 1.0 
+
+> success rate
+
+adapter-only full fi ne-tune   
+
+> 1k 5k 20k
+
+fi ne-tuning steps   
+
+> 0.0 0.5 1.0
+> collision rate
+> 1k 5k 20k
+
+fi ne-tuning steps     
+
+> base policy ours DemoGen Fig. 4. Success and collision rates over fine-tuning steps when adapting a pre-trained base policy with DetAug (ours) and DemoGen, training either the AdaLN adapter only or the full policy. selection selection + guidance null token + selection null token + guidance
+
+0.0 0.2 0.4 0.6 success rate 0.57 0.43 0.33 0.34  
+
+> Fig. 5. Collision-free success on the SafeLIBERO spatial suite for DetAug’s label selection against guidance and mixed variants.
+
+keeping the rest of the backbone frozen, about 3M parameters in total, and full fine-tune , where we also train the main policy. The results for this are shown in Figure 4. In the adapter-only setting, our model far outperforms DemoGen, reaching a final success rate of 35% versus DemoGen’s 2%, which is even worse than the base policy’s 6%. The collision rates tell a similar story, with DemoGen degrading well above the base rate. However, full fine-tuning yields a very different outcome, where DemoGen is actually able to beat DetAug in success rate and match us in collision rate, albeit with a greater number of training steps. We conclude that in a limited-compute setting, simple augmentation label conditioning is far more capable at adding obstacle avoidance capabilities to an existing policy than point cloud conditioning. However, if full fine-tuning is possible, point cloud conditioning can match or even outperform our method. This however comes with a steep cost, as training a VLA with billions of parameters can be prohibitively expensive for many users, and even when it is not, this process can still take many days to fully converge. 
+
+C. Selection vs Guidance 
+
+To justify our inference-time selection method, we run another experiment on the SafeLIBERO spatial suite. In particular, we aim to answer the question How does our selector compare to using guidance? , which is a common technique for obstacle avoidance used in methods like CAPE [5]. To do this, we train our policy with the augmentation label randomly dropped out for a “null token” [35], allowing us to generate unconditional samples. In this setting, we can then use the gradient of the same collision method used by DetAug as a guidance function in an attempt to generate collision-free samples without selection. The results of this experiment are shown in Figure 5. Null token + guidance is the method just described and performs significantly worse than DetAug, 26pp lower. The two other columns show methods that are a mix of these two approaches, either using guidance and selection, or selecting over unconditional null token samples. Both of these mixes also perform worse. We hypothesise two mechanisms behind this. Firstly, the augmentation label 
+
+reduces the dimensionality of the search space . Searching over the 4-dimensional label space is much easier than the full 52-dimensional state and action space, increasing the likelihood of finding collision-free samples. Secondly, the augmentation label represents the parameters of the clean 
+
+sample, whereas guidance is applied to intermediate noisy 
+
+samples, which are by definition off-manifold. As a result, the dynamics of the final generated sample are much more likely to be incorrect. 
+
+D. Effect of the Number of Sampled Labels 
+
+Our final ablation aims to identify the effect of the number of sampled labels at inference time on policy performance. To do this we again roll out our policy in the SafeLIBERO spatial suite, but vary the number of samples K between 1 and 64. As a control, we also evaluate the performance with different numbers of zero-valued labels, corresponding to unaugmented demos. The results are shown in Figure 7. There are two main takeaways. Firstly, for both random and zero labels, the success rate increases monotonically, as expected. Secondly, and more importantly, random labels are strictly better than zeros, further validating our method. This experiment also explains why we chose K = 32 for our experiments; K = 64 does give a success rate about 2% 
+
+higher, but at the expense of about double the inference cost. 
+
+E. Hardware Experiments 
+
+We lastly verify the validity of our method on hardware by first training a policy on a simple pick-and-place task with free-space demonstrations, and then rolling out each method with four obstacles of different shapes placed in random positions with feasible solutions as shown in Figure 6. We Fig. 6. Hardware experiments. DetAug rollouts on the pick-and-place task with the four test-time obstacles: cups (top left), tube (top right), jar (bottom left) and rack (bottom right). The policy was trained on free-space demos only, and obstacles are placed at random positions with feasible solutions. 1 4 16 64 
+
+K
+
+0.0 0.5 1.0 
+
+> success rate
+
+1 4 16 64 
+
+K
+
+0.0 0.5 1.0 
+
+> collision rate
+
+random labels zero labels      
+
+> Fig. 7. Collision-free success on the SafeLIBERO spatial suite as the number of sampled labels Kvaries, for random and zero-valued labels. TABLE III HARDWARE SUCCESS RATES (%), 10 ROLLOUTS PER OBSTACLE TYPE .THE BEST RESULT IN EACH COLUMN IS SHOWN IN BOLD .
+
+Method Cups Tube Jar Rack Average 
+
+DetAug (ours) 90 90 70 100 87.5 
+
+DemoGen [16] 90 90 50 90 80 CAPE [5] 50 30 30 30 35 AEGIS [23] 50 40 20 10 30 
+
+made sure to keep the distribution of positions as close as possible between trials. We compare DetAug to the same three other methods used in the simulation benchmark. The results are listed in Table III. DetAug is the best performing method at 87.5%, with DemoGen second at 80%. DemoGen’s failures mainly came from moving straight through the obstacle in scenarios where large detours were required. The clear result is the collapse of the two inference-time methods to 35% and 30% respectively. Both had similar drawbacks: the policies would struggle with significant detours from the prior, and because neither separates grasping from transit, the corrections would interfere with the object interaction, an issue DetAug avoids by construction since the grasp and release windows are never modified. V. CONCLUSIONS In summary, we present DetAug, a method for adapting manipulation policies with zero-shot obstacle avoidance that does not require any knowledge of the test-time environment during training. We show that it significantly outperforms prior methods on a broad suite of simulation tasks and that selection over the augmentation label outperforms guidance on the same policy. We demonstrate a superior ability to adapt pre-trained policies with a limited compute budget compared to methods conditioned on the obstacle geometry, and finally verify its performance on real hardware tasks, where inference-time methods collapse on large detours and DetAug matches or exceeds an obstacle-conditioned baseline that saw obstacles in training. In future work, we would be interested in scaling this method to a large VLA model and to tasks requiring greater dexterity. ACKNOWLEDGMENT Generative AI tools (Claude, Anthropic) were used through-out the preparation of this work, including drafting and editing text in all sections, generating and debugging code for experiments and figures, and assisting with the analysis of results. All AI-generated content was reviewed and verified by the authors, who take full responsibility for the final manuscript. REFERENCES [1] T. Z. Zhao, V. Kumar, S. Levine, and C. Finn, “Learning fine-grained bimanual manipulation with low-cost hardware,” in Robotics: Science and Systems (RSS) , 2023. [2] C. Chi, S. Feng, Y. Du, Z. Xu, E. Cousineau, B. Burchfiel, and S. Song, “Diffusion policy: Visuomotor policy learning via action diffusion,” in          
+
+> Robotics: Science and Systems (RSS) , 2023. [3] Open X-Embodiment Collaboration, “Open X-embodiment: Robotic learning datasets and RT-X models,” in IEEE Int. Conf. Robotics and Automation (ICRA) , 2024. [4] A. Khazatsky, K. Pertsch, S. Nair, A. Balakrishna et al. , “DROID: A large-scale in-the-wild robot manipulation dataset,” in Robotics: Science and Systems (RSS) , 2024. [5] R. H. Yang, X. Zhao, L. M. Brunswic, M. Alban, M. Clemente, T. Cao, J. Jin, and A. Rasouli, “CAPE: Context-aware diffusion policy via proximal mode expansion for collision avoidance,” arXiv preprint arXiv:2511.22773 , 2025. [6] S. Wang, K. Lv, M. Yu, and X. Li, “EmbodiSteer: Steering embodiment-agnostic visuomotor policies with joint-space guidance for zero-shot cross-embodiment deployment,” arXiv preprint arXiv:2606.12965 ,2026.
+
+[7] Y. Lipman, R. T. Q. Chen, H. Ben-Hamu, M. Nickel, and M. Le, “Flow matching for generative modeling,” in Int. Conf. Learning Representations (ICLR) , 2023. [8] K. Black, N. Brown, D. Driess, A. Esmail et al. , “ π0: A vision-language-action flow model for general robot control,” in Robotics: Science and Systems (RSS) , 2025. [9] J. Bjorck, F. Casta˜ neda, N. Cherniadev, X. Da et al. , “GR00T N1: An open foundation model for generalist humanoid robots,” arXiv preprint arXiv:2503.14734 , 2025. [10] P. Dhariwal and A. Nichol, “Diffusion models beat GANs on image synthesis,” in Advances in Neural Information Processing Systems (NeurIPS) , 2021. [11] M. Janner, Y. Du, J. B. Tenenbaum, and S. Levine, “Planning with diffusion for flexible behavior synthesis,” in Int. Conf. Machine Learning (ICML) , 2022. [12] J. Carvalho, A. Le, P. Kicki, D. Koert, and J. Peters, “Motion planning diffusion: Learning and adapting robot motion planning with diffusion models,” IEEE Transactions on Robotics , vol. 41, pp. 4881–4901, 2025. [13] K. Saha, V. Mandadi, J. Reddy, A. Srikanth, A. Agarwal, B. Sen, A. Singh, and M. Krishna, “EDMP: Ensemble-of-costs-guided diffusion for motion planning,” in IEEE Int. Conf. Robotics and Automation (ICRA) , 2024. [14] H. Li, Q. Feng, Z. Zheng, J. Feng, Z. Chen, and A. Knoll, “Language-guided object-centric diffusion policy for generalizable and collision-aware manipulation,” in IEEE Int. Conf. Robotics and Automation (ICRA) , 2025. [15] Y. Song, L. Le, Y.-H. Park, J. Wang, J. Shi, L. Liu, J. Gu, E. Eaton, D. Ja-yaraman, and K. Daniilidis, “OmniGuide: Universal guidance fields for enhancing generalist robot policies,” arXiv preprint arXiv:2603.10052 ,2026. [16] Z. Xue, S. Deng, Z. Chen, Y. Wang, Z. Yuan, and H. Xu, “DemoGen: Synthetic demonstration generation for data-efficient visuomotor policy learning,” in Robotics: Science and Systems (RSS) , 2025. [17] A. Brohan, N. Brown, J. Carbajal, Y. Chebotar et al. , “RT-2: Vision-language-action models transfer web knowledge to robotic control,” 
+
+arXiv preprint arXiv:2307.15818 , 2023. [18] M. J. Kim, K. Pertsch, S. Karamcheti, T. Xiao et al. , “OpenVLA: An open-source vision-language-action model,” in Conf. Robot Learning (CoRL) , 2024. [19] V. Ramesh and M. Mardani, “Test-time scaling of diffusion models via noise trajectory search,” in Advances in Neural Information Processing Systems (NeurIPS) , 2025. [20] W. Peebles and S. Xie, “Scalable diffusion models with transformers,” in IEEE/CVF Int. Conf. Computer Vision (ICCV) , 2023. [21] A. Dastider, H. Fang, and M. Lin, “APEX: Ambidextrous dual-arm robotic manipulation using collision-free generative diffusion models,” in IEEE/RSJ Int. Conf. Intelligent Robots and Systems (IROS) , 2024. [22] S. Liu, I. S. Singh, Y. Xu, J. Duan, and R. Krishna, “VLS: Steering pretrained robot policies via vision-language models,” arXiv preprint arXiv:2602.03973 , 2026. [23] S. Hu, Z. Liu, S. Liu, J. Cen, Z. Meng, S. Wang, X. Li, and X. He, “VLSA: Vision-language-action models with plug-and-play safety constraint layer,” in IEEE/RSJ Int. Conf. Intelligent Robots and Systems (IROS) , 2026. [24] T.-H. Lin, S. Shakkottai, D. Kalathil, and P. R. Kumar, “ReGuide: From test-time guidance to self-improving diffusion policies,” arXiv preprint arXiv:2606.28939 , 2026. [25] R. Zhang, H. Fu, M. Jia, G. Konidaris, Y. Du, and B. C. da Silva, “From noise to control: Parameterized diffusion policies,” arXiv preprint arXiv:2606.00336 , 2026. [26] A. Mandlekar, S. Nasiriany, B. Wen, I. Akinola, Y. Narang, L. Fan, Y. Zhu, and D. Fox, “MimicGen: A data generation system for scalable robot learning using human demonstrations,” in Conf. Robot Learning (CoRL) , 2023. [27] X. Li, T. Zhao, X. Zhu, J. Wang, T. Pang, and K. Fang, “Planning-guided diffusion policy learning for generalizable contact-rich bimanual manipulation,” arXiv preprint arXiv:2412.02676 , 2024. [28] L. Zhang, A. Rao, and M. Agrawala, “Adding conditional control to text-to-image diffusion models,” in IEEE/CVF Int. Conf. Computer Vision (ICCV) , 2023. [29] K. Lee and J. Choi, “State-covering trajectory stitching for diffusion planners,” in Advances in Neural Information Processing Systems (NeurIPS) , 2025. [30] R. O’Mahoney, W. Yu, and I. Havoutis, “Improving trajectory stitching with flow models,” arXiv preprint arXiv:2505.07802 , 2025. [31] B. Liu, Y. Zhu, C. Gao, Y. Feng et al. , “LIBERO: Benchmarking knowledge transfer for lifelong robot learning,” in Advances in Neural Information Processing Systems (NeurIPS) Datasets and Benchmarks Track , 2023. [32] A. Mandlekar, D. Xu, J. Wong, S. Nasiriany, C. Wang, R. Kulkarni, L. Fei-Fei, S. Savarese, Y. Zhu, and R. Mart´ ın-Mart´ ın, “What matters in learning from offline human demonstrations for robot manipulation,” in Conference on Robot Learning (CoRL) , 2021. [33] Y. Ze, G. Zhang, K. Zhang, C. Hu, M. Wang, and H. Xu, “3D diffusion policy: Generalizable visuomotor policy learning via simple 3D representations,” in Robotics: Science and Systems (RSS) , 2024. [34] The Newton Contributors, “Newton: GPU-accelerated physics sim-ulation for robotics and simulation research,” https://github.com/ newton-physics/newton, 2025. [35] J. Ho and T. Salimans, “Classifier-free diffusion guidance,” arXiv preprint arXiv:2207.12598 , 2022.

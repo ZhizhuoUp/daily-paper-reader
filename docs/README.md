@@ -6,73 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-17
-- 运行时间：2026-09-17 22:20:17 UTC
+- 最新运行日期：2026-09-18
+- 运行时间：2026-09-18 21:45:59 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 17 篇机器人前沿论文，聚焦人形机器人全身控制与具身智能策略优化。
-重点关注碰撞感知全身控制与视觉-语言-动作（VLA）实时强化学习，这两项技术显著提升了机器人的交互鲁棒性。
-建议优先研读这两篇高分论文，深入理解复杂环境下的动作规划与策略落地逻辑。
-- 详情：[/202609/17/README](/202609/17/README)
+今日精选 17 篇机器人前沿论文，聚焦空间机器人容错控制与 VLA 规划加速。
+重点关注《Resilient Motion Planning》与《SkipVLA》，它们分别解决了执行器故障下的鲁棒性及机器人操作的实时性难题。
+建议优先阅读这两篇高分论文，深入理解经典规划与大模型策略的融合趋势。
+- 详情：[/202609/18/README](/202609/18/README)
 
 ### 精读区论文标签
-1. [Collision-Aware Humanoid Whole-Body Control under Imperfect Tracking Targets](/202609/17/2609.16405v1-collision-aware-humanoid-whole-body-control-under-imperfect-tracking-targets)  
+1. [Resilient Motion Planning for Free-Flying Space Robots under Actuator Failures](/202609/18/2609.20407v1-resilient-motion-planning-for-free-flying-space-robots-under-actuator-failures)  
+   标签：评分：9.0/10、query:q9
+   evidence：自由飞行空间机器人的运动规划
+2. [SkipVLA: Skipping VLA Steps with Classical Planning for Fast Robot Manipulation](/202609/18/2609.20648v1-skipvla-skipping-vla-steps-with-classical-planning-for-fast-robot-manipulation)  
    标签：评分：9.0/10、query:profile-1
-   evidence：类人机器人操作的避障全身控制
-2. [Reinforcement Learning for Real-Time Vision-Language-Action Policies](/202609/17/2609.18207v1-reinforcement-learning-for-real-time-vision-language-action-policies)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：动态真实世界机械臂的实时控制需求
-3. [WeaveRL: Weaving Reconstruction into Scene-Aware Fabrics for Perceptive Reinforcement Learning](/202609/17/2609.18685v1-weaverl-weaving-reconstruction-into-scene-aware-fabrics-for-perceptive-reinforcement-learning)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：使用几何织物的复杂操作避障控制器
-4. [CaSCo: Cascade-Aware Soft-Collision Motion Planning](/202609/17/2609.18910v1-casco-cascade-aware-soft-collision-motion-planning)  
-   标签：评分：9.0/10、query:q1
-   evidence：软碰撞运动规划与语义风险评估
-5. [ElastiQP: An Always-Feasible QP Solver for Constrained Robot Control](/202609/17/2609.19080v1-elastiqp-an-always-feasible-qp-solver-for-constrained-robot-control)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：用于受限机器人控制和实时执行的始终可行QP求解器
-6. [Learning Multi-Agent Task Assignment and Navigation in the Factory: from Simulation to Real Robots](/202609/17/2609.14567v1-learning-multi-agent-task-assignment-and-navigation-in-the-factory-from-simulation-to-real-robots)  
+   evidence：结合VLA与经典运动规划器的混合策略，实现无碰撞运动
+3. [A Time-to-Collision Barrier Function Approach to Collision Avoidance for Stochastic Systems](/202609/18/2609.17347v1-a-time-to-collision-barrier-function-approach-to-collision-avoidance-for-stochastic-systems)  
+   标签：评分：8.0/10、query:q1
+   evidence：用于前瞻性避障的碰撞时间屏障函数
+4. [OmniRisk: Omnidirectional Trajectory-Risk Learning for Agile Quadrotor Dynamic Avoidance](/202609/18/2609.18191v1-omnirisk-omnidirectional-trajectory-risk-learning-for-agile-quadrotor-dynamic-avoidance)  
+   标签：评分：8.0/10、query:q1
+   evidence：用于敏捷四旋翼避障的轨迹风险学习
+5. [DetAug: Obstacle-Blind Trajectory Augmentation for Zero-shot Obstacle Avoidance](/202609/18/2609.18395v1-detaug-obstacle-blind-trajectory-augmentation-for-zero-shot-obstacle-avoidance)  
    标签：评分：8.0/10、query:profile-1
-   evidence：移动机械臂平台的安全导航与任务分配
+   evidence：用于机械臂零样本避障的轨迹增强
+6. [Accelerating Visual Policy Learning with Sampling-Based Model Predictive Control](/202609/18/2609.20575v1-accelerating-visual-policy-learning-with-sampling-based-model-predictive-control)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：用于加速操作任务视觉策略学习的采样MPC
 
 ### 速读区论文标签
-1. [Primitive-Informed Sampling-Based MPC for Multi-Fingered Dexterous Manipulation](/202609/17/2609.14868v2-primitive-informed-sampling-based-mpc-for-multi-fingered-dexterous-manipulation)  
-   标签：评分：8.0/10、query:q2
-   evidence：用于操作任务的采样模型预测控制
-2. [LieSpline-DP: Lie-Group B-Spline Diffusion Policy for Smooth Robot Manipulation](/202609/17/2609.15162v1-liespline-dp-lie-group-b-spline-diffusion-policy-for-smooth-robot-manipulation)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：SE(3)上的平滑机器人操作轨迹
-3. [LieSpline-DP: Lie-Group B-Spline Diffusion Policy for Smooth Robot Manipulation](/202609/17/2609.15162v2-liespline-dp-lie-group-b-spline-diffusion-policy-for-smooth-robot-manipulation)  
+1. [Motion planning in high dimensional spaces hybridizing RRT and HAR via position-direction decoupling](/202609/18/2609.16810v1-motion-planning-in-high-dimensional-spaces-hybridizing-rrt-and-har-via-position-direction-decoupling)  
+   标签：评分：8.0/10、query:q4
+   evidence：高维空间的采样路径规划
+2. [Fetch My Beer: Synthetic-to-real Hierarchical Policy for Smooth Pick-and-place](/202609/18/2609.18119v1-fetch-my-beer-synthetic-to-real-hierarchical-policy-for-smooth-pick-and-place)  
    标签：评分：8.0/10、query:q8
-   evidence：使用B样条的平滑机器人操纵轨迹
-4. [ManiSkillFormer: Demonstration-Free Compositional Manipulation via Task-Conditioned Geometric Contracts](/202609/17/2609.16331v1-maniskillformer-demonstration-free-compositional-manipulation-via-task-conditioned-geometric-contracts)  
-   标签：评分：8.0/10、query:q6
-   evidence：组合式机器人操作与运动模板
-5. [Gradient-Free Neural Hamilton-Jacobi Reachability for Scalable Safety-Critical Control](/202609/17/2609.14087v1-gradient-free-neural-hamilton-jacobi-reachability-for-scalable-safety-critical-control)  
+   evidence：机械臂平滑取放轨迹的稳定性
+3. [Prior Evolution and Task Alignment for Aerial Grasping](/202609/18/2609.18153v1-prior-evolution-and-task-alignment-for-aerial-grasping)  
+   标签：评分：8.0/10、query:q3
+   evidence：空中抓取动作的轨迹优化
+4. [DynoFluxBench: Benchmarking Kinodynamic Space-Time Planners in Dynamic Environments](/202609/18/2609.18549v1-dynofluxbench-benchmarking-kinodynamic-space-time-planners-in-dynamic-environments)  
+   标签：评分：8.0/10、query:q3
+   evidence：使用轨迹优化的动力学时空规划器
+5. [Hamilton-Jacobi Reachability for Hybrid Systems: Unified Goal-Driven Control with Safety Guarantees](/202609/18/2609.17430v1-hamilton-jacobi-reachability-for-hybrid-systems-unified-goal-driven-control-with-safety-guarantees)  
    标签：评分：7.0/10、query:q2
-   evidence：针对机器人系统的安全关键控制和鲁棒控制器
-6. [MessyMem: Learning-from-Doing Memory for Mobile Manipulation](/202609/17/2609.15976v1-messymem-learning-from-doing-memory-for-mobile-manipulation)  
+   evidence：混合机器人系统安全保障的HJ可达性分析
+6. [Timely Activation of Safety Filters via One-Step Reachability Expansion](/202609/18/2609.17904v1-timely-activation-of-safety-filters-via-one-step-reachability-expansion)  
+   标签：评分：7.0/10、query:q5
+   evidence：用于离散时间实时控制的安全过滤器
+7. [Energy-Regularized Imitation Learning for Force- and Work-Aware Robotic Manipulation](/202609/18/2609.18164v1-energy-regularized-imitation-learning-for-force--and-work-aware-robotic-manipulation)  
    标签：评分：7.0/10、query:q6
-   evidence：移动操作任务的持久化记忆
-7. [MessyMem: Learning-from-Doing Memory for Mobile Manipulation](/202609/17/2609.15976v2-messymem-learning-from-doing-memory-for-mobile-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：移动操作任务的持久化记忆系统
-8. [CorrRisk-WM: Corridor-Conditioned Risk World Modeling for Safety-Critical Trajectory Planning](/202609/17/2609.16724v2-corrrisk-wm-corridor-conditioned-risk-world-modeling-for-safety-critical-trajectory-planning)  
-   标签：评分：7.0/10、query:q1
-   evidence：带风险预测的安全关键轨迹规划
-9. [Formal Synthesis of Robust Koopman-Model Predictive Control: A Case Study in AC-DC Power Conversion](/202609/17/2609.15197v1-formal-synthesis-of-robust-koopman-model-predictive-control-a-case-study-in-ac-dc-power-conversion)  
-   标签：评分：6.0/10、query:q2
-   evidence：基于Koopman模型预测控制的优化控制
-10. [Optimal Excitation Trajectories for System Identification of Underwater Vehicles](/202609/17/2609.16786v1-optimal-excitation-trajectories-for-system-identification-of-underwater-vehicles)  
-   标签：评分：6.0/10、query:q3
-   evidence：带安全限制的最优激励轨迹
-11. [Residual Fault Adaptation for Dexterous In-Hand Manipulation Under Runtime Joint Faults](/202609/17/2609.17404v1-residual-fault-adaptation-for-dexterous-in-hand-manipulation-under-runtime-joint-faults)  
+   evidence：能量感知的机器人操作策略微调
+8. [Predictive Online Disturbance-Action Control for Linear Dynamical Systems](/202609/18/2609.18307v1-predictive-online-disturbance-action-control-for-linear-dynamical-systems)  
+   标签：评分：7.0/10、query:q5
+   evidence：线性动力系统的实时自适应控制
+9. [REVOLVE: An Automated Closed-Loop Framework for Evolving Robot Manipulation with Minimal Human Intervention](/202609/18/2609.14633v2-revolve-an-automated-closed-loop-framework-for-evolving-robot-manipulation-with-minimal-human-intervention)  
    标签：评分：6.0/10、query:q6
-   evidence：灵巧手内操纵的协调控制
+   evidence：机器人操作演化的闭环框架
+10. [An Information-Space Perspective to Scene Graph Sufficiency for Robotic Task Planning](/202609/18/2609.15587v1-an-information-space-perspective-to-scene-graph-sufficiency-for-robotic-task-planning)  
+   标签：评分：6.0/10、query:q4
+   evidence：机器人任务规划的场景图形式化
+11. [ManiSkillFormer: Demonstration-Free Compositional Manipulation via Task-Conditioned Geometric Contracts](/202609/18/2609.16331v2-maniskillformer-demonstration-free-compositional-manipulation-via-task-conditioned-geometric-contracts)  
+   标签：评分：6.0/10、query:q6
+   evidence：通过运动模板实现组合式操作
 
 
 <div class="dpr-home-promo-card">

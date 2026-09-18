@@ -1,0 +1,230 @@
+Title: Timely Activation of Safety Filters via One-Step Reachability Expansion
+
+URL Source: https://arxiv.org/pdf/2609.17904v1
+
+Published Time: Thu, 17 Sep 2026 00:21:08 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Timely Activation of Safety Filters via One-Step Reachability Expansion 
+
+Javier Borquez 
+
+Universidad de Santiago de Chile 
+
+Santiago, Chile javier.borquez@usach.cl 
+
+Abstract —Least-restrictive safety filters based on Hamil-ton–Jacobi reachability provide strong safety guarantees by overriding a nominal controller only when the system reaches the boundary of the set of unsafe states defined as a Backward Reachable Tube (BRT). These guarantees, however, rely on the continuous-time nature of the underlying formulation. In practice, robotic systems apply control at discrete sampling in-tervals, which creates a mismatch where the system may “jump” into the unsafe BRT between updates, allowing failures that are theoretically avoidable. This work introduces a principled solution based on a one-step expanded BRT that predicts all states capable of reaching the true BRT within a single timestep. By using this expanded boundary as the activation condition for the safety filter, safety interventions occur early enough to ensure correctness under discrete-time execution. We formulate this expanded set as a modified reachability problem and compute it using standard continuous-time solvers. 
+
+Index Terms —Robot Safety, Reachability Analysis, Collision Avoidance, Safety Filtering, Motion and Path Planning. 
+
+I. I NTRODUCTION 
+
+As robots and autonomous vehicles are increasingly de-ployed to accomplish tasks in cluttered environments, it be-comes essential find methods to fulfill tasks while avoiding undesirable outcomes. A variety of methods have been pro-posed to address navigation and path planning under obstacle constraints [1]–[4]. Complementary to these task-oriented strategies, where safety is often treated as a soft constraint, control-theoretic methods provide formal safety guarantees, including Control Barrier Functions (CBFs) [5]–[7], robust and Tube Model Predictive Control (MPC) [8], [9], reachability-based methods [10], [11], and set-based representations such as zonotopes [12], [13]. These approaches differ in their assumptions and guarantees, yet share the common objective of enabling safe autonomous operation. Among these methods, Hamilton–Jacobi (HJ) reachability analysis provides a powerful and constructive framework for safety verification and controller synthesis. Unlike most alternatives, HJ reachability directly handles general nonlin-ear dynamics, bounded controls, and adversarial disturbances within a unified formulation [14], [15]. Its solutions yields the Backward Reachable Tube (BRT), a set capturing all the states from where the system cannot avoid entering a failure state in the future. This formulation not only certifies whether a state is safe but also provides the corresponding optimal safety-preserving control policy. A common way to leverage the HJ solution in practice is through safe least-restrictive filtering (LRF) [16], [17], where an arbitrary nominal controller governs the system whenever it remains in the safe region, and the optimal safety-preserving control intervenes only when the state reaches the BRT boundary. This approach guarantees safety in the continuous-time setting while preserving nominal behavior elsewhere. The resulting controller is simple, interpretable, and compatible with most existing control or planning algorithms. A wide range of efficient solvers have been developed for computing continuous-time HJ reachability, including nu-merical schemes based on level-set methods [18]–[20] as well as deep-learning–based approximations [21], [22]. These approaches make the continuous-time Hamilton–Jacobi–Isaacs variational inequality (HJI-VI) tractable even for moderately high-dimensional systems, providing strong theoretical guar-antees and reliable numerical behavior. In contrast, direct discrete-time formulations of reachabil-ity remain far less developed and are rarely supported by existing toolchains [23]. As a result, most practical imple-mentations rely on continuous-time BRTs even though real robotic systems operate with discretized sensing, planning, and control updates. This mismatch introduces a potential safety gap, as the continuous-time guarantees may not strictly hold between discrete control updates, effect which becomes more pronounced as the sampling period increases. A key consequence of the continuous–discrete mismatch appears when applying LRFs derived from continuous-time BRTs. Within a single control interval ∆t, a system starting outside the BRT may enter it before the filter can react, effectively “jumping” into a doomed state. To mitigate this, practitioners often inflate the BRT by a heuristic margin ϵ,triggering the filter earlier [24], [25]. Although effective, this approach is ad-hoc, requires manual tuning, and can introduce unnecessary conservatism. In this work, we address the problem of safely implementing LRFs under discrete-time control by introducing a principled method to compute a One-step Expanded BRT . This expanded boundary guarantees that the system cannot reach the original BRT within a single sampling interval, ensuring that the safety filter has sufficient time to intervene. The proposed approach is systematically derived from the dynamics and worst-case evo-lution of the system, preserving the least-restrictive property while minimizing unnecessary conservatism. arXiv:2609.17904v1 [cs.RO] 15 Sep 2026 II. B ACKGROUND 
+
+A. Hamilton-Jacobi Reachability 
+
+One way to guarantee safe operation of autonomous dynam-ical systems is through Hamilton-Jacobi reachability analysis. This approach involves computing the BRT of a failure set 
+
+F. The BRT captures the states from which the system is not able to avoid entering F within some time horizon T , despite the best control effort when facing adversarial disturbance. Mathematically the BRT can be defined as: 
+
+V(t) = {x : ∃d ∈ D , ∀u ∈ U , ∃τ ∈ [t, T ], ξ u,d  
+
+> x,t
+
+(τ ) ∈ F} . (1) Where x denotes the state, u ∈ U the bounded control, and 
+
+d ∈ D the bounded disturbance, and ξ denoting the trajectory followed by the system under the system dynamics given by ˙x = f (x, u, d ), in this context the trajectory notation is to be read as the state achieved at time τ by starting at initial state x and initial time t, and applying control and disturbance sequences {u(·), d (·)} over the time interval [t, τ ].In HJ reachability, the BRT computation is formulated as a zero-sum game between control and disturbance. Proximity to the failure set F is captured by a signed distance function 
+
+l(x). Using this function, we express the cost functional as the minimum distance to F along system trajectories over time: 
+
+J(x, t, u (·), d (·)) = min    
+
+> τ∈[t,T ]
+
+l(ξu,d  
+
+> x,t
+
+(τ )) . (2) The goal is to capture this minimum distance for optimal system trajectories. Thus, we compute the optimal control that maximizes this distance (drives the system away from the failure set) and the worst-case disturbance signal that minimizes the distance. The value function corresponding to this robust optimal control problem is: 
+
+V (x, t ) = inf 
+
+> d∈Γ( t)
+
+sup 
+
+> u(·)
+
+{J(x, t, u (·), d [u]( ·)) }, (3) where Γ( t) defines the set of non-anticipative strategies for the disturbance [14]. The value function in (3) can be computed using dynamic programming, which results in the following final value Hamilton-Jacobi-Isaacs Variational Inequality (HJI-VI) [10], [11], [14]:                   
+
+> min {DtV(x, t ) + H(x, t, ∇V(x, t )) , l (x)−V(x, t )}= 0 ,V(x, T ) = l(x),for t∈[0 , T ].(4)
+
+Dt and ∇ represent the time and spatial gradients of the value function. H is the Hamiltonian, which optimizes over the inner product between the spatial gradients of the value function and the dynamics: 
+
+H(x, t, ∇V (x, t )) = max  
+
+> u∈U
+
+min  
+
+> d∈D
+
+∇V (x, t ) · f (x, u, d ). (5) Once the value function is obtained, the BRT is given as the sub-zero level set of the value function: 
+
+V(t) = {x : V (x, t ) ≤ 0}. (6) The corresponding optimal safe control can be derived as : 
+
+uè (x, t ) = argmax 
+
+> u∈U
+
+min  
+
+> d∈D
+
+∇V (x, t ) · f (x, u, d ). (7) In safety-ensuring applications, we want to guarantee that the system does not enter F at any time . To achieve this, we use a time-converged BRT, as the set of unsafe states typically stops expanding after some time. Since our objective in this work is safety, we will rely exclusively on the converged value function V (x) throughout this paper. This allows us to synthesize safety controllers using an expression identical to (7) but without time dependency. 
+
+B. Least Restrictive Filtering 
+
+If the BRT and associated converged value function are known, a Least Restrictive Filter (LRF) can be deployed to guarantee the safe operation of the system. The LRF is constructed as follows: 
+
+u(x, t ) = 
+
+(
+
+unom (x, t ) V (x) > 0,uè (x) V (x) = 0 . (8) Here, unom (x, t ) corresponds to an arbitrary nominal controller that might optimize a performance criterion without enforcing safety constraints. This control is used when the value function 
+
+V (x) is positive, as the system is not at risk of breaching safety. Whenever the system reaches the boundary of the BRT (V (x) = 0 ), it switches to uè (x) as this optimal control is guaranteed to maintain or increase V (x) keeping the system from entering the unsafe states determined by the BRT, thereby enforcing safety at all times. We refer the reader to [16], [24] for details on this filtering technique and proof of the safety guarantees. III. P ROBLEM STATEMENT 
+
+The least-restrictive filter in (8) guarantees safety in contin-uous time as the control can be switched instantaneously when 
+
+V (x) = 0 . However, in practice, robotic systems operate in discrete time with a finite sampling period ∆t. This introduces a mismatch between the continuous-time safety guarantees provided by the HJ formulation and the discrete-time execution of control actions. Let V = {x : V (x) ≤ 0} denote the time-converged Back-ward Reachable Tube corresponding to the unsafe set F. When control updates occur at discrete intervals ∆t, the system may transition from a state xt with V (xt) > 0 (nominal control region) to a state xt+∆ t satisfying V (xt+∆ t) < 0 making the safety filter react from an unsafe state. This leads to inevitable safety violations despite the use of the optimal safety filter. To avoid this issue, we can rely on an inflated BRT as the activation boundary for the LRF in (8) that expands the original boundary by some margin, such as the common heuristic of using a sufficiently big ϵ super-level of the value function. The key requirement for any successful expansion is that any state on the boundary of the inflated BRT must require more than one sampling interval ∆t to reach the original BRT under worst-case dynamics. Intuitively, this ensures that the system cannot transition from outside the inflated boundary to inside the true BRT within a single discrete control step, effectively eliminating the safety violations introduced by control discretization. This is visually presented in Figure 1. Fig. 1. Effect of control discretization on safety. Grey denotes the obstacle set and light orange the BRT. (Left) Green: discrete update at the boundary maintains safety. Red: update inside the BRT guarantees a violation. Black: update before the boundary applies the nominal policy, which may still lead to failure. (Right) Blue: inflated BRT boundary requiring at least one ∆t to traverse. Green: update at the inflated boundary maintains safety. Red: update inside the inflated boundary allows the safety filter to activate before reaching the true BRT boundary, preserving safety. Black: update before the inflated boundary applies the nominal policy, which remains safe as the system cannot move from outside the inflated boundary to inside the BRT within a single update step. 
+
+The core challenge is to determine, for a given sampling period ∆t, the minimal expansion of the base BRT that guarantees safety under discrete-time control updates. The goal is to construct an inflated BRT that serves as the activation boundary for the least-restrictive filter, ensuring that the system always triggers the safety intervention before crossing into the original BRT during one control interval. This approach provides a principled way to compensate for the effects of control discretization in the LRF while preserving its least-restrictive nature. IV. P ROPOSED APPROACH 
+
+A. One-step Expanded BRT 
+
+To formalize the notion of a minimal expansion consistent with a given control update period ∆t, we introduce the One-step Expanded BRT. This set captures all states that could reach the original BRT within a single sampling interval under the system’s worst-case evolution. 
+
+V∆t(t) = {x : ∃d ∈ D , ∃u ∈ U , ∃τ ∈ [t, ∆t], ξ u,d  
+
+> x,t
+
+(τ ) ∈ V} . (9) 
+
+Unlike the standard formulation in (1), this definition treats the base, time-converged BRT as the new failure set to avoid, with a time horizon of ∆t. The control and disturbance inputs are both assumed to act adversarially to safety, capturing the most aggressive evolution of the system toward the unsafe region. This models the worst-case behavior that could occur during the interval where the nominal controller remains active. Based on this definition, we introduce corresponding cost and value functions, analogous to (2) and (3), respectively: 
+
+J∆t(x, t, u (·), d (·)) = min   
+
+> τ∈[t, ∆t]
+
+V (ξu,d  
+
+> x,t
+
+(τ )) , (10) 
+
+V∆t(x, t ) = inf  
+
+> d∈Γ( t)
+
+inf 
+
+> u(·)
+
+{J∆t(x, t, u (·), d [u]( ·)) }. (11) These functions describe the minimal value of V that can be reached under worst-case dynamics within a single sampling period ∆t. In this way, V∆t characterizes the minimal distance to the true base BRT achievable in one discrete control step. This formulation naturally extends the standard HJI-VI in (4) to compute the One-step Expanded BRT: 
+
+min {DtV∆t(x, t ) + H∆t(x, t, ∇V∆t(x, t )) , V (x) − V∆t(x, t )}=0 ,V∆t(x, ∆t) = V (x), for t ∈ [0 , ∆t] .
+
+(12) 
+
+Here, the terminal condition ensures that at time ∆t, the inflated value function matches the base value function V (x).The evolution of V∆t backward in time over the interval 
+
+t ∈ [0 , ∆t] captures the region from which the system can be driven into the original BRT within one sampling period. Finally, the modified Hamiltonian H∆t encodes the adver-sarial actions for control and disturbance that most rapidly drives the system toward the base BRT: 
+
+H∆t(x, t, ∇V∆t(x, t )) = min  
+
+> u∈U
+
+min  
+
+> d∈D
+
+∇V∆t(x, t ) · f (x, u, d ). (13) 
+
+This form ensures that the inflated BRT represents the set of states that within one full ∆t can reach the original BRT under worst-case conditions. A full derivation of (12) follows by starting from the one-step value function definition in (11), applying the dynamic programming principle, and deriving the corresponding HJI variational inequality and Hamiltonian. For brevity, the detailed derivation is omitted, as it directly parallels the standard HJI-VI development with the role of the control in the optimization reversed. Once the value function is obtained, the One-step Expanded BRT is given as the sub-zero level set of the value function: 
+
+V∆t(t) = {x : V∆t(x, t ) ≤ 0}. (14) This formulation allows the use of standard HJ reachability solvers to compute the one-step inflated BRT directly. By defining both the control and disturbance inputs to act adver-sarially to safety (minimizing the value function) within the solver, and by setting the converged value function V (x) as the terminal condition, we can propagate the HJI-VI in (12) backward for one sampling interval ∆t to obtain V∆t.
+
+B. Safety of the One-step Expansion 
+
+In this subsection we show that activating the LRF using the inflated BRT ensures that safety is maintained under discrete-time control updates. 
+
+Proposition 1. If the least-restrictive safety filter activates using as switching condition the boundary of the one-step inflated BRT V∆t, that is: 
+
+u(x, t ) = 
+
+(
+
+unom (x, t ) V∆t(x) > 0,uè (x) V∆t(x) ≤ 0. (15) then safety is guaranteed for discrete-time control execution with period ∆t for any state starting outside of V∆t.
+
+Proof. Let xt be the state at a sampling instant t. Assume 
+
+xt /∈ V ∆t, i.e. V∆t(xt) > 0. The control law (15) implies the nominal controller unom is applied on the interval [t, t + ∆ t).Denote by xt+∆ t = ξunom ,d  
+
+> xt,t
+
+(∆ t) the state reached after one sampling period under some (possibly adversarial) disturbance 
+
+d(·) and the nominal control unom (·).Consider the mutually exclusive possibilities for the sam-pled successor xt+∆ t:1) V∆t(xt+∆ t) > 0. Safety is preserved as this state is outside both the One-step Expanded BRT and base BRT. 2) V∆t(xt+∆ t) ≤ 0 and V (xt+∆ t) > 0. In this case the LRF will switch to the safe controller at time t + ∆ t.Since xt+∆ t is outside the base BRT, the safe controller can keep the trajectory out of V thereafter [24]. 3) V (xt+∆ t) ≤ 0. This case is not possible under the as-sumption V∆t(xt) > 0: by construction if V∆t(xt) > 0
+
+there is no one-step trajectory that can reach a state with V (xt+∆ t) > 0 for all admissible controls and disturbances. Therefore, starting from any xt with V∆t(xt) > 0, the system cannot enter the true BRT compromising the system safety. This because after the system evolves during one sampling step the LRF (15) either: (i) uses the nominal policy while safety is preserved by staying outside the One-step Expanded BRT, or (ii) the One-step Expanded BRT is breached and the optimally safe policy is used before the system can reach the true BRT. Hence safety is maintained for discrete-time control execution with period ∆t.V. S IMULATION STUDIES 
+
+For a simulation study we consider an autonomous robot modeled as a Dubins’ car trying to reach a goal in a cluttered environment. The system can be represented by the following three dimensional dynamics: 
+
+˙x =
+
+
+
+˙px
+
+˙py
+
+˙θ
+
+ =
+
+
+
+V cos( θ) + dx
+
+V sin( θ) + dy
+
+u
+
+ , (16) where px, p y denote the car’s position, θ its orientation, 
+
+V = 0 .3m/s its fixed speed, u ∈ [−0.75 , 0.75] rad/s its angular velocity input, and d = [ dx, d y ] a random bounded velocity disturbance satisfying ∥d∥2 ≤ 0.03 m/s. The failure set is defined as a 2m × 5.6m rectangular enclosure containing four circular obstacles of diameter 0.2m. This set is inflated by 0.17 m to account for the robot’s body diameter. The robot’s objective is to travel from a designated start region to a target set located on opposite sides of the enclosure, as shown in Fig. 2 (left). The base BRT for this setup is computed on a [px, p y , θ ] grid of [101 , 281 , 181] points , corresponding to a spatial resolution of 2cm and an angular resolution of 2◦. The computation proceeds until convergence, which in this case occurs after a time horizon of 1s. To evaluate the effect of discrete control updates, we sim-ulate safe navigation using four discrete control timesteps, 
+
+∆t ∈ [0 .1, 0.2, 0.3, 0.4] s. For each timestep, the One-step Expanded BRT is computed following the procedure described in subsection IV-A, using the same state-space grid as the base BRT. Figure 2 shows both the base BRT and the One-step Expanded BRT for ∆t = 0 .2s. It is worth mentioning that these correspond to 2-dimensional projections of the 3-dimensional BRTs, here we show the projections for θ = π/ 2.   
+
+> Fig. 2. One-step Expanded BRT and base BRT for the obstacle set in the simulation environment for Dubins’ car study using ∆t= 0 .2s. Trajectories for each LRF scheme are shown as lines with dots, with dots representing the discrete steps where the control is updated. Here we observe how the early activation of the LRF by the One-step Expanded BRT is crucial in preserving safety in contrast to the base BRT.
+
+To attempt to complete the task, we use a shooting-based MPC nominal controller that does not consider obstacle avoid-ance in its objective. We choose this unsafe nominal controller on purpose to highlight the effect of safety filtering. The nominal controller will be filtered using the least restrictive filters (8) and (15) which use the base BRT and One-step Expanded BRT correspondingly. Figure 2 shows two trajectories for the filtered nominal policy, each one corresponding to an activation based on the use of the base BRT or One-step Expanded BRT. The left zoomed-in image highlights how the early activation of the safety filter produced by the One-step Expanded BRT allows the system to maintain safety around the obstacle while the late activation in the base BRT case leads to collision in the form of penetration of the obstacle. For each timestep setting and each filtering method, we perform 100 Monte Carlo simulations with randomly sampled initial states within the starting area. We assume perfect state estimation and an exact dynamics model to isolate as much as possible the impact of delayed safety filter activation from other sources of error. For each run, we report the number of safe trajectories, along with the median of the maximum penetration into the obstacle set, and time to first safety violation. 1                                   
+
+> 1Because penetration or failure can occur over a continuous spectrum when failure happens, and remains undefined for successful runs, the resulting distributions of failure-related metrics are heavily skewed. Consequently, the median offers a more representative measure of central tendency than the mean and enables more reliable statistical significance testing. TABLE I. Simulation results for the Dubins’ car study under different discrete control timesteps. Metrics report the median across 100 runs.
+> ∆tBRT Safe Maximum Time to trajectories penetration [mm] first collision [s]
+> 0.1sBase 11 15 .75.7
+> Exp. 67 7.56.40.2sBase 527 .85.6
+> Exp. 82 5.76.50.3sBase 635 .75.4
+> Exp. 85 16 .36.40.4sBase 646 .15.4
+> Exp. 86 12 .111 .3
+
+Table I summarizes the results of the simulation study across different control timesteps. The proposed One-step Expanded BRT safety filter consistently outperforms the baseline ap-proach in all evaluated metrics. While the Base BRT filter results in frequent and severe collisions, achieving only 5–11 safe trajectories out of 100 runs, the One-step Expanded BRT maintains substantially higher safety rates, ranging from 67 to 89 across timesteps. The median penetration depths are consistently lower, and failures, when they occur, take longer to manifest. Together, these results indicate that the One-step Expanded BRT not only prevents most collisions but also ensures that when failures do occur, they are milder and occur later in time. To assess the statistical significance of these differences, one-sided Mann–Whitney U tests were conducted comparing the distributions of both maximum penetration and time to first collision across methods at each ∆t. In all cases, the One-step Expanded BRT filter achieved significantly better outcomes with p < 0.05 , confirming that the observed improvements are not due to random variation. These findings validate that using the One-step Expanded BRT as the activation boundary for least-restrictive filtering provides a principled and effective mechanism to improve safety under discrete-time control execution. While the proposed method substantially improves safety performance, it does not provide guarantees, as indicated by the nonzero number of failures across all tested timesteps. This residual risk arises from the underlying mismatch be-tween the continuous-time BRT used in the safety filter and the discrete-time execution of control actions. Although the one-step expansion effectively compensates for delayed filter activation caused by control discretization, it still relies on a value function computed under the assumption of continuous time control authority. As a result, the derived safety boundary may not perfectly capture the true discrete-time reachable set, leaving a gap through which safety violations can still occur. It is worth mentioning that results show improvement in safety performance for larger control timesteps, with a pronounced jump in number of successful trajectories at 
+
+∆t = 0.2s compared to ∆t = 0.1s. One likely explana-tion is that the One-step Expanded BRT provides stronger safety margins as the timestep grows. Since the expansion is computed under worst-case assumptions for both control and disturbances, while the nominal shooting MPC policy behaves non-adversarially, thus the resulting inflated boundary offers more protection than strictly necessary to address the delayed activation of the filter. This additional margin compensates for residual effects of the mismatch between the continuous-time safety certificate and its discrete implementation, leading to improved robustness at larger sampling intervals. VI. C ONCLUSION 
+
+This work addressed a key gap that arises when continuous-time Hamilton–Jacobi safety certificates are deployed on discrete-time robotic systems. While least-restrictive safety filters guarantee safety when paired with continuous-time Backward Reachable Tubes, these guarantees weaken when control is updated at finite sampling intervals. To mitigate the resulting “jump-over” failures, we introduced the One-step Expanded BRT, derived by solving an adversarial one-step reachability problem. This construction provides the smallest expanded boundary that ensures a system cannot transition from a safe state to inside the unsafe BRT within a single control period. Through simulated navigation experiments on a Dubins vehicle, we demonstrated that the proposed one-step expanded BRT substantially improves the reliability of least-restrictive filtering across a range of sampling times. The expanded filter produced significantly more safe trajectories, exhibited much smaller penetration values when failures occurred, and consistently delayed the time of first violation compared to the standard LR filter. These improvements were statistically validated using Mann–Whitney U tests on maximum pene-tration and time-to-first-collision metrics, confirming that the expanded BRT provides meaningful and principled safety advantages. Although the approach improves safety when using continuous-time BRTs for safety filtering in discrete-time settings, it does not completely eliminate failures. Because the underlying safety certificate is derived in continuous time, the system remains subject to the broader continuous–discrete mismatch, which the one-step expansion only partially re-solves. Further mitigating this mismatch could involve con-structing safety sets directly in discrete time, or combining continuous-time HJ analysis with conservative discrete-time over-approximations of system flows. Additional future direc-tions include extending the proposed formulation to higher-dimensional systems and validating its effectiveness on real robotic platforms. Developing such approaches remains an important challenge for ensuring robust safety guarantees under realistic control-loop timings. More broadly, while our method was formulated within the HJ reachability framework, nothing restricts it to this setting. Any barrier certificate that defines an unsafe set and propagates trajectories under bounded inputs could be expanded using the same adversarial one-step procedure. This includes control barrier functions, tube-model predictive control safety sets, and other viability-based certificates. Developing such generalized expansions, along with discrete-time reachability tools and real-world validation, represents a promising direction for future work. REFERENCES [1] D. Dolgov, S. Thrun, M. Montemerlo, and J. Diebel, “Practical search techniques in path planning for autonomous driving,” ann arbor , vol. 1001, no. 48105, pp. 18–80, 2008. [2] G. Kahn, P. Abbeel, and S. Levine, “Badgr: An autonomous self-supervised learning-based navigation system,” IEEE Robotics and Au-tomation Letters , vol. 6, no. 2, pp. 1312–1319, 2021. [3] P. Chintala, R. Dornberger, and T. Hanne, “Robotic path planning by q learning and a performance comparison with classical path finding algo-rithms,” International Journal of Mechanical Engineering and Robotics Research , vol. 11, no. 6, pp. 373–378, 2022. [4] S. M. Swadi, A. K. Kadhim, and G. M. Ali, “Design of path planning controller of autonomous wheeled mobile robot based on triple pendu-lum behaviour,” Int. J. Mech. Eng. Robot. Res , vol. 12, no. 1, pp. 23–31, 2023. [5] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier function based quadratic programs for safety critical systems,” IEEE Transactions on Automatic Control , 2016. [6] A. D. Ames, S. Coogan, M. Egerstedt, G. Notomista, K. Sreenath, and P. Tabuada, “Control barrier functions: Theory and applications,” in IEEE European control conference (ECC) , 2019. [7] X. Xu, P. Tabuada, J. W. Grizzle, and A. D. Ames, “Robustness of control barrier functions for safety critical control.” IFAC-PapersOnLine , vol. 48, no. 27, pp. 54–61, 2015, analysis and Design of Hybrid Systems ADHS. [Online]. Available: https: //www.sciencedirect.com/science/article/pii/S2405896315024106 [8] D. Q. Mayne, E. C. Kerrigan, E. Van Wyk, and P. Falugi, “Tube-based robust nonlinear model predictive control,” International journal of robust and nonlinear control , vol. 21, no. 11, pp. 1341–1353, 2011. [9] J. K¨ ohler, R. Soloperto, M. A. M¨ uller, and F. Allg¨ ower, “A computa-tionally efficient robust model predictive control framework for uncertain nonlinear systems,” IEEE Transactions on Automatic Control , vol. 66, no. 2, pp. 794–801, 2020. [10] J. Lygeros, “On reachability and minimum cost optimal control,” Auto-matica , vol. 40, no. 6, pp. 917–927, 2004. [11] I. Mitchell, A. Bayen, and C. J. Tomlin, “A time-dependent Hamilton-Jacobi formulation of reachable sets for continuous dynamic games,” 
+
+IEEE Transactions on Automatic Control (TAC) , 2005. [12] M. Althoff and B. H. Krogh, “Zonotope bundles for the efficient computation of reachable sets,” in 2011 50th IEEE Conference on Decision and Control and European Control Conference , 2011, pp. 6814–6821. [13] A. Girard, “Reachability of uncertain linear systems using zonotopes,” in Hybrid Systems: Computation and Control , M. Morari and L. Thiele, Eds. Berlin, Heidelberg: Springer Berlin Heidelberg, 2005, pp. 291– 305. [14] S. Bansal, M. Chen, S. Herbert, and C. J. Tomlin, “Hamilton-Jacobi Reachability: A brief overview and recent advances,” in IEEE Confer-ence on Decision and Control (CDC) , 2017. [15] L. C. Evans and P. E. Souganidis, “Differential games and representation formulas for solutions of hamilton-jacobi-isaacs equations,” Indiana University mathematics journal , vol. 33, no. 5, pp. 773–797, 1984. [16] K.-C. Hsu, H. Hu, and J. F. Fisac, “The safety filter: A unified view of safety-critical control in autonomous systems,” Annual Review of Control, Robotics, and Autonomous Systems , vol. 7. [17] K. P. Wabersich, A. J. Taylor, J. J. Choi, K. Sreenath, C. J. Tomlin, A. D. Ames, and M. N. Zeilinger, “Data-driven safety filters: Hamilton-jacobi reachability, control barrier functions, and predictive methods for uncertain systems,” IEEE Control Systems Magazine , vol. 43, no. 5, pp. 137–177, 2023. [18] I. Mitchell, “A toolbox of level set methods,” http://www. cs. ubc. ca/mitchell/ToolboxLS/toolboxLS. pdf, Tech. Rep. TR-2004-09 , 2004. [19] M. Chen and S. Herbert, “helperOC Library, 2019,” https://github.com/ HJReachability/helperOC. [20] E. Schmerling and M. Pavone, “hj reachability: Hamilton-jacobi reachability analysis in jax,” 2023. [Online]. Available: https: //github.com/StanfordASL/hj reachability [21] S. Bansal and C. J. Tomlin, “DeepReach: A deep learning approach to high-dimensional reachability,” in IEEE International Conference on Robotics and Automation (ICRA) , 2021. [22] Z. Feng, L. Qiu, and S. Bansal, “Bridging Model Predictive Control and Deep Learning for Scalable Reachability Analysis,” in Proceedings of Robotics: Science and Systems , LosAngeles, CA, USA, June 2025. [23] I. M. Mitchell, M. Chen, and M. Oishi, “Ensuring safety of nonlinear sampled data systems through reachability1,” IFAC Proceedings Volumes , vol. 45, no. 9, pp. 108–114, 2012, 4th IFAC Conference on Analysis and Design of Hybrid Systems. [Online]. Available: https://www.sciencedirect.com/science/article/pii/S1474667015371822 [24] J. Borquez, K. Chakraborty, H. Wang, and S. Bansal, “On safety and liveness filtering using hamilton–jacobi reachability analysis,” IEEE Transactions on Robotics , vol. 40, pp. 4235–4251, 2024. [25] A. Lin, S. Peng, and S. Bansal, “One filter to deploy them all: Robust safety for quadrupedal navigation in unknown environments,” 2024. [Online]. Available: https://arxiv.org/abs/2412.09989

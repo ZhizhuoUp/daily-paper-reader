@@ -1,0 +1,463 @@
+Title: Resilient Motion Planning for Free-Flying Space Robots under Actuator Failures
+
+URL Source: https://arxiv.org/pdf/2609.20407v1
+
+Published Time: Fri, 18 Sep 2026 01:21:14 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Resilient Motion Planning for Free-Flying Space Robots under Actuator Failures 
+
+Nicolas de Maddalena 1,∗, Joris Verhagen 2,∗, Jana Tumova 2
+
+Abstract — Free-flying robots rely on multiple thrusters to maneuver in space. If one or more of these thrusters fail, the robot may lose control authority and risk mission failure. At the same time, their free-flying nature implies that, even in the absence of actuation, they continue along (locally) straight-line trajectories. In this work we present a probabilistic, proactive, motion planning framework that explicitly accounts for actuator failures in space. We model actuator failure modes as a Markov chain and propagate the probability of successfully reaching the goal along the planning horizon. Precomputed reachable sets evaluate the robot’s capabilities of reaching waypoints under potential failures and an RRT ∗-based planner concatenates these waypoints. The resulting algorithm maximizes the overall target-reaching probability, providing maximally resilient motion plans utilizing free-flying properties. We validate our approach experimentally on a physical free-flyer platform with injected actuator failures. code and demos 
+
+I. INTRODUCTION Autonomous spacecraft operate in environments that com-bine high scientific and economic value with extreme in-accessibility. As such, failures to critical subsystems are typically irreversible once a mission is deployed. Among such failures, actuator faults constitute a major source of mission degradation or complete mission loss, accounting for approximately 30% of attitude and orbit control system failures [1]. As the number of autonomous spacecraft grows, ensuring safety and mission completion in the presence of actuator failures is a central challenge. Traditionally, resilience to subsystem failures is achieved through electrical and mechanical redundancies such as reconfigurable components and duplicated actuators [2] as well as improved testing [3], [4]. While effective, redundancy increases mass, complexity, and cost of a system that may still fail. Existing fault-tolerant strategies are often reactive: upon detecting a failure, the system transitions to a safe mode or continues operation with reduced performance. Both approaches respond to failures after they occur, leading to greedy behavior that compromises long-horizon objectives. The objective of this paper is instead to develop a proactive resilient motion planning algorithm in the presence of actu-ator failures, specifically for autonomous space robots. Our approach exploits two key properties often found in space robotics: actuator symmetry and free-flying dynamics. By    
+
+> ∗Contributed equally to this work
+> 1Institute for Dynamic Systems and Control, ETH Z¨ urich, 8092 Z¨ urich, ZH, Switzerland
+
+nicolade@student.ethz.ch  
+
+> 2Division of Robotics, Perception and Learning, KTH Royal Institute of Technology, Stockholm, Sweden, and also affiliated with Digital Fu-tures. {
+
+jorisv, tumova } @kth.se   
+
+> Fig. 1: Planned (blue) and executed (green) trajectory of a spacecraft analogue platform tasked with reaching the goal Xgwhile avoiding obstacle
+> Xobs . Complete failure occurs at the corner. The plan accounts for this possibility by escaping the obstacle’s shadow, after which the remaining trajectory is a straight line to the goal that a total actuation loss can complete.
+
+reasoning over long planning horizons, we trade nominal performance for the ability to complete the mission after the loss of one, several, or all actuators. While a spacecraft may not survive every failure realization, we seek to maximize the probability of mission success over all possible failure realizations, providing a quantitative measure of the system’s resilience w.r.t. the environment and task. We propose a motion planning framework integrating reachability analysis and Markov chains in an RRT ∗ struc-ture. Deterministic reachable sets are used to certify feasi-bility under specific actuator configurations, while a Markov chain models stochastic actuator failure events. Our approach explicitly incorporates the symmetry of actuator configura-tions found on spacecraft and the (local) free-flying dynam-ics that enable mission continuation even under complete loss of control authority. Each sampled state is assigned a probabilistic reachability guarantee under the different failure scenarios, and entire trajectories inherit a reach-avoid probability for the task. An example, shown in Fig. 1, shows how a plan requires the robot to leave the obstacle’s shadow from the goal as early as possible and to keep its velocity vector aimed at the goal from that moment onward, enabling goal-reaching with full or partial thruster loss. 
+
+A. Contributions 
+
+We list our contributions as follows:  
+
+> •
+
+We present a motion planning framework for non-linear dynamical systems under uncertain actuator failures obtaining probabilistic reachability guarantees.  
+
+> •
+
+Our planner maximizes resilience to actuator failures in the presence of symmetry and free-flying dynamics via a modified RRT ∗ algorithm.  
+
+> •
+
+We validate on the free-floating ATMOS platform [5]. arXiv:2609.20407v1 [cs.RO] 17 Sep 2026 B. Related Work 
+
+The field of resilient robotics has seen significant progress in model-based planning and fault-tolerant control. However, the literature often addresses system uncertainty and discrete structural failures separately. Traditional approaches to robust planning often focus on stochasticity and parametric uncertainty. In [6] planning for stochastic systems under uncertainty is tackled, yet this framework does not allow for discrete structural changes in-herent to actuator failures. Similarly, domain randomization and robust optimization techniques [7] mitigate the impact of disturbances and parametric shifts. However these methods provide empirical robustness rather than long-horizon formal probabilistic guarantees and are similarly less well-suited to handle actuator failures. When failures do occur, reactive strategies are the stan-dard. Research into fault-tolerant control [8], [9], [10], [4] provide best-effort measures after a fault is detected. While these reactive methods are comparable to our work, they lack proactive foresight into choosing trajectories that minimize risk of mission failure after actuator failures occur. In [11] safety guarantees for satellites under full actuator failures are addressed by staying in unstable regions of the orbit. While our work does not consider orbital dynamics, it does allow for independent failures of multiple thruster configurations. Alternative approaches utilize learning-based, model-free [12], and model-based [13] setups to adapt to fail-ures. While powerful, these tools lack the formal statistical guarantees required for high-stakes space missions. Most close to our approach is path-tree optimization 
+
+in [14] to balance performance with expected discrete out-comes, in this case observability resulting in belief-space graphs. We extend this philosophy to the domain of actuator failures, essentially creating probabilistic operability graphs. II. PRELIMINARIES Let R denote the set of real numbers, B = {0, 1}, and 
+
+[0 , 1] n the set {x ∈ Rn | 0 ≤ xi ≤ 1, ∀i ∈ { 1, . . . , n }} .Vectors are denoted by bold lowercase letters, x, matrices by bold capital letters, X, and sets by calligraphic letters, 
+
+X . A tilde distinguishes a node of the planning tree, ˜x, from the state x that it carries. We denote a timestep with index 
+
+k and a failure mode with index i.
+
+A. Markov Chains 
+
+A Markov chain [15], [16] models stochastic transitions between discrete system states and is defined by the pair 
+
+(S, P ), where S = {s0, s 1, . . . , s m−1} is a finite set of states and P ∈ [0 , 1] m×m is a transition matrix with entries 
+
+pa,b = P(sk+1 = sa | sk = sb), (1) i.e. the probability of moving to sa given that the chain occupies sb at timestep k. Each column of P is therefore a probability distribution over S, i.e. Pm−1 
+
+> a=0
+
+pa,b = 1 , ∀b.Assigning to each timestep a probability vector pk ∈ [0 , 1] m,whose i-th entry is the probability of occupying si, the chain propagates as pk+1 = P p k and, by the Markov property, 
+
+pk = P kp0.
+
+B. Hamilton-Jacobi Reachability 
+
+Hamilton-Jacobi (HJ) reachability is a tool for formally verifying safety and liveness properties of dynamical sys-tems. We consider the dynamical model of the spacecraft in its general nonlinear form 
+
+˙x = f (x, u) (2) where x ∈ X ⊂ Rnx and u ∈ U ⊂ Rnu indicate the state and control input to the system. We can then define the Backwards Reachable Set (BRS) as 
+
+G(t; tf , Xf ) = {x(t) | ∃ u(·) ∈ U ,
+
+˙x = f (x, u), x(tf ) ∈ X f }, (3) which denotes all the states at time t from which a target Xf
+
+can be reached at time tf . For nonlinear systems, obtaining this BRS amounts to solving the well-known Hamilton-Jacobi-Bellman Partial Differential Equation (PDE) 
+
+∂∂t V (t, x)+ min  
+
+> u∈U
+
+∇V (t, x)⊤f (x, u) = 0 ,V (tf , x) = v(x),
+
+(4) where v(·) is any Lipschitz function whose zero sublevel set is the target, v(x) ≤ 0 ⇔ x ∈ X f . The sign of the value function then indicates whether Xf is reachable from (t, x),so that 
+
+G(t; tf , Xf ) = {x | V (t, x) ≤ 0}. (5) The PDE is nonlinear and infinite-dimensional, generally not permitting closed-form solutions. The level-set method [17] provides an algorithmic approach to obtain this value func-tion via dynamic programming. The optimal control is then the minimizer of the value function [18] and drives the system from the BRS to the target set 
+
+u∗(t, x) = arg min  
+
+> u∈U
+
+∇V (t, x)f (x, u). (6) We refer to [18] and [19] for a comprehensive overview of reachability and level-set methods. 
+
+C. RRT ∗ Motion Planning 
+
+A rapidly-exploring random tree (RRT) [20] samples states in the state space and adds them to a tree G = ( V, E )
+
+defined by its vertices V , i.e. the samples, and the edges E
+
+between pairs of vertices. In the limit such a tree covers the whole planning space, making the algorithm probabilistically complete, i.e. the probability of finding a solution converges to 1. While RRTs ensure global state coverage, a vertex never changes its parent once connected, which confines the planner to suboptimal solutions. RRT ∗ [21] addresses this limitation and guarantees asymptotic optimality by rewiring the edges between the nodes in order to reduce the cost (e.g. the path length from the root). III. PROBLEM STATEMENT The problem addressed in this work falls under a classic reach-avoid trajectory optimization problem with the added challenge of providing probabilistic guarantees under uncer-tain actuator failures. First, we define the goal region Xg and its reach-event time 
+
+tg = inf {t : t ≥ 0, x(t) ∈ X g }.
+
+Let p(t) ∈ Rm then denote the probability of reaching x(t)
+
+under m failure modes Mi, i ∈ { 0, . . . , m − 1} (each with associated probabilities of occurrence). We then denote the resilient motion planning problem as 
+
+J∗ = max  
+
+> x,u
+
+wp · X p(tg ) − wd · d(x(tg )) (7a) 
+
+s.t. ˙x = f (x(t), u(t)) (7b) 
+
+x(t) ∈ X f ree , Xf ree = X \ X obs (7c) 
+
+x(tg ) ∈ X g (7d) 
+
+x(0) = x0 (7e) 
+
+u(t) ∈ U M (t) (7f) where f (·) denotes the state dynamics, and Xf ree denotes the obstacle-free part of the state space X . The failure modes are captured in the failure-model -dependent actuator constraints u(t) ∈ U Mi which, combined with the continuous dynamics, leads to a hybrid nonlinear dynamical system with probabilistic transition. It is the state of UMi along the trajectory x(t) that determines p(tg ).The function d(x(tg )) computes the traveled distance from the root x(0) to the target node x(tg ) along its trajectory 
+
+x(t). The weights wp > 0 and wd > 0 allow user-defined focus on resilience and (a metric for) efficiency. The relative likelihood of the failure modes, P , and the weights implicitly determine which of the modes the trajectory is shaped around. IV. M ETHOD 
+
+In this section we present our sampling-based resilient motion planning algorithm to solve the continuous problem in Eq. (7). We embed the standard RRT ∗ algorithm with the information on actuator failure probability and the reachabil-ity for those models for newly sampled points. This sampling allows us to consider the nonlinear hybrid dynamics in a global, tractable motion planning algorithm. 
+
+A. Backwards Reachable Sets 
+
+First, according to Eq. (7b) and Eq. (7f), we need to determine dynamic feasibility of a trajectory in the presence of potential actuator failures. We tackle this by considering the reachability between parent node ˜xk and child node ˜xk+1 
+
+via the containment of xk in the BRS of ˜xk+1 . Each of the m failure models, captured by UMi , i ∈ { 0, . . . , m − 1}
+
+leads to a different BRS. Using the BRS, we guarantee the continuous-time satisfaction of Eq. (7b) under a discrete occurrence of failure mode Mi according to Eq. (7f). While this would lead to the assumption that actuator failures may 
+
+> Fig. 2: Flowchart of the resilient motion planning framework.
+
+only occur at the discrete samples, the consideration of subsystems ( UMi ⊆ U Mj ) makes this less restrictive: any failure to a subsystem between k and k + 1 can be regarded as a failure of the subsystem at k.Many spacecraft models exhibit some form of symmetry. The space-analogue platform in Fig. 4 is actuated by eight symmetrically arranged thrusters and thus UM2 is exactly a 90 ◦ rotation of UM1 (same uθ , swapped axes). We can utilize this symmetry in two ways; dynamically equivalent symmetric configurations reduce the number of BRSs that need to be computed and it reduces the number of connec-tivity/intersection checks in the algorithm. 
+
+B. Failure Modeling 
+
+Let M = {M0, M 1, . . . , M m−1} be the set of system models. We assume that the failure probabilities (e.g. chance of failure per operating duration) are given. From that, a Markov chain can be constructed. This chain’s transition matrix P ∈ [0 , 1] m×m collects these probabilities. To assess the probability of a trajectory x(t) reaching the goal under failure models, we extend the Markov chain with reachability information. Let Rk→k+1 ∈ Bm×m be a diagonal matrix where the diagonal entry Rik→k+1 ∈ B denotes whether 
+
+xk is in the BRS of xk+1 for model i. We then denote the probability vector pk+1 ∈ [0 , 1] m as the probability of 
+
+xk+1 being reachable by each failure model as pk+1 =
+
+Rk→k+1 P p k with pk ∈ [0 , 1] m the probability for being each failure model at k. For an entire trajectory consisting of sequential waypoints (x0, · · · , x k) we can obtain the probability vector 
+
+pk =
+
+
+
+> 1
+
+Y
+
+> j=k
+
+Rj−1→j · P
+
+ p0 = p0 
+
+> k
+
+p1 
+
+> k
+
+. . . pm−1
+
+> k
+
+⊤
+
+(8) recursively from the known root node probability p0, where element pik now denotes the probability of reaching node 
+
+xk through model Mi. Note that since R zeroes out non-traversible modes, Pm−1 
+
+> i=0
+
+pik ≤ 1 is a sub-distribution. The deficit 1 − Pm−1 
+
+> i=0
+
+pik is the probability of not reaching xk at all, i.e. the probability of failure. C. Sampling-based Motion Planner 
+
+To integrate the reachability and probability propagation into a unified framework, we employ a modified RRT ∗
+
+algorithm for motion planning under actuator failure uncer-tainty. The proposed planner incorporates the Markov failure probability matrix and precomputed backward reachable sets directly into its cost evaluation (see Fig. 2). Throughout the remainder of this section, we focus on a planar system to illustrate the approach. First, note that a sampling-based approach is well-suited to this problem due to its ability to handle high dimensional state spaces, non-convex environments, nonlinear dynamics, and discrete failure events. In contrast, trajectory optimiza-tion methods are often sensitive to initialization and prone to converge to local minima, while graph-based approaches suffer from the curse of dimensionality and require dis-cretization incompatible with onboard computational con-straints. Sampling-based algorithms such as RRT ∗ are both probabilistically complete and asymptotically optimal [21]. These guarantees formally hold only for monotonic cost functions. Our cost function needs to be slightly modified in order to be monotonic, because a local improvement for one trajectory candidate can still be worse than the trajectory candidate with the global minimal cost. To avoid converging to a local minimum, the algorithm stores the best cost found so far and ensures the final solution is no worse than any previous iteration. The resilient RRT ∗ planner is shown in Algorithm 1. First, nodes are created via C REATE NODE (·) with the properties of the current state, its parent, and the reachability matrix between parent and node. The root node does not have a parent or a reachability matrix. The node gets added to the tree (line 3) and all BRSs are loaded into memory for all models Mi ∈ M (line 4). We iteratively sample N
+
+waypoints, xs ∈ Rnx uniformly from Xfree (line 6). We then continue to search for the nearest neighbor (line 7) in the reduced (x, y, θ ) space using a KD-tree [22], significantly reducing the query time. The function S TEER (·) connects ˜xnearest to xs, where we start to deviate from vanilla RRT ∗ [21] (line 8). The resulting node state x = ( x, y, v x, v y , θ ) is sampled (exploration) or computed by heuristics (exploitation), where the steering direction α is chosen as 
+
+αexploration = atan2 ( ys − yn, x s − xn)
+
+αexploitation ,1 = θn + atan2  vB
+
+> y,n
+
+, v B
+
+> x,n
+
+
+
+αexploitation ,2 = atan2 ( ycg − yn, x cg − xn) ,
+
+where the subscripts s and n denote the uniformly sampled state or the state of the nearest node respectively, with the state x = x y vx vy θ⊺, and (xcg , y cg ) is the goal centroid. For a depiction of the different angles see Fig. 3. In short, αexploitation ,1 exploits free-flying capabilities of the spacecraft while αexploitation ,2 biases towards the goal. The step size is uniformly sampled within the bounds derived from the BRS geometry. r   
+
+> Fig. 3: Angles and step size visualized for exploration and exploitation. The red area represents an obstacle. The green area is the goal region Xgoal .The red arrows are the translational velocity vectors at the nodes in the tree. The black arrows represent the orientation at the node. The gray dot is the sampled point from S AMPLE FREE (·)and the blue points are the points resulting from the S TEER (·)method. They are located at a random distance r (step size) from the nearest neighbor.
+
+Next, we check that the new connection is collision-free (line 9) and if it is, we create the node data structure ˜xk =
+
+{xk, ˜xparent , R parent →k} (line 10). Similarly as in vanilla RRT ∗, we search for near nodes (line 11). As mentioned above, we search only in the reduced (x, y, θ ) space with a KD-tree structure. In order to improve the convergence rate we use the same shrinking sphere as [21] with radius 
+
+r = min {η, ρ } with 
+
+ρ = γRRT ∗ (log( card (V )) /card (V )) 1/d (9) where γRRT ∗ can be computed as shown in [21]. We check if any of the near nodes ˜Xnear (line 12) can be used as a parent for the new node ˜xk by reducing its cost and update the node data structure (line 13). Finally, we rewire [21] the tree to reduce the cost locally (line 15). 
+
+Algorithm 1 RRT ∗ - Failure  
+
+> 1:
+
+Initialize: x0, Xg , Xobs  
+
+> 2:
+
+˜x0 ← CREATE NODE (x0, None , None ) 
+
+> 3:
+
+V ← ˜x0 
+
+> 4:
+
+Load BRS reach Mi 
+
+> 5:
+
+for k = 1 , 2, . . . , N do  
+
+> 6:
+
+xs ← SAMPLE FREE ()  
+
+> 7:
+
+˜xnearest ← NEAREST NODE (G = ( V, E ), xs) 
+
+> 8:
+
+xk ← STEER (˜ xnearest , xs, BRS reach M0 ) 
+
+> 9:
+
+if COLLISION FREE (xk, ˜xnearest ) then  
+
+> 10:
+
+˜xk ← CREATE NODE (xk, ˜xnearest , R nearest →k) 
+
+> 11:
+
+˜Xnear ← NEAR NODES (G, xk, min {η, ρ }) 
+
+> 12:
+
+˜xbest ← FIND BEST PARENT (˜ xk, ˜Xnear ) 
+
+> 13:
+
+˜xk ← CREATE NODE (xk, ˜xbest , R best →k) 
+
+> 14:
+
+V ← V ∪ ˜xk, E ← E ∪ (˜ xbest , ˜xk) 
+
+> 15:
+
+REWIRE TREE (˜ xk, ˜Xnear ) 
+
+> 16:
+
+end if  
+
+> 17:
+
+end for  
+
+> 18:
+
+return G = ( V, E )
+
+D. Complexity 
+
+Algorithm 1 scales linearly with the number of models m
+
+in both space and time complexity as each iteration m set p0,1 p0,2   
+
+> p0,3
+> p1,3p2,3
+> p0,0
+> p1,1p2,2
+> 1
+> M0
+> M1M2
+> M3
+> Fig. 4: The space-analogue platform with its actuators and how we model the failure cases. The working actuators are depicted in blue and the failed actuators are erased from the drawing.
+
+checks to fill the reachability matrix Rk→k+1 . Since vanilla RRT ∗ has O(N · log( N )) time complexity and O(N ) space complexity, our algorithm scales with O(m · N · log( N )) and 
+
+O(m · N ), respectively. Asymptotic optimality is maintained under a monotonic cost function which can be accomplished by defining the overall cost as the minimal-cost path in the tree as mentioned in Sec.IV-C. V. V ALIDATION 
+
+We first show the performance of the planner in Algo-rithm 1. Next, we test the planner on a physical experimental space robot with injected actuator failures. The system under consideration is the experimental freeflyer platform in Fig. 4. This planar system is holo-nomic and has 8 actuators to move in 3 degrees of free-dom. However, actuation failures may significantly alter the dynamic capabilities of the system, potentially making it underactuated, non-holonomic, or even uncontrollable. We model four different failure cases, and therefore our transition probability matrix is P ∈ [0 , 1] 4×4 with the probability vector p ∈ [0 , 1] 4. Model 0 ( M0) is the nominal model, i.e. all actuators are working and the system is over-actuated. Model 1 ( M1) and model 2 ( M2) are models in which four actuators fail simultaneously and are classified as a single failure event. For each, either the lateral actuators ( M1) or the longitudinal actuators ( M2) have failed. This limits the input and the robot is no longer fully actuated. The last model, model 3 ( M3), is a double failure and has no working actuators left. It is a combination of the failures of M1 and 
+
+M2. Refer to Fig. 4 for a visual representation. We model our actuators such that a failure corresponds to a complete loss of functionality. If failed, it becomes disabled, cannot exert any force onto the system, and remains inoperative for the mission duration. Operational actuators are assumed to function without degradation or limitation. While our method supports a higher number of failure models, it should be noted that considering each unique failure mode leads to 28 = 256 possible combinations. We instead opt for a set of failure models containing all other failure models: M1 and M2 capture all models up to 4 failures in the lateral or longitudinal direction while M3
+
+captures all models with multiple failures in any direction. 
+
+A. Planner 
+
+We showcase the planning algorithm in a single scenario, where we stop the algorithm after 2000 samples. The total failure probability is assumed to be 1%. Furthermore, we assume a single failure is more likely to happen than a double failure. The transition probability matrix P used for the generation of the following trajectories is 
+
+P =
+
+
+
+0.99 0 0 00.00495 0.99 0 00.00495 0 0.99 00.0001 0.01 0.01 1
+
+
+
+The target sets for the BRS computation in Eq. (3) have different configurations which allow for faster convergence of Algorithm 1. Specifically, a target can be specified as a resting state, i.e. xtarget ,static = x y 0 0 θ, or a moving state, i.e. xtarget ,moving = x y vx vy θ. To reduce the number of possible target states, we specify a single moving target velocity vtarget ,moving =
+
+q
+
+v2 
+
+> x
+
++ v2 
+
+> y
+
+=0.15 ms . Additionally, we specify that the system must be in a configuration where vx = vy (which are in the body frame), meaning that in case of a M1 or M2 failure the system has equal control authority to slow down or accelerate. We com-pute the backwards reachable sets using OptimizedDP [23] which obtains state-of-the-art performance and accuracy. Specifying the goal as a resting state would prevent M3
+
+(the platform with all actuators failed) from ever reaching this goal. It can however be advantageous in certain space applications, for instance when the spacecraft needs to re-ceive or send a signal that is only possible in that region. To that end, we allow goal-reaching purely on position for M3.The trajectory in Fig. 5 shows how the probability of reaching the goal is improved iteratively. Due to the straight-line steering in line 8 of Algorithm 1, the planner accounts for the free-flying characteristic of M3 and obtains a trajec-tory which leads to the goal area in a straight-line. Note that therefore P pk = P pk+1 if xk+1 lies on the straight-line constant-velocity extension of xk.The final solution has p(tg ) =[0 .904 , 0.023 , 0.023 , 0.001] ⊺, i.e. a success probability of P p(tg ) = 0.951 , against 0.878 for the intermediate solution. The final plan loses probability only during the initial maneuver ( 1.0 → 0.99 → 0.98 → 0.961 → 0.951 )and preserves 0.951 over every subsequent edge to the goal. This is the trade-off of Eq. (7a): the planner spends effort and risk in clearing the obstacle in exchange for a remaining path along which no failure can cost it the goal. The residual 4.9% is the probability that a failure occurs during the initial maneuver, while the robot is still inside the obstacle’s shadow and no constant-velocity extension of its state reaches Xg . For those scenarios the mission is lost under any plan. Maximizing Eq. (7a) ensures this residual probability is minimized. 
+
+B. Hardware Experiments 
+
+Finally, we show our resilient planner on the physical freeflyer platform. We first define the input space UMi for Fig. 5: Intermediate (Left) and Final (Right) solution of a motion plan around an obstacle (denoted in red) towards a goal region (denoted in green) using Algorithm 1. The state of a node is represented by a dot for position              
+
+> (x, y ), a black arrow for orientation (θ)and a red arrow for velocity (v).The red shadows around the obstacles account for the size of the spacecraft and the avoidance BRSs of M1and M2. The BRS for M1(lateral failure) and M2(longitudinal failure) are displayed in blue and green. The BRS for
+> M0(nominal) and M3(all actuators failed) are not shown for clarity.
+
+the platform based on an estimated force per actuator 1.
+
+UM0 =
+
+(ux, u y , u θ )
+
+ux ∈ [−2.125 , 2.125] 
+
+uy ∈ [−2.125 , 2.125] 
+
+uθ ∈ [−0.510 , 0.510] 
+
+
+
+UM1 =
+
+(ux, u y , u θ )
+
+ux ∈ [−2.975 , 2.975] 
+
+uy ∈ [0 , 0] 
+
+uθ ∈ [−0.357 , 0.357] 
+
+
+
+UM2 =
+
+(ux, u y , u θ )
+
+ux ∈ [0 , 0] 
+
+uy ∈ [−2.975 , 2.975] 
+
+uθ ∈ [−0.357 , 0.357] 
+
+
+
+UM3 =
+
+(ux, u y , u θ )
+
+ux ∈ [0 , 0] 
+
+uy ∈ [0 , 0] 
+
+uθ ∈ [0 , 0] 
+
+ (10) The resulting sequence of value functions can be used as a controller according to Eq. (6) on an accurate model, which is often the case in weightless environments. However, due to imperfections in our experimental setup (specifically undula-tions in the flat epoxy floor), we opt for a more robust control strategy where the value function is used as a reference trajectory generator for a direct-allocation Model Predictive Controller (MPC) as in [5] This maintains our long-horizon liveness and safety guarantees as the probabilistic guarantees are embedded in the sequential value functions obtained from the planner. We experimentally verify our algorithm and its reference trajectory on two reach-avoid scenarios. In both, the failure is injected at T = 2 , i.e. after the initial maneuver that clears the obstacle’s shadow; for the plan of Fig. 5 this lies inside the interval over which the success probability stays at its full 0.951 . These runs are single realizations, intended to show that the planned behavior is executable on hardware. Injecting the same failure earlier, while the robot is still in the shadow, would leave it drifting along a line that misses 
+
+Xg — the complementary 4.9% of Fig. 5. 
+
+> 1The control bounds do not adhere to the subsystems assumption due to air-pressure regulation of the physical platform; however, we note that tightening these bounds would allow the assumption to be satisfied, as it would on many other physical space platforms.
+
+First, Fig. 1 shows how the reference trajectory from Fig. 5 is executed on the platform under complete actuator failure 
+
+M3 at T = 2 . The second scenario is shown in Fig. 6 and Fig. 7. Fig. 6 shows the executed trajectory without failures ( M0) and with failure mode M1 at T = 2 . The failure makes the system non-holonomic, veering the robot off-course (predominantly due to the undulations in the epoxy floor). The feedforward roll-out of the value function gen-erates a dynamically feasible reference trajectory, bringing the robot back to its planned trajectory. Fig. 7 shows the behavior under actuator failure model M3 at T = 2 .The results highlight the capability of the system to reach its target under partial and complete actuator failures in weightless environments and, importantly, provides aquantitative measure of the system’s robustness against such failures. Note the commanded force plots in Fig. 6 and Fig. 7 denoting the reduced actuation (i.e. zero actuation on failed axis) for the different failure models. VI. CONCLUSIONS We presented a resilient motion planning framework for spacecraft under actuator failures, combining Markov failure models with backward reachability inside a sampling-based planner, together with the reference policies used to track its plans in hardware. The resulting motion plans exhibit behaviors that reflect the distinctive dynamics of weightless environments, explicitly trading nominal performance for robustness to actuator loss. As no plan survives every failure realization, our planner identifies its shortcomings and maximizes the overall prob-ability of success, returning a quantitative measure of the residual mission risk. The system is represented with all its failure modes with pre-computed reachable sets, making our planner adaptable to different systems and failure scenarios. Future work will focus on a more thorough analysis of symmetry to enable additional failure models, extensions to higher-dimensional systems, more realistic actuator failure models, the inclusion of orbital dynamics, and a statistical evaluation over a larger set of plans and failure timings. REFERENCES [1] M. Tafazoli, “A study of on-orbit spacecraft failures,” Acta Astronau-tica , vol. 64, no. 2-3, pp. 195–205, 2009. [2] M. A. Post, X.-T. Yan, and P. Letier, “Modularity for the future in space robotics: A review,” Acta Astronautica , vol. 189, pp. 530–547, 2021. [3] J. Bouwmeester, A. Menicucci, and E. K. Gill, “Improving cubesat reliability: Subsystem redundancy or improved testing?” Reliability Engineering & System Safety , vol. 220, p. 108288, 2022. [4] M. N. Hasan, M. Haris, and S. Qin, “Fault-tolerant spacecraft attitude control: A critical assessment,” Progress in Aerospace Sciences , vol. 130, p. 100806, 2022. [5] P. Roque, S. Phodapol, E. Krantz, J. Lim, J. Verhagen, F. J. Jiang, D. D¨ orner, H. Mao, G. Tibert, R. Siegwart et al. , “Towards open-source and modular space systems with atmos,” IEEE Transactions on Field Robotics , 2025. [6] Y. K. Nakka and S.-J. Chung, “Trajectory optimization of chance-constrained nonlinear stochastic systems for motion planning under uncertainty,” IEEE Transactions on Robotics , vol. 39, no. 1, pp. 203– 222, 2022. 0 10 20 30 40 024Position [m] (b) Position over Time                          
+
+> x(M0)
+> x(M1)
+> y(M0)
+> y(M1)
+> 010 20 30 40 −π/20
+> π/2Heading [rad] (c) Heading over Time
+> θ(M0)
+> θ(M1)
+> 010 20 30 40 Time [s]
+> −202Force [N] (d) Commanded Force
+> ux(M0)
+> ux(M1)
+> 010 20 30 40 Time [s]
+> −202Force [N] (e) Commanded Force
+> uy(M0)
+> uy(M1)
+> (a)
+
+Fig. 6: Experimental result of the nominal plan (without failures) and an injected failure at T = 2 (also denoted by a red vertical line). (a) shows the planned trajectory and the executed trajectory for the nominal model M0 and with a failure model M1. (b) The position over time, showing the increased tracking error after the failure occurs but the recovery after the initial upset. (c) The heading over time where M1 needs to continuously rotate to be able to counteract ground disturbances. (d) The commanded force in the x direction (where no failure occurs). (e) The commanded force in the y direction (where the failure for model M1 occurs). 0 10 20 30 40 024Position [m] (b) Position over Time                          
+
+> x(M0)
+> x(M3)
+> y(M0)
+> y(M3)
+> 010 20 30 40 −π/20
+> π/2Heading [rad] (c) Heading over Time
+> θ(M0)
+> θ(M3)
+> 010 20 30 40 Time [s]
+> −202Force [N] (d) Commanded Force
+> ux(M0)
+> ux(M3)
+> 010 20 30 40 Time [s]
+> −202Force [N] (e) Commanded Force
+> uy(M0)
+> uy(M3)
+> (a)
+
+Fig. 7: Experimental result of the nominal plan (without failures) and an injected failure at T = 2 (also denoted by a red vertical line). (a) shows the planned trajectory and the executed trajectory for the nominal model M0 and with a failure model M3 resulting in a complete loss of actuation. (b) The position over time. In contrast to Fig. 6 the tracking remains accurate as we lack of actuation is simulated by a velocity tracking MPC initialized at T = 2 .(c) The heading over time where M3 rotates at a constant velocity in weightlessness. (d) The commanded force in the x direction (where the failure occurs). (e) The commanded force in the y direction (where the failure also occurs). [7] F. Lin, X. Fang, and Z. Gao, “Distributionally robust optimization: A review on theory and applications,” Numerical Algebra, Control and Optimization , vol. 12, no. 1, pp. 159–212, 2022. [8] M. Blanke, W. C. Frei, F. Kraus, J. R. Patton, and M. Staroswiecki, “What is fault-tolerant control?” IFAC Proceedings Volumes , vol. 33, no. 11, pp. 41–52, 2000. [9] R. St¨ ockner, P. Roque, M. Charitidou, and D. V. Dimarogonas, “Fault-tolerant model predictive control for spacecraft,” in 2025 IEEE 64th Conference on Decision and Control (CDC) . IEEE, 2025, pp. 5527– 5532. [10] T. Bayer, “Planning for the un-plannable: redundancy, fault pro-tection, contingency planning and anomaly response for the mars reconnaissance oribiter mission,” in AIAA SPACE 2007 Conference & Exposition , 2007, p. 6109. [11] F. Vega, M. Lo, and Z. Manchester, “Contingency-aware station-keeping control of halo orbits,” in 2025 IEEE Aerospace Conference .IEEE, 2025, pp. 1–8. [12] C. J. Stromberger, J. B. Graebener, J. F. Ragan, and R. M. Murray, “A model-free algorithm for extremely resilient navigation.” [13] X. Liu, Z. Yuan, Z. Gao, and W. Zhang, “Reinforcement learning-based fault-tolerant control for quadrotor uavs under actuator fault,” 
+
+IEEE Transactions on Industrial Informatics , 2024. [14] C. Phiquepal, A. Orthey, N. Viennot, and M. Toussaint, “Path-tree optimization in discrete partially observable environments using rapidly-exploring belief-space graphs,” IEEE Robotics and Automation Letters , vol. 7, no. 4, pp. 10 160–10 167, 2022. [15] A. A. Markov, “Rasprostranenie zakona bol’shih chisel na velichiny, zavisyaschie drug ot druga,” Izvestiya Fiziko-matematicheskogo ob-schestva pri Kazanskom universitete , vol. 15, no. 135-156, p. 18, 1906. [16] R. A. Howard, Dynamic Probabilistic Systems, Volume I: Markov Models . Courier Corporation, 2012, vol. 1. [17] I. Mitchell, A. Bayen, and C. Tomlin, “A time-dependent hamilton-jacobi formulation of reachable sets for continuous dynamic games,” 
+
+IEEE Transactions on Automatic Control , vol. 50, no. 7, pp. 947–957, 2005. [18] S. Bansal, M. Chen, S. Herbert, and C. J. Tomlin, “Hamilton-jacobi reachability: A brief overview and recent advances,” in 2017 IEEE 56th Annual Conference on Decision and Control (CDC) . IEEE, 2017, pp. 2242–2253. [19] L. C. Evans and P. E. Souganidis, “Differential games and repre-sentation formulas for solutions of hamilton-jacobi-isaacs equations,” 
+
+Indiana University mathematics journal , vol. 33, no. 5, pp. 773–797, 1984. [20] S. LaValle, “Rapidly-exploring random trees: A new tool for path planning,” Research Report 9811 , 1998. [21] S. Karaman and E. Frazzoli, “Sampling-based algorithms for optimal motion planning,” The international journal of robotics research ,vol. 30, no. 7, pp. 846–894, 2011. [22] S. Maneewongvatana and D. M. Mount, “Analysis of approximate nearest neighbor searching with clustered point sets,” 1999. [Online]. Available: https://arxiv.org/abs/cs/9901013 [23] M. Bui, H. Hu, C. He, M. Lu, G. Giovanis, A. Shriraman, and M. Chen, “Optimizeddp: An efficient, user-friendly library for optimal control and dynamic programming,” 2022. [Online]. Available: https://arxiv.org/abs/2204.05520
