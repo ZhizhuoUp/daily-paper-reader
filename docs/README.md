@@ -6,73 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-18
-- 运行时间：2026-09-18 21:45:59 UTC
+- 最新运行日期：2026-09-19
+- 运行时间：2026-09-19 21:38:56 UTC
 - 运行状态：成功
 - 本次总论文数：17
 - 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 17 篇机器人前沿论文，聚焦空间机器人容错控制与 VLA 规划加速。
-重点关注《Resilient Motion Planning》与《SkipVLA》，它们分别解决了执行器故障下的鲁棒性及机器人操作的实时性难题。
-建议优先阅读这两篇高分论文，深入理解经典规划与大模型策略的融合趋势。
-- 详情：[/202609/18/README](/202609/18/README)
+今日精选 17 篇机器人前沿论文，聚焦动态避障与多模态运动规划的深度突破。
+重点推荐《Time-Efficient Iterative Learning Planning》等研究，展示了安全关键场景下高效避障与大模型引导规划的最新进展。
+建议优先研读精读列表中的两篇核心论文，掌握强化学习与代码生成在复杂运动控制中的落地逻辑。
+- 详情：[/202609/19/README](/202609/19/README)
 
 ### 精读区论文标签
-1. [Resilient Motion Planning for Free-Flying Space Robots under Actuator Failures](/202609/18/2609.20407v1-resilient-motion-planning-for-free-flying-space-robots-under-actuator-failures)  
-   标签：评分：9.0/10、query:q9
-   evidence：自由飞行空间机器人的运动规划
-2. [SkipVLA: Skipping VLA Steps with Classical Planning for Fast Robot Manipulation](/202609/18/2609.20648v1-skipvla-skipping-vla-steps-with-classical-planning-for-fast-robot-manipulation)  
-   标签：评分：9.0/10、query:profile-1
-   evidence：结合VLA与经典运动规划器的混合策略，实现无碰撞运动
-3. [A Time-to-Collision Barrier Function Approach to Collision Avoidance for Stochastic Systems](/202609/18/2609.17347v1-a-time-to-collision-barrier-function-approach-to-collision-avoidance-for-stochastic-systems)  
-   标签：评分：8.0/10、query:q1
-   evidence：用于前瞻性避障的碰撞时间屏障函数
-4. [OmniRisk: Omnidirectional Trajectory-Risk Learning for Agile Quadrotor Dynamic Avoidance](/202609/18/2609.18191v1-omnirisk-omnidirectional-trajectory-risk-learning-for-agile-quadrotor-dynamic-avoidance)  
-   标签：评分：8.0/10、query:q1
-   evidence：用于敏捷四旋翼避障的轨迹风险学习
-5. [DetAug: Obstacle-Blind Trajectory Augmentation for Zero-shot Obstacle Avoidance](/202609/18/2609.18395v1-detaug-obstacle-blind-trajectory-augmentation-for-zero-shot-obstacle-avoidance)  
+1. [Time-Efficient Iterative Learning Planning for Safety-Critical Dynamic Obstacle Avoidance](/202609/19/2609.20435v1-time-efficient-iterative-learning-planning-for-safety-critical-dynamic-obstacle-avoidance)  
+   标签：评分：9.0/10、query:q1
+   evidence：实时安全保证与动态避障
+2. [M$^3$P-R1: Reinforcement Learning for Large Language Model Guided Multi-Modal Motion Planning via MIP Code Generation](/202609/19/2609.18669v1-m3p-r1-reinforcement-learning-for-large-language-model-guided-multi-modal-motion-planning-via-mip-code-generation)  
    标签：评分：8.0/10、query:profile-1
-   evidence：用于机械臂零样本避障的轨迹增强
-6. [Accelerating Visual Policy Learning with Sampling-Based Model Predictive Control](/202609/18/2609.20575v1-accelerating-visual-policy-learning-with-sampling-based-model-predictive-control)  
+   evidence：多模态运动规划与操作
+3. [Asymptotically Optimal Multi-Robot Task and Motion Planning](/202609/19/2609.18813v1-asymptotically-optimal-multi-robot-task-and-motion-planning)  
+   标签：评分：8.0/10、query:q4
+   evidence：多机器人任务与运动规划及无碰撞运动
+4. [KINO: A Keyframe Interface for VLM Planning and Whole-Body Control in Humanoid Loco-Manipulation](/202609/19/2609.18869v1-kino-a-keyframe-interface-for-vlm-planning-and-whole-body-control-in-humanoid-loco-manipulation)  
+   标签：评分：8.0/10、query:q6
+   evidence：类人机器人移动操作与全身控制
+5. [Learning Holistic Whole-Body Loco-Manipulation with a Bipedal Mobile Manipulator](/202609/19/2609.18930v1-learning-holistic-whole-body-loco-manipulation-with-a-bipedal-mobile-manipulator)  
+   标签：评分：8.0/10、query:q6
+   evidence：双足移动操作手的全身运动与操作控制
+6. [Coding Agents with an Obstacle-Aware Harness for Safe Robot Manipulation](/202609/19/2609.20822v1-coding-agents-with-an-obstacle-aware-harness-for-safe-robot-manipulation)  
    标签：评分：8.0/10、query:profile-1
-   evidence：用于加速操作任务视觉策略学习的采样MPC
+   evidence：安全机器人操作的障碍物感知规划
 
 ### 速读区论文标签
-1. [Motion planning in high dimensional spaces hybridizing RRT and HAR via position-direction decoupling](/202609/18/2609.16810v1-motion-planning-in-high-dimensional-spaces-hybridizing-rrt-and-har-via-position-direction-decoupling)  
-   标签：评分：8.0/10、query:q4
-   evidence：高维空间的采样路径规划
-2. [Fetch My Beer: Synthetic-to-real Hierarchical Policy for Smooth Pick-and-place](/202609/18/2609.18119v1-fetch-my-beer-synthetic-to-real-hierarchical-policy-for-smooth-pick-and-place)  
-   标签：评分：8.0/10、query:q8
-   evidence：机械臂平滑取放轨迹的稳定性
-3. [Prior Evolution and Task Alignment for Aerial Grasping](/202609/18/2609.18153v1-prior-evolution-and-task-alignment-for-aerial-grasping)  
-   标签：评分：8.0/10、query:q3
-   evidence：空中抓取动作的轨迹优化
-4. [DynoFluxBench: Benchmarking Kinodynamic Space-Time Planners in Dynamic Environments](/202609/18/2609.18549v1-dynofluxbench-benchmarking-kinodynamic-space-time-planners-in-dynamic-environments)  
-   标签：评分：8.0/10、query:q3
-   evidence：使用轨迹优化的动力学时空规划器
-5. [Hamilton-Jacobi Reachability for Hybrid Systems: Unified Goal-Driven Control with Safety Guarantees](/202609/18/2609.17430v1-hamilton-jacobi-reachability-for-hybrid-systems-unified-goal-driven-control-with-safety-guarantees)  
-   标签：评分：7.0/10、query:q2
-   evidence：混合机器人系统安全保障的HJ可达性分析
-6. [Timely Activation of Safety Filters via One-Step Reachability Expansion](/202609/18/2609.17904v1-timely-activation-of-safety-filters-via-one-step-reachability-expansion)  
-   标签：评分：7.0/10、query:q5
-   evidence：用于离散时间实时控制的安全过滤器
-7. [Energy-Regularized Imitation Learning for Force- and Work-Aware Robotic Manipulation](/202609/18/2609.18164v1-energy-regularized-imitation-learning-for-force--and-work-aware-robotic-manipulation)  
+1. [Risk-Aware World Modeling with Flow-Guided Occupancy Evolution for Selective Trajectory Planning in Automated Driving](/202609/19/2609.18442v1-risk-aware-world-modeling-with-flow-guided-occupancy-evolution-for-selective-trajectory-planning-in-automated-driving)  
+   标签：评分：7.0/10、query:q1
+   evidence：风险感知的轨迹规划与避障
+2. [Dreaming the Sound of Contact: Leveraging Video and Audio Generation for Zero-Shot Force-Aware Manipulation and Data Generation](/202609/19/2609.19137v1-dreaming-the-sound-of-contact-leveraging-video-and-audio-generation-for-zero-shot-force-aware-manipulation-and-data-generation)  
    标签：评分：7.0/10、query:q6
-   evidence：能量感知的机器人操作策略微调
-8. [Predictive Online Disturbance-Action Control for Linear Dynamical Systems](/202609/18/2609.18307v1-predictive-online-disturbance-action-control-for-linear-dynamical-systems)  
-   标签：评分：7.0/10、query:q5
-   evidence：线性动力系统的实时自适应控制
-9. [REVOLVE: An Automated Closed-Loop Framework for Evolving Robot Manipulation with Minimal Human Intervention](/202609/18/2609.14633v2-revolve-an-automated-closed-loop-framework-for-evolving-robot-manipulation-with-minimal-human-intervention)  
-   标签：评分：6.0/10、query:q6
-   evidence：机器人操作演化的闭环框架
-10. [An Information-Space Perspective to Scene Graph Sufficiency for Robotic Task Planning](/202609/18/2609.15587v1-an-information-space-perspective-to-scene-graph-sufficiency-for-robotic-task-planning)  
+   evidence：基于视频和音频的操纵轨迹
+3. [Grasping by interconnection: robust closing motions from coarse object templates](/202609/19/2609.19228v1-grasping-by-interconnection-robust-closing-motions-from-coarse-object-templates)  
+   标签：评分：7.0/10、query:q6
+   evidence：灵巧机器人手及操作的运动规划器
+4. [Feasibility and Singularity in High-Order Safety-Critical Control for Quadrotor UAVs](/202609/19/2609.19362v1-feasibility-and-singularity-in-high-order-safety-critical-control-for-quadrotor-uavs)  
+   标签：评分：7.0/10、query:q1
+   evidence：具有避障约束的安全关键控制
+5. [Winning a Won Game: Strict Reach-Avoid-Stay Control Barrier Functions for High-Dimensional Black-Box Systems](/202609/19/2609.19449v1-winning-a-won-game-strict-reach-avoid-stay-control-barrier-functions-for-high-dimensional-black-box-systems)  
+   标签：评分：7.0/10、query:q4
+   evidence：高维机器人的到达-规避-停留控制障碍函数
+6. [Navigate or Relocate? Planning Among Movable Obstacles in Unknown Environments](/202609/19/2609.19541v1-navigate-or-relocate-planning-among-movable-obstacles-in-unknown-environments)  
+   标签：评分：7.0/10、query:q1
+   evidence：可移动障碍物环境下的无碰撞路径规划
+7. [Port-Hamiltonian Koopman Operator Synthesis for Mechanical Systems](/202609/19/2609.17249v1-port-hamiltonian-koopman-operator-synthesis-for-mechanical-systems)  
+   标签：评分：6.0/10、query:q2
+   evidence：用于机械系统控制的Koopman算子合成
+8. [HINT-Plan: Human Intention-Aware Robot Task Planning in Context-Rich Environments using Vision Language Models](/202609/19/2609.17771v1-hint-plan-human-intention-aware-robot-task-planning-in-context-rich-environments-using-vision-language-models)  
    标签：评分：6.0/10、query:q4
-   evidence：机器人任务规划的场景图形式化
-11. [ManiSkillFormer: Demonstration-Free Compositional Manipulation via Task-Conditioned Geometric Contracts](/202609/18/2609.16331v2-maniskillformer-demonstration-free-compositional-manipulation-via-task-conditioned-geometric-contracts)  
+   evidence：机器人任务规划与避障
+9. [GraphPoint: Semantic Entity Graphs and Point Trajectories for Compositional Robot Manipulation](/202609/19/2609.18358v1-graphpoint-semantic-entity-graphs-and-point-trajectories-for-compositional-robot-manipulation)  
    标签：评分：6.0/10、query:q6
-   evidence：通过运动模板实现组合式操作
+   evidence：组合式机器人操作与点轨迹
+10. [ViLoMan: Learning Visual-Proprioceptive Whole-Body Loco-Manipulation Skills for Humanoid Robots](/202609/19/2609.19340v1-viloman-learning-visual-proprioceptive-whole-body-loco-manipulation-skills-for-humanoid-robots)  
+   标签：评分：6.0/10、query:q6
+   evidence：类人机器人的全身移动操作
+11. [PIVOT: Perception-aware Independent Viewpoint Online Optimization](/202609/19/2609.19510v1-pivot-perception-aware-independent-viewpoint-online-optimization)  
+   标签：评分：6.0/10、query:q2
+   evidence：传感器视角在线优化
 
 
 <div class="dpr-home-promo-card">

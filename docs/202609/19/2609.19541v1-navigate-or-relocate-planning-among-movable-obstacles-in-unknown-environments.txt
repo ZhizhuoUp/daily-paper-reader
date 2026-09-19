@@ -1,0 +1,678 @@
+Title: Navigate or Relocate? Planning Among Movable Obstacles in Unknown Environments
+
+URL Source: https://arxiv.org/pdf/2609.19541v1
+
+Published Time: Fri, 18 Sep 2026 00:26:30 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Navigate or Relocate? Planning Among Movable Obstacles in Unknown Environments 
+
+Yuqing Zhang, Haoyu Zhu, Yiannis Kantaros 
+
+Abstract — Conventional robot planning methods seek collision-free paths to a goal but fail when all paths are blocked. In these cases, the robot must determine which objects to relocate, in what order, and where to place them to clear a path—a problem known as Navigation Among Movable Obstacles (NAMO). Most NAMO planners assume a known environment, while existing approaches for unknown environ-ments typically reason locally about relocations and cannot plan interdependent relocation sequences. We consider NAMO in unknown environments revealed through onboard sensing, where the robot must decide whether a blocked route requires relocation or a feasible path may exist through unexplored space. We propose an online framework that addresses this ambiguity by selecting between navigation and relocation using shortest paths that treat discovered movable objects as obstacles or as removable. Navigation relies on existing motion planners, while relocation uses a sampling-based approach that, unlike existing approaches for unknown environments, searches over 
+
+interdependent relocation sequences and uses an LLM to bias sampling. Numerical experiments demonstrate scalability to cluttered environments requiring interdependent relocations and improved plan quality over existing baselines. 
+
+I. I NTRODUCTION 
+
+Robot navigation seeks to compute collision-free paths from an initial state to a goal region [1]. When obstacles block all such paths, a robot may instead relocate movable objects, requiring it to determine which objects to move, in what order, and where to place them. This gives rise to the Navigation Among Movable Obstacles (NAMO) problem [2], which has been studied using heuristic, search-based, and sampling-based approaches [3]–[10]. These works assume the environment is known a priori, allowing offline planning. In this work, we consider NAMO in an unknown environ-ment, where the robot discovers the environment structure (e.g., walls) and the locations and semantic labels of objects through onboard perception. The goal may be unreachable in known free space because discovered movable objects require relocation or a collision-free path may exist through unobserved regions; see Fig. 1. The robot must therefore decide whether to navigate to the goal or relocate discovered objects. We address this problem using an online planning framework that interleaves mapping, decision-making, and execution. Given a map constructed using existing methods [11], our framework compares two shortest paths on opti-mistic versions of the map: one treats discovered movable objects as obstacles and the other as removable. Relocation is selected only if the latter reaches the goal within known space or enters unknown space through a frontier inaccessi- 
+
+> 1Authors are with the Department of Electrical and Systems Engineering, Washington University in St. Louis, St. Louis, MO, USA.
+
+zyuqing, z.haoyu, ioannisk@wustl.edu  
+
+> Fig. 1. Case-study environments of Section IV: Cases I–II (left) and III–IV (right). The robot (black disk) must reach the goal (green star) in an unknown environment with non-movable furniture and movable boxes; green boxes are added in Cases II and IV. Only the sensed region (white) is known; the rest (gray) is unobserved. Cyan and red circles mark passages requiring joint relocations and resolving access dependencies, respectively.
+
+ble to the former; otherwise, the robot continues navigating. Navigation relies on existing motion planning methods, while our NAMO-LLM u extends the sampling-based NAMO-LLM planner [10] to partially known environments. It builds trees over hypothetical relocation sequences of discovered objects, using a pre-trained LLM to bias sampling toward promising directions. Compared to NAMO-LLM, our method intro-duces a termination criterion that accounts for access to unexplored space, a tree representation that avoids explicitly computing free-space components (which is computationally expensive), and a sampling strategy and LLM prompt tailored to partial environment knowledge. Finally, following [6], [10], we establish its probabilistic completeness. 
+
+Related Works: (i) NAMO in Unknown Environments. 
+
+The works most closely related to ours address NAMO in unknown environments [12]–[18]. The method in [12] builds a grid map online, treats unexplored space as free, and, when the current path is blocked, chooses based on estimated costs between navigating around obstacles and pushing a single object. Related works improve efficiency [13], demonstrate this approach on real robots [14], or infer movability through contact [15]. The method in [16] encodes per-object pushing costs in a sparse visibility graph built online and likewise trades off pushing against detouring. Other approaches consider the same setting without explicit relocation planning [17], [18]; for example, [18] lets the robot drive into a priori unknown obstacles and reroutes when they do not give way. These approaches reason lo-cally about individual object relocations and do not plan interdependent relocation sequences, e.g., when one object must first be moved to access another or create space for its relocation. Our framework plans such sequences and decides when to relocate objects based on whether relocation opens arXiv:2609.19541v1 [cs.RO] 17 Sep 2026 a route inaccessible through navigation alone rather than by comparing navigation and manipulation costs with manually set relative weights [12]–[16]. The visibility-aware algorithm in [19] likewise assumes independent object relocations. Our method instead searches over interdependent relocation sequences where, e.g., relocating one object is required to make another relocation feasible. The method in [20] extends the above works to dependent relocations. It selects a relocation only if it opens a path to the goal or exposes a previously unreachable manipulation point of another blocking object. This handles access dependen-cies, in which one object blocks access to the manipulation point of another, but neither space dependencies, in which one object occupies the space another must be moved into, nor joint relocations, where several reachable objects must be moved before any path opens; see Fig. 1. Our method handles these cases by searching over complete relocation sequences. Since several assumptions in [20] do not hold in our setting, we compare against a baseline that builds upon this work; see Section IV. Another approach that can handle certain relocation dependencies is the reactive architecture of [21]. Its setting imposes additional structural assumptions, includ-ing geometric familiarity or convexity of fixed obstacles and obstacle-separation conditions. It sequentially moves objects that block the manipulation of other objects, but, unlike our work, uses heuristic placements rather than explicitly planning relocation sequences and configurations in which the placement of one object must enable the subsequent relocation of another. Learning-based approaches have also been proposed [22]– [25]. These methods learn policies for selecting navigation and object-interaction actions, but do not verify the long-horizon feasibility of the resulting interactions. For example, [24] reports failures in which an object is pushed to a configuration that irreversibly blocks the path to the goal. In contrast, our planner explicitly searches over complete relocation sequences and configurations and verifies their feasibility, ensuring the soundness of returned plans. These learned policies are complementary to our approach and could, for example, replace the LLM in biasing the sampling of candidate relocations. 
+
+(ii) Rearrangement Planning. Our work is related to rear-rangement planning (RP), where objects are moved to pre-scribed arrangements [26]–[30]. However, RP differs from NAMO as it considers predefined goal positions for movable objects and typically does not specify a final robot goal. 
+
+Summary of Contributions: First, we propose an on-line NAMO planner for unknown environments that plans complete relocation sequences, including interdependent and joint relocations. Second, we develop NAMO-LLM u, a prob-abilistically complete sampling-based planner that extends NAMO-LLM from known to partially known environments. Third, experiments demonstrate scalability to cluttered envi-ronments requiring interdependent and joint relocations, as well as improved plan quality over baseline methods. II. P ROBLEM FORMULATION 
+
+Robot Modeling: We consider a robot with dynamics 
+
+p(t + 1) = f (p(t), u(t)) , where p(t) ∈ P and u(t) ∈ U 
+
+denote its configuration and control input. We assume that 
+
+p(t) is known and that the robot is holonomic and can track any collision-free path in P. The robot has a gripper and can manipulate one movable object at a time, subject to the following assumption. 
+
+Assumption 2.1 (Carried-object footprint): While carry-ing an object, the robot–object system has the same footprint, and thus collision constraints, as the robot alone. 
+
+Environment Modeling: The robot operates in a bounded workspace W ⊂ R2 that is unknown except for its outer boundary. The workspace contains rigid obstacles O =
+
+{o1, . . . , o N }, whose number, shapes, locations, and seman-tic classes are initially unknown. Each obstacle belongs to a semantic class ℓi ∈ L and is movable iff ℓi ∈ L mov ⊆L, where Lmov is known. We denote the set of movable obstacles by Omov and the configuration of each movable object oi by ci(t) ∈ C i, where Ci is its configuration space. 
+
+Sensing and Mapping: The robot uses an onboard, range-limited RGB-D sensor to construct a metric-semantic map online. Its occupancy layer discretizes W into a grid graph 
+
+G = ( V, E), known a priori from the workspace boundary and fixed grid resolution. At time t, the cells are partitioned into known-free, known-occupied, and unknown sets, Vft ,
+
+Vot , and Vut , respectively. An object layer maintains the discovered movable objects Omov (t) ⊆ O mov , their con-figurations ci(t), and footprints Bi(ci(t)) ⊆ V . Both layers are updated online from sensor observations and executed relocations. This representation can be obtained from existing metric-semantic mapping systems such as Hydra [11]; Sec-tion IV describes our implementation. We model the robot as a point and, with a slight abuse of notation, write p(t) ∈ V 
+
+for its occupied cell. 1 We also denote by Nt ⊆ V ft the cells reachable from p(t) through known-free cells. As in prior related work, we make the following assumption about the constructed map [12], [13], [16], [19], [20], [25]. 
+
+Assumption 2.2 (Map correctness): The map information available to the robot is assumed to be correct for all t.
+
+Robot Task: The robot must reach a goal region, given a priori as a set of cells Vg ⊆ V , from an initial position 
+
+p(0) ∈ V while avoiding obstacles. We consider cases where 
+
+Vg ∩ N 0 = ∅, either because movable objects block all known paths to the goal or because a feasible path traverses unexplored space. The robot must therefore decide online whether to continue toward the goal, passively revealing the map, or relocate discovered objects and, if so, which objects to relocate, in what order, and where. 
+
+Manipulable Objects: Each movable object oi has Ji ∈
+
+N>0 known manipulation locations fixed in its local frame. Let mj (ci) ∈ V denote the cell the robot must occupy to grasp or release oi through its j-th manipulation location at configuration ci ∈ C i, and let M(ci) := {mj (ci)}Ji 
+
+> j=1
+
+be the set collecting the manipulation cells of oi at ci. The set of    
+
+> 1In practice, obstacles are inflated by the robot radius. Fig. 2. Illustration of object categories and task setting. The workspace is discretized into a grid graph G(dotted lines); white and light gray denote known-free and unexplored space, respectively. Boxes 1–3 are movable: box 1 is manipulable because one manipulation point (yellow dot) is reachable; box 2 is discovered but non-manipulable since its manipulation points are blocked or lie in the unexplored space; and box 3 is undiscovered. Reaching the goal requires relocating box 1 before box 2.
+
+manipulable objects at time t is 
+
+OM (t) := {oi ∈ O mov (t) | M (ci(t)) ∩ N t̸ = ∅} , (1) i.e., the discovered movable objects with at least one reach-able manipulation cell; see Fig. 2. 
+
+Robot Primitives: The robot executes waypoint transi-tions and carry actions using existing low-level controllers. A waypoint transition moves the robot, while not carrying an object, to w ∈ V through known-free space and is feasible if 
+
+w ∈ N t. Newly sensed cells are passively revealed during ex-ecution. A carry action aj
+
+> car
+
+(ci(t), c′
+
+> i
+
+) grasps oi at mj (ci(t)) ,carries it, and releases it at mj (c′
+
+> i
+
+). By Assumption 2.1, carrying an object does not alter the collision constraints imposed on the robot. A carry action is feasible at time t
+
+if (i) p(t) = mj (ci(t)) ; (ii) Bi(c′
+
+> i
+
+) ⊆ V ft ∪ B i(ci(t)) ; and (iii) the robot can move from mj (ci(t)) to mj (c′
+
+> i
+
+) through cells in Nt ∪ B i(ci(t)) . Thus, approaching an object is done by waypoint transitions, whereas grasping, transporting, and releasing it are captured by a single carry action. 
+
+Robot Plan: A robot plan τ = ( a1, . . . , a L) is a finite sequence of waypoint transitions and carry actions and is feasible if every action is feasible when executed. 
+
+Problem 1: Given an initial robot position p(0) and a goal region Vg ⊆ V such that Vg ∩ N 0 = ∅, compute online a feasible robot plan τ that drives the robot to Vg .III. P ROPOSED PLANNING ALGORITHM 
+
+In this section, we present the proposed framework for Problem 1; see Alg. 1. Since the environment is revealed online, the framework constructs the plan τ incrementally through a receding-horizon loop that interleaves sensing, decision-making, and execution. Section III-A presents the mechanism that arbitrates, at each decision instant, between navigation and object relocation, and describes the exe-cution of the selected mode. The navigation mode relies on existing planning algorithms (e.g., A⋆), while the relo-cation mode uses a new sampling-based NAMO planner, called NAMO-LLM u, which builds upon [10]. Section III-B presents the internal design of NAMO-LLM u.
+
+A. Deciding Between Navigation and Manipulation 
+
+Each iteration of the proposed method starts at a decision instant t, which need not occur at consecutive time steps. The robot first updates its map G and the configurations of discovered objects [line 3, Alg. 1]. It then selects between navigation and relocation using two shortest-path queries that 
+
+Algorithm 1: Proposed Planning Framework                                                                                                    
+
+> Input: Initial robot configuration p(0) ; Goal region Vg
+> Output: plan τwith p(T)∈ V g, or F AIL
+> 1k←0;t←t0←0;τ← ∅ ;
+> 2while p(t)/∈ V gdo
+> 3Update the map Gand the stacked configurations c(t);
+> 4Compute bOM(t)and construct Gnav
+> t,Gman
+> t;
+> 5[πnav
+> t, J nav
+> t]←A⋆ p(t),Vg;Gnav
+> t
+> ;
+> 6[πman
+> t, J man
+> t, n t]←A⋆ p(t),Vg;Gman
+> t
+> ;
+> 7if Jman
+> t=∞then
+> 8return FAIL ;
+> 9Compute match t;
+> 10 if ¬match tthen
+> 11 (a1, . . . , a h)←Alg. 2  p(t),c(t),G, π nav
+> t, π man
+> t,Vg
+> ;
+> 12 Navigate to the grasp cell of a1, then execute
+> a1;append the traversed segment and a1to τ;
+> 13 else
+> 14 Follow πnav
+> tfor up to δsteps; append the traversed prefix to τ;
+> 15 k←k+ 1 ;t←tk, the end time of the executed segment;
+> 16 return τ;
+
+differ in whether discovered movable objects are treated as obstacles or as if they were absent. 
+
+Graph Structures: To define these queries, we introduce two graphs constructed from G. The detour graph Gnav 
+
+> t
+
+optimistically treats all unknown cells as free; thus, its node set is Vft ∪ V ut . Two nodes are connected if their cells share at least one point. To define the second graph, observe that relocations can cascade: relocating a currently manipulable object may make the manipulation cells of other movable objects reachable. For example, in Fig. 2, box 2 becomes manipulable only once box 1 is relocated. We therefore define the recursively manipulable set bOM (t)
+
+as the fixed point of the following monotone recursion: initialize D0 = OM (t) and, given Dk, let Dk+1 collect every oi ∈ Omov (t) with at least one manipulation cell in M(ci(t)) that is reachable from p(t) through cells in 
+
+Vft ∪ S 
+
+> ol∈D k
+
+Bl(cl(t)) , i.e., through known-free cells and the footprints of the objects in Dk, treated as vacated. In other words, Dk+1 evaluates (1) with Nt replaced by the set of cells reachable from p(t) once the objects in Dk have been removed. Since removing objects can only enlarge this set, Dk ⊆ D k+1 ⊆ O mov (t), and the fixed point is reached in at most |O mov (t)| iterations [line 4, Alg. 1]. The recursion runs on known space: reachability is evaluated over known-free cells and freed footprints, never through unknown cells. Given bOM (t), we define the clearing graph Gman  
+
+> t
+
+by treating all unknown cells as free and objects in bOM (t) as absent. Its node set is Vft ∪ V ut ∪ S   
+
+> oi∈bOM(t)
+
+Bi(ci(t)) , with edges defined as in Gnav  
+
+> t
+
+.
+
+Shortest-path Queries: The first query computes the de-tour path πnav  
+
+> t
+
+by running A⋆ (or any shortest-path algorithm) over Gnav  
+
+> t
+
+; it is the best route to the goal that relocates no discovered object. The second computes the clearing path πman  
+
+> t
+
+over Gman  
+
+> t
+
+, which may traverse the footprints of recursively manipulable objects as if they were absent; let 
+
+nt denote the number of distinct objects in bOM (t) whose footprints intersect πman  
+
+> t
+
+. The path lengths are denoted by 
+
+Jnav  
+
+> t
+
+and Jman  
+
+> t
+
+, each set to ∞ if the corresponding path does not exist [lines 5–6, Alg. 1]. Since Gnav  
+
+> t
+
+is a subgraph of Fig. 3. Mode selection in (2), illustrated in the environment of Fig. 2. Unknown space (light gray) contains the goal (green star). The detour path                
+
+> πnav
+> t(red) and clearing path πman
+> t(black) are computed on the optimistic graphs Gnav
+> tand Gman
+> t, which treat unknown cells as traversable. Boxes 1 and 2 obstruct the passage in Gnav
+> t, so the paths enter unknown space at different frontier cells (crosses); thus, ϕ(πnav
+> t)̸=ϕ(πman
+> t)and R ELOCATE
+> is selected.
+
+Gman  
+
+> t
+
+, Jman  
+
+> t
+
+≤ Jnav  
+
+> t
+
+; thus, the clearing path exists whenever the detour path does. Moreover, if nt = 0 , then Jman  
+
+> t
+
+= Jnav  
+
+> t
+
+.These paths are visualized in Fig. 3. 
+
+Frontier matching: For a path π, we define its frontier 
+
+ϕ(π) as the first cell of π that lies in Vut , i.e., the first cell through which π leaves known space, and set ϕ(π) = ⊥ if π
+
+never enters unknown space. Up to its frontier, a path (detour or clearing) lies in known space and is therefore collision-free given the current map (with the clearing path requiring the relocation of any objects it crosses); beyond its frontier, the path relies on the optimistic assumption that unknown cells are free. We say that the two paths match , and write 
+
+match t = true, if the detour path exists and at least one of the following holds [line 9, Alg. 1]: (i) nt = 0 : the clearing path crosses no object and is therefore itself a shortest detour path; (ii) ϕ(πnav  
+
+> t
+
+) = ⊥: the detour path reaches the goal within known space; (iii) ϕ(πnav  
+
+> t
+
+) = ϕ(πman  
+
+> t
+
+): the two paths leave known space through the same cell. Otherwise, match t = false. Note that the paths never match when the detour path does not exist and that match t = true does not imply that the two paths coincide geometrically. 
+
+The decision: The mode at a decision instant t is selected by the following cascade [lines 8–14, Alg. 1]: 
+
+mode t =
+
+
+
+FAIL , if Jman  
+
+> t
+
+= ∞,
+
+RELOCATE , else if ¬ match t,
+
+NAVIGATE , otherwise .
+
+(2) FAIL is declared when neither path exists ( Jman  
+
+> t
+
+= ∞,which implies Jnav  
+
+> t
+
+= ∞): the goal is disconnected from the robot even when all unknown cells are treated as free and all recursively manipulable objects as removed. Since relocating discovered objects cannot make any object outside bOM (t)
+
+manipulable, no relocation sequence can open a route to the goal, and the problem is therefore infeasible on the current map [line 8, Alg. 1]. R ELOCATE is selected when match t =
+
+false, i.e., when the clearing path exploits object relocation to reach the goal within known space or enter unknown space through a different frontier cell than the detour path, or when no detour path exists. The framework then invokes Alg. 2 to compute a relocation sequence, whose first action is executed [lines 11–12, Alg. 1]. N AVIGATE is selected when match t =
+
+true. The two operating modes are illustrated in Fig. 3. 
+
+Designing Relocation Sequences: In RELOCATE , the framework invokes the sampling-based planner of Alg. 2. Given the current map G, robot cell p(t), object configu-rations c(t), goal region Vg , and paths πnav  
+
+> t
+
+and πman  
+
+> t
+
+, the planner searches for a feasible sequence (a1, . . . , a h) of carry actions such that, after execution, the detour path from the resulting robot cell either reaches the goal within known space or leaves known space through the frontier ϕ(πman  
+
+> t
+
+)
+
+of the clearing path [line 11, Alg. 1]. All placements and transport paths in the returned sequence lie in known free space; feasibility conditions are detailed in Section III-B. 
+
+Designing Navigation Paths: In N AVIGATE , the frame-work uses the detour path πnav  
+
+> t
+
+, computed by A⋆ over Gnav  
+
+> t
+
+,as the navigation path. 
+
+Executing Relocation Sequences: The framework exe-cutes only the first action a1 of the returned sequence before replanning [line 12, Alg. 1]. The robot first navigates within 
+
+Nt to the grasp cell mj (ci(t)) of a1, establishing condition (i) of Section II, and then carries oi to the release cell mj (c′
+
+> i
+
+),treating its vacated cells as free. The paths for both stages are computed by Alg. 3 when certifying the feasibility of a1
+
+(see Section III-B). The map is updated during execution, but these updates cannot invalidate the planned paths: by As-sumption 2.2, sensing only relabels unknown cells, whereas 
+
+a1 uses only known free space. Thus, a1 is completed before the relocation-navigation decision is re-evaluated according to (2) [line 15, Alg. 1]. 
+
+Remark 3.1 (Relocation Sequence): The unexecuted suf-fix (a2, . . . , a h) can be reused at the next call, provided it remains feasible on the updated map and still resolves the mismatch; our implementation in Section IV does so. This reduces replanning cost without altering the framework. 
+
+Executing Navigation Paths: In N AVIGATE , the robot executes a prefix of πnav  
+
+> t
+
+for at most δ time steps, while updating the map, and appends the traversed prefix to τ
+
+[line 14, Alg. 1]. Execution terminates earlier if newly sensed obstacles block the path. Upon termination, the relocation-navigation decision is re-evaluated as in (2) [lines 3–10, Alg. 1]. 
+
+Construction of Plan τ : The executed waypoint tran-sitions and carry actions are appended to τ in order of execution [lines 12 and 14, Alg. 1]. Since every action is feasible when executed and the loop terminates only when 
+
+p(t) ∈ V g [line 2, Alg. 1], the returned τ is by construction a feasible plan that solves Problem 1 [line 16, Alg. 1]. 
+
+B. Sampling-based Planning of Relocation Sequences 
+
+The planner invoked in RELOCATE , termed NAMO-LLM u, builds upon NAMO-LLM [10], which computes relocation sequences in known environments by growing a tree of hypothetical relocation sequences. As discussed in Section I, NAMO-LLM u introduces three main modifications: (i) a new termination criterion for partially known environments; (ii) a tree representation that avoids computing free-space components (which is often computationally expensive) by explicitly tracking the robot and object configurations; and (iii) a modified Algorithm 2: NAMO-LLM u                                                                       
+
+> Input: p(t);c(t), map G;πnav
+> t, π man
+> t;Vg
+> Output: relocation sequence (a1, . . . , a h)
+> 1Freeze the current information; zref ←ϕ(πman
+> t);
+> 2q0←[p(t),c(t)] ;
+> 3VT← { q0},ET← ∅ ;
+> 4while true do
+> 5Sample a node qrand ∈ V Tusing fT;
+> 6[qnew , a j
+> car (ci,c′
+> i)] ←TreeExpansion (qrand );
+> 7if qnew ̸=∅then
+> 8VT← V T∪ { qnew },ET←ET∪{ (qrand ,qnew )},A(( qrand ,qnew )) ←aj
+> car (ci,c′
+> i);
+> 9Compute πnav (qnew )and z(qnew );
+> 10 if z(qnew )∈ { zref ,⊥} then
+> 11 q⋆←qnew ;return (a1, . . . , a h), extracted by backtracking from q0to q⋆via A;
+
+relocation-sampling strategy that restricts hypothetical relocations to known free space and favors nearby object placements to reduce relocation travel. In what follows, we describe NAMO-LLM u in detail. 
+
+Tree Representation and Initialization: At each invoca-tion, the current map G and robot and object configurations 
+
+p(t) and c(t) are frozen, defining a snapshot on which the tree is constructed. The frontier of the clearing path 
+
+πman  
+
+> t
+
+computed for (2) is stored as zref = ϕ(πman  
+
+> t
+
+) for the termination test described below [line 1, Alg. 2]. The planner grows a tree T = ( VT , ET ), where VT and ET denote its sets of nodes and edges. Each node q = [ p, c] represents hypothetical robot and object configurations resulting from the relocations along the corresponding branch, while each edge (q, q′) represents a single carry action, recorded by a function A, that transitions from q to q′. Each node q
+
+induces a simulated map , obtained from the snapshot by placing the objects according to c, and an associated detour path πnav (q), computed by A⋆ from p on this simulated map. We define z(q) as the frontier of this path, i.e., 
+
+z(q) = ϕ(πnav (q)) , with z(q) = ⊥ if the path avoids unknown space and z(q) = ∅ if no such path exists. Thus, 
+
+z(q) ∈ V ut ∪ {⊥ , ∅}. Unlike the fixed zref , z(q) depends on the node and is computed when the node is added to the tree for use in the termination test. The tree is initialized as 
+
+VT = {q0} and ET = ∅, where the root q0 = [ p(t), c(t)] 
+
+represents the snapshot [lines 2–3, Alg. 2]. By construction, 
+
+z(q0) = ϕ(πnav  
+
+> t
+
+) if πnav  
+
+> t
+
+exists, and z(q0) = ∅ otherwise. 
+
+Tree Expansion: At each iteration, the planner samples a node qrand = [ prand , crand ] ∈ V T according to [line 5, Alg. 2] 
+
+fT = prand Unif( Vmax  
+
+> T
+
+) + (1 − prand ) Unif( VT ), (3) where Unif( ·) denotes the uniform distribution over a set, 
+
+prand ∈ [0 , 1) is user-specified, and Vmax  
+
+> T
+
+⊆ V T contains the nodes identified as most promising for expansion. The construction of Vmax  
+
+> T
+
+is detailed in the Appendix. The sampled node is then expanded using Alg. 3 [line 6, Alg. 2]. Alg. 3 first computes the manipulable set OM 
+
+> rand
+
+on the simulated map induced by qrand . Specifically, it evaluates (1) with Nt (the set of known free cells reachable by the robot at time t) replaced by the cells reachable from prand on the corresponding simulated map [line 1, Alg. 3]. The planner then samples which manipulable object to relocate and where to place it. Specifically, an object oi ∈ O M 
+
+> rand
+
+and a candidate configuration c′ 
+
+> i
+
+∈ C i are sampled according to fOM and fCi ,respectively [lines 2–3, Alg. 3], where 
+
+fOM = pobs δoLLM + (1 − pobs ) Unif( OM
+
+> rand
+
+), (4) 
+
+fCi = ploc Unif  Cri
+
+ + (1 − ploc ) Unif  CF
+
+> i
+
+. (5) Here, δoLLM assigns probability one to an object oLLM ∈ O M
+
+> rand
+
+recommended by a pre-trained LLM; CF 
+
+> i
+
+⊆ Ci contains the admissible placements of oi in known free space of the simulated map, with the cells currently occupied by oi treated as free; and Cri ⊆ C F 
+
+> i
+
+contains those placements within a user-specified distance r of the current configuration of oi.Thus, (4) biases object selection toward the LLM recom-mendation, whereas (5) biases placement sampling toward nearby configurations, thereby favoring shorter relocations. The parameters pobs , p loc ∈ [0 , 1) control the corresponding biases. If Cri = ∅, the local component defaults to Unif( CF 
+
+> i
+
+).Since pobs , p loc < 1, both distributions retain a uniform component over their respective sampling spaces. The LLM prompt used to select oLLM is detailed in the Appendix. The sampled object oi and configuration c′ 
+
+> i
+
+define acandidate carry action that relocates oi from its configuration 
+
+ci in crand to c′
+
+> i
+
+, and the manipulation location j remains to be determined [line 4, Alg. 3]. The action aj
+
+> car
+
+(ci, c′
+
+> i
+
+) is feasible at qrand if (i) the grasp cell mj (ci) is reachable from 
+
+prand through known free space; (ii) Bi(c′
+
+> i
+
+) lies in known free space; and (iii) a transport path from mj (ci) to mj (c′
+
+> i
+
+) exists, with the cells vacated by oi treated as free, where (ii) and (iii) are the corresponding conditions of Section II. Conditions (i) and (iii) are verified by running A⋆ over the known free space of the simulated map of qrand , from prand to mj (ci) and from 
+
+mj (ci) to mj (c′
+
+> i
+
+), respectively; the two resulting paths are stored with the action so that Alg. 1 can execute it without replanning (Section III-A). The manipulation locations are examined in a random order, and the first one satisfying these requirements is selected as j [line 7, Alg. 3]. If the action is feasible, we construct a new node qnew =[p′, c′] that is reached after applying that action to qrand :the simulated free space is updated by vacating Bi(ci) and blocking Bi(c′
+
+> i
+
+) [line 5, Alg. 3], the object configuration c′
+
+is obtained from crand by replacing the entry of oi with c′
+
+> i
+
+[line 6, Alg. 3], and the robot state p′ is set to the release cell 
+
+p′ = mj (c′
+
+> i
+
+) of the certified manipulation location [line 7, Alg. 3]. The new node and the action, together with its stored paths, are returned to Alg. 2 [line 8, Alg. 3], which adds them to the tree [lines 7–8, Alg. 2], and z(qnew ) is computed for the termination test [line 9, Alg. 2]. If infeasible, no node is added [line 10, Alg. 3]. 
+
+Termination Criterion: NAMO-LLM terminates when the hypothesized relocations establish a collision-free path to the goal [10]. This criterion is insufficient in partially known environments, where the goal region may lie in unknown space and successful relocations may instead only establish access to the frontier of the clearing path πman  
+
+> t
+
+used to eval-uate (2). We therefore terminate Alg. 2 as soon as a node q
+
+satisfying z(q) ∈ { zref , ⊥} is added to the tree. Specifically, Algorithm 3: TreeExpansion (qrand )                                                            
+
+> 1Compute the manipulable set OM
+> rand on the simulated map of qrand ;
+> 2Sample an object oi∈ O M
+> rand from fOM;
+> 3Sample a configuration c′
+> i∈ C ifrom fCi;
+> 4if ∃j∈ { 1, . . . , J i}such that mj(ci)is reachable from prand
+> and conditions (ii)–(iii) of Section II hold for aj
+> car (ci,c′
+> i)on the simulated map then
+> 5Update the simulated free space: vacate Bi(ci), block Bi(c′
+> i);
+> 6c′←crand with the entry of oireplaced by c′
+> i;
+> 7j←first manipulation point passing the check; p′←mj(c′
+> i);
+> 8return qnew = [ p′,c′],aj
+> car (ci,c′
+> i)
+> 9else
+> 10 return qnew =∅,acar =∅
+
+(a) z(qnew ) = zref indicates that the hypothesized relocations enable the detour path to reach the same frontier as the clearing path, thereby resolving the mismatch that invoked the relocation planner; and (b) z(qnew ) = ⊥ indicates that the detour path reaches the goal entirely within known space [line 10, Alg. 2]. 
+
+Returning a Relocation Plan: The planner returns as soon as an expansion yields a target node q⋆. Letting h
+
+denote its depth in T , the carry actions (a1, . . . , a h) along the branch from q0 to q⋆ are extracted by backtracking via 
+
+A and returned to Alg. 1 [line 11, Alg. 2]. 
+
+Theorem 3.2 (Probabilistic completeness): Assume that 
+
+prand , p obs , p loc ∈ [0 , 1) , and suppose that the sampling loop of Alg. 2 (i.e., lines 4–11) runs for nmax iterations. If there exists a finite feasible sequence of carry actions (a1, . . . , a h)
+
+whose final node qh satisfies z(qh) ∈ { zref , ⊥} , then the probability that Alg. 2 returns such a sequence converges to one as nmax → ∞ .We note that probabilistic completeness is defined relative to the frozen snapshot. The proof follows the inductive argument of [6], [10] and relies on the observation that the distributions (3)–(5) retain uniform components and thus sample every feasible action at every node with positive probability. Details are omitted due to space limitations. IV. E XPERIMENTS 
+
+In this section, we evaluate Alg. 1 under various configu-rations and compare it against a method adapted from [20], demonstrating fewer relocations, shorter travel, and lower execution time. All experiments were conducted on a laptop with an AMD Ryzen 9 8945HS 4.0 GHz processor and 16 GB of RAM. Our implementation is available at [31]. 
+
+A. Setting Up Comparative Experiments 
+
+Environment: We consider two 16 × 12 m house en-vironments as in Fig. 1. They contain walls, non-movable furniture, and n movable boxes with footprint 0.055 × 0.30 
+
+m and two manipulation cells located 0.45 m beyond the midpoints of their short sides. The robot is modeled as a point after inflating all obstacles by its radius of 0.3 m and moves at 0.1 m/s. 
+
+Sensing and Mapping: The map of Section II is con-structed at 0.02 m resolution using a simulated sensor with a 3.5 m range and 360 ◦ FoV. Visible cells, computed by recursive shadowcasting, are labeled as free or occupied; all                                                                                   
+
+> Method HDist. (m) Exec. (Plan.) Time (s) Case I NAMO-SA u[20] 22.4 101.2 1053.2(41.1) RandomTree 7.5 72.1 800.6(80.1) NAMO-LLM u(0.2, 0.2) 6.0 57.6 638.6(62.6) NAMO-LLM u(0.8, 0.2) 7.1 64.3 707.2(65.1) NAMO-LLM u(0.2, 0.8) 3.9 41.0 458.7 (49.5) NAMO-LLM u(0.8, 0.8) 4.4 42.9 480.3(51.4) LLM-Plan 4.6 43.2 489.1(57.2) Case II NAMO-SA u[20] 35.2 148.8 1561.1(73.4) RandomTree 10.7 88.4 1099.5(215.5) NAMO-LLM u(0.2, 0.2) 8.5 66.7 769.3(102.3) NAMO-LLM u(0.8, 0.2) 10.0 79.9 888.2(89.7) NAMO-LLM u(0.2, 0.8) 5.4 48.6 555.4 (61.1) NAMO-LLM u(0.8, 0.8) 5.8 49.9 562.4(62.4) LLM-Plan 6.9 53.4 609.8(76.0) Case III NAMO-SA u[20] 24.3 154.7 1604.2(57.8) RandomTree 11.2 159.4 1774.7(181.0) NAMO-LLM u(0.2, 0.2) 8.8 124.2 1390.9(150.2) NAMO-LLM u(0.8, 0.2) 10.4 139.3 1530.0(137.7) NAMO-LLM u(0.2, 0.8) 5.8 71.9 830.7 (111.3) NAMO-LLM u(0.8, 0.8) 6.4 81.3 920.7(107.7) LLM-Plan 6.7 76.1 870.9(109.7) Case IV NAMO-SA u[20] 45.3 236.2 2454.0(90.8) RandomTree 16.7 221.2 2642.4(430.7) NAMO-LLM u(0.2, 0.2) 16.3 193.6 2190.3(254.1) NAMO-LLM u(0.8, 0.2) 13.2 159.9 1887.7(288.8) NAMO-LLM u(0.2, 0.8) 9.9 106.1 1318.1 (258.3) NAMO-LLM u(0.8, 0.8) 11.1 118.5 1419.9(234.3) LLM-Plan 11.9 115.9 1396.3(237.6) TABLE I SUMMARY OF RESULTS FOR CASE STUDIES I–IV.
+
+others remain unknown. A box and its class and configuration are discovered once its center cell is observed. 
+
+Planner Setup: We denote our method by NAMO-LLM u(prand , p obs ) and evaluate prand , p obs ∈{0.2, 0.8} and the extreme variants (0 , 0) and (1 , 1) . The 
+
+(0 , 0) variant uses uniform node and object sampling, removing LLM guidance, and retains the completeness property of Theorem 3.2; we refer to it as RandomTree. The (1 , 1) variant always uses the LLM to select the node to expand and object to relocate and does not retain this property; we refer to it as LLM-Plan. We use GPT-5.4 with temperature 1 throughout. Unless otherwise specified, 
+
+ploc = 0 .9, r = 4 m, and δ = 5 s. 
+
+Baseline: We compare our method against NAMO-SA u,a search-based method built upon [20]. The setting in [20] differs from ours in three ways. First, it assumes a known static map and discovers only movable objects online; thus, its detour paths can only be blocked by undiscovered movable objects, whereas ours may also be invalidated by fixed obstacles in unexplored space. Second, as discussed in Section I, it cannot handle joint relocations in which several manipulable objects must be relocated before any path opens. Third, it relocates objects to a predefined storage zone, whereas our method samples their placements online. For a fair comparison, we adapt [20] to address these differences while preserving its greedy relocation strategy. First, we retain its decision rule but evaluate whether a path to the goal exists on the partially known map by treating unknown cells as free and discovered movable objects as obstacles, i.e., using the detour path πnav  
+
+> t
+
+of Section III-A. Since navigation reveals the map, this check is repeated: if πnav  
+
+> t
+
+exists, the robot follows it for δ time steps, as in N AVIGATE ; otherwise, it relocates the first manipulable object crossed by πman 
+
+> t
+
+(see Section III-A), which either opens a path or exposes a manipulation cell of another blocking object; this replaces the cost-based object selection of [20]. Since the decision is re-evaluated as soon as that object is relocated, the objects along the clearing path are relocated one after another until a path opens. This also allows it to handle joint relocations (see e.g., Cases I–IV in Section IV-B). Second, instead of a storage zone, the placement of the relocated object is sampled from (5) with the same ploc and r as NAMO-LLM u,executing the first sample that yields a feasible carry action, i.e., satisfies conditions (i)–(iii) of Section II. The robot fails if the clearing path does not exist. Thus, the baseline shares our map, placement strategy, navigation interval δ,and feasibility checks, but relocates greedily only when no detour exists rather than searching over relocation sequences. 
+
+Evaluation Metrics: We evaluate (a) number of executed relocations H; (b) total robot travel distance, including navi-gation, object approach, and transport; and (c) total execution time, comprising robot travel and planner computation time, where the latter includes map updates, path queries, naviga-tion and relocation planning, and LLM inference. Values in parentheses in Table I report the planner computation time in seconds. Results are averaged over 100 runs. 
+
+B. Comparative Experiments 
+
+We consider four case studies in the two environments of Fig. 1, differing in n and relocation dependencies. All require joint relocations, while Cases II and IV introduce an access dependency. We denote by Hmin the minimum number of relocations needed to reach Vg on the true map. Table I summarizes the results. 
+
+Case Study I (n = 30 , Hmin = 3 ): Our method performs best with (0 .2, 0.8) , relocating 3.9 boxes on average, close to Hmin . NAMO-SA u relocates 5.7× more boxes and travels 
+
+2.5× farther. Its planner computation time is the lowest, as it performs no search, but its execution time is 2.3× longer due to greater travel. Compared to (0 .2, 0.8) , RandomTree requires 1.9× more relocations and 1.7× longer execution time, and even more planner computation time despite no LLM inference, as more iterations are needed to find a solution; LLM-Plan requires 1.2× more relocations and 7% 
+
+longer execution time. 
+
+Case Study II (n = 40 , Hmin = 4 ): This case extends Case Study I with 10 additional movable obstacles intro-ducing an access dependency and increasing Hmin to 4. All NAMO-LLM u configurations again outperform NAMO-SA u.The performance gap with NAMO-SA u widens in this larger case with an access dependency, with (0 .2, 0.8) again performing best. We observe that the LLM makes more mistakes in this more complex environment. Unlike LLM-Plan, NAMO-LLM u with prand , p obs < 1 can recover from them through the uniform sampling. 
+
+Case Studies III–IV (n = 30 , Hmin = 4 and n = 40 ,
+
+Hmin = 5, respectively): These cases consider a more complex environment than Cases I–II, with more pathways to the goal. Case IV adds 10 movable obstacles introducing an access dependency and increasing Hmin to 5. We observe  
+
+> Fig. 4. Evaluation with Hydra in Gazebo. Left: top-down view of the ground-truth environment of Case Study I. Right: the 3D scene graph built online by Hydra from the robot’s RGB-D stream.
+
+trends similar to Cases I–II, with (0 .2, 0.8) performing best, but longer travel and planning times due to greater clutter. 
+
+Remark 4.1 (Effect of ploc ): We use Case Study I to eval-uate the placement-sampling bias in (5). We fix prand =
+
+pobs = 0 .8 and vary ploc ∈ { 0, 0.5, 0.9}, where ploc = 0 cor-responds to uniform sampling over the known free space. For 
+
+ploc = 0 , 0.5, 0.9, respectively, we obtain H = 4 .3, 4.8, 4.4,travel distances of 55 .7, 51 .5, 42 .9 m, and execution times of 616 .0 (58 .5), 570 .7 (55 .9), and 480 .3 s ( 51 .4), where the values in parentheses are planning times. 
+
+C. Validation with a Metric-Semantic Mapping System 
+
+We also evaluate the framework with realistic perception, where Assumption 2.2 no longer holds. We replace the simulated mapping system of Section IV-A with Hydra [11] in ROS 1 Noetic and Gazebo 11; see Fig. 4. The environment is identical to Case Study I. The robot is a TurtleBot3 Waffle Pi with an OpenMANIPULATOR-X arm, an RGB-D camera (640 ×480 , 80 ◦ FoV, 10 m range), and a 2D LiDAR, and uses ground-truth localization. Hydra builds a 3D scene graph from the RGB-D stream using color-based semantic labels, from which we extract the occupancy and object layers of Section II on a 0.05 m grid. Hydra perceives the unexplored environment, while changes caused by manipulation are incorporated explicitly. After each relocation, the object’s footprint is moved from its original to its new pose in both layers, and Hydra’s accumulated evidence at these cells is reset. This avoids waiting for repeated observations to override previously fused measurements. We ran NAMO-LLM u(0 .8, 0.8) for 25 trials, with the robot reaching the goal in 84% of them. Failures result from the perception pipeline: (i) errors in object positions estimated by Hydra prevent the robot from reaching the correct manipulation cell; and (ii) closely spaced objects are occasionally merged into a single object. V. C ONCLUSIONS 
+
+We proposed an online NAMO planner for unknown environments, where the robot decides whether to relocate discovered objects or navigate through unexplored space. Our experiments showed fewer relocations, shorter travel, and lower execution time than baseline methods due to its non-uniform sampling strategy. Future work will focus on extensions to 3D environments, hardware validation, and enhancing robustness to perceptual errors. APPENDIX 
+
+In this appendix, we discuss how Vmax  
+
+> T
+
+in (3) is constructed and how we prompt a pre-trained LLM to select oLLM in (4). 
+
+Node Score: Following [10], each node q ∈ VT is assigned a score v(q) equal to the number of edges along the branch from the root to q that were generated by relocating the LLM-recommended object. The set Vmax  
+
+> T
+
+= {q ∈ V T |
+
+v(q) = max q′∈V T v(q′)} collects the nodes with the highest score and is used to bias the node sampling in (3). The score is updated incrementally as new nodes are added to the tree. 
+
+LLM Prompt: The mechanism for incorporating the LLM recommendation into the sampling distributions is inherited from [10]. However, the prompt used therein assumes com-plete knowledge of the environment and cannot be directly applied in our setting: the goal may lie in unexplored space, and neither the geometry nor the objects in that space are available to the planner. We therefore redesign the prompt to provide the LLM only with information available on the sim-ulated map induced by qrand and to elicit recommendations that remain useful under partial environment knowledge. Specifically, the simulated map is represented as an ASCII occupancy grid distinguishing known-free, occupied, and unknown cells, together with the robot and goal locations and the discovered movable objects; no ground-truth information about unexplored space is provided. The candidate objects are restricted to OM
+
+> rand
+
+, ensuring that the recommended object 
+
+oLLM can be used directly in (4). Moreover, rather than asking which object should be relocated to clear a path to the goal as in [10], the prompt asks which relocation makes the most progress toward the goal or toward access to unknown space when the goal cannot yet be reached within known space. The prompt used in our experiments is in [31]. 
+
+Output: The LLM is prompted to return a candidate object 
+
+oLLM in a prescribed format. If the output is invalid or identifies an object outside the provided candidate list OM
+
+> rand
+
+,the recommendation is discarded and pobs is set to zero for that iteration, reducing (4) to uniform sampling over OM
+
+> rand
+
+.REFERENCES [1] S. Karaman and E. Frazzoli, “Sampling-based algorithms for optimal motion planning,” The international journal of robotics research ,vol. 30, no. 7, pp. 846–894, 2011. [2] G. Wilfong, “Motion planning in the presence of movable obstacles,” in Proceedings of the fourth annual symposium on Computational geometry , 1988, pp. 279–288. [3] M. Stilman and J. J. Kuffner, “Navigation among movable obstacles: Real-time reasoning in complex environments,” International Journal of Humanoid Robotics , vol. 2, no. 04, pp. 479–503, 2005. [4] M. Stilman and J. Kuffner, “Planning among movable obstacles with artificial constraints,” The International Journal of Robotics Research ,vol. 27, no. 11-12, pp. 1295–1307, 2008. [5] D. Nieuwenhuisen, A. F. van der Stappen, and M. H. Overmars, “An effective framework for path planning amidst movable obstacles,” in 
+
+Algorithmic Foundation of Robotics VII . Springer, 2008, pp. 87–102. [6] J. Van Den Berg, M. Stilman, J. Kuffner, M. Lin, and D. Manocha, “Path planning among movable obstacles: a probabilistically complete approach,” in Algorithmic Foundation of Robotics VIII . Springer, 2010, pp. 599–614. [7] S. K. Moghaddam and E. Masehian, “Planning robot navigation among movable obstacles (namo) through a recursive approach,” Journal of Intelligent & Robotic Systems , vol. 83, pp. 603–634, 2016. [8] S. B. Bayraktar, A. Orthey, Z. Kingston, M. Toussaint, and L. E. Kavraki, “Solving rearrangement puzzles using path defragmentation in factored state spaces,” IEEE Robotics and Automation Letters ,vol. 8, no. 8, pp. 4529–4536, 2023. [9] S. Kalluraya and Y. Kantaros, “Making infeasible tasks feasible: Planning to reconfigure disconnected 3D environments with movable objects,” arXiv preprint arXiv:2601.02645 , 2026. [10] Y. Zhang and Y. Kantaros, “Namo-llm: Efficient navigation among movable obstacles with large language model guidance,” IEEE Robotics and Automation Letters , vol. 10, no. 12, pp. 13 026–13 033, 2025. [11] N. Hughes, Y. Chang, and L. Carlone, “Hydra: A real-time spatial perception system for 3D scene graph construction and optimization,” in Robotics: Science and Systems (RSS) , 2022. [12] H.-n. Wu, M. Levihn, and M. Stilman, “Navigation among movable obstacles in unknown environments,” in IROS , 2010, pp. 1433–1438. [13] M. Levihn, M. Stilman, and H. Christensen, “Locally optimal navi-gation among movable obstacles in unknown environments,” in 2014 IEEE-RAS International Conference on Humanoid Robots . IEEE, 2014, pp. 86–91. [14] K. Ellis, H. Zhang, D. Stoyanov, and D. Kanoulas, “Navigation among movable obstacles with object localization using photorealistic simulation,” in 2022 IROS . IEEE, pp. 1196–1201. [15] S. Armleder, E. Dean-Leon, F. Bergner, J. R. Guadarrama Olvera, and G. Cheng, “Tactile-based negotiation of unknown objects during navigation in unstructured environments with movable obstacles,” 
+
+Advanced Intelligent Systems , vol. 6, no. 3, p. 2300621, 2024. [16] B. He, G. Chen, W. Wang, J. Zhang, C. Ferm¨ uller, and Y. Aloimonos, “Interactive-FAR: Interactive, fast and adaptable routing for navigation among movable obstacles in complex unknown environments,” in 2024 IROS . IEEE, pp. 5402–5409. [17] Y. Kakiuchi, R. Ueda, K. Kobayashi, K. Okada, and M. Inaba, “Work-ing with movable obstacles using on-line environment perception reconstruction using active sensing and color range sensor,” in 2010 IROS , pp. 1696–1701. [18] L.-M. Stan, R. Bezerra, S. Kojima, T. T. Alemayoh, S. Tadokoro, M. Konyo, and K. Ohno, “Adaptive cost-map-based path planning in unknown environments with movable obstacles,” arXiv preprint arXiv:2510.15336 , 2025. [19] J. Muguira-Iturralde, A. Curtis, Y. Du, L. P. Kaelbling, and T. Lozano-P´ erez, “Visibility-aware navigation among movable obstacles,” in 2023 IEEE International Conference on Robotics and Automation (ICRA) .IEEE, 2023, pp. 10 083–10 089. [20] K. Ellis, D. Hadjivelichkov, V. Modugno, D. Stoyanov, and D. Kanoulas, “Navigation among movable obstacles via multi-object pushing into storage zones,” IEEE Access , vol. 11, pp. 3174–3183, 2023. [21] V. Vasilopoulos, Y. Kantaros, G. J. Pappas, and D. E. Koditschek, “Re-active planning for mobile manipulation tasks in unexplored semantic environments,” in 2021 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2021, pp. 6385–6392. [22] K.-H. Zeng, L. Weihs, A. Farhadi, and R. Mottaghi, “Pushing it out of the way: Interactive visual navigation,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) , 2021, pp. 9868–9877. [23] H.-C. Wang, S.-C. Huang, P.-J. Huang, K.-L. Wang, Y.-C. Teng, Y.-T. Ko, D. Jeon, and I.-C. Wu, “Curriculum reinforcement learning from avoiding collisions to navigating among movable obstacles in diverse environments,” IEEE Robotics and Automation Letters , vol. 8, no. 5, pp. 2740–2747, 2023. [24] L. Yao, V. Modugno, A. M. Delfaki, Y. Liu, D. Stoyanov, and D. Kanoulas, “Local path planning among pushable objects based on reinforcement learning,” in 2024 IROS , pp. 3062–3068. [25] K. Zhou, Y. Mu, H. Song, Y. Zeng, P. Wu, H. Gao, and C. Liu, “Adaptive interactive navigation of quadruped robots using large language models,” arXiv preprint arXiv:2503.22942 , 2025. [26] Y. Labb´ e, S. Zagoruyko, I. Kalevatykh, I. Laptev, J. Carpentier, M. Aubry, and J. Sivic, “Monte-carlo tree search for efficient visu-ally guided rearrangement planning,” IEEE Robotics and Automation Letters , vol. 5, no. 2, pp. 3715–3722, 2020. [27] A. Krontiris and K. E. Bekris, “Dealing with difficult instances of object rearrangement.” in Robotics: Science and Systems , vol. 1123, 2015. [28] J. Ahn and C. Mavrogiannis, “Relopush: Multi-object rearrangement in confined spaces with a nonholonomic mobile robot pusher,” in 2025 IEEE International Conference on Robotics and Automation (ICRA) ,2025, pp. 13 196–13 203. [29] K. Ren, L. E. Kavraki, and K. Hang, “Rearrangement-based manipu-lation via kinodynamic planning and dynamic planning horizons,” in 
+
+2022 IROS , pp. 1145–1152. [30] R. Wang, Y. Miao, and K. E. Bekris, “Efficient and high-quality prehensile rearrangement in cluttered and confined spaces,” in 2022 International Conference on Robotics and Automation (ICRA) . IEEE, 2022, pp. 1968–1975. [31] Software, https://drive.google.com/drive/folders/ 1ZG9KemWiuzrOoJCYlsShtGHy97UbV1qA?usp=sharing .
