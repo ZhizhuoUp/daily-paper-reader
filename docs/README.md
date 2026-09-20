@@ -6,73 +6,61 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-19
-- 运行时间：2026-09-19 21:38:56 UTC
+- 最新运行日期：2026-09-20
+- 运行时间：2026-09-20 21:05:35 UTC
 - 运行状态：成功
-- 本次总论文数：17
-- 精读区：6
+- 本次总论文数：13
+- 精读区：2
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 17 篇机器人前沿论文，聚焦动态避障与多模态运动规划的深度突破。
-重点推荐《Time-Efficient Iterative Learning Planning》等研究，展示了安全关键场景下高效避障与大模型引导规划的最新进展。
-建议优先研读精读列表中的两篇核心论文，掌握强化学习与代码生成在复杂运动控制中的落地逻辑。
-- 详情：[/202609/19/README](/202609/19/README)
+今日精选 13 篇机器人前沿论文，聚焦复杂环境下的运动规划与控制优化。
+重点关注基于牛顿法的极值搜索算法及引入想象引导的 TAMP 任务规划，展现了处理延迟测量与部分可观测性的强大潜力。
+建议关注机器人自主决策与复杂环境交互的最新进展，为提升智能体在动态场景中的执行效率提供参考。
+- 详情：[/202609/20/README](/202609/20/README)
 
 ### 精读区论文标签
-1. [Time-Efficient Iterative Learning Planning for Safety-Critical Dynamic Obstacle Avoidance](/202609/19/2609.20435v1-time-efficient-iterative-learning-planning-for-safety-critical-dynamic-obstacle-avoidance)  
-   标签：评分：9.0/10、query:q1
-   evidence：实时安全保证与动态避障
-2. [M$^3$P-R1: Reinforcement Learning for Large Language Model Guided Multi-Modal Motion Planning via MIP Code Generation](/202609/19/2609.18669v1-m3p-r1-reinforcement-learning-for-large-language-model-guided-multi-modal-motion-planning-via-mip-code-generation)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：多模态运动规划与操作
-3. [Asymptotically Optimal Multi-Robot Task and Motion Planning](/202609/19/2609.18813v1-asymptotically-optimal-multi-robot-task-and-motion-planning)  
+1. [Safe Newton-Based Extremum Seeking for Static Maps with Delayed Output Measurements](/202609/20/2609.15537v1-safe-newton-based-extremum-seeking-for-static-maps-with-delayed-output-measurements)  
+   标签：评分：8.0/10、query:q2
+   evidence：基于优化且带有安全约束和二次规划的控制
+2. [Imagine-TAMP: Imagination-Guided Task and Motion Planning in Partial Observability](/202609/20/2609.20396v1-imagine-tamp-imagination-guided-task-and-motion-planning-in-partial-observability)  
    标签：评分：8.0/10、query:q4
-   evidence：多机器人任务与运动规划及无碰撞运动
-4. [KINO: A Keyframe Interface for VLM Planning and Whole-Body Control in Humanoid Loco-Manipulation](/202609/19/2609.18869v1-kino-a-keyframe-interface-for-vlm-planning-and-whole-body-control-in-humanoid-loco-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：类人机器人移动操作与全身控制
-5. [Learning Holistic Whole-Body Loco-Manipulation with a Bipedal Mobile Manipulator](/202609/19/2609.18930v1-learning-holistic-whole-body-loco-manipulation-with-a-bipedal-mobile-manipulator)  
-   标签：评分：8.0/10、query:q6
-   evidence：双足移动操作手的全身运动与操作控制
-6. [Coding Agents with an Obstacle-Aware Harness for Safe Robot Manipulation](/202609/19/2609.20822v1-coding-agents-with-an-obstacle-aware-harness-for-safe-robot-manipulation)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：安全机器人操作的障碍物感知规划
+   evidence：杂乱环境下的任务与运动规划
 
 ### 速读区论文标签
-1. [Risk-Aware World Modeling with Flow-Guided Occupancy Evolution for Selective Trajectory Planning in Automated Driving](/202609/19/2609.18442v1-risk-aware-world-modeling-with-flow-guided-occupancy-evolution-for-selective-trajectory-planning-in-automated-driving)  
-   标签：评分：7.0/10、query:q1
-   evidence：风险感知的轨迹规划与避障
-2. [Dreaming the Sound of Contact: Leveraging Video and Audio Generation for Zero-Shot Force-Aware Manipulation and Data Generation](/202609/19/2609.19137v1-dreaming-the-sound-of-contact-leveraging-video-and-audio-generation-for-zero-shot-force-aware-manipulation-and-data-generation)  
+1. [Learning Multi-Humanoid Pickup and Transport via Decentralized Object-Centric Control](/202609/20/2609.17824v1-learning-multi-humanoid-pickup-and-transport-via-decentralized-object-centric-control)  
    标签：评分：7.0/10、query:q6
-   evidence：基于视频和音频的操纵轨迹
-3. [Grasping by interconnection: robust closing motions from coarse object templates](/202609/19/2609.19228v1-grasping-by-interconnection-robust-closing-motions-from-coarse-object-templates)  
-   标签：评分：7.0/10、query:q6
-   evidence：灵巧机器人手及操作的运动规划器
-4. [Feasibility and Singularity in High-Order Safety-Critical Control for Quadrotor UAVs](/202609/19/2609.19362v1-feasibility-and-singularity-in-high-order-safety-critical-control-for-quadrotor-uavs)  
-   标签：评分：7.0/10、query:q1
-   evidence：具有避障约束的安全关键控制
-5. [Winning a Won Game: Strict Reach-Avoid-Stay Control Barrier Functions for High-Dimensional Black-Box Systems](/202609/19/2609.19449v1-winning-a-won-game-strict-reach-avoid-stay-control-barrier-functions-for-high-dimensional-black-box-systems)  
+   evidence：多类人机器人抓取与运输操作
+2. [PASSAGE: Scaling Scene-Aligned Motion Learning for Perceptive Humanoid Traversal in Cluttered Environments](/202609/20/2609.18732v1-passage-scaling-scene-aligned-motion-learning-for-perceptive-humanoid-traversal-in-cluttered-environments)  
    标签：评分：7.0/10、query:q4
-   evidence：高维机器人的到达-规避-停留控制障碍函数
-6. [Navigate or Relocate? Planning Among Movable Obstacles in Unknown Environments](/202609/19/2609.19541v1-navigate-or-relocate-planning-among-movable-obstacles-in-unknown-environments)  
+   evidence：针对杂乱环境中类人机器人遍历的感知调节规划器
+3. [TRACER: Adaptive Multi-Robot Social Navigation via Joint Human-Response Prediction and Interaction-Aware Replanning](/202609/20/2609.18776v1-tracer-adaptive-multi-robot-social-navigation-via-joint-human-response-prediction-and-interaction-aware-replanning)  
    标签：评分：7.0/10、query:q1
-   evidence：可移动障碍物环境下的无碰撞路径规划
-7. [Port-Hamiltonian Koopman Operator Synthesis for Mechanical Systems](/202609/19/2609.17249v1-port-hamiltonian-koopman-operator-synthesis-for-mechanical-systems)  
+   evidence：多机器人导航和交互感知重规划
+4. [WorldContact: A Contact-Centric World Model for Scalable Robot Learning](/202609/20/2609.19600v1-worldcontact-a-contact-centric-world-model-for-scalable-robot-learning)  
+   标签：评分：7.0/10、query:q6
+   evidence：柔性物体操作的世界模型
+5. [Distributed Model Predictive Control with Connectivity-based Contracts](/202609/20/2609.19912v1-distributed-model-predictive-control-with-connectivity-based-contracts)  
+   标签：评分：7.0/10、query:q2
+   evidence：移动机器人的分布式模型预测控制
+6. [Hybrid Residual Reinforcement Learning for Contact-Rich Robotic Book Insertion](/202609/20/2609.19962v1-hybrid-residual-reinforcement-learning-for-contact-rich-robotic-book-insertion)  
+   标签：评分：7.0/10、query:q6
+   evidence：富接触机器人操作控制
+7. [Characterizing Identifiability and Generalization for Inverse Receding-Horizon Linear-Quadratic Regulator Problems](/202609/20/2609.14053v1-characterizing-identifiability-and-generalization-for-inverse-receding-horizon-linear-quadratic-regulator-problems)  
    标签：评分：6.0/10、query:q2
-   evidence：用于机械系统控制的Koopman算子合成
-8. [HINT-Plan: Human Intention-Aware Robot Task Planning in Context-Rich Environments using Vision Language Models](/202609/19/2609.17771v1-hint-plan-human-intention-aware-robot-task-planning-in-context-rich-environments-using-vision-language-models)  
+   evidence：收缩时域线性二次调节器优化
+8. [Function-Preserving Data Generation for Zero-Shot Real-to-Sim-to-Real Manipulation](/202609/20/2609.18293v1-function-preserving-data-generation-for-zero-shot-real-to-sim-to-real-manipulation)  
+   标签：评分：6.0/10、query:q6
+   evidence：接触密集型操作任务的数据生成
+9. [Trajectory Manifolds for Nonlinear Data-Enabled Predictive Control](/202609/20/2609.19079v1-trajectory-manifolds-for-nonlinear-data-enabled-predictive-control)  
+   标签：评分：6.0/10、query:q2
+   evidence：数据驱动预测控制的几何基础
+10. [Kinematics-Grounded Agentic AI for Robotic Additive Manufacturing Process Planning](/202609/20/2609.19347v1-kinematics-grounded-agentic-ai-for-robotic-additive-manufacturing-process-planning)  
+   标签：评分：6.0/10、query:profile-1
+   evidence：基于运动学的机器人机械臂工艺规划
+11. [Decoupling Physical Speed from Path Parameterization in Singularity-Free Guiding Vector Fields](/202609/20/2609.19726v1-decoupling-physical-speed-from-path-parameterization-in-singularity-free-guiding-vector-fields)  
    标签：评分：6.0/10、query:q4
-   evidence：机器人任务规划与避障
-9. [GraphPoint: Semantic Entity Graphs and Point Trajectories for Compositional Robot Manipulation](/202609/19/2609.18358v1-graphpoint-semantic-entity-graphs-and-point-trajectories-for-compositional-robot-manipulation)  
-   标签：评分：6.0/10、query:q6
-   evidence：组合式机器人操作与点轨迹
-10. [ViLoMan: Learning Visual-Proprioceptive Whole-Body Loco-Manipulation Skills for Humanoid Robots](/202609/19/2609.19340v1-viloman-learning-visual-proprioceptive-whole-body-loco-manipulation-skills-for-humanoid-robots)  
-   标签：评分：6.0/10、query:q6
-   evidence：类人机器人的全身移动操作
-11. [PIVOT: Perception-aware Independent Viewpoint Online Optimization](/202609/19/2609.19510v1-pivot-perception-aware-independent-viewpoint-online-optimization)  
-   标签：评分：6.0/10、query:q2
-   evidence：传感器视角在线优化
+   evidence：用于机器人轨迹的引导向量场
 
 
 <div class="dpr-home-promo-card">
