@@ -6,61 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-20
-- 运行时间：2026-09-20 21:05:35 UTC
+- 最新运行日期：2026-09-21
+- 运行时间：2026-09-21 22:21:41 UTC
 - 运行状态：成功
-- 本次总论文数：13
-- 精读区：2
+- 本次总论文数：17
+- 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 13 篇机器人前沿论文，聚焦复杂环境下的运动规划与控制优化。
-重点关注基于牛顿法的极值搜索算法及引入想象引导的 TAMP 任务规划，展现了处理延迟测量与部分可观测性的强大潜力。
-建议关注机器人自主决策与复杂环境交互的最新进展，为提升智能体在动态场景中的执行效率提供参考。
-- 详情：[/202609/20/README](/202609/20/README)
+今日精选 17 篇机器人前沿论文，聚焦实时轨迹优化与安全控制的最新突破。
+重点关注随机神经有向扫描体积与噪声空间轨迹优化，它们显著提升了复杂环境下的实时避障与策略安全性。
+建议优先研读这两篇高分论文，深入理解生成式策略在动态任务中的落地逻辑。
+- 详情：[/202609/21/README](/202609/21/README)
 
 ### 精读区论文标签
-1. [Safe Newton-Based Extremum Seeking for Static Maps with Delayed Output Measurements](/202609/20/2609.15537v1-safe-newton-based-extremum-seeking-for-static-maps-with-delayed-output-measurements)  
-   标签：评分：8.0/10、query:q2
-   evidence：基于优化且带有安全约束和二次规划的控制
-2. [Imagine-TAMP: Imagination-Guided Task and Motion Planning in Partial Observability](/202609/20/2609.20396v1-imagine-tamp-imagination-guided-task-and-motion-planning-in-partial-observability)  
-   标签：评分：8.0/10、query:q4
-   evidence：杂乱环境下的任务与运动规划
+1. [Stochastic Neural Signed Swept Volume for Real-time Chance-Constrained Trajectory Optimization](/202609/21/2609.21211v1-stochastic-neural-signed-swept-volume-for-real-time-chance-constrained-trajectory-optimization)  
+   标签：评分：10.0/10、query:profile-1
+   evidence：实时机会约束轨迹优化与无碰撞运动规划
+2. [Safe Real-Time Policy Steering via Noise-Space Trajectory Optimization for One-Step Generative Policies](/202609/21/2609.21220v1-safe-real-time-policy-steering-via-noise-space-trajectory-optimization-for-one-step-generative-policies)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：生成式策略中用于避障的实时轨迹优化
+3. [Contact-Rich Motion Planning via GPU-Parallel Mode Evaluation](/202609/21/2609.21803v1-contact-rich-motion-planning-via-gpu-parallel-mode-evaluation)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：用于操作的 GPU 并行轨迹优化
+4. [SkipVLA: Skipping VLA Steps with Classical Planning for Fast Robot Manipulation](/202609/21/2609.20648v2-skipvla-skipping-vla-steps-with-classical-planning-for-fast-robot-manipulation)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：结合VLA与经典运动规划器，实现快速无碰撞机器人操作
+5. [FORTE: Task-Adaptive Force Capability Optimization for Mobile Manipulators](/202609/21/2609.21497v1-forte-task-adaptive-force-capability-optimization-for-mobile-manipulators)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：移动机械臂的任务自适应力能力优化
+6. [TRACE: Coverage Path Planning for Unknown Environments Using Hierarchical Coverage Tree](/202609/21/2609.21777v1-trace-coverage-path-planning-for-unknown-environments-using-hierarchical-coverage-tree)  
+   标签：评分：8.0/10、query:q1
+   evidence：未知环境下的实时覆盖路径规划
 
 ### 速读区论文标签
-1. [Learning Multi-Humanoid Pickup and Transport via Decentralized Object-Centric Control](/202609/20/2609.17824v1-learning-multi-humanoid-pickup-and-transport-via-decentralized-object-centric-control)  
+1. [Gripper-Aware Automatic Dense Packing of Irregular Objects](/202609/21/2609.22062v1-gripper-aware-automatic-dense-packing-of-irregular-objects)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：真实机械臂上的放置优化与力导向执行
+2. [LIMBO: Learning and Internalizing Model-Free Barrier Objectives for Agile and Safe Whole-Body Control](/202609/21/2609.22075v1-limbo-learning-and-internalizing-model-free-barrier-objectives-for-agile-and-safe-whole-body-control)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：使用控制屏障函数协调避障与平衡的安全全身控制
+3. [Dreaming the Sound of Contact: Leveraging Video and Audio Generation for Zero-Shot Force-Aware Manipulation and Data Generation](/202609/21/2609.19137v2-dreaming-the-sound-of-contact-leveraging-video-and-audio-generation-for-zero-shot-force-aware-manipulation-and-data-generation)  
    标签：评分：7.0/10、query:q6
-   evidence：多类人机器人抓取与运输操作
-2. [PASSAGE: Scaling Scene-Aligned Motion Learning for Perceptive Humanoid Traversal in Cluttered Environments](/202609/20/2609.18732v1-passage-scaling-scene-aligned-motion-learning-for-perceptive-humanoid-traversal-in-cluttered-environments)  
+   evidence：利用视听生成机器人操作的运动轨迹
+4. [MaskHarness-WAM: Instance-Grounded Harnessing for Long-Horizon Robot Manipulation](/202609/21/2609.19974v1-maskharness-wam-instance-grounded-harnessing-for-long-horizon-robot-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：长程机器人操作与任务规划
+5. [Walking on the Slope: Stable Bipedal Gaits with Genetic-Algorithm-Optimized Trajectories](/202609/21/2609.20570v1-walking-on-the-slope-stable-bipedal-gaits-with-genetic-algorithm-optimized-trajectories)  
+   标签：评分：7.0/10、query:q3
+   evidence：遗传算法优化的双足机器人轨迹
+6. [SPARROW: Survival-POMCP for Adaptive Robot Routing, Observation, and Waiting](/202609/21/2609.21008v1-sparrow-survival-pomcp-for-adaptive-robot-routing-observation-and-waiting)  
    标签：评分：7.0/10、query:q4
-   evidence：针对杂乱环境中类人机器人遍历的感知调节规划器
-3. [TRACER: Adaptive Multi-Robot Social Navigation via Joint Human-Response Prediction and Interaction-Aware Replanning](/202609/20/2609.18776v1-tracer-adaptive-multi-robot-social-navigation-via-joint-human-response-prediction-and-interaction-aware-replanning)  
+   evidence：障碍物环境下的机器人路径规划信念空间规划器
+7. [DEXTERA: From a Single Image to Deployable Dexterous Manipulation via Real-to-Sim-to-Real](/202609/21/2609.21045v1-dextera-from-a-single-image-to-deployable-dexterous-manipulation-via-real-to-sim-to-real)  
+   标签：评分：7.0/10、query:q6
+   evidence：可部署的灵巧操作策略
+8. [AirSplan: Risk-Aware Motion Planning for Quadrotors in Cluttered 3D Gaussian Splats](/202609/21/2609.21226v1-airsplan-risk-aware-motion-planning-for-quadrotors-in-cluttered-3d-gaussian-splats)  
    标签：评分：7.0/10、query:q1
-   evidence：多机器人导航和交互感知重规划
-4. [WorldContact: A Contact-Centric World Model for Scalable Robot Learning](/202609/20/2609.19600v1-worldcontact-a-contact-centric-world-model-for-scalable-robot-learning)  
-   标签：评分：7.0/10、query:q6
-   evidence：柔性物体操作的世界模型
-5. [Distributed Model Predictive Control with Connectivity-based Contracts](/202609/20/2609.19912v1-distributed-model-predictive-control-with-connectivity-based-contracts)  
-   标签：评分：7.0/10、query:q2
-   evidence：移动机器人的分布式模型预测控制
-6. [Hybrid Residual Reinforcement Learning for Contact-Rich Robotic Book Insertion](/202609/20/2609.19962v1-hybrid-residual-reinforcement-learning-for-contact-rich-robotic-book-insertion)  
-   标签：评分：7.0/10、query:q6
-   evidence：富接触机器人操作控制
-7. [Characterizing Identifiability and Generalization for Inverse Receding-Horizon Linear-Quadratic Regulator Problems](/202609/20/2609.14053v1-characterizing-identifiability-and-generalization-for-inverse-receding-horizon-linear-quadratic-regulator-problems)  
-   标签：评分：6.0/10、query:q2
-   evidence：收缩时域线性二次调节器优化
-8. [Function-Preserving Data Generation for Zero-Shot Real-to-Sim-to-Real Manipulation](/202609/20/2609.18293v1-function-preserving-data-generation-for-zero-shot-real-to-sim-to-real-manipulation)  
+   evidence：无人机在复杂环境中的风险感知避障运动规划
+9. [Task-Distribution-Aware Counterweight Synthesis and Constrained Co-Design for Serial Manipulators](/202609/21/2609.15082v1-task-distribution-aware-counterweight-synthesis-and-constrained-co-design-for-serial-manipulators)  
    标签：评分：6.0/10、query:q6
-   evidence：接触密集型操作任务的数据生成
-9. [Trajectory Manifolds for Nonlinear Data-Enabled Predictive Control](/202609/20/2609.19079v1-trajectory-manifolds-for-nonlinear-data-enabled-predictive-control)  
+   evidence：串联机械臂的任务分布感知合成
+10. [GR2PO: Group Relative Return Policy Optimization for Continuous Robot Control](/202609/21/2609.19850v1-gr2po-group-relative-return-policy-optimization-for-continuous-robot-control)  
    标签：评分：6.0/10、query:q2
-   evidence：数据驱动预测控制的几何基础
-10. [Kinematics-Grounded Agentic AI for Robotic Additive Manufacturing Process Planning](/202609/20/2609.19347v1-kinematics-grounded-agentic-ai-for-robotic-additive-manufacturing-process-planning)  
-   标签：评分：6.0/10、query:profile-1
-   evidence：基于运动学的机器人机械臂工艺规划
-11. [Decoupling Physical Speed from Path Parameterization in Singularity-Free Guiding Vector Fields](/202609/20/2609.19726v1-decoupling-physical-speed-from-path-parameterization-in-singularity-free-guiding-vector-fields)  
-   标签：评分：6.0/10、query:q4
-   evidence：用于机器人轨迹的引导向量场
+   evidence：用于连续机器人控制的无评论家强化学习
+11. [MA-LIPP: Cooperative Multi-Agent Load-Aware Informative Path Planning for Heterogeneous Robot Teams](/202609/21/2609.21167v1-ma-lipp-cooperative-multi-agent-load-aware-informative-path-planning-for-heterogeneous-robot-teams)  
+   标签：评分：6.0/10、query:q1
+   evidence：多智能体负载感知信息路径规划
 
 
 <div class="dpr-home-promo-card">
