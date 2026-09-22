@@ -1,0 +1,503 @@
+Title: Becoming a Fruit Ninja: Real-Time Probabilistic Kinodynamic Planning for Manipulator Projectile Interception
+
+URL Source: https://arxiv.org/pdf/2609.22608v1
+
+Published Time: Tue, 22 Sep 2026 00:25:08 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Becoming a Fruit Ninja: Real-Time Probabilistic Kinodynamic Planning for Manipulator Projectile Interception 
+
+Lucas Chen, Austin Garrett, Andrew Niu, and Zachary Kingston        
+
+> Fig. 1: An interception sequence controlled by our planner at Tminus 500 ms ,200 ms ,100 ms and 0 ms . Gold: end-effector history. Purple: candidate trajectories. Green: planned intercept point. Blue: object history. Our planner is capable of real-time interception under uncertainty.
+
+Abstract — Projectile interception is a challenging dynamic manipulation problem. Intercepting a thrown object with a robot arm requires reaching a point on the object’s path as the object passes through it. Slicing also fixes the blade’s velocity and orientation at contact. The goal is therefore a subset of the states of the robot and arrival times that moves as the object falls, and the arm must reach it within its actuator limits in milliseconds. We present FRUITNINJA, an anytime sampling-based planner that grows a tree on the GPU in batches toward the interception manifold. Each edge is an exact cubic whose travel time is found by a parallel search against the arm’s dynamics, so every edge satisfies the actuator limits. Plans are ranked by a risk-aware objective over the uncertainty in the object’s position and the arm’s arrival time. We evaluate on a Franka Research 3 against six baselines in a calibrated real-time simulator, where FRUITNINJA cuts 96 .7% of tosses in the open and 68 .3% among five obstacles, versus the best baseline’s 
+
+68 .3% and 35 .0% respectively. 
+
+I. I NTRODUCTION 
+
+Catching a thrown object is a long-standing benchmark for dynamic manipulation [1, 2], and striking one, as in table tennis [3], adds a terminal velocity to the goal. We consider slicing (Fig. 1), which adds the blade’s velocity and orientation at contact. These problems couple the goal to the plan: the arm must reach the object where it will be, so the intercept point depends on the arrival time, which depends on the trajectory. The goal is therefore a manifold of configurations, joint velocities, and arrival times. On an arm such as the Franka Research 3 (FR3), the plan must also respect torque, power, and position-dependent velocity limits, since exceeding any one can damage the hardware. The object is only within the robots reach for under a second and its predicted position is uncertain, so the planner has milliseconds to react and generate a trajectory.    
+
+> LC, AG, AN, and ZK are with the Department of Computer Science, Purdue University, West Lafayette, IN, USA. {chen4007, ajg, niua, zkingston }@purdue.edu .
+
+Recent planners intercept a projectile with an industrial arm [4, 5], but start from a fixed configuration and reach a pose with zero terminal velocity. Sampling-based motion planners (SBMPs) can solve the full problem, since kin-odynamic variants [6, 7] handle general goal regions and differential constraints, but interception imposes hard real-time constraints. Two compatible advances bring SBMPs to millisecond speeds, enough for full planning inside the interception loop: GPU-parallel SBMPs [8–10] batch tree growth into single kernels, and FLASK [11] steers exactly between arm states with closed-form cubic edges. We present FRUITNINJA, an anytime batched kinody-namic sampling-based motion planner for real-time inter-ception of airborne objects. At 50 Hz , it samples batches of candidate states, both uniformly and from an explicit nine-dimensional chart of the goal manifold over arrival time, contact point, blade orientation, and speed, and connects each to its nearest tree nodes by a minimum-time cubic. Each edge is timed by a parallel search against a dynamics model of the FR3, and edges that violate its limits are discarded. An anytime outer loop keeps the incumbent plan and prunes nodes that cannot reach the object in time, and a 1 kHz controller refits a cubic to the planner’s rendezvous every cycle. Since the arrival point is an estimate, plans are ranked by a risk-aware objective that trades cut speed against the probability of contact under uncertainty that grows with the arrival time. We evaluate on hardware and in a simulator calibrated on the physical arm, against six baselines. FRUITNINJA cuts 96 .7% of tosses in the open and 68 .3% 
+
+among five obstacles, against 68 .3% and 35 .0% for the best baseline, and ablations show that the cubic edge and the dynamics model are both necessary. arXiv:2609.22608v1 [cs.RO] 18 Sep 2026 II. R ELATED WORK 
+
+Croft et al. [12] pose interception as selecting the earliest rendezvous point on the object’s predicted path that the arm can reach, which couples the goal to the travel time. Catching systems pair a filter over the object’s flight [1] with online optimization over catch posture and timing [2]. Slicing is closer to striking tasks such as table tennis [3], where the terminal velocity is part of the goal. Closest to ours, Natarajan et al. [4] precompute a library of trajectories from a home configuration to a discretized set of shield poses, and Olin et al. [5] precompute a tree of jerk-limited primitives over a similar goal set and select a branch online as the belief over the crossing point tightens. Both block the projectile with an industrial arm, plan to a pose with zero terminal velocity, and enforce only kinematic limits. Our planner replans every cycle, checks each edge against the arm’s dynamics, and plans to a goal that includes velocity and orientation at contact. Kinodynamic SBMPs propagate sampled controls when no steering function is available [6], or steer exactly when the boundary value problem has a closed form [7]. FLASK [11] solves it for manipulator arms through differential flatness, where the solutions are cubics. Asymptotic optimality comes from rewiring [13], dominance pruning [14], or AO-x [15], which wraps a feasible planner in a cost-bounded outer loop and needs no cost-to-go. These trees grow one node at a time, which limits throughput in a real-time setting. GPU parallelism now covers geometric SBMPs [8], ma-nipulation [16, 17], and trajectory optimization [18]. In the kinodynamic setting, Kino-PAX + [10] decomposes tree growth into independent GPU subroutines and PAKR [9] vectorizes a kinodynamic RRT so that a batch of propagations is one kernel. Our planner follows the batched inner loop of PAKR within an anytime outer loop, but steers with cubics timed by a parallel minimum-time search. Planning against a target that moves while the planner runs is a replanning problem. RRT X [19] maintains a single graph rewired online as the world changes, and Hauser [20] gives conditions under which such a loop stays safe and complete when every cycle has a hard time bound. Covic et al. [21] treat each replanning cycle as a periodic real-time task, and KRAFT [22] pairs a kinodynamic tree planner with feedback tracking and a contingency stop. Trajectory optimization [18, 23] and sampling-based MPC [24, 25] refine a trajectory locally over a fixed horizon, so they converge to local minima and do not plan ahead to a rendezvous. Online trajectory parameterization approaches [26, 27] emit a limit-respecting reference to a given target state every cycle, but do not choose the target. Replanning from scratch each cycle solves kinodynamic problems that a single query cannot [28, 29]. Our planner rebuilds the tree from the measured state every planning cycle, since the goal moves between cycles, and sends only the first segment of the plan to the controller. The arrival point is an estimate, so plans must be ranked under uncertainty. Chance-constrained planning bounds the probability of collision along a path, in sampling-based planners [30] and in trajectory optimization [31, 32], and risk-aware planners derive that bound from reachable sets [33]. These methods treat uncertainty as a constraint to satisfy, while Long et al. [34] propagate it to choose an intercept point for a planar target. Our objective scores the probability of contact under uncertainty that grows with the chosen arrival time, and ranks plans by it. III. P ROBLEM STATEMENT 
+
+Let x : R≥0 → R3 be the object’s flight, estimated online from its initial position x0 and velocity v0 under the ballistic model 
+
+x(t) = x0 + v0t + 12 g t 2. (1) The object is within the arm’s reach for t ∈ [tenter , t fall ], a window of under a second. The arm has configuration q ∈ C ⊂ R7 and state (q, ˙q),
+
+˙q ∈ R7. A trajectory σ : [0 , T ] → C over travel time 
+
+T requires joint torques τ (t) given by the arm’s inverse dynamics (Sec. IV-C). The FR3 bounds each joint’s position, velocity, and torque and the total mechanical power, W , where the velocity bound ¯˙qi(qi) tapers with position. 
+
+Definition III.1 (Feasible trajectory) . A trajectory σ is feasible if it is collision-free and, ∀t ∈ [0 , T ] and joints i,
+
+| ˙σi(t)| ≤ ¯˙qi(σi(t)) , |τi(t)| ≤ τ max  
+
+> i
+
+,
+
+X
+
+> i
+
+τi(t) ˙ σi(t) ≤ W max .
+
+Exceeding a bound triggers one of the FR3’s velocity, power, or torque-rate reflexes, which decelerate the arm without a fault, so feasibility is a hard constraint. For a fixed boundary state, the required torque and power reduce as T
+
+grows, which Sec. IV-D uses; the velocity taper does not, since it depends on position. The end effector carries a blade with edge B(q) ⊂ R3 from forward kinematics. For a contact point p, let vb(q, ˙q, p ) be the blade’s velocity there and nb(q) its cutting direction. 
+
+Definition III.2 (Interception manifold) . The interception manifold is the set of arm states and arrival times at which the blade cuts the object, 
+
+M =  (q, ˙q, T ) x(T ) ∈ B (q), a(q, ˙q, T ) ≥ amin ,
+
+∥vb(q, ˙q, x (T )) − ˙x(T )∥ ≥ vmin ,
+
+where a(q, ˙q, T ) = cos ∠ nb(q), v b − ˙x(T ) is the alignment between the cutting direction and the relative velocity, and 
+
+amin and vmin are the alignment and cut-speed thresholds. 
+
+Our experiments use amin = 0 .94 and vmin = 3 .0 m /s.The manifold moves with T as the object moves. Since x(·)
+
+is an estimate whose error grows with T , membership in M
+
+is uncertain, and Sec. IV-B ranks candidates by probability of contact. 
+
+Definition III.3 (Interception planning) . Given the arm’s measured state (q0, ˙q0) and the estimated flight x(·), find an arrival time T ∈ [tenter , t fall ] and a feasible trajectory 
+
+σ : [0 , T ] → C such that 
+
+(σ(0) , ˙σ(0)) = ( q0, ˙q0), (σ(T ), ˙σ(T ), T ) ∈ M ,maximizing the objective J of Eq. (2) .
+
+The goal is coupled to the plan: the intercept point x(T )
+
+depends on T , and the least T for which a feasible σ exists depends on where x(T ) is. IV. M ETHOD 
+
+We present FRUITNINJA (Free-terminal-time 
+
+Rendezvous, Uncertainty-aware Interception Tree, a Nytime, 
+
+IN cumbent-pruned, JAX-Accelerated), a sampling-based planner that solves Def. III.3 from the measured state at 
+
+50 Hz . Each batch samples the goal manifold through an explicit chart and free states near the chord to it, connects every sample to its nearest tree nodes by a minimum-time cubic, and keeps the edges that satisfy the arm’s actuator limits and clearance. Samples on the manifold are scored by a risk-aware objective over the uncertainty in the object’s flight. An anytime outer loop keeps the best rendezvous found so far, prunes nodes that cannot reach the object before it, and sends the first edge of that plan to the controller when the cycle’s time-limit is exceeded. We describe the chart, the objective, the dynamics model, the cubic edge, the planner, and the controller in turn. 
+
+A. The goal chart 
+
+Def. III.2 defines M implicitly. Given the flight x(·),however, a rendezvous is fixed by a small number of choices, so M has an explicit chart and can be sampled directly. 
+
+Definition IV.1 (Goal chart) . A chart of M is a pair (Z, ϕ )
+
+of a parameter space Z = [0 , 1] 9 and a decoding map to configuration, velocity, and arrival time ϕ : Z → C × R7 ×
+
+R≥0, defined on a subset of Z, such that ϕ(z) = ( qg , ˙qg , T ) ∈M wherever it is defined. 
+
+The ϕ(z) map is defined as follows. The first six coor-dinates of z set the intercept: z0 selects the arrival time 
+
+T ∈ [tenter , t fall ] and thus the contact point x(T ) via (1); 
+
+z1, z 2 set the blade’s approach direction as a lateral offset within a cone about − ˙x(T ); and z3, z 4, z 5 set the blade’s spin, roll, and tilt, completing the end-effector rotation Rg ∈
+
+SO (3) . The remaining three resolve redundancy: z6 selects the FR3’s wrist angle in [qmin 7 , q max 7 ], z7 picks the contact point p ∈ B (qg ) along the 30 cm edge, and z8 adds closing speed beyond the object’s own velocity. Together these fix the end-effector pose (pg , R g ), from which closed-form inverse kinematics [35] gives qg , and the terminal joint velocity follows as ˙qg = J†(qg ) vee , where vee combines ˙x(T ) and the closing speed. The approach cone and closing speed enforce the alignment and speed conditions of Def. III.2 by construction. When inverse kinematics has no solution or ˙qg
+
+exceeds bounds, ϕ is undefined and the sample is discarded. 
+
+B. Objective 
+
+The flight estimate has independent position, velocity, and acceleration uncertainty σp, σv , and σa, which propagate to a position uncertainty at time t of 
+
+σ2(t) = σ2 
+
+> p
+
++ ( σv t)2 + ( 12 σat2)2.
+
+The score of a rendezvous (qg , ˙qg , T ) ∈ M is 
+
+J = wv · min( vrel , v target )+ wp · log Pobject + wr · log Pinrange + wx · log Parm ,
+
+(2) with 
+
+vrel = ∥vb − ˙x(T )∥,Pobject = erf  r/σ (T )√2,Pinrange = Φ  (tfall − T )/σ t
+
+, σt = σ(T )/| ˙xz (tfall )|,
+
+log Parm = −λ(ν − ν0)+ T (1 − ν0/ν ).
+
+(3) The first term rewards the relative speed at contact, clipped at vtarget . Pobject is the probability that the object lies within the catch radius r of x(T ), and Pinrange , with Φ the standard normal cumulative distribution function, is the probability that the object has not yet left reach. Parm penalizes a peak joint-velocity fraction ν above the reflex threshold ν0, in proportion to the time spent above it. Because σ(T ) grows with the arrival time, the score trades cut speed against arriving before the estimate’s uncertainty grows. 
+
+C. Dynamics model 
+
+Both the planner’s feasibility check and the 1 kHz con-troller require the joint torque needed to follow a given trajectory. For a state (q, ˙q, ¨q) along an edge, the required torque at joint i is 
+
+τi =  M (q) ¨ q + c(q, ˙q) + g(q)  
+
+> i
+
++ Im,i ¨qi + τf,i ( ˙ qi), (4) where M (q)¨ q + c(q, ˙q) + g(q) is the rigid-body inverse dy-namics (recursive Newton–Euler, RNEA), Im,i is the reflected rotor inertia of joint i, and τf,i ( ˙ qi) is a friction model. We adopt the identification of Gaz et al. [36], who fit both terms on the Panda arm, the FR3’s mechanical predecessor. The reflected rotor inertia Im,i = Jm,i · n2 
+
+> i
+
+(motor inertia times squared gear ratio) is the torque needed to accelerate the rotor itself. RNEA models only the link-side bodies, and omitting this term under-predicts the torque required for fast motions by up to 12% of peak torque on the proximal joints. The friction model is a per-joint sigmoid [36], 
+
+τf,i ( ˙ qi) = ψ1,i 
+
+1 + e−ψ2,i ( ˙ qi+ψ3,i ) − ψ1,i 
+
+1 + e−ψ2,i ψ3,i , (5) where ψ1,i sets the saturation amplitude, ψ2,i the transition sharpness, and ψ3,i a velocity offset, and the second term enforces τf,i (0) = 0 . We choose the same values for these constants as those provided by Gaz et al. The FR3 firmware adds friction compensation to commanded torques, and its safety reflexes are checked against the arm’s internal torque estimates, so the friction model is needed to predict and avoid reflex triggers. 
+
+D. Cubic edges and minimum-time search 
+
+FLASK [11] plans in the flat output space of a differentially flat system, where the boundary value problem has a closed-form solution. A fully actuated arm is flat in its joint posi-tions, y = q, and with joint acceleration as the pseudo-control, the minimum-time, minimum-effort trajectory between two boundary states is a per-joint cubic. We refer the reader to the original paper for details on the construction of the cubic. 
+
+Definition IV.2 (Cubic edge) . The edge from (q0, ˙q0) to 
+
+(q1, ˙q1) with travel time T is 
+
+σT (t) = q0 + ˙ q0 t +
+
+ 3  
+
+> T2
+
+d1 − 1 
+
+> T
+
+d2
+
+
+
+t2 +
+
+ 1  
+
+> T2
+
+d2 − 2  
+
+> T3
+
+d1
+
+
+
+t3,
+
+(6) 
+
+with d1 = q1 − q0 − ˙q0T and d2 = ˙ q1 − ˙q0.
+
+The travel time fixes the edge’s shape as well as its speed, so retiming a cubic changes its path, unlike time-optimal path parameterization [37], which retimes a fixed path. FLASK chooses T by minimizing a time-plus-effort cost and validates the edge against bounds on joint acceleration. The FR3’s limits are on torque and power, which depend on configura-tion and velocity through (4), and valid FLASK cubics often violate these terms. Discarding such edges leaves the tree with few feasible connections, so we instead search for T
+
+checked against the dynamics model, as discussed below. 
+
+Definition IV.3 (Feasibility Check) . Evaluate σT at S
+
+equally spaced times ts, with τ (ts) the torque of (4) :
+
+ρ(T ) = max  ρτ , ρ P , ρ v
+
+, ρτ = max 
+
+> i,s
+
+|τi(ts)|
+
+τ max 
+
+> i
+
+,ρP = max 
+
+> s
+
+P 
+
+> i
+
+τi(ts) ˙ σT,i (ts)
+
+W max , ρv = max 
+
+> i
+
+| ˙σT,i |peak 
+
+¯˙qi(σT,i ) ,
+
+(7) 
+
+and the edge is feasible iff ρ(T ) ≤ 1.
+
+The three terms check joint torque, mechanical power (W max = 120 W ), and the position-dependent velocity taper. The velocity term uses the exact extremum of the cubic’s quadratic velocity profile rather than the samples. For fixed boundary states, ρτ and ρP decrease monotonically in T ,since a slower motion requires less torque and power, whereas 
+
+ρv depends on position alone and does not. 
+
+Definition IV.4 (Minimum feasible time) . The minimum feasible time of an edge is 
+
+T ⋆ = min { T > 0 | ρτ (T ) ≤ 1 and ρP (T ) ≤ 1 }.
+
+We find T ⋆ by search; a binary search underuses a GPU, so we use an N -ary search: the interval [Tlo , T hi ] is split into 
+
+N equal slots, all N are evaluated in parallel, and the single feasible sub-interval of width (Thi − Tlo )/N is refined on the next iteration. This converges in ⌈log N (Thi /ϵ )⌉ rounds rather than ⌈log 2(Thi /ϵ )⌉, at the cost of N evaluations per round. Since ρv is not monotonic in T , it is checked once at 
+
+T ⋆, and edges that violate it are discarded. 
+
+E. The FRUITNINJA planner 
+
+FRUITNINJA (Alg. 1) grows a tree of cubic edges (Def. IV.2) from the measured state. The tree is expanded in batches on the GPU and stored in a preallocated struct-of-arrays layout. An anytime outer loop repeats the expansion and keeps the rendezvous node with the highest score J
+
+of (2). The tree T is a set of nodes n = ( qn, ˙qn, t n), each joined to its parent by a feasible cubic edge, where tn is the time-to-come along the edges from the root (q0, ˙q0, 0) .A node is a rendezvous node if (qn, ˙qn, t n) ∈ M .
+
+Collision checking. The arm’s collision geometry is a set of spheres covering each link. Self-collision pairs that the joint limits make unreachable are removed offline. An edge is checked by a discrete set of configurations along its cubic and computing the minimum clearance between the arm spheres and the obstacle capsules at each sample. An edge whose minimum clearance is below a safety margin is rejected. Because the check is per edge, a goal whose direct cubic is in collision can still be reached through an intermediate node, which a single-cubic planner cannot do. During the search, clearance is checked at a coarse resolution, and the plan sent to the controller is rechecked at full resolution, since checking every candidate edge at full resolution would be the largest cost in the cycle. 
+
+Batched expansion. Each round samples B candidate states. A fraction pgoal of them are goal candidates: parame-ters drawn from a density pθ over the chart and decoded by 
+
+ϕ (line 4). Each goal candidate has a required arrival time 
+
+Treq , set by its z0. These samples bias growth toward the reachable part of M. The density pθ is a Gaussian mixture over Z mixed with a uniform component. It is refit between anytime iterations to the parameters that produced the best plans, and it persists across planning cycles. The mixture concentrates samples near previously found rendezvous; the uniform component keeps every point of the chart reachable. The remaining candidates are free states (line 6). The configuration of a free state is a Gaussian perturbation of a point on the chord in joint space from the root to a decoded goal, again mixed with a uniform component over the joint box. Its velocity is drawn from a fraction of the joint-velocity limits at that configuration. Each candidate has M parent candidates: the root and its 
+
+M − 1 nearest tree nodes (line 8), found by a brute-force parallel scan. The root is always included because it could potentially find cheaper and smoother paths in early iterations, in comparison to connecting with the nearest neighbor set, which produces segmented paths that are jerky and require more iterations to smooth out. A goal candidate must arrive at Treq , so its edge duration from parent p is fixed at Treq − tp and the check is evaluated once (line 11). A free candidate has no required arrival time, but is still bounded by Tbest . To efficiently compute an admissible bound for this time, we rely on one iteration of an 
+
+N -ary search. Edges that fail the check of Def. IV.3 or the clearance check are discarded (line 15). Each candidate is attached to the remaining parent that gives it the smallest time-to-come (line 18). Multiple parents are needed for detours: if the edge from the nearest node is in collision, the edge from another parent may be clear. 
+
+Anytime outer loop. After every round, the incumbent is set to the highest-scoring rendezvous node in the tree (line 20). At the end of each anytime iteration, the tree is pruned (line 22). Informed pruning needs a cost-to-go bound, which has no closed form here. We instead prune on arrival time. Let σ⋆ = arg max c J(c) over the rendezvous nodes of T and Algorithm 1: FRUITNINJA: one planning cycle 
+
+Input : root (q0, ˙q0); flight x(·); batch B; parents M ;rounds R; anytime iterations A
+
+Output: rendezvous (qg , ˙qg , T ) for the 1 kHz controller 
+
+T ← { (q0, ˙q0, 0) }, σ⋆ ← ∅, tbest ← tfall 
+
+for a = 1 . . . A do for r = 1 . . . R do 
+
+Z ∼ pθ , |Z| = pgoal BXgoal ← ϕ(Z, x (·)) 
+
+Xfree ← ChordSample( q0, X goal , (1 −pgoal )B)
+
+foreach x ∈ Xgoal ∪ Xfree in parallel do 
+
+P ← Parents( T , x, M )
+
+foreach p ∈ P in parallel do if x ∈ Xgoal then 
+
+Tp ← Treq (x) − t(p)ok p ← ρ(Tp) ≤ 1
+
+else 
+
+Tp ← min {T ≤ tbest | ρ(T ) ≤ 1}
+
+ok p ← Tp < ∞
+
+ok p ← ok p∧ Clear( p, x, T p)
+
+if ∃ p ∈ P : ok p then 
+
+p⋆ ← arg min p : ok p t(p) + Tp
+
+T ← T ∪ { (x, p ⋆, t (p⋆) + Tp⋆ )}
+
+if T ∩ M̸ = ∅ then 
+
+σ⋆ ← arg max c ∈ T ∩M J(c)
+
+tbest ← t(σ⋆)
+
+T ← Prune( T , t best )
+
+return first segment of σ⋆
+
+tbest = tσ⋆ . For a node n with blade position pn, let 
+
+Tn = min 
+
+n
+
+T ∈ [tenter , t fall ] tn + ∥pn − x(T )∥
+
+Vtip 
+
+≤ T
+
+o
+
+(8) be the earliest time at which the blade can reach the object from n, where Vtip bounds the end-effector speed. The node is pruned if Tn does not exist or Tn > t best .
+
+F. Controller and execution architecture 
+
+The system operates at two rates (Fig. 2). An incumbent plan is a path of one or more cubic edges, the planner only uses the endpoint of the first, which is sent to the 1 kHz 
+
+tracking controller (qg , ˙qg , T ), and the tree is rebuilt at the next planning cycle. Each control cycle, the controller fits its own cubic from the measured state (q, ˙q) to the rendezvous over horizon T , extracts the desired acceleration 
+
+¨qdes = clip 
+
+ 6( qg − q)
+
+T 2 − 4 ˙ q + 2 ˙ qg
+
+T , [ℓ, u ]
+
+
+
+, (9) where [ℓ, u ] taper the velocity toward zero near the joint limits, and applies the dynamics model (4) to obtain a torque command τ ∈ R7, clipped to the FR3’s torque, slew, and power limits. Because the refit starts from the measured state every cycle, the controller needs only the current rendezvous and no knowledge of the tree. The controller runs at 1 kHz 
+
+in step with the FR3’s required control rate. The planner runs at 50 Hz on a separate thread. Unlike the controller, this requires compensation for its own latency: a plan produced at time t targets the predicted object state at 
+
+t + ∆ tplan , where ∆tplan ≈ 20 ms is the measured planning time. Without this compensation, the trajectory no longer            
+
+> Fig. 2: System architecture. The planner observes the object state and produces a commanded reference (qg,˙qg, T )at 50 Hz ; the controller refits a cubic from measured state and commands torques at 1 kHz . The planner’s latency compensation shifts the target forward by ∆tplan ≈20 ms .
+
+intersects the object and the success rate drops to nearly 0% .Our GPU-based algorithm makes use of a unified kernel with static memory requirements, producing a highly predictable runtime with only ±1 ms of range. V. E XPERIMENTS 
+
+We evaluate FRUITNINJA against six baselines in sim-ulation, in a clear workspace and under clutter, ablate its design choices, and validate on hardware. All simulated experiments run on an NVIDIA RTX 4090 GPU with an AMD Threadripper CPU. FRUITNINJA is implemented in JAX [38]. For all experiments, we fix the constants described through-out the different stages. For the scoring function, we set 
+
+wv = 0.20 with vtarget = 9.0 m /s, wp = 8, wr = 8,
+
+wx = 1 , r = 9 cm , ν0 = 0 .90 of the tapered velocity limit, and λ = 1 .2. In simulation the covariance uses the estimator’s measured residuals, σp = 4 .8 mm and σv = 18 .6 mm /s with 
+
+σa = 0 . On hardware the same estimator is calibrated to 
+
+σp = 5 .4 mm , σv = 40 .6 mm /s, and σa = 0 .20 m /s2, where the nonzero σa is the unmodelled gravity tilt of the object’s flight. For the planning iterations and batch sizes, we use 
+
+B = 128 candidates and M = 4 parents, with R = 2 rounds per anytime iteration and A = 2 iterations per cycle. 
+
+A. Methodology 
+
+The simulator runs the same planner, controller, and com-munication stack as the physical system, as separate processes over UDP; only the physics and perception are simulated. Every noise source is fitted from hardware recordings. The simulator synthesises raw marker detections and feeds them through the estimator that runs on hardware, applies a corre-lated disturbance torque to the arm calibrated so that tracking divergence matches hardware replay to within 8% . The arm uses a torque and safety model fitted from 300 total real swings. Each evaluation is 180 tosses across three seeds. Tosses are ballistic arcs that sweep laterally across the arm’s reachable workspace with transit times of 0.75 –0.95 s , drawn from three launch azimuths and two launch radii. We report cut rate , the percentage of tosses where the blade contacts the object with alignment and speed above the thresholds of Def. III.2; catch rate , where the blade contacts the object at all; cut speed ¯v, the mean relative normal blade– object speed at contact; and, under clutter, thru , the fraction Fig. 3: Cut rate, catch rate, and cut speed vs. median solve time. Each point is one planner configuration (varying batch size, iterations, or population). FRUITNINJA reaches 96 .7% cut rate at 12 ms ; baselines plateau below 70% .                                                                                                              
+
+> N= 0 (no obstacle) N= 3 (3 capsules) N= 5 (5 capsules) planner cut ↑catch ↑thru ↓¯v↑cut ↑catch ↑thru ↓¯v↑cut ↑catch ↑thru ↓¯v↑
+> FRUITNINJA (ours) 96.7 98.3 ×5.35 81.7 85.0 7.35.36 68.3 81.7 11 .55.06
+> RRTC (CPU) 73 .398.3 ×4.76 58 .378 .324 .14.75 21 .736 .727 .04.27
+> CEM 68 .376 .7×5.30 53 .365 .04.75.37 38 .353 .35.3 5.03
+> CMA-ES 68 .386 .7×4.96 65 .080 .05.0 5.11 35 .068 .35.45.00
+> TrajOpt 41 .773 .3×3.81 31 .751 .78.13.80 43 .363 .314 .53.79
+> MPPI 0.030 .0××0.015 .07.7×0.021 .716 .3×
+> cuRobo 1.76.7×2.38 1.75.09.74.18 0.03.310 .9×
+> Table I: Obstacle avoidance (60 tosses per clutter level). Cut/catch: %;¯v: contact-conditional speed ( m/s); thru: fraction of plans whose executed motion passes through a capsule. Gold : best cut rate per level. Averages are calculated only on successful trials. FRUITNINJA maintains the best cut and catch rate even as obstacle density increases.
+
+of plans whose executed motion passes through an obstacle. Cut rate is the primary metric; the gap to catch rate separates tosses that miss the object from those that reach it without cutting. The baselines are CEM [39] and CMA-ES [40], which sam-ple and refine collocations points and intercept configurations in the rendezvous space; TrajOpt [23], sequential convex optimization over a collocated trajectory; MPPI [24], which samples control sequences and takes their exponentially weighted mean; cuRobo [18], a GPU planner over B-spline trajectories; and RRTC [11], a CPU bidirectional RRT with the same cubic steering as FRUITNINJA, which separates the effect of the tree from that of the GPU. Every baseline output is converted to the controller’s native format (T, q g , ˙qg ), a single cubic to the rendezvous. 
+
+B. Interception in the open 
+
+Fig. 3 plots cut rate against median solve time for every configuration of every planner. FRUITNINJA cuts 96 .7% of tosses at a median solve time of 12 ms , inside the 20 ms 
+
+planning cycle. No single-cubic baseline exceeds 70% at any solve time ( N = 0 in Table I). RRTC catches as many tosses as FRUITNINJA ( 98 .3% ) but cuts only 73 .3% , at 4.76 m /s
+
+against 5.35 m /s: the CPU tree lacks the time budget to give a solution on every solve, leaving the controller executing stale rendezvous. CEM misses the object on a quarter of tosses, indicating that naive search over the collocation and intercept space is too slow for realtime use. 
+
+C. Clutter 
+
+Table I adds three and five 750 mm capsule obstacles to the workspace, shown in Fig. 4, with every planner at its best open-workspace configuration and any obstacle-aware option enabled. FRUITNINJA falls from 96 .7% to 81 .7% 
+
+and 68 .3% ; the best baseline, CMA-ES, falls from 68 .3% 
+
+to 65 .0% and 35 .0% . The obstacles illustrate the power of search, so direct optimization methods become stuck once the direct path is blocked, whereas FRUITNINJA routes through intermediate waypoints and checks each edge for collision (Sec. IV-E). RRTC also builds an obstacle avoiding tree but falls to 21 .7% at five capsules, because it often fails to find a solution within the time budget. MPPI never plans ahead to a rendezvous and cuts nothing; cuRobo is too slow to finish a run even at its fastest setting. Contact with a capsule is not eliminated: thru scores the executed motion, and tracking error under the disturbance torque carries FRUITNINJA through a capsule on 7.3% and 11 .5% of plans, against 24 .1% 
+
+and 27 .0% for RRTC. 
+
+D. Ablations 
+
+We ablate the trajectory parameterization, the probability model, and the arm dynamics model. 
+
+Trajectory parameterization. In our approach, each edge is a per-joint cubic, the lowest-order polynomial fixed by the four boundary conditions (q0, ˙q0, q 1, ˙q1). However, alternative polynomial orders exist; lower orders lack the expressive-ness to represent all boundary conditions and higher orders introduce more expressivity but also additional degrees of freedom. In this section we explore the performance of alternate parameterizations. In Table II, orders 4 and 5 match the cubic within a standard deviation. Dropping the terminal velocity ˙q1 is worst, at 41 .7% , as the planner can no longer command a cut speed at the rendezvous. 
+
+Scoring model. Arm and environment state become hard to predict over long horizons. While our model takes this into account, the removal of these terms still leave a valid planner. Fig. 4: An example of a simulated intercept sequence with obstacles. We insert up to five 750mm long capsule shaped obstacles into the workspace of the FR3 and benchmark planning for each planner. The results for 0, 3, and 5 capsules are reported in Table I. 
+
+variant cut (%) ↑ ¯v (m/s) ↑ solve (ms) ↓
+
+cubic (control) 96 .1 ± 1.0 5.41 ± 0.06 9.65 ± 0.07 
+
+order 1 78 .9 ± 7.5 6.13 ± 0.09 8.26 ± 0.12 
+
+order 2, no ˙q1 41 .7 ± 2.9 4.74 ± 0.11 8.40 ± 0.07 
+
+order 2, no ˙q0 76 .7 ± 4.4 5.25 ± 0.02 9.02 ± 0.15 
+
+order 4 94 .3 ± 0.9 5.47 ± 0.07 9.10 ± 0.30 
+
+order 5 (min ... 
+
+q ) 95 .6 ± 1.0 5.41 ± 0.07 9.25 ± 0.18 
+
+task-space cubic 13 .3 ± 2.9 4.56 ± 0.11 30 .80 ± 0.07   
+
+> Table II: Trajectory parameterization. Each variant is three seeds ×60
+> throws.
+
+ablation cut (%) ↑ catch (%) ↑ ¯v (m/s) ↑
+
+full objective (control) 96 .7 ± 1.7 97 .2 ± 2.0 5.45 ± 0.07 
+
+− log Pobject 90 .0 ± 2.3 94 .2 ± 1.2 5.33 ± 0.00 
+
+− log Pinrange 28 .3 ± 10 .3 47 .8 ± 9.7 4.96 ± 0.28 
+
+− log Parm 85 .0 ± 0.0 96 .7 ± 0.0 4.38 ± 0.01 
+
+flat covariance 85 .0 ± 2.3 93 .3 ± 2.3 5.45 ± 0.00     
+
+> Table III: Probability model ablation. Each row removes one or two terms from the objective (2); the pairwise rows remove both named terms. “Flat covariance” freezes σ(t)at its initial value. Mean ±std. dev. across seeds.
+
+In Table III we investigate the performance after removing terms from the objective (2). log Pinrange dominates: without it the cut rate falls to 28 .3% , as the planner picks rendezvous the object has already passed. Removing log Parm costs speed rather than contact, with ¯v falling from 5.45 to 4.38 m /s at unchanged catch rate, indicating that the planner commits to swings that trigger the arm’s reflexes. 
+
+Arm dynamics model. Table IV removes components of the dynamics model. Dropping any single constraint other than the velocity limit has little effect beyond the spread, while keeping only friction and armature drops the cut rate to 61 .1% .
+
+E. Real-world Hardware 
+
+We ran FRUITNINJA in the real-world with the same plan-ner, controller, and communication stack used in simulation, and with the estimator calibrated to the hardware residuals of Sec. IV-B. 30 baseball-sized objects were hand-tossed into the workspace of the arm. Over the 30 tosses, FRUITNINJA executed a successful cut on 26 (86.7 %) and executed a successful catch on 26 (86.7 %). Of these, 25 successful cuts were performed consecutively. The majority of failures in the real world were due to perception errors, where thrown balls are not reliably detected by the OptiTrack system, and 
+
+variant cut (%) ↑ catch (%) ↑ ¯v (m/s) ↑
+
+control 97 .2 ± 1.0 98 .3 ± 0.0 5.37 ± 0.06 
+
+leave one out 
+
+−torque 96 .7 ± 1.7 97 .8 ± 1.0 5.37 ± 0.06 
+
+−velocity 84 .4 ± 5.1 94 .4 ± 2.5 5.33 ± 0.09 
+
+−friction, armature 96 .7 ± 1.7 98 .3 ± 0.0 5.31 ± 0.06 
+
+leave one in 
+
++torque 87 .8 ± 1.0 95 .0 ± 2.9 5.42 ± 0.05 
+
++velocity 87 .8 ± 3.5 96 .7 ± 2.9 5.36 ± 0.06 +friction, armature 61 .1 ± 4.2 72 .2 ± 1.9 5.29 ± 0.09 
+
+nothing modelled 65 .6 ± 6.3 71 .7 ± 4.4 5.38 ± 0.12   
+
+> Table IV: Arm dynamics model ablation (three seeds ×60 throws per variant). Velocity removes the joint-velocity ratio and position-dependent taper; friction and armature are Eq. (4).
+
+cut ↑ catch ↑ ¯v ↑
+
+real control 86.7 ± 6.2 86.7 ± 6.2 4.29 ± 0.20 
+
+simulation 
+
+FRUITNINJA (ours) 86.7 ± 6.2 86.7 ± 6.2 4.93 ± 0.13 RRTC (CPU) 50.0 ± 9.1 73.3 ± 8.1 4.63 ± 0.37 CEM 70.0 ± 8.4 76.7 ± 7.7 5.42 ± 0.18 
+
+CMA-ES 33.3 ± 8.6 46.7 ± 9.1 4.56 ± 0.32 TrajOpt 66.7 ± 8.6 70.0 ± 8.4 3.33 ± 0.16 MPPI 20.0 ± 7.3 30.0 ± 8.4 4.42 ± 0.22 cuRobo 6.7 ± 4.6 10.0 ± 5.5 4.46 ± 0.15 
+
+> Table V: Real object trajectories with simulated FR3. The “real control” row is a trial done fully in the real world.
+
+human error, where tosses are not as consistent as compared to simulation. Additionally, we recorded the tossed objects in this trial and played them back in simulation, measuring the baseline planners’ performance under the same distribution of tosses. These results, including those for the fully real experiments, are presented in Table V. Small performance differences arise compared to the fully simulated trials (Table I) because the hand-tossed objects explored a smaller portion of the arm workspace and intensified behaviors specific to those regions. VI. C ONCLUSION 
+
+We have presented FRUITNINJA, an anytime batched planner that intercepts a thrown object by growing a tree of exact cubic edges on the GPU toward an explicit chart of the interception manifold. Each edge is timed against the arm’s torque, power, and velocity limits, and plans are ranked by the probability of contact under uncertainty. In a simulator calibrated on the physical arm, FRUITNINJA cuts 
+
+96 .7% of tosses in the open and 68 .3% among five obstacles, against 68 .3% and 35 .0% for the best single-cubic baseline; ablations show the cubic edge, the objective’s arrival-time term, and the dynamics model are each necessary. The main limitations are the ballistic flight model, which omits drag and object deformation, the arrival-time pruning rule, which is a heuristic rather than an admissible bound and so can discard a higher-scoring rendezvous, and the simple uncertainty models used for arm’s own kinematics and dynamics. Additionally, checks and the chart decoder are smooth and differentiable in the trajectory parameters, and we believe gradient-based refinement of tree nodes is a direct next step. ACKNOWLEDGMENTS 
+
+The authors would like to thank Jolie Lai for help manufac-turing components for the real world experiments. Claude was used for editing and programming assistance. All technical content and final manuscript text were reviewed and verified by the authors. REFERENCES [1] O. Birbach, U. Frese, and B. B¨ auml, “Realtime perception for catching a flying ball with a mobile humanoid,” in IEEE Int. Conf. Robot. Autom. , 2011. [2] S. Kim, A. Shukla, and A. Billard, “Catching objects in flight,” IEEE Trans. Robot. , vol. 30, no. 5, pp. 1049–1065, 2014. [3] P. D¨ urr, M. El Gheche, G. J. Maeda, N. Mukai, N. Takahashi, et al., “Outplaying elite table tennis players with an autonomous robot,” 
+
+Nature , vol. 652, pp. 886–891, 2026. [4] R. Natarajan et al., “Preprocessing-based kinodynamic motion plan-ning framework for intercepting projectiles using a robot manipula-tor,” in IEEE Int. Conf. Robot. Autom. , 2024. [5] G. Olin, L. Chen, N. Gandotra, M. Likhachev, and H. Choset, Think fast: Real-time kinodynamic belief-space planning for projectile interception , arXiv:2512.01108, 2025. [6] S. M. LaValle and J. J. Kuffner, “Randomized kinodynamic planning,” 
+
+Int. J. Robot. Res. , vol. 20, no. 5, pp. 378–400, 2001. [7] D. J. Webb and J. van den Berg, “Kinodynamic RRT*: Asymptotically optimal motion planning for robots with linear dynamics,” in IEEE Int. Conf. Robot. Autom. , 2013, pp. 5054–5061. [8] C. H. Huang, P. Jadhav, B. Plancher, and Z. Kingston, pRRTC: GPU-parallel RRT-Connect for fast, consistent, and low-cost motion planning , arXiv:2503.06757, 2025. [9] Y. Gao, A. Lu, and Z. Kingston, “Fast asymptotically optimal kino-dynamic planning via vectorization,” in IEEE/RSJ Int. Conf. Intell. Robots Syst. , 2026. [10] N. Perrault, Q. H. Ho, and M. Lahijanian, Kino-PAX+: Near-optimal massively parallel kinodynamic sampling-based motion planner ,arXiv:2602.02846, 2026. [11] T. Duong, C. W. Ramsey, Z. Kingston, W. Thomason, and L. E. Kavraki, Ultrafast sampling-based kinodynamic planning via differ-ential flatness , arXiv:2603.16059, 2026. [12] E. A. Croft, R. G. Fenton, and B. Benhabib, “Optimal rendezvous-point selection for robotic interception of moving objects,” IEEE Trans. Syst., Man, Cybern. B , vol. 28, no. 2, pp. 192–204, 1998. [13] S. Karaman and E. Frazzoli, “Sampling-based algorithms for optimal motion planning,” Int. J. Robot. Res. , vol. 30, no. 7, pp. 846–894, 2011. [14] Y. Li, Z. Littlefield, and K. E. Bekris, “Asymptotically optimal sampling-based kinodynamic planning,” Int. J. Robot. Res. , vol. 35, no. 5, pp. 528–564, 2016. [15] K. Hauser and Y. Zhou, “Asymptotically optimal planning by feasible kinodynamic planning in a state–cost space,” IEEE Trans. Robot. ,vol. 32, no. 6, pp. 1431–1443, 2016. [16] L. Chen, S. R. Iyer, and Z. Kingston, “Differentiable particle opti-mization for fast sequential manipulation,” in IEEE Int. Conf. Robot. Autom. , 2026. [17] W. Shen et al., “Differentiable GPU-parallelized task and motion planning,” in Robot.: Sci. Syst. , 2025. [18] B. Sundaralingam et al., “cuRobo: Parallelized collision-free robot motion generation,” in IEEE Int. Conf. Robot. Autom. , 2023, pp. 8112–8119. [19] M. Otte and E. Frazzoli, “RRT X : Asymptotically optimal single-query sampling-based motion planning with quick replanning,” Int. J. Robot. Res. , vol. 35, no. 7, pp. 797–822, 2016. [20] K. Hauser, “On responsiveness, safety, and completeness in real-time motion planning,” Auton. Robots , vol. 32, no. 1, pp. 35–48, 2012. [21] N. Covic, B. Lacevic, D. Osmankovic, and T. Uzunovic, “Real-time sampling-based safe motion planning for robotic manipulators in dynamic environments,” IEEE Trans. Robot. , 2025. [22] A. Sivaramakrishnan, S. Tangirala, D. M. Ramesh, E. Granados, and K. E. Bekris, KRAFT: Sampling-based kinodynamic replanning and feedback control over approximate, identified models of vehicular systems , arXiv:2409.11522, 2024. [23] J. Schulman et al., “Motion planning with sequential convex opti-mization and convex collision checking,” Int. J. Robot. Res. , vol. 33, no. 9, pp. 1251–1270, 2014. [24] G. Williams et al., “Information theoretic MPC for model-based reinforcement learning,” in IEEE Int. Conf. Robot. Autom. , 2017, pp. 1714–1721. [25] M. Bhardwaj et al., “STORM: An integrated framework for fast joint-space model-predictive control for reactive manipulation,” in Conf. Robot Learn. , 2021. [26] T. Kr¨ oger and F. M. Wahl, “Online trajectory generation: Basic concepts for instantaneous reactions to unforeseen events,” IEEE Trans. Robot. , vol. 26, no. 1, pp. 94–111, 2010. [27] L. Berscheid and T. Kr¨ oger, “Jerk-limited real-time trajectory gen-eration with arbitrary target states,” in Robot., Sci. Syst. , 2021. [28] K. I. Tsianos and L. E. Kavraki, “Replanning: A powerful planning strategy for hard kinodynamic problems,” in IEEE/RSJ Int. Conf. Intell. Robots Syst. , 2008. [29] M. E. C. Sabbadini, A. H. Liu, J. Ruan, T. S. Wilson, Z. Kingston, and J. D. Gammell, “Revisiting replanning from scratch: Real-time incremental planning with fast almost-surely asymptotically optimal planners,” in IEEE Int. Conf. Robot. Autom. , 2026. [30] B. Luders, M. Kothari, and J. P. How, “Chance constrained RRT for probabilistic robustness to environmental uncertainty,” in AIAA Guid., Navig., Control Conf. , 2010. [31] L. Blackmore, M. Ono, and B. C. Williams, “Chance-constrained optimal path planning with obstacles,” IEEE Trans. Robot. , vol. 27, no. 6, pp. 1080–1094, 2011. [32] L. Bruderm¨ uller et al., “CC-VPSTO: Chance-constrained via-point-based stochastic trajectory optimisation for online robot motion planning under uncertainty,” Int. J. Robot. Res. , 2026. [33] J. Liu, C. E. Adu, L. Lymburner, V. Kaushik, L. Trang, and R. Va-sudevan, “RADIUS: Risk-aware, real-time, reachability-based motion planning,” in Robot.: Sci. Syst. , 2023. [34] A. W. Long, K. C. Wolfe, and G. S. Chirikjian, “Planar uncertainty propagation and a probabilistic algorithm for interception,” in Algo-rithmic Found. Robot. X , ser. Springer Tracts Adv. Robot. Vol. 86, 2013, pp. 413–429. [35] Y. He and S. Liu, “Analytical inverse kinematics for Franka Emika Panda – a geometrical solver for 7-DOF manipulators with unconven-tional design,” in Int. Conf. Control, Mechatronics and Automation ,2021. [36] C. Gaz, M. Cognetti, A. A. Oliva, P. Robuffo Giordano, and A. De Luca, “Dynamic identification of the Franka Emika Panda robot with retrieval of feasible parameters using penalty-based optimization,” 
+
+IEEE Robot. Autom. Lett. , vol. 4, no. 4, pp. 4147–4154, 2019. [37] J. E. Bobrow, S. Dubowsky, and J. S. Gibson, “Time-optimal control of robotic manipulators along specified paths,” Int. J. Robot. Res. ,vol. 4, no. 3, pp. 3–17, 1985. [38] J. Bradbury et al., JAX: Composable transformations of Python+NumPy programs , 2018. [39] P.-T. de Boer, D. P. Kroese, S. Mannor, and R. Y. Rubinstein, “A tutorial on the cross-entropy method,” Ann. Oper. Res. , vol. 134, no. 1, pp. 19–67, 2005. [40] N. Hansen and A. Ostermeier, “Completely derandomized self-adaptation in evolution strategies,” Evol. Comput. , vol. 9, no. 2, pp. 159–195, 2001.
