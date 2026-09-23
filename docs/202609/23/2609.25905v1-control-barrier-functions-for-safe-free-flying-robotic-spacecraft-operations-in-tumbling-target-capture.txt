@@ -1,0 +1,481 @@
+Title: Control Barrier Functions for Safe Free-Flying Robotic Spacecraft Operations in Tumbling Target Capture
+
+URL Source: https://arxiv.org/pdf/2609.25905v1
+
+Published Time: Wed, 23 Sep 2026 01:15:49 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Control Barrier Functions for Safe Free-Flying Robotic Spacecraft Operations in Tumbling Target Capture 
+
+Alexander Meinert 1, Peter Stadler 1, Niklas Baldauf 1 and Alen Turnwald 2
+
+Abstract — This paper presents a modular control barrier function (CBF) framework for safe free-flying robotic space-craft operations during tumbling target capture. Motivated by latest ESA guidelines for safe close proximity operations, safety zones and requirements are translated into dedicated CBFs. The 13-DoF system is decomposed into translational, attitude, and robotic subsystems, each equipped with a safety filter that minimally modifies nominal control inputs in alightweight quadratic program. The filters enforce a conical approach corridor, collision avoidance zone, attitude line-of-sight pointing, angular velocity limits, robotic joint limits, link-base collision avoidance, and actuator constraints. Dynamic coupling between subsystems is handled by treating upstream safe control commands as known interconnection inputs in the downstream safety filters, preserving modularity while supporting system-level safety. The framework is validated in an on-orbit servicing scenario, including final approach, angular rate synchronization, and tumbling target grasping, using the high-fidelity astrodynamics simulator Basilisk. Monte Carlo simulation results demonstrate runtime efficiency and operational safety for various tumbling rates. 
+
+I. I NTRODUCTION 
+
+The growing number of satellites in Earth orbit and the associated collision risk create an increasing demand for on-orbit servicing (OOS) activities, such as active debris removal, inspection, and in-orbit maintenance. Robotic space manipulators offer a promising means to autonomously capture potentially uncooperative targets. However, close proximity operations (CPO) between two spacecraft are inherently safety-critical and require constraints and geo-metric safety zones to be considered throughout the mission timeline. To support the development of such missions, ESA has recently published guidelines for safe CPO [1], in line with existing requirements in the space industry [2], and their application to mission concepts such as ClearSpace-1 is discussed in [3]. Constraint handling in this setting remains challenging. Incorporating operational constraints directly into Model Predictive Control (MPC) can lead to non-convex and com-putationally demanding optimal control problems, while Hamilton-Jacobi Reachability control design suffers from the curse of dimensionality for high-dimensional robotic spacecraft systems [4]. Control Barrier Functions (CBFs),                 
+
+> This work was supported by the Bavarian Ministry of Economic Affairs, Regional Development and Energy (grant no. MRF-2307-0009).
+> 1Alexander Meinert, Peter Stadler and Niklas Baldauf are with the Space Applications Group, e:fs TechHub GmbH, Gaimersheim, Germany.
+
+{Alexander.Meinert, Peter.Stadler, Niklas.Baldauf }@efs-techhub.com 
+
+> 2Alen Turnwald is with the Faculty of Electrical Engineering and Infor-mation Technology, Ingolstadt University of Applied Sciences, Germany.
+
+Alen.Turnwald@thi.de (a) (d) (c) (b)   
+
+> Fig. 1: On-orbit servicing scenario sequence indicating selected operational safety zones. (a) Final approach (I) towards Go for Capture decision point while maintaining the conical approach corridor (green) and spherical collision avoidance zone (red). (b) Attitude angular rate synchronization (II) while target pointing with rotational line-of-sight cone (yellow) towards grasping point. (c) Robotic grasping maneuver (III) during synchronized angular motion. (d) Target capture with the robotic end-effector.
+
+in contrast, provide a constructive way to define forward invariant safe sets by translating operational safety zones into control constraints. These constraints can be enforced through a one-step safety filter quadratic program (QP) with comparatively low computational cost [5]. To this end, a CBF-QP safety layer can be combined with various nominal controllers, including unconstrained or learning-based ap-proaches, since it minimally modifies the commanded input only when required for safety. Existing CBF applications in spacecraft and robotics typically focus on individual mission phases, subsystems, or constraint classes. For translational spacecraft relative motion, recent studies have investigated CBF formulations for rendezvous, docking corridors, and collision avoidance regions [6], [7]. For the attitude subsys-tem, CBFs have been designed to constrain pointing maneu-vers [8] and angular velocity [9]. In robotics, CBF-based filters have demonstrated safety guarantees for manipulators operating in cluttered environments [10] and high-precision interaction tasks [11]. Only a few works address CBF-based safety for robotic OOS missions, and these remain limited to a subset of constraints and degrees of freedom (DoF). Relevant studies include [12], [13] that assume a free-floating servicer base and primarily focus on CBFs for robotic joints and collision as well as the base angular velocity in [12], while attitude line-of-sight (LOS) and relative motion safety zones are not considered. In [14], the authors use a free-flying model of the space robot with a fully-actuated base, yet only employ link and base collision avoidance with the target and arXiv:2609.25905v1 [cs.RO] 22 Sep 2026 joint limit CBFs. None of the works cover tumbling target motion in their scenario setup. In this paper, we develop a safe CBF-based control approach for the capture of an uncooperative tumbling target with a free-flying robotic spacecraft. The proposed framework addresses safety constraints across all 13 DoF and across the relevant OOS mission phases, from final approach to target synchronization and robotic grasping, while reflecting the geometric safety concepts defined in latest CPO guidelines. In contrast to combined control strategies [15], [16], where a single controller is derived for the full-order robotic space-craft system, we intentionally pursue a modular, subsystem-based control architecture. This reflects common space flight software development practice, where guidance, navigation, control, and robotic functions are often developed and vali-dated as separate modules by different stakeholders. Such a modular structure is particularly relevant for OOS missions involving large consortia of hardware and software partners. It also allows subsystem controllers to be operated at dif-ferent rates and to be activated or deactivated depending on the mission phase. At the same time, decoupled mod-eling improves runtime efficiency, which is important for resource-constrained space processors. The main technical challenge is then to guarantee safety despite the dynamic coupling between subsystems. To address this, we propose a safety layer consisting of dedicated safety filters for the translational, attitude, and robotic subsystems. The interde-pendence between these filters is explicitly considered by passing upstream safe commands to the downstream safety filters as known interconnection inputs. This preserves the computational advantages of modular control while making the subsystem QPs coupling-aware. Our contributions are thus threefold:  
+
+> •
+
+A modular CBF-based safety framework for a 13-DoF free-flying robotic spacecraft, structured into trans-lational, attitude, and robotic subsystem safety fil-ters across final approach, target synchronization, and robotic grasping  
+
+> •
+
+The integration of OOS safety zones and operational constraints consistent with ESA standards via dedicated CBF constraints for relative translational motion, atti-tude pointing and angular velocity, robotic joint limits, link-base collision avoidance, and input constraints  
+
+> •
+
+The validation of the proposed approach in an on-orbit tumbling target capture scenario using the high-fidelity astrodynamics simulation framework Basilisk [17] II. C ONCEPT OF OPERATIONS 
+
+The concept of operations for the considered OOS mission comprises three consecutive phases: (I) final approach, (II) angular rate synchronization, and (III) capture. Phases (I) and (II) correspond to the Close Rendezvous phase in the general-purpose ESA guidelines for safe CPO [1]. In phase (I), the servicer approaches the target along the target angular momentum vector inside a conical Approach Corridor (AC) while entering the spherical Keep-Out Zone (KOZ). The KOZ denotes the operational region in which collisions can occur, since its radius is defined by the sum of the largest dimensions of the servicer and target clearance envelopes. Accordingly, 6-DoF relative navigation and closed-loop con-trol are mandatory inside the KOZ and enforced by the bounds of the AC. The final approach starts at the Go for KOZ decision point and ends at the Go for Capture decision point. We further introduce a mission-specific spherical Col-lision Avoidance Zone (CAZ), which defines the minimum distance between servicer and target to be maintained at all times. In phase (II), the servicer synchronizes its angular rate with the tumbling target, while aligning its boresight direction with the grasping point. Phase (III) starts with the grasping maneuver of the robotic manipulator and ends with the successful capture of the target once the end-effector (EE) reaches the grasping point. Figure 1 illustrates the OOS mission phases and selected operational safety zones. III. P ROBLEM STATEMENT 
+
+The free-flying servicing spacecraft equipped with a 7-DoF robotic manipulator operating in close proximity of a tumbling client has the full-order control input 
+
+u = f ⊤ 
+
+> B
+
+τ ⊤ 
+
+> B
+
+τ ⊤
+
+> M
+
+⊤ ∈ R13 , (1) where fB ∈ R3 denotes the spacecraft translational force, 
+
+τB ∈ R3 is the spacecraft attitude torque, and τM ∈ R7
+
+are the manipulator joint torques. For the subsystem-based approach, the translational, attitude, and robotic dynamics are modeled as follows. 
+
+A. Translational Subsystem 
+
+Considering a circular target orbit, the relative translational motion is given by the Clohessy-Wiltshire-Hill equations as 
+
+
+
+> ˙r1
+> ˙r2
+> ˙r3
+> ˙v1
+> ˙v2
+> ˙v3
+
+ =
+
+                              
+
+> 0001000000100000013n20002n0000−2n0000−n2000
+
+
+
+> r1
+> r2
+> r3
+> v1
+> v2
+> v3
+
++ 1
+
+m
+
+
+
+> 0 0 0 0 0 0 0 0 0 1 0 0 0 1 0 0 0 1
+
+"f1
+
+> f2
+> f3
+
+#
+
+(2) in which xtr = [ r⊤ 
+
+> H
+
+v⊤ 
+
+> H
+
+]⊤, rH ∈ R3 denotes the relative position of the servicer with respect to the target in the Hill frame FH , and vH = ˙rH ∈ R3 is the corresponding relative velocity. The mass and mean orbital motion are expressed by the parameters m and n, respectively, while 
+
+fH = [ f1 f2 f3]⊤ is the actuated input force. The three components of the state and input represent the R-bar, V-bar, and H-bar direction given in the target-centered Hill frame. 
+
+B. Attitude Subsystem 
+
+Let the quaternion q = [ q0, q 1, q 2, q 3]⊤ ∈ S3 define the servicing spacecraft attitude, with q0 denoting the scalar part, and let ω ∈ R3 be its angular velocity expressed in the servicer body frame FB . Then the attitude kinematics and dynamics are formulated as 
+
+˙q = 12 Sq (q) ω , Sq (q) = 
+
+
+
+−q1 −q2 −q3
+
+q0 −q3 q2
+
+q3 q0 −q1
+
+−q2 q1 q0
+
+ (3) 
+
+I ˙ω = τB − ω × (I ω ), (4) where I is the inertia of the servicer. 
+
+C. Robotic Subsystem 
+
+The robotic manipulator subsystem is modeled relative to the servicer base frame by 
+
+M (θ) ¨θ + C(θ, ˙θ) ˙θ = τM , (5) with the mass matrix M , the Coriolis and centrifugal forces 
+
+C, the joint angles θ ∈ R7, the joint velocities ˙θ ∈ R7,and its accelerations ¨θ ∈ R7. The position and twist in the base frame are obtained from forward kinematics and the geometric Jacobian JE ,
+
+pE,B = fFK (θ), ˙pE,B = JE (θ) ˙θ, (6) here derived for the end-effector mapped to the operational space. 
+
+D. Reference Frame Convention 
+
+While the controller and CBF design are based on different task-dependent frames internally, as outlined in the previous subsystem modeling, a frame convention is required for thorough analysis of the servicing scenario. We define a target-centered non-rotating frame, hereinafter called the 
+
+reference frame FR, whose origin is attached to the target center of mass and whose attitude is inertially fixed to the initial servicer attitude; hence, FR does not rotate with the tumbling target. IV. M ETHOD 
+
+For the nonlinear control-affine system 
+
+˙x = ˜f (x, t, ξ) + g(x, t )u, ˜f (x, t, ξ) = f (x, t ) + ξ(t),
+
+(7) where x ∈ X ⊂ Rn and u ∈ U ⊂ Rm denote the state and control input, respectively, ξ is introduced as a known exogenous coupling term that appears in the drift dynamics 
+
+˜f (x, t, ξ). The safe set is defined as the zero-superlevel set 
+
+S(t) = {x ∈ Rn | h(x, t ) ≥ 0} (8) of a continuously differentiable function h(x, t ). According to [5], if there exists an extended class-K function α such that the safety condition          
+
+> sup
+> u∈U
+> ∂h ∂t +L˜fh(x, t, ξ) + Lgh(x, t )u
+> 
+> ≥ − α(h(x, t )) (9)
+
+can be satisfied for all x ∈ S (t), then any locally Lipschitz controller satisfying (9) renders S(t) forward invariant, and 
+
+h(x, t ) is said to be a Control Barrier Function. Following the results from [18], this formulation can be extended to position-level safety constraints h(x, t ) with relative degree two, where the control input appears in the second total time derivative along the system dynamics. For this purpose, the auxiliary barrier function 
+
+H(x, t, ξ) = h(x, t ) + | ˙h(x, t, ξ)| ˙h(x, t, ξ)2umax 
+
+(10) is introduced with 
+
+˙H(x, u, t, ξ) = ˙h(x, t, ξ) + | ˙h(x, t, ξ)|¨h(x, u, t, ξ)
+
+umax 
+
+. (11) The corresponding CBF condition with relative degree two is given by                 
+
+> Φh(x,u, t, ξ) = ∂H ∂t +L˜fH+LgHu+α(H)−ϵh,(12)
+
+where all terms involving H are evaluated at (x, t, ξ), ϵh
+
+accounts for discretization effects by creating an offset to the safe set boundary, and umax is set equal to the maximal control authority regarding the respective subsystem. Safety is enforced by requiring 
+
+sup 
+
+> u∈U
+
+Φh(x, u, t, ξ) ≥ 0. (13) We further remark that γh is introduced as a tuning parameter that lower bounds the decay rate of the CBF value function such that α(H(x, t )) = γhH(x, t ). Figure 2 depicts the overall control architecture, where we assume a causal update order from translational to attitude and robotic subsystems, with downstream filters running at least as fast as the upstream signal. Note that in contrast to robust CBF for-mulations for unknown bounded disturbances, no worst-case maximization or additional disturbance margin is introduced, since the upstream coupling input ξ is assumed to be known when the corresponding safety filter is evaluated. 
+
+A. CBFs for the Translational Subsystem 1) Conical Approach Corridor Keep-In Zone: The ap-proach corridor axis is defined as a constant unit vector dR in the reference frame FR. Since the conical CBF is designed for the translational relative motion expressed in the Hill frame FH , this axis becomes time-varying as 
+
+dH (t) = RHR (t)dR, (14) considering the rotation matrix RHR (t) ∈ SO (3) from FR
+
+to FH . We define the conical AC CBF as 
+
+hAC (rH , t ) = d⊤ 
+
+> H
+
+(t)rH − ∥ rH ∥ cos( ψAC ) ≥ 0, (15) where ψAC is the half-cone angle of the admissible corridor. This yields its first derivative 
+
+˙hAC =
+
+
+
+dH − rH
+
+∥rH ∥ cos( ψAC )
+
+⊤
+
+vH + ˙d⊤ 
+
+> H
+
+rH , (16) while the time variation of the corridor induced by the frame transformation enters the CBF derivative explicitly through 
+
+˙dH . Accordingly, the second derivative can be written in control-affine form as 
+
+¨hAC = L2˜f hAC + Lg L ˜f hAC fH , (17) Fig. 2: Safe modular control architecture with nominal subsystem controllers and CBF-QP safety filters for translational, attitude, and robotic constraint enforcement. The filters minimally modify the nominal commands while accounting for subsystem coupling through causally updated upstream safe inputs. 
+
+where L2˜f hAC collects all drift terms, including the time-varying terms induced by ˙dH and ¨dH , while Lg L ˜f hAC fH
+
+contains the affine dependence on the control input force fH .Since the translational filter is evaluated first, no upstream input is considered and ξtr = 0. For brevity, the detailed substitutions are omitted for the remaining CBFs, but the same differentiation procedure is applied to each constraint. 
+
+2) Spherical Base Collision Avoidance Zone: The servicer is required to preserve a minimum distance to the target when approaching the Go for Capture decision point. This requirement is translated into a spherical CAZ around the target and encoded as the safety constraint 
+
+hCAZ (rH ) = ∥rH ∥2 − R2CAZ ≥ 0, (18) using the relative position rH and the minimum safety distance RCAZ . Substituting the CBFs (15) and (18) into (12), the translational safety filter QP, repeatedly solved at every time step, yields 
+
+fH, SF = arg min 
+
+> fH
+
+∥fH − fH, nom ∥2
+
+s.t. ΦAC (xtr , fH , t ) ≥ 0ΦCAZ (xtr , fH ) ≥ 0
+
+fH ∈ U 1:3 .
+
+(19) The safety filter minimally adjusts the nominal control input force fH, nom such that the conical AC and spherical CAZ as well as the input constraints are maintained. Since all constraints are affine in the decision variable, (19) provides a runtime-efficient implementation suitable for online deploy-ment on resource-constrained processors [7]. To this end, the resulting safe input fH, SF is transformed to the servicer body frame and represents the actuated force fB, SF .
+
+B. CBFs for the Attitude Subsystem 1) Time-Varying Attitude Cone Keep-In Zone: We intro-duce a LOS pointing constraint to keep the target within the admissible sensor cone. The resulting attitude keep-in zone bounds the relative attitude during operations inside the KOZ, thereby addressing collision avoidance while also serving the practical motivation to maintain camera-based perception of the grasping point, for which an EE-mounted camera alone would be insufficient in close proximity. This constraint is consistent with the ESA 6-DoF relative navigation requirement, but is typically neglected in the aforementioned CBF-based OOS literature. Let dB denote the constant unit boresight vector expressed in the servicer body frame FB . The LOS direction from the servicer base to the target grasping point pG,T is defined in the reference frame FR as 
+
+sR(t) = RRT (t)pG,T − rR(t)
+
+∥RRT (t)pG,T − rR(t)∥ , (20) where rR is the relative position of the servicer with respect to the target center and RRT (t) ∈ SO (3) rotates the target-fixed grasping point from the tumbling target frame FT to 
+
+FR. Using the attitude quaternion q, the LOS direction is transformed into the servicer body frame by 
+
+sB (q, t ) = RBR (q)sR(t), (21) where RBR (q) ∈ SO (3) denotes the rotation matrix from 
+
+FR to FB . Thus, the attitude cone CBF is given by 
+
+hATT (q, t ) = d⊤ 
+
+> B
+
+sB (q, t ) − cos( βATT ) ≥ 0, (22) where βATT is the half-cone angle of the admissible pointing cone. The time variation of hATT is induced by both the changing LOS vector sR(t) and the servicer attitude motion. Since the attitude torque τB enters the second time derivative of (22), the corresponding CBF constraint is written as 
+
+ΦATT (xatt , τB , t, ξatt ) ≥ 0, (23) with xatt = [ q⊤ ω⊤]⊤ and let ξatt be the coupling term induced by the translational input fB, SF .
+
+2) Servicer Angular Velocity Limits: The angular velocity of the servicer is constrained component-wise in the body frame. For each axis i ∈ { 1, 2, 3}, the upper and lower angular velocity limits are encoded as 
+
+h+
+
+> ω,i
+
+(ω) = ωi, max − ωi ≥ 0, h−
+
+> ω,i
+
+(ω) = ωi − ωi, min ≥ 0.
+
+(24) As the attitude torque appears in the first derivative of 
+
+ω through (4), these constraints are enforced with relative-degree-one CBF conditions 
+
+φ+
+
+> ω,i
+
+(xatt , τB , ξatt ) = ˙h+
+
+> ω,i
+
+(xatt , τB , ξatt )+ γ+ 
+
+> ω
+
+h+
+
+> ω,i
+
+(ω)−ϵ+ 
+
+> ω
+
+≥ 0,
+
+(25) 
+
+φ−
+
+> ω,i
+
+(xatt , τB , ξatt ) = ˙h−
+
+> ω,i
+
+(xatt , τB , ξatt )+ γ− 
+
+> ω
+
+h−
+
+> ω,i
+
+(ω)−ϵ− 
+
+> ω
+
+≥ 0.
+
+(26) Fig. 3: Translational motion profile of the servicer position including operational safety zones expressed in FR (left), attitude trajectory regarding the LOS cone in FB (center), and robotic EE trajectory in task space FB (right). Both nominal (dashed) and filtered (solid) trajectories are illustrated. 
+
+Based on the CBFs (22) and (24), and using the intercon-nection input ξatt , the attitude safety filter QP results in 
+
+τB, SF = arg min 
+
+> τB
+
+∥τB − τB, nom ∥2
+
+s.t. ΦATT (xatt , τB , t, ξatt ) ≥ 0
+
+φ+
+
+> ω,i
+
+(xatt , τB , ξatt ) ≥ 0, i = 1 , 2, 3
+
+φ−
+
+> ω,i
+
+(xatt , τB , ξatt ) ≥ 0, i = 1 , 2, 3
+
+τB ∈ U 4:6 .
+
+(27) incorporating the quadratic cost function that minimizes the deviation of the modified control input from the nominal actuation torque. In this regard, the attitude cone KIZ, the angular velocity limits, and the input constraints are satisfied. The safe control input torque τB, SF is expressed in FB and then applied to the system. 
+
+C. CBFs for the Robotic Subsystem 1) Robotic Joint Angle Limits: The manipulator joint angles are constrained component-wise to remain inside their admissible ranges. For each joint i ∈ { 1, . . . , 7}, the joint angle limit is encoded as 
+
+hθ,i (θ) = ( θi − θi, min )( θi, max − θi) ≥ 0. (28) As the joint torque τM enters the second derivative of (28), the corresponding CBF constraint is written as 
+
+Φθ,i (xrob , τM , ξrob ) ≥ 0, i = 1 , . . . , 7, (29) with xrob = [ θ⊤ ˙θ⊤]⊤ and the coupling input ξrob induced by the upstream safe force and attitude torque commands. 
+
+2) Robotic Joint Velocity Limits: Analogously, the ma-nipulator joint velocities are constrained component-wise. For each joint velocity i ∈ { 1, . . . , 7}, the upper and lower velocity limits are given as 
+
+h+˙θ,i ( ˙θ) = ˙θi, max − ˙θi ≥ 0, h−
+
+> ˙θ,i
+
+( ˙θ) = ˙θi − ˙θi, min ≥ 0.
+
+(30) Since the joint torque τM appears in the first derivative of ˙θ
+
+through the robotic dynamics, these constraints are enforced with relative-degree-one CBF conditions 
+
+φ+˙θ,i (xrob , τM , ξrob ) = ˙h+˙θ,i (xrob , τM , ξrob )+ γ+˙θ h+˙θ,i ( ˙θ)−ϵ+˙θ ≥ 0,
+
+(31) 
+
+φ−
+
+> ˙θ,i
+
+(xrob , τM , ξrob ) = ˙h−
+
+> ˙θ,i
+
+(xrob , τM , ξrob )+ γ− 
+
+> ˙θ
+
+h−
+
+> ˙θ,i
+
+( ˙θ)−ϵ− 
+
+> ˙θ
+
+≥ 0.
+
+(32) 
+
+3) Spherical Link-Base Collision Avoidance: To avoid collisions between the manipulator and the servicer base, the robotic links are approximated by collision spheres. For each link, three points are used to cover the arm geometry. All quantities in this constraint are expressed in the servicer base frame FB . Let pi(θ) denote the center of the i-th robotic collision sphere and let ρi be its radius. Furthermore, let cbase 
+
+and Rbase denote the center and radius of the spherical base collision zone. The corresponding spherical link-base CBF is defined as 
+
+hLB ,i (θ) = ∥pi(θ) − cbase ∥2 − (ρi + Rbase )2 ≥ 0. (33) While this sphere-based approximation provides a rather con-servative collision model, other geometric primitives, such as capsules or ellipsoids, can be incorporated in the same framework and may reduce conservativeness for specific link and base geometries, with the possibility of increasing the computational cost. Since the joint torque τM enters the second derivative of (33), the corresponding CBF constraint is written as 
+
+ΦLB ,i (xrob , τM , ξrob ) ≥ 0, (34) for all considered robotic collision spheres i ∈ P LB . Taking into account the CBFs (28), (30), and (33), the resulting safety filter QP for the robotic subsystem is given by 
+
+τM, SF = arg min 
+
+> τM
+
+∥τM − τM, nom ∥2
+
+s.t. Φθ,i (xrob , τM , ξrob ) ≥ 0, i = 1 , . . . , 7
+
+φ+˙θ,i (xrob , τM , ξrob ) ≥ 0, i = 1 , . . . , 7
+
+φ−
+
+> ˙θ,i
+
+(xrob , τM , ξrob ) ≥ 0, i = 1 , . . . , 7ΦLB ,i (xrob , τM , ξrob ) ≥ 0, i ∈ P LB 
+
+τM ∈ U 7:13 .
+
+(35) V. O N-O RBIT SERVICING SIMULATION STUDY 
+
+A. Nominal Controllers 
+
+For the nominal controllers, we use an MPC for both translational and attitude control as derived and parameter-Fig. 4: CBF evaluation demonstrating safety constraint satisfaction for the activated safety filters and violations for the nominal controllers highlighting the translational (top left), attitude (center left), and robotic subsystems (bottom left). Range-rate profile showing how the CBF-encoded operational zones influence the radial closing speed as the relative distance approaches the CAZ boundary (top right). Relative synchronization error with respect to the tumbling target rate (center right), and joint torque profile during the grasping maneuver (bottom right). 
+
+ized in [7], [19], respectively, as well as a joint space PD computed torque controller [10]. The interested reader is referred to the references for detailed derivations. However, we emphasize that any nominal control signal is valid for usage in combination with the safety filters. Regarding the MPC, all constraints are inactive in the optimization prob-lem to eventually obtain unsafe nominal control inputs and demonstrate the constraint satisfaction by the safety layer. 
+
+B. Numerical Results 
+
+The proposed control framework is validated in an OOS scenario using the astrodynamics simulator Basilisk [17], where phases (II) and (III) start after 60 s and 120 s , respec-tively. Bounds on the input and states are set to ∥fB ∥∞ ≤
+
+7 N , ∥τB ∥∞ ≤ 10 Nm , ∥τM ∥∞ ≤ 2 Nm , ψAC = βATT =5◦, ∥ωB ∥∞ ≤ 0.2 rad /s, along with CBF parameters γh =1, ϵCAZ = 0 .01 , ϵAC = 2 × 10 −5, ϵATT = 5 × 10 −4,
+
+ϵω = 0 .005 , ϵθ = 0 .03 , ϵ ˙θ = 0 .01 , ϵLB = 0 .03 , and equal sample time for all subsystems Ts = 0 .1s , while the target tumbles with a constant rate ωref ,B = [ −0.08 , 0, 0] ⊤ rad /s
+
+in a circular orbit at 600 km altitude. The simulation re-sults in Figure 3 and 4 validate that the modular safety layer enforces the proposed CBF constraints, even when the unconstrained nominal controllers would lead to safety violations. In the translational subsystem, the safety filter preserves the conical AC and spherical CAZ, with the CBFs implicitly reducing the admissible radial closing speed as the servicer approaches the safety boundary. The attitude filter maintains LOS pointing and angular rate synchronization, while the robotic safety intervention is primarily driven by joint velocity and torque constraints rather than self-collision avoidance. Notably, constraint satisfaction is retained during the phase transitions and during simultaneous translational, attitude synchronization, and robotic motion, indicating that the sequential coupling-aware safety filters remain compati-ble in the considered multi-phase scenario. 
+
+C. Monte Carlo Simulation 
+
+A Monte Carlo simulation over 100 trajectories investi-gates the robustness of the proposed safety layer against parameter sensitivity in the initial position and the target tumbling rate. Starting at different sampled distances to the target within the AC, the target tumbling rate about its x-axis is varied uniformly from 0 to 0.15 rad /s.In Figure 5, the computational demand is illustrated for the combined safety layer and the respective subsystem QPs over the course of the Monte Carlo simulation. The geometric mean of the total runtime is 1.59 ms , almost two orders of magnitude below the 100 ms controller sample time. Its maximum total solve time is 3.75 ms . Although the attitude safety filter requires the highest computational effort compared to the translational and robotic QPs, all component runtimes remain below 2.3 ms . The results demonstrate on-line applicability of the modular safety layer and emphasize its runtime-efficient implementation, using the CasADi [20] framework and OSQP [21] solver. Figure 6 depicts the results of the Monte Carlo simulation over the entire mission life cycle, highlighting that each trajectory satisfies the narrow operational zones in both the translational and attitude state space. The scatter analysis provides deeper insights into the robustness against higher tumbling rates during the grasping maneuver in phase (III). Additionally, it is consistent with the expected backward dynamic coupling from the robotic motion to the servicer base. Increasing the scenario complexity through larger tum-bling rates is associated with a higher robotic control effort and a moderately larger response in the angular rate syn-chronization error. However, the observed range in the peak synchronization error of approximately 0.0432 -0.0457 rad /sSafety layer 0.1 110 100                
+
+> Safety filter runtime [ms] Total
+> Maximum Geometric mean Sample time
+> Translation Attitude Robotic
+> Safety filter components
+> Fig. 5: Computational runtime analysis over the entire Monte Carlo simula-tion. Maximum runtime and geometric mean are visualized for the combined safety layer (left) and for each subsystem safety filter QP (right). −20 −15 −10 −5 0
+> xR[m] −10.0 −7.5 −5.0 −2.5 0.0 2.5 5.0 7.5 10.0
+> yR [m]
+> AC KOZ CAZ
+> −4 −2 024Azimuth [deg] −4 −2 024Elevation [deg]
+> Attitude KIZ
+> 0.0435 0.0440 0.0445 0.0450 0.0455 Peak angular-rate synchronization error [rad/s] (Phase III) 0.45 0.46 0.47 0.48 0.49 0.50 0.51 RMS joint torque norm [Nm] (Phase III)
+> 0.00 0.05 0.10 0.15 0.20 Relative speed [m/s]
+> 0.00 0.05 0.10 0.15 0.20 0.25 Angular-rate synchronization error [rad/s]
+> 0.02 0.04 0.06 0.08 0.10 0.12 0.14 Target tumbling rate magnitude [rad/s]
+
+Fig. 6: Monte Carlo simulation results. Left: Closed-loop translational approach trajectories projected onto the xR-yR-plane, colored by relative speed and satisfying the AC and CAZ operational constraints. Center: Closed-loop attitude motion profile, colored by the servicer angular rate synchronization error and within the bounds of the line-of-sight cone. Right: Relation between the robotic joint torque norm and the peak angular rate synchronization error during grasping in phase (III), illustrated per run and colored by the varying target tumbling rate. 
+
+during grasping (III) remains significantly below the larger synchronization errors of up to 0.3 rad /s during the pre-ceding phase (II), as indicated in the center plot. Likewise, the low transient increase in synchronization error at the start of robotic grasping (III), coincident with manipulator motion, together with the less critical attitude CBF values compared to the angular rate synchronization phase (II) is also visualized in Figure 4. While the backward coupling from the robotic arm to the servicer base is not explicitly compensated for in the proposed safety layer, the Monte Carlo simulation results demonstrate sufficient robustness even for the investigated higher tumbling rates. VI. C ONCLUSION 
+
+In this paper, we developed a safe control framework for a robotic OOS mission that reflects modular subsystem-based flight algorithm design common in large space mission consortia. To this end, we incorporated extensive CBF con-straints for a 13-DoF space robot following the requirements of latest CPO guidelines, thereby extending the CBF cover-age of existing OOS approaches. The investigation of con-tact forces and formal safety guarantees during detumbling remain subject to future work. REFERENCES [1] ESA, “ESA-TECSYE-TN-022522—Guidelines on Safe Close Prox-imity Operations,” Tech. Rep., 2024. [2] ISO24330, “Space systems - Rendezvous and Proximity Operations (RPO) and On Orbit Servicing (OOS) - Programmatic principles and practices,” 2022. [3] J. Vasconcelos, S. Gaggi, T. Amaral, C. Bakouche, A. Cotuna, and A. Friac ¸as, “Close-Proximity Operations Design, Analysis, and Validation for Non-Cooperative Targets with an Application to the ClearSpace-1 Mission,” Aerospace , vol. 12, 1 2025. [4] K. P. Wabersich et al. , “Data-Driven Safety Filters: Hamilton-Jacobi Reachability, Control Barrier Functions, and Predictive Methods for Uncertain Systems,” IEEE Control Systems , vol. 43, pp. 137–177, 9 2023. [5] A. D. Ames, S. Coogan, M. Egerstedt, G. Notomista, K. Sreenath, and P. Tabuada, “Control Barrier Functions: Theory and Applications,” in 
+
+2019 18th European Control Conference (ECC) , 2019, pp. 3420–3431. [6] J. Breeden and D. Panagou, “Guaranteed Safe Spacecraft Docking with Control Barrier Functions,” IEEE Control Systems Letters , vol. 6, pp. 2000–2005, 2022. [7] A. Meinert, N. Baldauf, P. Stadler, and A. Turnwald, “Safety-Guaranteed Imitation Learning from Nonlinear Model Predictive Con-trol for Spacecraft Close Proximity Operations,” in 2026 European Control Conference (ECC) , 2026, pp. 1453–1458. [8] X. Tan and D. V. Dimarogonas, “Construction of control barrier func-tion and C2 reference trajectory for constrained attitude maneuvers,” in 2020 59th IEEE Conference on Decision and Control (CDC) , 2020, pp. 3329–3334. [9] D. E. J. van Wijk, S. Coogan, T. G. Molnar, M. Majji, and K. L. Hobbs, “Disturbance-Robust Backup Control Barrier Functions: Safety Under Uncertain Dynamics,” IEEE Control Systems Letters , pp. 2817–2822, 12 2024. [10] D. Morton and M. Pavone, “Safe, Task-Consistent Manipulation with Operational Space Control Barrier Functions,” in 2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) ,3 2025, pp. 187–194. [11] Z. Shen, M. Saveriano, F. J. Abu-Dakka, and S. Haddadin, “Safe Execution of Learned Orientation Skills with Conic Control Barrier Functions,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) , 3 2024, pp. 13 376–13 382. [12] J. L. Loettgen, K. Worrall, G. Aragon-Camerasa, M. Ceriotti, and R. Lampariello, “Control Barrier Functions for Safe Real-Time Control of Spacecraft Onboard Robotic Manipulators,” in 2025 International Conference on Space Robotics (iSpaRo) , 2025, pp. 539–546. [13] M. Sharifi and S. Heshmati-Alamdari, “Safe Force/Position Tracking Control via Control Barrier Functions for Floating Base Mobile Manipulator Systems,” in 2024 European Control Conference (ECC) ,2024, pp. 3650–3655. [14] C. Shi, T. Meng, K. Wang, J. Lei, W. Wang, and R. Mao, “Safe track-ing control for free-flying space robots via control barrier functions,” 
+
+Robotics and Autonomous Systems , vol. 184, p. 104865, 2 2025. [15] D. Invernizzi et al. , “Robust Control of Free-Flying Space Manipulator for Capturing Uncontrolled Tumbling Objects,” in Proceedings of the 12th International ESA Conference on Guidance, Navigation and Control Systems (GNC) , 2023. [16] P. Colmenarejo et al. , “Methods and outcomes of the COMRADE project - Design of robust Combined control for robotic spacecraft and manipulator in servicing missions: comparison between Hinf and nonlinear Lyapunov-based approaches,” in 69th International Astronautical Congress (IAC) , 2018. [17] P. W. Kenneally, S. Piggott, and H. Schaub, “Basilisk: A Flexible, Scalable and Modular Astrodynamics Simulation Framework,” Journal of Aerospace Information Systems , vol. 17, pp. 496–507, 2020. [18] J. Breeden and D. Panagou, “Robust Control Barrier Functions under high relative degree and input constraints for satellite trajectories,” 
+
+Automatica , vol. 155, p. 111109, 9 2023. [19] P. Stadler, A. Meinert, N. Baldauf, and A. Turnwald, “Lightweight Model Predictive Control for Spacecraft Rendezvous Attitude Syn-chronization,” in 2026 European Control Conference (ECC) , 2026, pp. 3748–3753. [20] J. A. E. Andersson, J. Gillis, G. Horn, J. B. Rawlings, and M. Diehl, “CasADi—A Software Framework for Nonlinear Optimization and Optimal Control,” Mathematical Programming Computation , pp. 1– 36, 2019. [21] B. Stellato, G. Banjac, P. Goulart, A. Bemporad, and S. Boyd, “OSQP: An Operator Splitting Solver for Quadratic Programs,” Mathematical Programming Computation , pp. 637–672, 2020.

@@ -1,0 +1,965 @@
+Title: Feasibility Distance Fields: A Unified Geometric Margin for Robot Configuration Space
+
+URL Source: https://arxiv.org/pdf/2609.24632v1
+
+Published Time: Tue, 22 Sep 2026 02:45:40 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+## Feasibility Distance Fields for Heterogeneous Constraints in Robot Configuration Space 
+
+> Xijing Cui 1, Huayan Pu 1, Jun Luo 1and Gang Wang 1
+> 1First and third authors' affiliation 2Second author's affiliation Corresponding author: Gang Wang, Full postal address. Email: corresponding.author@institution.edu
+
+## Abstract 
+
+Robot manipulators are monitored by constraint-specific indicators whose units and gradient scales are not comparable, so they do not provide a common measure of the configuration-space motion remaining before violation. We define the feasibility distance field (FDF) as the distance, under a fixed positive-definite joint-space metric, to the union of infeasible configuration sets. Classical distance-to-set theory gives 1-Lipschitz continuity, almost-everywhere differentiability, and unit dual-gradient norm wherever the nearest projection is unique. The robotics contribution is an admissibility analysis showing when practical constraints define non-empty closed sets. We derive admissible formulations for external and self-collision, joint limits, dexterity, Cartesian and task-projected compliance, joint torque under payload, and dynamic manipulability. Since every field uses the same metric, heterogeneous constraints compose by a pointwise minimum, conditioned constraints retain a fixed distance space, and multi-robot constraints produce block-sparse gradients that identify which robots must react. We generate projection-based labels and train neural approximations with a distance loss and an Eikonal penalty. Simulations on a UR5e and a dual-arm cell evaluate seven fields using value, projection, sign, gradient, composition, and moving-obstacle diagnostics. Across 8,000 configurations, the largest feasible-side secant ratio is 0.920, mean learned gradient norms range from 0.994 to 0.998, and projection residuals range from 0.011 to 0.034 rad. Across 24 random obstacle paths, the external and composed collision fields achieve 90.4% and 91.6% success within 3 cm, with sign-error rates below 2%. The results support a common configuration-space margin and identify approximation errors near medial axes and sparsely sampled boundaries. 
+
+Keywords: Configuration space, distance fields, Eikonal equation, feasibility, self-collision, singularity, Cartesian compliance, multi-robot systems, medial axis, safe control 1 Introduction 
+
+Robot manipulators are monitored by constraint-specific quantities: workspace clearance in collision avoidance (Khatib 1986; Zucker et al. 2013; Schulman et al. 2014), joint-limit margin, Jacobian conditioning and manipulability (Yoshikawa 1985a; Klein and Blaho 1987), Cartesian compliance (Salisbury 1980), and actuator headroom or dynamic manipulability (Yoshikawa 1985b). Each quantity is meaningful in its own units, but their values cannot be compared or combined without an arbitrary normalization. More importantly, none directly measures how far the robot can move in configuration space before any monitored constraint is violated. This paper takes that remaining motion as the margin. For each constraint, we define the configurations that violate it and measure the joint-space distance to their union. The resulting feasibility distance field (FDF) is expressed in the coordinates in which the robot is commanded, so its value identifies the nearest active constraint and converts directly into allowable motion under a chosen configuration-space metric. Configuration-space distance models have previously been developed for collision geometry (Koptev et al. 2023; Li et al. 2024); the question here is when the same distance construction remains valid for heterogeneous robot constraints. 
+
+## 1.1 From Task Space Clearance to Configuration Space Feasibility Margins 
+
+Signed distance fields (SDFs) provide continuous obstacle clearance in task space. When a workspace SDF is pulled back to joint coordinates through forward kinematics, its gradient is transformed by the manipulator Jacobian. Its norm therefore varies with posture and can collapse near a singularity: the same workspace clearance may require very different amounts of joint motion in different configurations. A margin with an unknown exchange rate into joint motion cannot provide a uniform timing guarantee. Corollary 2 provides that guarantee when distance is measured directly in joint space, and Section 5.9 quantifies the difference between the two readings. Li et al. (2024) removed the Jacobian from this calculation for collision avoidance by measuring distance directly in configuration space. Their work develops collision-based CDF construction, fusion, and neural approximation, but does not ask when the same construction is valid for constraints that are not geometric collisions. Classical distance-to-set theory supplies the analytical properties of such a field, including nearest-point projection, Lipschitz continuity, and the Eikonal identity away from the medial axis (Federer 1959; Clarke et al. 1995; Rockafellar and Wets 1998; Mantegazza and Mennucci 2003). Our robotics observation is that collision is only one source of a non-empty closed infeasible set in joint space. Joint limits, singularity, excessive compliance, and insufficient torque headroom can generate sets with the same structure, provided that their indicators are posed with the required continuity and dimensional consistency. Once this is noticed the object of interest is no longer a collision field but a feasibility field. Write ÌF Q for the set of configurations the robot may not occupy—for whatever reason—and define 
+
+# ( ) F
+
+min , .D Î
+
+= - =W W Wp
+
+q q p v v Wv (1) We call W
+
+D the feasibility distance field. It is one scalar field, in radians, whose gradient has unit dual norm wherever it exists, and whose value is the exact amount of joint-space motion available before the robot becomes infeasible in any of the modelled ways at once. A single number now covers what previously took a dashboard, and—because the number is a distance whose gradient norm is fixed—it converts directly into time under a velocity bound. The practical consequences follow from the same source. Heterogeneous constraints merge without conversion factors, because each has already been reduced to radians. The gradient of the merged field points along the joint motion that recovers margin fastest, whichever constraint happens to be nearest. In a multi-robot cell that gradient is block-sparse, and the pattern of its non-zero blocks names the robots that must react. None of this needs a new theory per constraint; it needs one theory, and a check that each constraint meets its hypothesis. 
+
+## 1.2 Contributions 
+
+This paper makes three contributions: 
+
+(1) We formulate heterogeneous robot constraints as admissible infeasible sets in a common weighted configuration space, and establish valid formulations for collision, joint limits, dexterity, Cartesian compliance, joint torque under payload, and dynamic manipulability. 
+
+(2) We show that every admissible constraint inherits the same joint-space distance structure: its FDF is 1-Lipschitz and almost everywhere differentiable, has unit dual-gradient norm, and yields the nearest infeasible configuration by metric projection. This converts indicators with unrelated units and gradient scales into directly comparable motion margins. 
+
+(3) We derive exact minimum-based composition, conditioned fields, and block-sparse multi-robot gradients, and validate these properties with projection-based learning across seven fields on a UR5e and a dual-arm cell. 
+
+## 1.3 Paper Organization 
+
+Section 2 reviews distance fields, learned collision models, performance indicators, safety margins, and distance-to-set geometry. Section 3 states the setting and admissibility condition. Section 4 records the distance-to-set properties used by the FDF. Section 5 develops the constraint catalogue, Section 6 treats composition and non-smoothness, and Section 7 presents computation and simulation results. Section 8 discusses limitations and Section 9 concludes. Proofs and extended diagnostics are collected in Appendices A and B. 2 Related Works 
+
+2.1 Distance Fields in Motion Planning 
+
+Distance fields entered robot motion generation through artificial potential fields (Khatib 1986) and later became standard collision costs in trajectory optimisation. CHOMP uses workspace signed distances and their gradients in a functional objective (Zucker et al. 2013); TrajOpt imposes continuous-time collision penalties within sequential convex optimisation (Schulman et al. 2014); and GPMP2 expresses related costs as factors in a continuous-time probabilistic planner (Mukadam et al. 2018). Euclidean signed distance maps can also be built online from sensor data, as in Voxblox (Oleynikova et al. 2017). These methods measure clearance in the workspace and transfer its gradient through robot kinematics. The resulting quantity is effective for collision avoidance, but it is not the distance from the current joint configuration to collision in a configuration-space metric. Li et al. (2024) make that change of domain explicit with configuration-space distance fields. Li et al. (2026) instead generalise the metric and solve a Riemannian Eikonal problem. We retain a fixed metric and study a different question: which robot constraints, including non-geometric ones, define sets to which a configuration-space distance is well posed? 
+
+2.2 Learned Collision and Configuration-Space Models 
+
+Learning has been used to replace repeated geometric collision queries with fast configuration-dependent proxies. Fastron learns a collision classifier in configuration space (Das and Yip 2020), ClearanceNet regresses workspace separation distance for batched planning (Kew et al. 2021), and DiffCo learns an autodifferentiable collision score with multiclass labels (Zhi et al. 2022). These models accelerate planning and supply useful gradients, but their outputs are respectively a class score or a workspace clearance rather than an exact distance under a joint-space metric. Neural joint-space implicit distance functions make collision queries differentiable with respect to joint coordinates (Koptev et al. 2023), while neural CDFs approximate distance directly in configuration space (Li et al. 2024). Recent work uses neural C-space barriers for robust planning and control (Long et al. 2026) and unifies self-collision and environment collision in a learned C-space SDF (Chen et al. 2026). These are the closest computational precedents to the present work. They remain centred on collision geometry; the FDF uses the same distance representation for any robotic constraint whose infeasible set is admissible. 
+
+2.3 Kinematic and Dynamic Performance Indicators 
+
+Manipulator performance is commonly described by local scalar indices. Yoshikawa's manipulability measure characterises the volume of a velocity ellipsoid (Yoshikawa 1985a), while singular values and condition numbers quantify directional dexterity and proximity to rank loss (Klein and Blaho 1987). Dynamic manipulability incorporates the mass matrix and actuator effort (Yoshikawa 1985b). Cartesian stiffness and compliance provide an analogous description of force-displacement behaviour (Salisbury 1980). These indices are not interchangeable. Their values depend on units, task coordinates, and the chosen normalisation; mixed translational and rotational Jacobians require an explicit metric or characteristic length to avoid dimensionally inconsistent conclusions (Doty et al. 1993, 1995). The FDF does not replace these indicators. It uses a physically meaningful indicator and threshold to define an infeasible set, then measures joint-space distance to that set so that different constraints can be compared on one scale. 
+
+2.4 Safety Margins and Reactive Control 
+
+Control barrier functions enforce forward invariance by constraining the rate of a safety function (Ames et al. 2017), and barrier certificates extend this construction to interacting robots (Wang et al. 2017). Their use in robotic systems is reviewed by Ferraguti et al. (2022). Modulation-based methods instead reshape a nominal dynamical system around obstacles while preserving convergence (Khansari-Zadeh and Billard 2012; Huber et al. 2019), with joint-space extensions for whole-body collision avoidance (Koptev et al. 2024). These frameworks determine how a margin affects control. The FDF supplies the margin: its magnitude has a common joint-space meaning across constraints and its gradient identifies the fastest local recovery direction. 
+
+2.5 Distance to Sets and Metric Projection 
+
+The regularity of distance-to-set functions is classical. Federer (1959) related unique nearest-point projection to reach and the geometry of the medial axis. Proximal smoothness and local regularity of metric projections were developed in nonsmooth analysis (Clarke et al. 1995; Rockafellar and Wets 1998), and Mantegazza and Mennucci (2003) studied distance from closed sets, its Eikonal equation, and its singular set on Riemannian manifolds. We use these results as the mathematical foundation of the FDF; the Lipschitz, projection, and unit-gradient properties are not claimed as new distance-function theory. The robotics contribution is to formulate feasibility as distance in joint space, establish which practical constraint formulations produce non-empty closed infeasible sets, and exploit the resulting fields for heterogeneous composition, conditioning, multi-robot structure, and learning. 
+
+## 3 Problem Definition 
+
+The analytical properties used by the FDF are classical properties of distance to a non-empty closed set (Federer 1959; Clarke et al. 1995; Rockafellar and Wets 1998; Mantegazza and Mennucci 2003). Once those conditions hold, the distance is attained and 1-Lipschitz, is differentiable almost everywhere, and has unit dual gradient norm wherever it is differentiable. The robotics question is whether a practical constraint actually defines such a set in the chosen joint space. Collision does, but the same conclusion is not automatic for asingularity, compliance, or torque indicator: continuity, dimensional consistency, matrix invertibility, and non-emptiness must be checked for the formulation and operating domain. This section states the robot model and metric, then defines admissibility as the condition that the infeasible set be non-empty and closed. Section 5 performs the substantive robotics work of verifying that condition for each constraint class and records the formulations for which it fails. 
+
+## 3.1 Robot configuration space 
+
+We consider a robot with n revolute joints 1, , n
+
+q q= ¼q .All joints are subject to joint limits, so the configuration space is closed box in n
+
+Q min max 1
+
+, , 
+
+> nniii
+
+q q
+
+> =
+
+= ÌÕ (3) Distances in Q are measured with a constant, symmetric positive-definite metric 0W  .
+
+## 3.2 The closed set 
+
+For collision, closure of the excluded set is a small argument once three things are in place. Each link is modelled as a compact set 
+
+## 3.3 Goals 
+
+The goal is a single scalar field ( ) DW q that: (a) reports the exact joint-space distance, under the metric W , to the nearest configuration the robot may not occupy; (b) has unit gradient norm almost everywhere, so that a margin and a joint displacement are exchanged at a fixed and known rate; (c) can be built for any admissible infeasible set, without a separate argument per constraint class; (d) composes heterogeneous constraints into one field and scales to multi-robot systems while indicating which robot must react. 
+
+## 4 Feasibility Distance Fields 
+
+This section states the classical distance-to-set results in the weighted joint-space notation used by the FDF (Federer 1959; Clarke et al. 1995; Rockafellar and Wets 1998; Mantegazza and Mennucci 2003). The central result for robotics is Section 4.2: once a constraint is shown to define an admissible set, its configuration-space margin inherits the same Eikonal normalization, independently of the physical indicator used to define the set. Self-contained proofs are collected in Appendix A. 
+
+## 4.1 Definition 
+
+Let F be a non-empty closed subset of the joint box Q , and let W be a constant symmetric positive-definite metric. The feasibility distance field and the set of nearest infeasible configurations are 
+
+# ( ) ( ) FF F
+
+min ,arg min .
+
+> pp
+
+D ÎÎ
+
+= -= -P
+
+   
+
+> WWW
+
+q q pq q p (4) When F is the collision set and W is the identity, this definition reduces to the configuration-space distance field of Li et al. (2024). The results below depend only on closedness and non-emptiness, not on the physical origin of F .
+
+## 4.2 Unit-gradient property in joint space, regularity, and projection 
+
+The following theorem is the central structural result of the FDF. Once a robot constraint defines a non-empty closed infeasible set in the chosen weighted joint space, the resulting margin is not merely another scalar indicator: it is a genuine distance whose gradient is normalized in the dual joint-space metric. Sections 5.2-5.8 establish this admissibility condition for the constraint classes considered in this paper. 
+
+Theorem 1 (Distance-to-set properties of the FDF) . Under the assumptions above, the following statements hold for every q in Q: (i) The minimum is attained, the field is 1-Lipschitz in the W-norm, and it vanishes exactly on F .(ii) On the feasible region outside F , the field is differentiable at q if and only if the nearest point is unique. Consequently, it is differentiable almost everywhere. (iii) At every differentiability point on the feasible side, the gradient has unit dual norm: 
+
+# ( ) ( ) 1 1, D D- =q q 
+
+> 
+> WW
+
+W (5) (iv) If the projection is unique, the gradient and nearest infeasible configuration are given by 
+
+# ( ) ( ) .D -Ñ = -
+
+q pq q p
+
+> ååWW
+
+W (6) 
+
+# ( ) ( ) 1 .D D-
+
+= - Ñp q q qå 
+
+> WW
+
+W (7) Theorem 1(iii) is the key normalization result: every admissible robot constraint satisfies the same joint-space Eikonal equation. The norm in (4) is the dual norm induced by the inverse metric, not the ordinary Euclidean norm unless the metric is the identity. Hence the field changes at exactly one unit per unit of weighted joint displacement in its steepest direction. A diagonal metric may encode chosen per-joint scales without destroying this unit exchange rate. At a configuration with a unique projection, the nearest infeasible configuration is the active minimizer. Differentiating that active point-distance gives (5); substituting the result into (4) cancels the metric and yields unit dual norm. The same conclusion follows by whitening the constant metric: after the corresponding linear coordinate change, the FDF is the ordinary Euclidean distance to the transformed infeasible set. The unit-gradient property in joint space is therefore inherited from distance in the chosen metric, rather than from the indicator that generated the infeasible set. The distance theorem itself is classical; the contribution here is to establish when heterogeneous robot constraints inherit it in configuration space. Once a collision, dexterity, compliance, torque, or dynamic-manipulability constraint passes the admissibility test of Section 5, its FDF has the same unit dual gradient even though the original indicator may be measured in metres, inverse newtons, newton-metres, or acceleration units and may have an arbitrary raw gradient magnitude. This is the property that turns heterogeneous indicators into comparable joint-motion margins. Thus the field value is a joint-space margin, the gradient is its steepest recovery direction, and the projected posture identifies the failure configuration to which the margin refers. The theorem concerns the feasible-side distance; negative values used in Section 7 are a learned signed extension for diagnostics and are not needed by the theorem. 
+
+## 4.3 Differentiability and the medial axis 
+
+The exceptional set is the medial axis, i.e., the configurations with more than one nearest point in F :
+
+# ( ) { ( ) }
+
+M F Q  F F,|  
+
+> WWW
+
+D
+
+¢=¢- = - =
+
+q p pq p q p q (8) By Theorem 1(ii) and Rademacher's theorem, this set has Lebesgue measure zero. No closedness of the medial axis is assumed without additional regularity of F . At these configurations the distance remains Lipschitz, but a unique gradient direction need not exist. 
+
+## 4.4 What the field value certifies 
+
+Corollary 1 (Feasible neighbourhood and path certificate). 
+
+Let q be feasible and let d > 0 denote its FDF value. The open 
+
+W-ball 
+
+# ( ) { } free ;,W W
+
+d d= - < ÍN Qq q q q
+
+is contained in the feasible set, and the radius is tight because a nearest point in F is attained. Hence any continuous path starting at q whose W-length is smaller than d remains feasible. Equivalently, the ε-superlevel set of the FDF is the feasible set eroded by a W-ball of radius ε. This converts the field from an indicator threshold into a direction-independent motion budget. 
+
+## 4.5 Composition across constraints and robots 
+
+Corollary 3 (Composition). For a finite family of admissible infeasible sets, their union is admissible and its field is 
+
+# ( ) ( ) min .k
+
+> k
+
+D D= FF q qW W (9) This minimum is the exact distance to the union, not a soft-min approximation or a weighted penalty. If one branch is strictly closest and differentiable, the composite gradient equals that branch gradient, and the branch index identifies the binding constraint. When several branches tie, the field remains Lipschitz but is generally non-differentiable; the admissible generalized gradients are formed from the active branch gradients. Constraint priorities therefore belong in the set definitions, thresholds, or joint-space metric, rather than in post-hoc weights applied to incompatible indicators. For M robots with product configuration space, aconstraint involving robot i alone lifts to the cylinder set 
+
+F Q F Q1 ,i i M
+
+=   (10) and pairwise collision constraints lift analogously. Finite unions of these closed sets remain admissible. When the nearest active constraint involves only one robot, the displacement to the projection vanishes in all other robot blocks, so the gradient is block sparse: 
+
+# ( ) ( ) ( ) 
+
+# ( )( )  
+
+> joint
+
+;0; ; 0; ; 0 ; 0 .i i 
+
+> ii
+
+D DÑ ë= û¼W Wq
+
+q q  (11) More generally, a constraint involving any subset of robots lifts by taking the Cartesian product with the complete configuration spaces of all inactive robots. The nearest-point projection changes only the participating robot blocks. Unary constraints therefore produce one non-zero gradient block, while a pairwise collision constraint produces at most two. The sparsity pattern is the incidence pattern of the active constraint: it identifies both which constraint is closest and which robots can increase its margin. If several equally near constraints involve different robot subsets, a generalized gradient may combine their active blocks, but no unrelated robot block appears. Thus composition preserves structural sparsity even at switching surfaces. Away from those surfaces, the ordinary gradient gives an unambiguous active constraint and reaction set. 
+
+## 5 Feasibility Sets for Robot Constraints 
+
+Theorem 1 reduces the construction of a feasibility distance field to a single geometric requirement: the infeasible set must be non-empty and closed. The contribution of this section is to show that the constraints of everyday manipulation—collision, singularity, compliance, joint limits—all admit this reduction. Despite their different physical origins and units, each can be written as a subset of configuration space satisfying the same two properties, and therefore each produces the same kind of field with the same guarantees. The reduction is not always immediate: two of the natural formulations fail the closedness test and must be reformulated before they fit the framework, and identifying those reformulations is precisely what makes the unified field usable in practice. 
+
+## 5.1 A Closedness Test for Indicator Constraints 
+
+Robot constraints are almost always already written as a scalar indicator against a threshold: clearance above zero, smallest singular value above ò , compliance below max 
+
+c .Such a constraint passes the test automatically. If :f ®Q 
+
+is continuous and min 
+
+f Î  , then 
+
+# ( ) { }min 
+
+:f f f=F Qq q (12) is closed in n
+
+ , being the preimage of the closed half-line 
+
+# ( min 
+
+,¥ f ù- úû under a continuous map, hence closed in Q ,which is itself closed in n
+
+ by (2). A constraint of the form 
+
+# ( ) max 
+
+qf f³ is handled by applying the same statement to 
+
+f- .Verifying admissibility therefore reduces to two questions per constraint: is the indicator continuous, and is the set it defines non-empty inside the joint limits? The first is a modelling question and is where the two cautionary cases below arise; the second is settled by sampling, and Section 7 reports it as an occupied fraction for every field we built. The modelling question has one recurring answer, and it is worth stating once rather than case by case. Classical performance indicators are routinely written with a matrix inverse—the Cartesian stiffness, the pseudoinverse in adirectional transmission ratio, the inverse inertia in an acceleration bound—and whether the inverse costs the constraint its continuity is decided by a single property of the matrix on the joint box. 
+
+Proposition 4 (Admissible inverses). Let Q be compact and : k k
+
+A ´
+
+®Q  continuous. (i) If ( ) A q is invertible for every q Î Q , then 
+
+# ( ) ( )min 
+
+: min 0q A q m sÎ
+
+= >Q , the map ( ) 1
+
+q A q -
+
+ is continuous with ( ) 1 12
+
+A q m 
+
+> --
+
+£  , and any indicator obtained from 1
+
+A- by continuous operations is continuous on 
+
+Q . Its sublevel sets are then closed by (9) and Theorem 1 applies. (ii) If ( )0
+
+A q is singular for some 0
+
+q Î Q , then 
+
+# ( ) 12
+
+A q ¥
+
+> -
+
+®  as 0
+
+q q® through invertible points, and no indicator bounded below by a positive multiple of 12
+
+A-
+
+ 
+
+near 0
+
+q extends continuously to 0
+
+q .Both halves are elementary. For (i), min 
+
+s is 1-Lipschitz by Weyl’s inequality, hence continuous, and a continuous positive function on a compact set attains a positive minimum; 
+
+# ( ) ( )1 adj / det A A A- = is then continuous, and 
+
+# ( ) 11 12 min 
+
+A As m 
+
+> ---
+
+= £  . For (ii), the same identity gives 
+
+# ( ) ( ) ( ) 11min 2
+
+A q A q s --
+
+= and 
+
+# ( ) ( ) ( )( )min min 0 0A q A q s s® = .What the proposition rules out is rank loss on the domain, not inversion. The distinction matters because the two look alike in a formula and differ completely in consequence, and because the reflex trained by one of the cautionary cases below—never form the Cartesian stiffness—is wrong if it is generalised to inverses as such. On the joint box of Section 7 the mass matrix satisfies ( ) 4 2min 2.5 10 kg m l -
+
+M
+
+uniformly, so Proposition 4(i) admits 1-
+
+M and every indicator built on it. In the same box J reaches  
+
+> 5min
+
+1.5 10 s -
+
+= ´ , so Proposition 4(ii) rejects +J and the Cartesian stiffness 1 
+
+> x
+> --
+
+=  
+
+> q
+
+K J K J alike—and rejects them precisely on the singular variety, which is where a constraint written to keep the robot away from rank loss is least able to afford a discontinuity. The two verdicts are separated by nine orders of magnitude in a quantity one can measure in seconds, which is the practical content of the proposition: the test is cheap, and it is not a matter of taste. The constructive corollary is to build indicators from forward maps wherever possible, and to admit an inverse only against a positive uniform bound one has actually checked. Section 5.6 applies it to reject a formulation, Section 5.8 to accept one, and the catalogue records which of the two happened in each case. Throughout, links are compact sets 3
+
+Ì
+
+B  and the forward kinematics ( ) : 3T SE ® Q are continuous, so that 
+
+# ( ) q T q 
+
+ B is Hausdorff-continuous and any clearance built from it is continuous. 
+
+## 5.2 External Collision 
+
+For link  and a closed obstacle set O , the clearance 
+
+# ( ) ( ) { }min : ,Td = -  
+
+ O B Oq x y x q y (13) is continuous, so { } ( )1 0d-
+
+= O O
+
+F is closed by (9) with 
+
+f d= O and min 0f = . A finite union over links and obstacles remains closed. This is the case treated by Li et al. (2024), and it enters the catalogue here as one entry among several rather than as the object of study. 
+
+## 5.3 Self-Collision 
+
+For a non-adjacent link pair ( ),k the clearance 
+
+# ( ) ( ) ( ) { }min : ,k k k
+
+T Td = -  
+
+x y x q y qB Bq is likewise continuous and { } ( )1 0k k
+
+d-
+
+= 
+
+F is closed. The gradient now collects contributions from both sub-chains, 
+
+# ( ) ( )( ),k k k
+
+J JdÑ = -   
+
+> 
+
+p pn (14) with n the contact normal and , k
+
+J J the translational Jacobians at the two witness points. Pair selection is part of the model, not an implementation detail. Pairs that are in contact for every configuration must be excluded, or ÊF Q and 0W
+
+D º :the field reports that the robot is already broken. A chain-index rule—“skip adjacent links”—is not sufficient. Section 7 reports pairs two joints apart on a UR5e whose collision geometry is touching throughout the joint box. We therefore select pairs by measured contact fraction over random configurations rather than by index, which is a preprocessing step and the difference between a usable field and a field that is identically zero. 
+
+## 5.4 Dexterity and Velocity Transmission 
+
+Near a kinematic singularity the arm loses the ability to move its end effector in some task direction at any reasonable joint speed. Let ( ) m n´
+
+Î J q be the manipulator Jacobian and define the dimensionally homogeneous Jacobian ( ) ( ) ( ) ,
+
+L
+
+= v
+
+JJ J
+
+qq qw
+
+(15) with L a characteristic length. The indicator and set are 
+
+# ( ) ( ) ( ) ( ) { }Fdex min dex dex dex 
+
+, : .f s f= = £q q q qJ
+
+ò (16) 
+
+J is a matrix of trigonometric polynomials in q and is therefore continuous; singular values are 1-Lipschitz in the spectral norm by Weyl’s inequality (Horn and Johnson 2012), so dex 
+
+f is continuous and (11) applies. The length scaling is not cosmetic. Without L , the rows of v
+
+J carry metres per radian while the rows of Jw are dimensionless; the singular values of the mixture are neither a length nor an angle, and dex 
+
+ò has no invariant meaning under a change of length unit. This is a known defect of the raw measure and it is cheap to remove, but it must be removed before a threshold can be transferred between robots or even between two tools on the same robot. Dexterity is a worst case over task directions. For a required task direction v the joint velocity realising =x v
+
+is +
+
+= q J v , so the transmission ratio in that direction is 
+
+1 / +J v and 
+
+# ( )min 12
+
+1 1min .s + +=
+
+= =  v
+
+J J v J (17) Equation (14) is thus the most conservative reading of the constraint. If the task fixes a direction, a tighter indicator exists—but, but it makes the infeasible set task-dependent and therefore requires a moving-set analysis. 
+
+## 5.5 Cartesian Compliance 
+
+A serial arm is far less stiff than the machine tool whose work it is often asked to do. Under the process forces of a manufacturing task—polishing, deburring, drilling—the end effector deflects, and the deflection produced by a given force is a function of the posture, not of the force alone. Some configurations therefore miss an accuracy specification that others meet, and the margin we want is the distance to the nearest configuration that misses it. 
+
+Compliance, never stiffness. The same elastostatics can be carried by either of two matrices, and only one of them is admissible; the choice is not stylistic, it decides whether the field exists at all. At a kinematic singularity J loses rank. The Cartesian compliance loses rank with it but stays bounded, whereas the Cartesian stiffness—its inverse— diverges. This is Proposition 4(ii) with = A J : an indicator built on the stiffness is discontinuous exactly on the singular variety, which is precisely where the constraint matters most, so the closedness test of (9) fails there and Theorem 1 fails with it. We take the compliance as the primitive and never form the stiffness. The compliance is also the matrix the statics deliver first. With a symmetric positive definite joint stiffness q
+
+K , a static wrench F at the effector is balanced by the joint torque 
+
+
+
+J F , deflects the joints by 1- 
+
+> q
+
+K J F , and so displaces the effector by ( ) x
+
+d =x C q F , with 
+
+# ( ) ( ) ( ) 1 .x q
+
+> -
+
+=  q q qC J K J 
+
+(18) Assembling (15) as it stands, rather than building  
+
+> 1--
+
+=   
+
+> xq
+
+K J K J and inverting it, keeps the expression defined at every Îq Q , singular configurations included, and avoids conditioning the same near-singular matrix twice. Its entries are polynomials in cos q and sin q , and max 
+
+l of a symmetric matrix is 1-Lipschitz in the spectral norm, so the indicator and set 
+
+# ( ) ( ) ( ) ( ) ( ) { }    
+
+> comp max 2comp comp max
+
+,: 
+
+> xx
+
+c
+
+f lf
+
+= == ³
+
+q q qq qF
+
+C C (19) meet the hypothesis of (11). The worst case over wrench directions is what keeps the set static. x
+
+C is symmetric positive semidefinite, so 
+
+# ( )max 1
+
+max x xF
+
+l =
+
+=C C F and ( )max x
+
+d l£x C F for any load. Magnitude enters linearly, so a force bound 
+
+> max
+
+F£F turns the threshold into a deflection budget,   
+
+> max allow max
+
+/c Fd= . Quantifying over all directions is also what makes comp 
+
+F independent of the load, and therefore a fixed subset of Q : an indicator tied to a time-varying load direction instead defines a moving set and requires the corresponding feed-forward term for forward invariance. Task-projected compliance is the tightest reading the theory still admits. Between the load-specific indicator and the fully worst-case one lies a third, which fits many real tasks and which we have not seen used. Suppose the task fixes the output direction n along which deflection is harmful—the normal to a surface being polished, say—while the force direction remains unknown up to max 
+
+F F£  . Maximising over that uncertainty alone, and over nothing else, has a closed form, 
+
+# ( ) ( ) ( ) max  
+
+> task max
+
+max ,x xF F
+
+Ff £
+
+= = 
+
+> 
+
+q q q
+
+n C F C n (20) which, like (17), is a function of q alone: the set stays static, the closedness test applies, and Theorem 1 goes through unchanged. Of the three readings—load-specific, task-projected, worst case—the middle one is thus the tightest that remains compatible with the theory, and it is the one we build a full field for in Section 7. 
+
+## 5.6 Joint Torque and Payload 
+
+A posture that is kinematically unobjectionable may still be one the actuators cannot hold. At rest the joint torque balancing gravity is ( ),g
+
+t q m , a function of the posture and of the payload m carried at the tool, and the constraint is that every joint retain some headroom against its limit: 
+
+# ( ) ( )( ) ( ){ }F  
+
+> max trq ,trq trq
+
+, min , ,: , . 
+
+> ig i i
+> t
+
+ff
+
+= -= £
+
+q m q m m q q m 
+
+t t
+
+ò (21) Each ,g i 
+
+t is a trigonometric polynomial in q , the absolute value is continuous, and a minimum of finitely many continuous functions is continuous, so (9) applies for every fixed m .The threshold is headroom, not the torque limit. Writing 
+
+0t =
+
+ò recovers the literal statement “no joint saturates”, and on a well-specified robot that set is empty over the rated payload: a UR5e with 28 N m wrist limits does not saturate anywhere in the joint box below about 12 kg , which is why it is rated for five. An empty F makes W
+
+D identically infinite and the field carries no information. The constraint that does bind is the one a task actually imposes—leave t
+
+ò in reserve for the dynamic terms and for disturbance—and it is admissible precisely because it is stricter than the datasheet. This is the non-emptiness half of admissibility doing work at design time rather than being checked after the fact. The payload is a coordinate, not a setting. trq 
+
+F moves with m , so a field built for one payload is wrong for another. Rather than retrain per payload, we take m as an input, 
+
+# ( ) ,D q m q , exactly as the collision field of Section 5.2 takes the obstacle point. Two consequences follow, and the second is not cosmetic. First, since 
+
+# ( ) ( ) ( ) , , 0 g g v g= - 
+
+q m q mJ qt t is affine in m , the family ( ){ }trq 
+
+F m is a smooth one-parameter deformation rather than an unrelated set per payload, and the network interpolates along it cheaply. Second, /D mq becomes available by the same automatic differentiation that yields 
+
+
+
+> q
+
+Dq
+
+Ñ —which is precisely the feed-forward term omitted when the set is left implicitly time-varying. Admissibility constrains the conditioning range, not only the joint box. Non-emptiness must hold for every value of the conditioning parameter the field is asked to serve, and here it does not hold for all of them: below about 3.5 kg no posture in the box violates a 22 N m headroom requirement. The conditioning interval is therefore part of the specification of the field, and Section 7 reports the occupied fraction at both of its ends rather than on average. A minimum over joints is non-smoothness inside a single constraint. Unlike min 
+
+s or max 
+
+l , whose non-differentiability is confined to eigenvalue coincidences, (19) is an explicit minimum whose gradient is set-valued wherever two joints tie. This is a second, distinct source of the phenomenon Section 6 attributes to composition, and it is measured there. 
+
+## 5.7 Dynamic Manipulability 
+
+Dexterity asks what end-effector velocity a bounded joint velocity can produce. Its dynamic counterpart asks what acceleration a bounded joint torque can produce, and takes the same worst-case-over-directions form. With ( ) M q the mass matrix, a torque t applied at rest produces 
+
+# ( ) ( ) 1-
+
+=  x J q M q t , so the transmission is worst in the direction of the smallest singular value and 
+
+# ( ) ( ) ( ) ( ) { }F   
+
+> 1dyn min dyn dyn dyn
+
+,: .
+
+J Mf sf
+
+> -
+
+÷ç= ÷ç ÷ç= £
+
+q q qq q
+
+ò
+
+(22) This is where Proposition 4 earns its keep. The indicator contains 1-
+
+M , and the reflex trained by the compliance case of Section 5.6 is to refuse it. That reflex is exactly the over-generalisation the proposition guards against. M is the mass matrix of a physical mechanism: continuous in q and pointwise positive definite, hence covered by part (i) on a compact joint box, with the uniform bound reported in Section 9. Entries of 1-JM are therefore continuous and 
+
+> min
+
+s is 1-Lipschitz, so dyn 
+
+f is continuous and (9) applies. Compliance and dynamic manipulability are thus the two halves of the same proposition rather than two unrelated modelling judgements, and the only work either of them requires is checking a minimum singular value on the box. Multiplying by 1-
+
+M moves the indicator off the bottom of the spectrum. ( )min 
+
+s J vanishes on the singular variety and collides with its neighbour there, which is where its non-differentiability lives. The mass matrix is well conditioned relative to J , and the product inherits a smallest singular value that is bounded away from zero over much more of the box. Section 7 reports the consequence for label quality, which is a factor of two and a half in the same direction. 
+
+## 5.8 Why the Margin Is a Joint-Space Distance 
+
+The catalogue is now long enough to make its own argument. Eight constraints have been written as indicators, and no two of them are measured in the same thing: clearance in millimetres, joint limits in radians, dexterity in metres per radian, compliance in metres per newton, the torque margin in newton-metres, dynamic manipulability in metres per second squared per newton-metre. A robot that must respect all of them simultaneously cannot compare them in these units, cannot add them, and cannot decide which is closest to being violated. The question the catalogue forces is therefore not whether each indicator is continuous—Section 5 has settled that—but what common quantity they should be converted into. The conversion has to be a distance, and it has to be taken in Q . Replacing a
+
+f by W
+
+Da , the distance in the joint metric to the set a
+
+f forbids, buys three things at once, and each of them fails for the indicator and for any task-space clearance. They become commensurable. Every Da 
+
+> W
+
+is a length in the same space under the same metric, so the minimum over 
+
+a in (20) is a distance to a union rather than a comparison of incompatible units—the composition of Section 6 is available only after this conversion, and would be meaningless before it. They acquire a common exchange rate. Theorem 1(iii) fixes 1 1D -
+
+Ñ =W W for every constraint class, whereas the indicators’ own gradients have no common scale: measured on their zero sets, 1
+
+f -
+
+Ñ W is 6
+
+3.2 10 -
+
+´ for compliance and reaches 15.1 for the torque margin, six orders of magnitude apart, and varies by a factor of 28 within the dynamic manipulability field alone. A controller weighting constraints by indicator gradient must therefore be retuned per constraint and, for a conditioned field, per parameter value; one weighting distances need not be. They become a statement about a ball, not a point. ( ) f q
+
+reports a value at a configuration. ( ) DW q reports that every configuration within ( ) DW q of q , in any direction, is feasible—and by Corollary 2 that this buys ( ) max 
+
+/W
+
+D q v
+
+seconds against the worst case. This is the property a margin is carried for, and it is the one that does not survive being expressed as an indicator value. A task-space margin is not a joint-space margin, and the gap is largest where it matters. The natural objection is that clearance is already a distance, so the collision case at least needs no conversion. It does. A clearance is a distance in the workspace, and the map from workspace displacement to joint displacement is the Jacobian, whose anisotropy on the box of Section 7 has median max min 
+
+/ 17.8 s s = and maximum 4
+
+5.0 10 ´ . The same centimetre of clearance therefore costs between one and four orders of magnitude more joint motion depending on the direction it must be recovered in, and the disparity grows without bound as the arm approaches a singularity—which is precisely the region the dexterity constraint exists to keep it out of. A margin in metres does not bound the motion available, and near the configurations where several constraints are simultaneously active it is arbitrarily optimistic. A margin in radians does bound it, unconditionally, which is the content of (26). Conditioning composes in the same space. Two of the eight entries are conditioned, on an obstacle point and on a payload, and they are conditioned on different parameters. Because both fields are distances in the same Q under the same W ,their minimum is again such a distance and the parameters simply concatenate: ( ) ( ){ }coll trq 
+
+min , , ,D DW W
+
+q x q m is the distance to the union of the two infeasible sets at ( ),x m , with 
+
+Theorem 1 applying at each fixed ( ),x m and Corollary 2 
+
+holding along any motion at fixed parameters. The conditioning parameters enlarge the network’s input, not the space the distance lives in, and that separation is what keeps heterogeneous conditioned constraints composable at all. 
+
+## 5.9 Summary of the Catalogue 
+
+Table 1 collects the eight constraint classes with the indicator and the reason its continuity holds. Read down its second column, the table is also the argument of Section 5.9 : eight indicators, no two in the same units, which is why none of them can serve as the margin itself. Each set is closed; if at least one of them is non-empty inside the joint limits—which sampling settles in seconds—their union is admissible and Theorem 1 applies to the resulting field. Two entries carry a formulation caveat, and both are recorded in the table because getting them wrong does not produce a worse field, it produces a field to which the theory does not apply.              
+
+> Table 1. Constraint catalogue and the condition used to establish continuity.
+> constraint indicator continuity formulation caveat
+> external collision link-obstacle clearance Hausdorff continuity -self-collision link-link clearance Hausdorff continuity screen link pairs joint limits minimum joint margin piecewise linear -dexterity sigma_min(J~) Weyl inequality characteristic length Cartesian compliance lambda_max(C x) continuity of J use Cx, not Kx task-projected compliance Fmax ||Cx n|| as above worst-case force joint torque / payload minimum torque headroom finite minimum headroom threshold dynamic manipulabili ty sigma_min(J~ M^-1) M uniformly SPD M^-1 admissible
+
+## 6 Composition, Multiple Robots, and Non-Smoothness 
+
+## 6.1 One Field for Heterogeneous Constraints 
+
+A robot subject to several constraints at once does not need several unrelated fields. For non-empty closed constraint sets, the distance to their union equals the minimum of the individual distances. Applied to a finite catalogue, this identity gives the unified field and its active constraint: 
+
+# ( ) ( ) ( ) ( ) ( ) ( ) å
+
+min ,arg min .
+
+D DD
+
+> aaaa
+
+a
+
+== 
+
+> WWW
+
+q qq q (23) Trivial as the identity is, it is the whole implementation strategy. Each constraint is projected onto separately, in its own natural formulation, and the results are compared by a single scalar comparison. No weights are chosen, no units are reconciled, no relative importance is tuned—the heterogeneity has already been removed by the time (20) is evaluated, because each branch reports radians. The index 
+
+# ( ) aå q comes for free and tells the supervisor which constraint is currently binding, which is the information an operator asks for first when a robot slows down. 
+
+## 7 Simulation Study 
+
+## 7.1 Setup and evaluation protocol 
+
+The experiments examine the computational claims: learned-field accuracy in the common joint-space metric, projection consistency, unit-gradient behaviour, collision-field composition, payload conditioning, and multi-robot gradient sparsity. Admissibility and the motion certificates are analytical results from Sections 4–6 and are not re-established empirically. Experiments use a UR5e and a dual-arm cell with two UR5e manipulators mounted 0.9 m apart. The joint box is q ∈ [−2.8, 2.8]⁶, with the shoulder restricted to [−2.6, −0.4]. Each field is represented by a SIREN with three hidden layers of 768 units (ω₀ = 15) and trained for 300 epochs on 3 × 10⁶ labels using a Huber distance loss and an Eikonal penalty of 0.4 (Adam, learning rate 3 × 10⁻⁴, batch size 8192, one RTX 4090). Label collection requires 5–25 min per field and training approximately 40 min. Labels are minima over sampled zero-level templates and therefore upper-bound the exact distance. All scoring references use independently sampled zero sets denser than the training templates. We report field-value error and the distance from a projected configuration to the zero set, both in radians. Collision fields additionally admit workspace success rates because their indicator is itself a metric distance. The learned field is assessed on the feasible side; signed negative values inside F are used only to diagnose the learned extension.                            
+
+> Table 2. Fields used in the simulation study. Slack is the residual label-to-reference zero-set gap, in radians.
+> field indicator |F|/|Q| template sslack
+> self-collision closest-pair gap -2.43e6 0.0169 static dexterity sigma_min(J~) 40.8% 1.78e6 0.0138 compliance lambda_max(Cx) 21.9% 1.72e6 0.0027 dynamic dexterity sigma_min(J~M^-1) 23.5% 1.65e6 0.0140 grinding max joint utilization 34.9% 1.78e6 0.0095 grinding, conditioned max utilization, m 39.7% 5.27e5/k g0.0161
+
+## 7.2 Empirical checks of distance field properties                        
+
+> Table 3. Empirical checks on 8,000 uniformly sampled configurations. Projection residual and MAE are in radians. field max ratio grad., feasible grad., infeasible proj. MAE
+> self-collision 0.608 0.994+/-0.044 1.301+/-1.911 0.033 50.043 0static dexterity 0.646 0.998+/-0.030 1.208+/-1.306 0.016 60.032 0
+> field max ratio grad., feasible grad., infeasible proj. MAE
+> compliance 0.920 0.997+/-0.010 1.025+/-0.598 0.010 70.012 2dynamic dexterity 0.642 0.997+/-0.033 1.549+/-1.974 0.017 50.034 1grinding 0.761 0.997+/-0.029 1.122+/-1.086 0.016 90.026 0
+
+All fields satisfy the empirical Lipschitz test with margin; the largest observed secant ratio is 0.920. On the feasible side, the learned gradient norm is 0.994-0.998 across fields, with standard deviations of 0.010-0.044. The projection lands 0.011-0.034 rad from the reference boundary. The larger and more variable norms inside F do not contradict Theorem 1, which is stated for the feasible-side distance; they quantify the limitations of the learned signed extension. 
+
+## 7.3 Accuracy across constraint classes                                    
+
+> Table 4. Field and projection errors, in radians. p50 and p90 denote projection-error percentiles.
+> field MAE RMSE p95 proj. p50 proj. p90
+> compliance 0.0122 0.0218 0.0481 0.0107 0.0154 grinding 0.0260 0.0399 0.0884 0.0169 0.0742 static dexterity 0.0320 0.0485 0.1097 0.0167 0.0416 dynamic dexterity 0.0341 0.0512 0.1151 0.0175 0.0502 self-collision 0.0430 0.0674 0.1412 0.0335 -grinding, cond. 0.0347 0.0520 0.1115 0.0409 0.2413
+
+Compliance is the most accurate field (MAE 0.0122 rad), consistent with the smooth, isolated largest eigenvalue of its compliance spectrum. Static and dynamic dexterity agree within 7% on every reported column despite one being kinematic and the other dynamic; their common difficulty is the smallest singular value approaching a repeated zero. Conditioning the grinding field on payload increases median projection error from 0.0169 to 0.0409 rad because a fixed template budget is divided across payload values. Appendix B reports the threshold and conditioning diagnostics in full. 
+
+## 7.4 Collision fields and composition                                                                      
+
+> Table 5. Collision projection after k Newton steps. Errors are workspace gaps in centimetres; SR 3and SR 5are success rates within 3 and 5 cm.
+> field kMAE RMSE median SR3 SR5
+> external 14.61 9.57 1.77 66.7 79.1 external 31.45 3.04 0.88 91.0 96.7 external 10 1.22 2.06 0.85 93.3 98.4 self 11.32 2.10 0.75 87.1 95.2 self 31.18 1.86 0.74 89.0 96.3 self 10 1.18 1.85 0.73 89.1 96.3 union 11.32 2.12 0.68 85.5 95.9 union 31.11 1.77 0.59 88.6 97.0 field kMAE RMSE median SR3 SR5
+> union 10 1.10 1.76 0.59 88.7 97.0
+
+All three collision fields reach their asymptotic accuracy within three projection steps. The external field's large first-step RMSE is carried by a thin tail and collapses from 9.57 to 3.04 cm by the third step. The union should not be interpreted as the average of its branches: the self-collision branch is active on 70% of uniformly sampled queries, and the switching surface adds a non-differentiable set beyond the medial axes of the two branches.       
+
+> Figure 1(a). External-collision FDF along amoving-obstacle trajectory.
+> Figure 1(b). Self-collision FDF along a dual-arm trajectory.
+> Figure 1(c). Union of external and self-collision fields, conditioned on obstacle position.
+
+## 7.5 Dynamic behaviour and moving-obstacle robustness 
+
+The four performance fields retain the expected sign along trajectories that cross their zero sets (Figure 2). Base-joint rotation is symmetry-inactive for these indicators: its measured derivative is 8.3 × 10⁻¹⁶, compared with 4.8 × 10⁻¹ for the active coordinates. This is a structural property of the indicators rather than evidence of a dead network input.             
+
+> Figure 2(a). Static dexterity. Figure 2(b). Cartesian compliance.
+> Figure 2(c). Dynamic dexterity.
+> Figure 2(d). Payload-conditioned grinding field.
+> Table 6. Robustness over 24 random obstacle paths (mean across paths).
+> field clearance [cm] residual [cm] SR3 [%] sign error [%]
+> external 32.58 4.55 90.42 1.63 union 5.24 1.00 91.63 1.93
+
+Across 24 independently generated obstacle paths, the external and union fields achieve comparable 3 cm success rates (90.4% and 91.6%) and pooled sign-error rates below 2%. The external field varies more strongly between paths because its projection queries can start far from contact; mean clearance correlates with residual at +0.65 and with success rate at -0.74. Accordingly, sign error—not mean field error— is the relevant metric when the field is used as a feasibility monitor. Additional label-density, staged-contact, threshold, and path-level diagnostics are provided in Appendix B. 
+
+## 8 Limitations 
+
+The analysis assumes fixed-base robots with a Euclidean configuration space. Floating-base systems carry an ( ) 3SE 
+
+factor; the closedness arguments transport unchanged, but Theorem 1 requires a Riemannian restatement in which (4) becomes grad 1g g
+
+D =  —the setting studied in its own right by Li et al. (2026), whose machinery would supply the missing step. Second, the theory characterizes a target function but does not make it cheap to evaluate. The exact projection oracle is not real time; Section 7 therefore evaluates a learned approximation and reports both its accuracy and its failure modes. Third, the thresholds that define the performance sets are engineering choices, and Table 2 shows they matter: at the values used here the dexterity set occupies 40.8% of the joint box against 21.9% for compliance, so a field unifying the two would be dominated by distance to singularity. That is a legitimate design point—for a machining task it may be the right one—but it should be a chosen point rather than an inherited one, and the occupied fractions are what make the choice visible. Fourth, the metric is constant, and this is a real restriction. Everything in Section 4 is stated for a fixed symmetric positive definite W , which makes ( ),WQ anormed space: the segment from q to ( ) W qp is a straight line, and that is what makes the projection identity (6) a one-step formula and the labelling oracle used in Section 7 cheap. A configuration-dependent metric ( ) G q —the mass matrix being the natural candidate, so that distance measures kinetic energy rather than joint displacement—turns (3) into ageodesic distance. Items (i)–(iv) survive with geodesics replacing segments, but two things do not: the projection is no longer computable by a single linear step, and the velocity bound of Corollary 2 becomes a bound in a metric that itself varies along the trajectory. We take the constant- W
+
+formulation deliberately and note the cost: a diagonal W can encode per-joint velocity limits but not the posture dependence of the inertia. That dependence is instead carried where it belongs, inside the indicators of Sections 5.7 and 5.8, which are functions of ( ) M q while the metric that measures distance between configurations stays flat. 
+
+## 9 Conclusion 
+
+Building on classical distance-to-set geometry, we have shown that the configuration-space collision distance field of Li et al. (2024) is one instance of a broader robotics construction. The key contribution is the admissibility analysis: external collision, self-collision, joint limits, dexterity, Cartesian compliance, task-projected compliance, joint torque under payload, and dynamic manipulability define non-empty closed infeasible sets on their stated domains when formulated with the required dimensional consistency and matrix invertibility. Their distances therefore inherit the classical Lipschitz, projection, and unit-gradient properties in a common joint-space metric. Because distance to a union is the minimum of the distances, heterogeneous constraints compose into one scalar field without conversion weights, and single-robot sets lift to cylinder sets with block-sparse multi-robot gradients. We tested the computational consequences on seven fields: the learned gradients approach unit norm, projection reaches independently sampled boundaries, collision fields compose in a dual-arm setting, and conditioning tracks payload or obstacle parameters. These experiments assess the approximation and implementation rather than re-prove the classical distance-to-set results. The practical payoff is a margin in radians whose gradient norm is fixed, which places unlike constraints on one scale and names the one that binds—neither of which an indicator supports, its gradient norm varying by factors of 5.2 and 4.4 across the workspace on the two we measured. The main open problems are the medial axis, which the signed formulation does not remove and where the learned gradient still loses a tenth of its norm, and a proper treatment of time-varying infeasible sets, for which (31) is a working patch rather than a theory. Appendix A. Proofs for Section 4 
+
+For completeness, this appendix gives self-contained proofs of the classical distance-to-set properties stated in Section 4, using the weighted joint-space notation of the FDF. 
+
+## A.1 Proof of Theorem 1(i): attainment and the Lipschitz bound 
+
+Proof. Fix q and let 0 W
+
+= -q p
+
+ for any 0 Î Fp ; such a 
+
+> 0
+
+p exists because F is non-empty. Points of F farther than 
+
+p from q cannot improve on 0
+
+p , so the minimum may be restricted to the intersection of F with the closed W-ball of radius 
+
+ about q . That intersection is closed, being the intersection of two closed sets, and bounded in the finite-dimensional space n
+
+ , hence compact. A continuous function on a non-empty compact set attains its minimum, so (3) is well defined. The zero-set property is immediate: ( ) 0W
+
+D =q forces 
+
+0 
+
+> W
+
+=-q p for Î Fp , and positive definiteness of W
+
+gives =p q . For the Lipschitz bound, take , ¢ Î Qq q and let 
+
+¢ Î Fp attain the minimum at ¢q . Then 
+
+## ( ) ( ),W WW W W W                  
+
+> DD£-£-+-=-+qqpqqqpqqq
+
+the middle step being the triangle inequality in n
+
+ , W
+
+× .Swapping the roles of q and ¢q yields 
+
+# ( ) ( ) W W W
+
+D D- £ -q q q q , and together the two give 
+
+# ( ) ( )W W W
+
+D D- £ -q q q q . ,
+
+## A.2 Proof of Theorem 1(iii): the unit-gradient identity 
+
+Proof. Let Îå Fp attain the minimum in (3) and set 
+
+# ( ) 0W W
+
+D= = - >å
+
+d q q p , with unit direction 
+
+, 1. 
+
+> WW
+
+-= =-
+
+> åå
+
+q pv vq p
+
+Upper bound. By Theorem 1(i), for any direction u and 
+
+t ＞ 0, ( ) ( ) W W W
+
+D t D t+ - £q u q u . Dividing by t and letting 0t +
+
+® gives ( ) W W
+
+D 
+
+q u u for every u, i.e. 
+
+# ( ) 1 1W W
+
+D -
+
+q .
+
+Lower bound along the ray. For ( ), 0 t dÎ - , set  
+
+> t
+
+t= +q q v , so t W t- = -q q . Because 
+
+# ( )( )1t t d - = + -q p q p with 1+ t/d>0, 
+
+# ( ) 1 ,W t t W W
+
+D t d d t£ - = + - = +q q p q p
+
+Theorem 1(i) gives the matching lower bound 
+
+# ( ) ( ) W t W t W
+
+D D d t³ - - = +q q q q . Hence 
+
+# ( )W t
+
+D d t= +q for every ( ), 0 t dÎ - : along the ray from q
+
+back towards the nearest infeasible configuration, the field decreases at exactly unit rate, the nearest point remains a valid competitor throughout, while the Lipschitz bound forbids any faster decrease. Differentiating this identity at t=0 from below gives the direction derivative ( ) 1W
+
+DÑ =
+
+> 
+
+q v . A gradient whose dual norm is at most one and whose directional derivative along a unit vector equals one has dual norm exactly one, which is (5) . Equality in the Cauchy-Schwarz step 
+
+# ( ) ( ) 1W W WW
+
+D D -
+
+> 
+
+q v q v further forces ( ) W
+
+DÑ q
+
+to be W-parallel to v, recovering the gradient itself. ,
+
+## A.3 Proof of Theorem 1(ii): differentiability and unique projection 
+
+Proof. Outside the infeasible set, the distance is the pointwise minimum of smooth point-distance functions over a compact restriction of the set. By the directional-derivative formula for such minima (Danskin's theorem; Rockafellar and Wets 1998), its directional derivative is the minimum, over all nearest points, of the corresponding unit displacement covectors applied to the direction. If the nearest point is unique, this minimum contains one linear form, so the distance is differentiable and its gradient is the projection-displacement formula in (5). Conversely, two distinct nearest points produce two distinct unit displacement covectors. Their pointwise minimum is not a linear function of direction, whereas differentiability would require a single linear directional derivative. The distance is therefore not differentiable. Hence differentiability holds exactly where the nearest-point projection is unique. 
+
+## A.4 Proof of Corollary 1: the feasible-neighbourhood certificate 
+
+Proof. (a) If some ¢q with W d¢ <-q q were infeasible, then ( ) W W
+
+D d¢£ - <q q q , a contradiction. (b) The minimum in (3) is attained by Theorem 1(i); this is where both halves of admissibility are used. ,
+
+Proof . ( ) ( ) ( ) len W WW
+
+s Dg g- £ <q q for every s, so 
+
+# ( ) sg lies in the neighbourhood of Corollary 1. ,
+
+## A.5 Medial-axis and composition corollaries 
+
+The medial-axis characterization follows immediately from Theorem 1(ii), and its measure-zero property follows from Rademacher's theorem applied to the 1-Lipschitz field. For composition, a finite union of closed sets is closed and is non-empty whenever at least one member is non-empty; the distance to the union is the minimum of the distances to its members. Cylinder lifts are closed products, and the block-sparse gradient follows from the projection displacement having zero components outside the active robot blocks. 
+
+## Appendix B. Additional Simulation Diagnostics 
+
+## B.1 Conditioning and threshold selection 
+
+Table B1. Payload conditioning with otherwise identical field definitions and network settings. 
+
+grinding field templates / zero set slack proj. p50 proj. p90 
+
+conditioned, 3-3.5 kg 5.27e5 0.0161 0.0409 0.2413 fixed, 3.25 kg 1.78e6 0.0095 0.0169 0.0742 
+
+Table B2. Effect of derating threshold alpha and a 30 N process force on the grinding field. 
+
+alpha force |F|/|Q| MAE [rad] grad. error binding joints [%] 
+
+0.20 none 65.4% 0.1332 0.346 j2 53, j3 22, j4 25 0.30 none 39.5% 0.0304 0.316 j2 100 0.30 30 N 39.7% 0.0347 0.319 j2 70, j3 11, j4 19 
+
+Raising alpha from 0.20 to 0.30 reduces the infeasible volume from 65.4% to 39.5% and improves MAE by a factor of 4.4. Adding the task-aligned process force restores competition among three joints and increases MAE by 14%, illustrating that the threshold shapes both the zero set and its non-smooth structure. 
+
+## B.2 Reference density and label bias 
+
+Table B3. Union field scored against a reference denser than its training labels; errors are in radians. The rows are a before-and-after comparison, not an ablation. 
+
+version MAE RMSE median p95 bias 
+
+v1 0.0406 0.0613 0.0313 0.1062 +0.0238 v2 0.0303 0.0459 0.0217 0.0896 +0.0173 
+
+The denser-label version reduces MAE and gradient-norm spread, but both versions retain positive bias because nearest-template labels are upper bounds on the true distance. This is the unsafe direction for a safety monitor; training reduces but cannot remove the bias without a two-sided label bracket. 
+
+## B.3 Staged and planned collision tests 
+
+The hand-written dynamic trajectory used in Figure 1 does not itself prove that both collision modes are entered. We therefore add staged clips that penetrate each branch and planned dual-arm contacts with different binding link pairs. 
+
+Figure B2(a). Staged arm-to-arm penetration; exact gap -38 mm. 
+
+Figure B2(b). Staged obstacle penetration; exact gap -150 mm. 
+
+Figure B3(a). Planned upper-arm/forearm contact. 
+
+Figure B3(b). Planned forearm/forearm contact. 
+
+On the staged 80-frame clip, the learned field reaches −0.228 rad and agrees in sign with exact geometry on 95.0% of frames. In the planned self-collision clip, 32 of 72 frames are in penetration, with maximum depths of 83 and 81 mm for two different binding pairs; field and geometry agree in sign on 91.7% of frames. Disagreements concentrate at boundary entry and exit. B.4 Random obstacle paths 
+
+Table B4. Path-level distribution over 24 random obstacle paths. 
+
+field / quantity mean sd min max 
+
+external clearance [cm] 32.578 7.070 22.562 48.427 external residual [cm] 4.545 4.314 0.823 18.956 external SR3 [%] 90.417 7.600 68.333 99.167 external sign error [%] 1.632 1.777 0.000 6.195 union clearance [cm] 5.236 0.278 4.672 5.806 union residual [cm] 1.002 0.114 0.795 1.301 union SR3 [%] 91.632 2.158 86.667 95.000 union sign error [%] 1.925 2.338 0.000 8.696 
+
+## References 
+
+Ames AD, Xu X, Grizzle JW and Tabuada P (2017) Control barrier function based quadratic programs for safety critical systems. IEEE Transactions on Automatic Control 62(8): 3861-3876. Chen H, Zhou Y, Zhou Y and Wang H (2026) CSSDF-Net: Safe motion planning based on neural implicit representations of configuration space distance field. arXiv preprint arXiv:2603.18669. Clarke FH, Stern RJ and Wolenski PR (1995) Proximal smoothness and the lower-C2 property. Journal of Convex Analysis 2(1-2): 117-144. Das N and Yip MC (2020) Learning-based proxy collision detection for robot motion planning applications. IEEE Transactions on Robotics 36(4): 1096-1114. Doty KL, Melchiorri C and Bonivento C (1993) A theory of generalized inverses applied to robotics. The International Journal of Robotics Research 12(1): 1-19. Doty KL, Melchiorri C, Schwartz EM and Bonivento C (1995) Robot manipulability. IEEE Transactions on Robotics and Automation 11(3): 462-468. Federer H (1959) Curvature measures. Transactions of the American Mathematical Society 93(3): 418-491. Ferraguti F, Talignani Landi C, Singletary A, Lin H, Ames AD, Secchi C and Bonfe M (2022) Safety and efficiency in robotics: The control barrier functions approach. IEEE Robotics and Automation Magazine 29(3): 139-151. Horn RA and Johnson CR (2012) Matrix Analysis. 2nd ed. Cambridge: Cambridge University Press. Huber L, Billard A and Slotine J-J (2019) Avoidance of convex and concave obstacles with convergence ensured through contraction. IEEE Robotics and Automation Letters 4(2): 1462-1469. Kew JC, Ichter B, Bandari M, Lee T-WE and Faust A (2021) Neural collision clearance estimator for batched motion planning. In: LaValle SM, Lin M, Ojala T, Shell D and Yu J (eds) Algorithmic Foundations of Robotics XIV. Cham: Springer, pp. 73-89. Khansari-Zadeh SM and Billard A (2012) A dynamical system approach to realtime obstacle avoidance. Autonomous Robots 32(4): 433-454. Khatib O (1986) Real-time obstacle avoidance for manipulators and mobile robots. The International Journal of Robotics Research 5(1): 90-98. Klein CA and Blaho BE (1987) Dexterity measures for the design and control of kinematically redundant manipulators. The International Journal of Robotics Research 6(2): 72-83. Koptev M, Figueroa N and Billard A (2023) Neural joint space implicit signed distance functions for reactive robot manipulator control. IEEE Robotics and Automation Letters 8(2): 480-487. Koptev M, Figueroa N and Billard A (2024) Reactive collision-free motion generation in joint space via dynamical systems and sampling-based MPC. The International Journal of Robotics Research 43(13): 2049-2069. Li Y, Chi X, Razmjoo A and Calinon S (2024) Configuration space distance fields for manipulation planning. In: Proceedings of Robotics: Science and Systems XX, Delft, The Netherlands. Li Y, Qiu J and Calinon S (2026) A Riemannian take on distance fields and geodesic flows in robotics. The International Journal of Robotics Research. Epub ahead of print 19 March 2026. DOI: 10.1177/02783649261420233. Long K, Lee KMB, Raicevic N, Attasseri N, Leok M and Atanasov N (2026) Neural configuration-space barriers for manipulation planning and control. IEEE Transactions on Automation Science and Engineering. Epub ahead of print. DOI: 10.1109/TASE.2026.3695092. Mantegazza C and Mennucci AC (2003) Hamilton-Jacobi equations and distance functions on Riemannian manifolds. Applied Mathematics and Optimization 47(1): 1-25. Mukadam M, Dong J, Yan X, Dellaert F and Boots B (2018) Continuous-time Gaussian process motion planning via probabilistic inference. The International Journal of Robotics Research 37(11): 1319-1340. Oleynikova H, Taylor Z, Fehr M, Nieto J and Siegwart R (2017) Voxblox: Incremental 3D Euclidean signed distance fields for on-board MAV planning. In: Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems, pp. 1366-1373. Rockafellar RT and Wets RJ-B (1998) Variational Analysis. Berlin: Springer. Salisbury JK (1980) Active stiffness control of a manipulator in Cartesian coordinates. In: Proceedings of the 19th IEEE Conference on Decision and Control, pp. 95-100. Schulman J, Duan Y, Ho J, Lee A, Awwal I, Bradlow H, Pan J, Patil S, Goldberg K and Abbeel P (2014) Motion planning with sequential convex optimization and convex collision checking. The International Journal of Robotics Research 33(9): 1251-1270. Wang L, Ames AD and Egerstedt M (2017) Safety barrier certificates for collisions-free multirobot systems. IEEE Transactions on Robotics 33(3): 661-674. Yoshikawa T (1985a) Manipulability of robotic mechanisms. The International Journal of Robotics Research 4(2): 3-9. Yoshikawa T (1985b) Dynamic manipulability of robot manipulators. Transactions of the Society of Instrument and Control Engineers 21(9): 970-975. Zhi Y, Das N and Yip MC (2022) DiffCo: Autodifferentiable proxy collision detection with multiclass labels for safety-aware trajectory optimization. IEEE Transactions on Robotics 38(5): 2668-2685. Zucker M, Ratliff N, Dragan AD, Pivtoraiko M, Klingensmith M, Dellin CM, Bagnell JA and Srinivasa SS (2013) CHOMP: Covariant Hamiltonian optimization for motion planning. The International Journal of Robotics Research 32(9-10): 1164-1193.

@@ -1,0 +1,432 @@
+Title: Safety Control of a Hyper-redundant Robot via Adaptive Weighted Control Barrier Functions
+
+URL Source: https://arxiv.org/pdf/2609.24062v1
+
+Published Time: Tue, 22 Sep 2026 02:45:38 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Safety Control of a Hyper-redundant Robot via Adaptive Weighted Control Barrier Functions 
+
+Zijian Cai, Kiwan Wong, Wenci Xin, Wei Xiao, Daniela Rus, and Cecilia Laschi 
+
+Abstract — Hyper-redundant robots are well suited for confined-space manipulation due to their high dexterity, but safe operation in cluttered environments remains challenging. In addition, their slender structures often lead to uneven load distributions and nonuniform tracking errors along the body. To address these issues, this work proposes a weighted control barrier functions (W-CBFs) framework that enforces safety constraints while reducing tracking errors caused by uneven loading. The proposed controller was first evaluated on a circular path-following task under different obstacle configurations. With fixed weights, compared to the non-weighted method, the maximum reduction in root-mean-square (RMS) tracking error was 59.6% in simulation and 87.7% in physical experiments. An adaptive weighting strategy was then investigated based on the discrepancy between simulated and experimental performance under different mapping functions. The RMS errors were further reduced by 21.9% and 8.5%, respectively, although the error increases when obstacles were located close to the robot body. Finally, the robot was evaluated in a cleaning task requiring coverage of a rectangular area and compared with manual teleoperation. Although the controller was not explicitly optimized for area coverage, the autonomous strategy achieved comparable or better coverage performance while avoiding collisions with the surrounding frame, whereas collisions occurred during manual operation. 
+
+I. I NTRODUCTION 
+
+Thanks to their large number of degrees of freedom (DoFs), hyper-redundant robots can perform highly dexter-ous motions, making them well suited for tasks in deep and confined environments, such as industrial inspection [1], [2] and manipulation in restricted spaces [3], [4]. Among these applications, cleaning in cluttered environments, including lecture halls and operating theaters, presents a particularly challenging scenario, especially when surrounding objects are fragile and must be carefully avoided during operation. Existing cleaning robots are typically designed for relatively open environments and therefore have limited capability to 
+
+This work was funded by the National Research Foundation (NRF), Prime Minister’s Office, Singapore under its Campus for Research Excellence and Technological Enterprise (CREATE) programme. The Mens, Manus, and Machina (M3S) is an interdisciplinary research group (IRG) of the Singapore MIT Alliance for Research and Technology (SMART) centre 
+
+(Z. Cai and K. Wong contributed equally to this work. Corresponding: wenci.xin@smart.mit.edu; wei.xiao@ntu.edu.sg) 
+
+Z. Cai and W. Xin are with the Singapore-MIT Alliance for Research and Technology (SMART) Centre, Singapore K. Wong and D. Rus are with the CSAIL, Massachusetts Institute of Technology, Cambridge, USA W. Xiao is with the School of Electrical and Electronic Engineering, Nanyang Technological University, Singapore C. Laschi is with the Department of Mechanical Engineering and Ad-vanced Robotics Centre, National University of Singapore, Singapore W. Xiao, D. Rus and C. Laschi are PIs of the Singapore MIT Alliance for Research and Technology (SMART) centre, Singapore 
+
+Fig. 1. Schematic of the hyper-redundant robot safety control with weighted control barrier functions (W-CBFs). 
+
+access narrow gaps or clean hard-to-reach areas without interfering with their surroundings [5]. In these cluttered environments, only limited free space is available for robot motion, requiring the robot to combine sufficient reachability and extensibility with a high degree of dexterity. With the development of soft robotics, various types of extensible hyper-redundant robots have been developed, employing mechanisms such as unwinding-based extension [6], [7], pre-compression [8], [9], and rod-driven extension [10]. In particular, Song et al. developed a planar extensible robot using flexible racks to enable the independent exten-sion of multiple robot modules, demonstrating its potential for cleaning applications [11]. Despite these advances in mechanical design, effectively controlling the large number of DoFs remains a significant challenge, particularly in determining how the redundant DoFs should be coordinated to accomplish a given task. Accordingly, various control strategies have been proposed. A basic approach is redun-dancy resolution through null-space projection, in which the redundant DoFs are exploited to achieve secondary objectives without affecting the primary end-effector task [12], [13]. More constrained strategies regulate the motion of the robot body by prescribing its overall shape or trajectory. Repre-sentative examples include backbone-curve-based methods, which describe the robot configuration using a continuous body curve [14], [15], and follow-the-leader approaches, in which the robot body follows the trajectory traced by its tip when navigating through narrow spaces [16], [17]. Despite the great advances in motion planning, safety is often treated via trajectory design and geometric constraints. arXiv:2609.24062v1 [cs.RO] 21 Sep 2026 The approach becomes problematic when the robot needs to operate in cluttered environments, where not only the end-effector but the whole body needs to remain collision-free. A trajectory that is safe for the tip might cause intermediate contact in between the rest of the body with respect to the environment. Therefore, safe control for hyper-redundant robots requires an algorithm to enforce whole-body safety continuously while progressing. Control Barrier Functions (CBFs) [18], [19] provide a natural framework for imposing such safety requirements into feedback control. By expressing collision avoidance and other physical limits, CBF-based controllers can modify a nominal command when necessary to maintain safety. The runtime filtering structure is particularly attractive for hyper-redundant robots. However, conventional formulations typically treat control correction under uniform control met-ric, implicitly treating actuation across different sections as equally preferable. Accordingly, our contributions are  
+
+> •
+
+Whole-Body Safety: We formulate whole-body safety control for an extensible hyper-redundant robot, enforc-ing collision-avoidance constraints along the robot body rather than only at the end effector.  
+
+> •
+
+Adaptive Weighting: We propose an adaptive weight-ing scheme driven by measured kinematic discrepancy, which penalizes control inputs associated with less reliable robot sections. Hardware experiments further reveal that a uniform control metric can perform poorly due to accumulated friction and deformation in proximal sections.  
+
+> •
+
+Real-time deployment: We employ closed-form cyclic projections to realize computationally efficient safety filtering, enabling whole-body safety control at 25 Hz on a Raspberry Pi for a 36-body robotic system. II. R OBOTIC PLATFORM 
+
+Similar to Song et al. [11], we employ a rack-based 5-segment hyper-redundant robot. As shown in Fig. 2a, it consists of a fixed base and five movable rigid frames which are connected by flexible rack pairs. Two racks in each frame are independently actuated by motors, providing ten actuation inputs. The common extension of the two racks changes the length of the segment, while differential lengths produce bending. Coordinating these motions across the five sections enables the robot to extend and bend within the plane. To avoid interference, the distance between two racks in each segment widens from 92 mm at the base to 156 mm at the tip, resulting in the same rack differential producing a smaller bend angle toward the tip. Although the displacement of each rack can be measured using the motor-embedded encoders, deformation of the flexible racks may lead to discrepancies between the actual robot configuration and the kinematic prediction derived from the encoder readings. To obtain direct measurements of the robot body configuration, we employed a Lighthouse positioning system consisting of two base stations and a tracking deck mounted on each movable frame [20]. Lighthouse Deck PLA Racks Fixed Base Embedded Motor 
+
+(a) Router Raspberry Pi5 
+
+> Ethernet Wi-Fi UDP
+
+MCU-N 
+
+MCU-1 
+
+(b)  
+
+> Fig. 2. (a) An illustration of the hyper-redundant robot system includ-ing structure, actuation, and positioning. (b) The wireless communication framework between the Raspberry Pi and the MCUs.
+
+In order to reduce wiring issues and improve modularity, the system is set up as a wireless version. As Fig. 2b shows, we used a Raspberry Pi 5 as the central computer, running the ROS2 control and positioning nodes. One ESP32-S3-Tiny Microcontroller (MCU) was implemented in each segment to interface with two motors and communicate with the central computer. Commands and sensor feedback are exchanged over Wi-Fi using User Datagram Protocol (UDP). III. W EIGHTED CBF C ONTROLLER FOR THE 
+
+HYPER -R EDUNDANT ROBOT 
+
+A. Robot Kinematics 
+
+We model the planar hyper-redundant robot using a piecewise-constant-curvature (PCC) representation. The robot consists of N serial sections, each actuated by two flexible racks. Let qi,L and qi,R denote the left and right rack lengths of section i. Its arc length Li and bending angle θi
+
+are 
+
+Li = qi,L + qi,R 
+
+2 , θi = qi,L − qi,R 
+
+ci
+
+, (1) where ci is the rack separation. Equal rack motion produces extension, whereas differential motion produces bending. The pose of each section boundary and points along the robot backbone are obtained by sequentially composing the PCC transformations. We define the rack-length state and rack-velocity control input as 
+
+x = [ q1,L , q 1,R , . . . , q N,L , q N,R ]⊤, (2) 
+
+u = [ ˙ q1,L , ˙q1,R , . . . , ˙qN,L , ˙qN,R ]⊤. (3) Since the actuators are operated in velocity control, the kinematic system takes the control-affine form 
+
+˙x = f (x) + g(x)u, (4) with 
+
+f (x) = 0 , g(x) = I2N . (5) Let pj (x) ∈ R2 denote the Cartesian position of the 
+
+j-th point along the robot body. For a backbone point at normalized position sj ∈ [0 , 1] along section i, its Cartesian position is 
+
+pj (x) = oi−1 + R(ψi−1) Li
+
+θi
+
+ sin( sj θi)cos( sj θi) − 1
+
+
+
+, (6) where R is the planar rotation matrix, and oi−1 and ψi−1
+
+are the section’s starting position and heading obtained recursively from preceding sections, with ψi = ψi−1 − θi.At θi = 0 , the local displacement is [sj Li, 0] ⊤. Its velocity is given by 
+
+˙pj = Jj (x) ˙ x = Jj (x) f (x) + g(x)u, (7) where 
+
+Jj (x) = ∂p j (x)
+
+∂x (8) is the Jacobian of the j-th body point with respect to the robot state. This representation allows task objectives and collision-avoidance constraints to be formulated in Cartesian space while retaining the rack velocities as the control inputs. 
+
+B. Weighted Control Barrier Functions 
+
+Let h(x) define the safe set 
+
+C = {x | h(x) ≥ 0}. (9) A control barrier function (CBF) enforces forward invariance of C through 
+
+Lf h(x) + Lg h(x)u + α(h(x)) ≥ 0, (10) where 
+
+Lf h = ∇h⊤f, Lg h = ∇h⊤g, (11) and α(·) is an extended class-K function. Equation (10) can be written as the affine half-space 
+
+a⊤u ≥ b, (12) with 
+
+a = Lg h⊤, b = −Lf h − α(h). (13) For the kinematic model in (5), Lf h = 0 and Lg h = ∇h⊤.A conventional Euclidean CBF correction treats all control directions equally. However, different sections of the physical robot can exhibit substantially different actuation accuracy due to kinematic discrepancy, i.e., accumulated friction, structural deformation, and load. We therefore introduce the positive-definite diagonal metric 
+
+W = diag( w1, w 1, . . . , w N , w N ), wi > 0, (14) where both racks of section i share one weight. Given a nominal command unom , the weighted CBF correction is 
+
+u⋆ = arg min 
+
+> u
+
+12 (u − unom )⊤W (u − unom )s.t. a⊤u ≥ b. 
+
+(15) For a single affine constraint, the KKT conditions yield the closed-form projection 
+
+u⋆ = unom + [b − a⊤unom ]+
+
+a⊤W −1a W −1a (16) where [z]+ = max(0 , z ). If the nominal command already satisfies the CBF condition, no correction is applied. Equation (16) shows that the correction direction is W −1a,rather than a as in the Euclidean case. Therefore, increasing 
+
+wi reduces modification of the corresponding control inputs. The weighting changes only how the required correction is distributed among robot sections; it does not modify the CBF constraint or the safe set. 
+
+C. Multiple Safety Constraints 
+
+For multiple CBF constraints, define 
+
+Hi = {u | a⊤ 
+
+> i
+
+u ≥ bi}, H =
+
+> M
+
+\
+
+> i=1
+
+Hi. (17) Rather than solving a multi-constraint QP, we sequentially apply the closed-form weighted projection to each half-space [21]. Let P Wi denote the projection onto Hi. One cyclic sweep is 
+
+uk+1 = P WM · · · P W 
+
+> 2
+
+P W 
+
+> 1
+
+(uk), u0 = unom . (18) At each control step, W is held fixed throughout the projection iterations. Under z = W 1/2u, the weighted projection of v onto a⊤u ≥ b becomes 
+
+min 
+
+> z
+
+12 ∥z − W 1/2v∥22 s.t. (W −1/2a)⊤z ≥ b. (19) Thus, weighted projections are equivalent to Euclidean pro-jections onto the transformed half-spaces. Consequently, if the instantaneous half-spaces have anonempty intersection, H̸ = ∅, repeated cyclic projections converge to a jointly feasible control [22]: 
+
+uk → u∞ ∈ H , k → ∞ . (20) This guarantees convergence to feasibility for a fixed positive-definite W , although the limiting point is not in general the exact weighted projection of unom onto the full intersection. A finite projection budget also does not guarantee exact joint feasibility, because a later projection can reintroduce violation of an earlier constraint. We therefore quantify the remaining violation using 
+
+r(u) = max  
+
+> i=1 ,...,M
+
+[bi − a⊤ 
+
+> i
+
+u]+. (21) Here, r(u) = 0 indicates joint feasibility, while a nonzero residual measures the maximum remaining CBF violation. The number of projection iterations therefore provides an explicit trade-off between computational cost and constraint satisfaction. Algorithm 1 Adaptive W-CBF Control Loop 
+
+Require: barriers h1, . . . , h M with function α, weight map-ping ϕ, nominal command unom  
+
+> 1:
+
+for every control step do  
+
+> 2:
+
+measure the rack lengths x and the frame poses  
+
+> 3:
+
+if the update window Bk is complete then  
+
+> 4:
+
+update ηi, z i, w i by (22)–(24) and form W by (14)  
+
+> 5:
+
+end if  
+
+> 6:
+
+ai = ∇hi(x), bi = −α(hi(x)) , i = 1 , . . . , M  
+
+> 7:
+
+u = unom  
+
+> 8:
+
+for a fixed number of sweeps do  
+
+> 9:
+
+for i = 1 to M do  
+
+> 10:
+
+project u onto Hi by (16)  
+
+> 11:
+
+end for  
+
+> 12:
+
+end for  
+
+> 13:
+
+evaluate the residual r(u) by (21)  
+
+> 14:
+
+apply u to the racks  
+
+> 15:
+
+end for 
+
+D. Adaptive Weight Selection 
+
+The fixed-weight controller requires selecting the relative importance of individual robot sections in advance. However, the accuracy of the nominal PCC model can vary with robot configuration and loading. We therefore adapt the weights using the discrepancy between the kinematic prediction and external pose measurements. For section i, let ∆pi and ∆θi denote the position and wrapped orientation residuals between adjacent frames, ex-pressed in the preceding frame coordinates. Over an update window Bk, we define the model discrepancy of section i as 
+
+ηi[k] = 
+
+s P  
+
+> t∈B k
+
+(∥∆pi(t)∥22 + [ Li(t)∆ θi(t)] 2)
+
+P 
+
+> t∈B k
+
+max( ¯Li(t), L 0)2 , (22) where L0 > 0 prevents normalization by small extensions. The normalized discrepancy zi ∈ [0 , 1] 
+
+zi = clip 
+
+ ηi − ηmin 
+
+ηmax − ηmin 
+
+, 0, 1
+
+
+
+, (23) is mapped to the section weight according to 
+
+wi = wmin + ( wmax − wmin )ϕ(zi), (24) where ϕ : [0 , 1] → [0 , 1] is a monotonic mapping. Larger model discrepancy therefore results in a larger weight and reduces reliance on the corresponding section. Although W may change between control steps, it remains fixed throughout the projection iterations within each step. Each filtering problem therefore retains the fixed-metric pro-jection structure described above. Algorithm 1 summarizes the resulting control loop. The weight matrix W remains fixed during the projection iterations within each control step, ensuring convergence [22]. Weight updates between steps do not change the CBF constraints or the associated invariance conditions. IV. E XPERIMENTAL SETUP AND RESULTS 
+
+To evaluate the performance of the proposed controller, hardware experiments were conducted on the robotic plat-form described in Sec. II. During the experiments, the motors were operated in speed mode and limited to 36 RPM. The control loop was operated at 25 Hz while receiving pose information from the Lighthouse positioning system at 30 Hz. Three types of constraints are imposed on the robot: collision-avoidance constraints, rack-bending constraints, and actuation constraints. For collision detection, each robot segment is modeled as an oriented rectangle, while the flexible racks are approximated by transverse capsule slices distributed along their centerlines. This representation en-ables whole-body collision checking with respect to the sur-rounding environment. A minimum safety margin of 20 mm 
+
+is enforced. The rack-bending constraints prevent excessive curvature by limiting the relative deformation between the two sides of each segment. The actuation constraints restrict each rack displacement to 10 –200 mm , the rack speed to 30 mm /s,and the tip speed to 120 mm /s. Although the input limits are not formulated as control barrier functions, they can be expressed as half-space constraints in the input space and handled using the same projection formulation. The three types of constraints are treated with equal importance, and we assume that their feasible sets have a nonempty intersection. For additional protection of the robot, the collision-avoidance constraints are projected last, such that the resulting collision-safe command is not further modified by subsequent projections. In the experiments, we used 10 projection sweeps per step, with α(h) = h for obstacle constraints and α(h) = 2 h for rack coupling and actuation constraints. The update window 
+
+Bk was nominally 0.1 s, with (ηmin , η max ) = (0 .05 , 0.25) ,
+
+(wmin , w max ) = (1 , 16) , L0 = 30 mm and ks = 10 .Since the cyclic projections are closed-form, the safety filter required less than 0.6 ms per control step in all three sce-narios ( 0.534 ± 0.087 , 0.575 ± 0.090 and 0.542 ± 0.112 ms). For the cleaning task, since the route becomes complex and the constraints become stricter, we raised the projection budget to 500 sweeps per step, guaranteeing convergence, and shortened the obstacle α(h) to 0.5h, slowing down the approach, resulting in a solver time of 10 .339 ± 0.500 ms. 
+
+A. W-CBF Controller 
+
+A circular trajectory tracking task was first employed to test the W-CBF controller. The reference circle had a radius of 200 mm, was centered at (0 , 800) mm in the robot base frame, and the tip traversed it at 30 mm/s. To investigate the influence of obstacles, we designed three scenarios: no obstacles, two obstacles placed 100 mm outside the reference circle on opposite sides of the trajectory, and a single obstacle beside the robot body. Each obstacle had a radius of 30 mm. In each scenario, three weight matrices were tested, with the form of Eq. (14) ensuring two racks of each segment share the same weight. From the base to the 400 500 600 700 800 900 1000   
+
+> y (mm)
+> (a) RMS Sim 0.09 Real 61.0 ±6.3
+
+W = diag(1, 1, 1, 1, 1)   
+
+> (b) RMS Sim 0.08 Real 9.9 ±3.3
+
+W = diag(16, 1, 1, 1, 1)   
+
+> (c) RMS Sim 3.21 Real 12.8 ±1.7
+
+W = diag(16, 8, 4, 2, 1)         
+
+> Reference Simulation Real-world mean Obstacle 20 mm boundary 400 500 600 700 800 900 1000
+> y (mm)
+> (d) RMS Sim 20.52 Real 75.0 ±2.7 (e) RMS Sim 18.74 Real 17.2 ±1.8 (f) RMS Sim 19.36 Real 20.8 ±1.6
+> −200 0200
+
+x (mm)     
+
+> 400 500 600 700 800 900 1000
+> y (mm)
+> (g) RMS Sim 12.10 Real 93.8 ±4.2
+> −200 0200
+
+x (mm)     
+
+> (h) RMS Sim 6.00 Real 11.5 ±0.8
+> −200 0200
+
+x (mm)   
+
+> (i) RMS Sim 4.88 Real 14.2 ±1.7
+
+No Obstacle Near Trajectory Obstacle Near Body Obstacle Fig. 3. Results of the W-CBF controller following a circular trajectory in simulation and on the hardware, with the three scenarios by row and the three weight matrices by column. The curves show the path of the tip center, the hardware curve being the phase average of three runs. 
+
+tip, the segment weights are [1 , 1, 1, 1, 1] , [16 , 1, 1, 1, 1] and 
+
+[16 , 8, 4, 2, 1] , denoted by W1, W 2 and W3, representing the uniform baseline, increasing weighting of only the proximal segment, and gradually weighting along the robot. Identical controller parameters are employed in the simulation and physical experiment. Fig. 3 and Table I show that the weighting has limited 1 2 3 4 5
+
+Section index, k (base → tip) 
+
+010 20 30 
+
+> Control input ratio (%)
+
+W = diag(1, 1, 1, 1, 1) 
+
+W = diag(16, 1, 1, 1, 1) 
+
+W = diag(16, 8, 4, 2, 1) Uniform allocation (20%) 
+
+Fig. 4. Control input share of each segment under the three fixed weight matrices, across all scenarios and runs. 
+
+effect in simulation but is decisive on the hardware. Under the uniform baseline W1, the simulated tip follows the reference to 0.09 mm RMS without obstacles, while the real robot fails to track the quarter circle in the upper-left corner. Similar deviations occur in both obstacle scenarios, with RMS errors of 75.0 and 93.8 mm. Under uniform weights, each section carries about one fifth of the commanded rack motion (Fig. 4). However, motion of the proximal sections must overcome friction accumulated along the downstream chain, leading to localized tracking errors. In contrast, the simulation neglects friction and rack deflection, resulting in an almost ideal circular trajectory under the same weighting. Both nonuniform weight matrices redistribute the con-
+
+TABLE I TIP TRACKING RMS E RROR IN SIMULATION (S IM .) AND ON 
+
+HARDWARE (HW) U NDER WEIGHT MATRICES (RMS: MM ; ∆: %) No obstacle Near-trajectory Near-body Sim. HW ∆ Sim. HW ∆ Sim. HW ∆
+
+W1 0.09 61.0 ±6.3 – 20.52 75.0 ±2.7 – 12.10 93.8 ±4.2 –
+
+W2 0.08 9.9 ±3.3 84 18.74 17.2 ±1.8 77 6.00 11.5 ±0.8 88 
+
+W3 3.21 12.8 ±1.7 79 19.36 20.8 ±1.6 72 4.88 14.2 ±1.7 85 
+
+∆ is the reduction of the hardware RMS relative to W1 in the same scenario. 400 500 600 700 800 900 1000                            
+
+> y (mm)
+> (a) RMS Real 8.5 ±0.9
+> Linear
+> (b) RMS Real 7.7 ±1.6
+> Exponential
+> (c) RMS Real 8.1 ±1.0
+> Sigmoid
+> Reference Real-world mean Obstacle 20 mm boundary 400 500 600 700 800 900 1000
+> y (mm)
+> (d) RMS Real 16.8 ±0.3 (e) RMS Real 15.7 ±0.3 (f) RMS Real 15.8 ±0.6
+> −200 0200
+> x(mm)
+> 400 500 600 700 800 900 1000
+> y (mm)
+> (g) RMS Real 15.4 ±0.2
+> −200 0200
+> x(mm)
+> (h) RMS Real 16.3 ±0.5
+> −200 0200
+> x(mm)
+> (i) RMS Real 14.7 ±0.2
+> No Obstacle Near Trajectory Obstacle Near Body Obstacle
+
+Fig. 5. Results of the adaptive W-CBF controller following a circular trajectory on the hardware, with the three scenarios by row and the linear, exponential and sigmoid mappings by column. The curves show the path of the tip center, averaged in phase over three runs. 
+
+trol input by taking the motion away from the proximal part, whose share falls to 3.7% under W2 and 6.4% under 
+
+W3 (Fig. 4). Without obstacles, the hardware error drops from 61.0 mm to 9.9 mm under W2, while the simulated error is unchanged, indicating the weight matrices work against the discrepancies. For obstacles located near the reference trajectory, the hardware tracking error under W2
+
+was 17.2 mm, slightly lower than the simulated value of 18.7 mm. However, the reduced RMS error should be in-terpreted together with the observed safety-margin incursion in the physical experiments. While the robot remained close to the safety boundary in simulation, small deviations were observed experimentally due to kinematic discrepancies. Importantly, nonuniform weighting consistently reduced the maximum estimated incursion from 40.78 mm with W1 to 25.75 mm with W2 and 20.43 mm with W3, demonstrating improved robustness of the safety behavior under physical implementation. 
+
+B. Adaptive W-CBF Controller 
+
+Although fixed weights perform well across the tested tasks, no single configuration is optimal in all cases, partly because model discrepancies vary with the robot state. We therefore adapt the weights using a segment-wise indicator of model discrepancy and evaluate three mappings from this indicator to the corresponding weights. Different mapping functions produce different segment weights for the same model discrepancy, thereby affect-ing motion allocation. We consider linear, exponential, and sigmoid mappings with the same weight bounds. The lin-ear mapping increases the weight at a constant rate. The exponential mapping responds more strongly as the error approaches the upper threshold, while the sigmoid mapping emphasizes changes around the midpoint and is less sensitive near either bound. We evaluate their effects on tracking per-formance under the same trajectory and obstacle conditions used in the fixed weight experiments. All three functions follow Eq. (24), with the shape of the interpolation differing as: 
+
+ϕlin (z) = z, ϕexp (z) = rz − 1
+
+r − 1 ,ϕsig (z) = σ ks(z − 12 ) − a
+
+1 − 2a ,
+
+where r = wmax /w min , σ(x) = 1/(1 + e−x) and Fig. 6. Tip tracking error over two laps with obstacles near the trajectory. The lap starts at the bottom of the circle and runs counterclockwise. (a) The three fixed weight matrices. (b) The three adaptive weight matrices. 
+
+a = σ(−ks/2) . Larger weights are assigned to segments with greater error, reducing reliance on their actuation. This construction also explains why the adaptive controller is evaluated on the hardware alone. The simulator integrates the same kinematic model that the controller uses to predict, so the residuals in Eq. (22) vanish identically, and the adaptive controller degenerates to the uniform baseline that was already reported in Fig. 3. Fig. 5 compares the hardware trajectories under adaptive weighting. With near-trajectory obstacles, all three adaptive mapping functions achieve lower RMS error compared with 17.2 mm for W2. With a near-body obstacle, the adaptive mappings produce higher errors than the two nonuniform fixed settings, with the best adaptive result reaching 14.7 mm compared with 11.5 mm for W2. This difference may arise because the adaptive indicator measures local model dis-crepancy rather than the contribution of proximal motion to whole-body obstacle avoidance. It may therefore reduce the proximal weight when the discrepancy is small, whereas W2
+
+maintains the same penalty throughout the task. Fig. 6 compares the tracking error over two laps with obstacles near the reference path. The two laps are almost identical, with each setting peaking at the same points in both. The largest error occurs in the upper left corner, where the uniform baseline holds a broad plateau near 150 mm. Weighting removes the plateau. The median error over that quarter drops below 10 mm, and only a narrow spike of about 41 mm remains. W3 leaves a larger one, 71 mm. The trials with the right obstacle are different. Its peak is near 36 mm under uniform weights. The persistent peak near the right obstacle is consistent with the deviation required by obstacle avoidance. Weighting therefore acts mainly on the part of the error that the model gets wrong, and it removes most of 600 800 1000    
+
+> y (mm)
+> Ssafe = 78.9%, Sout = 7.3%
+
+Manual User1    
+
+> Ssafe = 83.2%, Sout = 22.9%
+
+Manual User2      
+
+> 200 400 600 600 800 1000
+> y (mm)
+> Ssafe = 80.1%, Sout = 0.0%
+
+2 Section CBF      
+
+> 200 400 600
+> Ssafe = 84.6%, Sout = 0.0%
+
+5 Section CBF 
+
+x (mm) 
+
+(b) (c)          
+
+> Within boundary Outside boundary Path Obstacle Contact 20 mm boundary
+> Fig. 7. Real-world cleaning task and end frame coverage. (a) Experimental setup. (b) Manual joystick teleoperation by two operators. (c) Adaptive W-CBF control with 2 equivalent sections and 5 sections. Ssafe is the covered fraction of the target area ( 213 .70 ×10 3mm 2); Sout is the covered fraction of the 20 mm safety band ( 27 .25 ×10 3mm 2).
+
+it. 
+
+C. Cleaning Tasks 
+
+The last experiment evaluated the controller in a cleaning task that modeled cleaning between the rows of a lecture hall. The surrounding seats form a narrow corridor containing the target cleaning area. Fig. 7(a) shows the setup, where barriers restrict the robot’s motion and the end frame sweeps the designated region. We first recorded a manual baseline. Two operators were asked to control the robot using a joystick. Limited by the interfaces, the robot was controlled under only two equivalent segments: the two proximal segments and the three distal ones. Accordingly, we ran adaptive W-CBF control twice, including 2 equivalent segments, for comparison with the operators, and the 5 segments, with each segment driven independently and all ten degrees of freedom available. The reference sweep path consists of four equally spaced parallel passes with a spacing of 121 mm and a length of 329 mm. Adjacent passes are connected by lateral moves at alternating ends. The path accounts for the end-frame size, panel radius, and safety margin. The tip follows the reference at 30 mm/s, while the CBF filter handles whole-body constraints. Both used sigmoid weighting, and each trial ended after two complete up and down sweeps. Coverage was evaluated from the end-frame swept area reconstructed using Lighthouse. Fig. 7(b) shows the coverage achieved by the two oper-ators, reflecting a conservative and an aggressive strategy, respectively. The aggressive operator swept 83.2% of the target area but also covered 22.9% of the safety band. The conservative one limited safety-band coverage to 7.3% but achieved only 78.9% coverage of the target area. Neither avoided the band, and both reached the barrier surface itself, over a length of 74 mm for one operator and 196 mm for the other. By contrast, Fig. 7(c) shows the two adaptive W-CBF runs. Both kept the swept area out of the safety band entirely and never reached a barrier. With the same configurations as the manual operation, the controller covered 80.1% of the target area, which sits between the two manual trials. Regarding five equivalent sections, it reached 84.6%, above both of them. It shows that the extra DoFs of the hyper-redundant robot contribute to performance under conditions with complex obstacles. Together, these results show that adaptive W-CBF control expands coverage while keeping the measured sweep inside the safety boundaries. V. C ONCLUSION AND FUTURE WORK 
+
+In this work, we proposed a weighted control barrier function (W-CBF) controller for safety control of hyper-redundant robots, together with an investigation of adaptive methods that tune the weights online from measured model error. The weight matrix only redistributes the control action among the sections, while remaining compatible with the CBF constraints. In physical experiments, this choice proved almost inert in simulation but decisive on hardware, reducing the circular tracking error from 61.0 to 9.9 mm. Fixed weights require offline tuning, and suboptimal choices may degrade tracking accuracy. In contrast, the adaptive method achieves most of the performance improvement without requiring manual selection of segment-specific weights. In a constrained cleaning task, the controller kept the swept end frame clear of the safety band while covering 84.6% of the region, matching or exceeding the best human-operated performance without the frequent collisions observed during manual operation. Notably, the robot was not specifically optimized to achieve maximum coverage, but moves its end-effector along a designated path. Although the adaptive weighted CBF controller performs well in the current experiments, it is difficult to conclude that the present weighting strategy is optimal. Further investiga-tion is needed, particularly for the normalized discrepancy mapping method. In addition, safety margin violations were observed during the experiments, potentially due to model mismatch arising from friction, inertial effects, and rack deformation. Future work will investigate adaptive dynamic models that capture these effects and their variations over time, potentially using neural networks to improve motion prediction and constraint satisfaction. REFERENCES [1] O. Lakhal, A. Melingui, G. Dherbomez, and R. Merzouki, “Control of a hyper-redundant robot for quality inspection in additive manufac-turing for construction,” in 2019 2nd IEEE International conference on soft robotics (RoboSoft) . IEEE, 2019, pp. 448–453. [2] Z. Chen, X. Zhang, M. Liu, J. Huo, H. Zhang, and L. Tan, “Review of cable-driven hyper-redundant robotic arms,” in 2024 3rd International Conference on Robotics, Artificial Intelligence and Intelligent Control (RAIIC) . IEEE, 2024, pp. 110–119. [3] Z. Mu, L. Zhang, L. Yan, Z. Li, R. Dong, C. Wang, and N. Ding, “Hyper-redundant manipulators for operations in confined space: Typical applications, key technologies, and grand challenges,” IEEE Transactions on Aerospace and Electronic Systems , vol. 58, no. 6, pp. 4928–4937, 2022. [4] J. Liu, A. Zhang, E. Li, R. Guo, S. Li, and M. Luo, “A review on the environment perception and control technologies for the hyperre-dundant manipulators in limited space,” Journal of Sensors , vol. 2022, no. 1, p. 7659012, 2022. [5] R. K. Megalingam, S. R. R. Vadivel, S. S. Kotaprolu, B. Nithul, D. V. Kumar, and G. Rudravaram, “Cleaning robots: A review of sensor technologies and intelligent control strategies for cleaning,” Journal of Field Robotics , vol. 42, no. 5, pp. 2234–2259, 2025. [6] D. Palmer and D. Axinte, “Active uncoiling and feeding of a contin-uum arm robot,” Robotics and Computer-Integrated Manufacturing ,vol. 56, pp. 107–116, 2019. [7] P. Yuan, C. Sun, X. Chang, X. Dong, Z. Song, T. Sun, J. S. Dai, and R. Kang, “Design of a deployable continuum robot (dcr) with coiling mechanism,” IEEE/ASME Transactions on Mechatronics , vol. 30, no. 6, pp. 4886–4898, 2025. [8] Z. Gong, G. Zhu, and T. Zhang, “A novel deployable and stiffness-variable homecare hyper-redundant robot based on the origami mech-anism,” IEEE Transactions on Medical Robotics and Bionics , vol. 7, no. 1, pp. 66–76, 2025. [9] A. Poka, F. Manara, D. Ludovico, A. Pistone, L. D. M. C. Dal Verme, C. Canali, G. Berselli, and D. G. Caldwell, “Alternative solutions to tendon-driven hyper-redundant manipulators: A review on design and actuation strategies,” IEEE/ASME Transactions on Mechatronics ,vol. 30, no. 5, pp. 3938–3952, 2025. [10] P. Wang, Z. Tang, W. Xin, Z. Xie, S. Guo, and C. Laschi, “Design and experimental characterization of a push-pull flexible rod-driven soft-bodied robot,” IEEE Robotics and Automation Letters , vol. 7, no. 4, pp. 8933–8940, 2022. [11] Y. Song, W. Li, W. Xin, Z. Tang, D. Rus, and C. Laschi, “Shape control of a planar hyper-redundant robot via hybrid kinematics-informed and learning-based approach,” arXiv preprint arXiv:2603.10402 , 2026. [12] A. Dietrich, C. Ott, and A. Albu-Sch¨ affer, “An overview of null space projections for redundant, torque-controlled robots,” The International Journal of Robotics Research , vol. 34, no. 11, pp. 1385–1400, 2015. [13] A. Pistone, D. Ludovico, L. D. M. C. Dal Verme, S. Leggieri, C. Canali, and D. G. Caldwell, “Modelling and control of manipu-lators for inspection and maintenance in challenging environments: A literature review,” Annual Reviews in Control , vol. 57, p. 100949, 2024. [14] S. Bordini, D. Caradonna, A. Bicchi, and E. Falotico, “Shape control for modular continuum soft arms: a distributed approach to address redundancy,” IEEE Robotics and Automation Letters , 2025. [15] J. Peng, W. Xu, T. Liu, H. Yuan, and B. Liang, “End-effector pose and arm-shape synchronous planning methods of a hyper-redundant ma-nipulator for spacecraft repairing,” Mechanism and Machine Theory ,vol. 155, p. 104062, 2021. [16] M. Luo, Y. Tian, E. Li, M. Chen, and M. Tan, “A local obstacle avoidance and global planning method for the follow-the-leader mo-tion of coiled hyper-redundant manipulators,” IEEE Transactions on Industrial Informatics , vol. 20, no. 4, pp. 6591–6602, 2024. [17] M. Russo, S. M. H. Sadati, X. Dong, A. Mohammad, I. D. Walker, C. Bergeles, K. Xu, and D. A. Axinte, “Continuum robots: An overview,” Advanced Intelligent Systems , vol. 5, no. 5, p. 2200367, 2023. [18] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier function based quadratic programs for safety critical systems,” IEEE Transactions on Automatic Control , vol. 62, no. 8, pp. 3861–3876, 2017. [19] W. Xiao and C. Belta, “High-order control barrier functions,” IEEE Transactions on Automatic Control , vol. 67, no. 7, pp. 3655–3662, 2021. [20] A. Taffanel, B. Rousselot, J. Danielsson, K. McGuire, K. Richardsson, M. Eliasson, T. Antonsson, and W. H¨ onig, “Lighthouse positioning system: Dataset, accuracy, and precision for uav research,” arXiv preprint arXiv:2104.11523 , 2021. [21] K. Wong, W. Xiao, and D. Rus, “Posafenet: Safe learning with poset-structured neural nets,” arXiv preprint arXiv:2601.22356 , 2026. [22] L. M. Bregman, “The method of successive projections for finding a common point of convex sets,” in Soviet Math. Dokl. , vol. 6, 1965, pp. 688–692.
