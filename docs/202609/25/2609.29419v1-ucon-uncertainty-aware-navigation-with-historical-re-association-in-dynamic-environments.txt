@@ -1,0 +1,643 @@
+Title: UCON: Uncertainty-aware Navigation with Historical Re-association in Dynamic Environments
+
+URL Source: https://arxiv.org/pdf/2609.29419v1
+
+Published Time: Fri, 25 Sep 2026 00:59:47 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# UCON: Uncertainty-aware Navigation with Historical Re-association in Dynamic Environments 
+
+Bing Sun, Yue Lin, Yongsheng Yuan, Yang Liu, Dong Wang*, Huchuan Lu 
+
+Abstract — Autonomous navigation in dynamic environments is hindered by two fundamental challenges: perception instabil-ity and uncertainty–optimization mismatch. The former leads to identity switches and unreliable motion estimation, while the latter prevents principled incorporation of motion uncertainty into trajectory optimization. To address these challenges, we propose UCON, an uncertainty-aware navigation algorithm in dynamic environments. For perception instability, we present a point-level historical re-association mechanism that leverages historical point cloud fragments to recover lost targets while maintaining identity continuity. Subsequently, a Kalman filter is employed to provide anisotropic motion state estimation and co-variance propagation. To resolve the uncertainty–optimization mismatch, we transform predicted states and their covariances into uncertainty sectors, which are embedded as differentiable cost terms within a trajectory optimization framework. This achieves consistent uncertainty-aware dynamic obstacle avoid-ance while maintaining smoothness and feasibility. Extensive simulations and real-world experiments demonstrate that, while maintaining high computational efficiency, UCON achieves superior perception stability and robust navigation performance in dynamic environments compared to state-of-the-art methods. The code will be open-sourced to facilitate further research. 
+
+I. I NTRODUCTION 
+
+Autonomous navigation is a fundamental robotic task that enables safe and efficient operation in complex environments. Recent research has achieved significant progress in geomet-rically complex scenarios [1]–[4]. However, dynamic settings introduce additional challenges that extend beyond geometric complexity. In these scenarios, autonomous navigation is hindered by two critical issues:  
+
+> •
+
+Perception instability . Dynamic objects undergoing oc-clusion, clustering, or partial observation can lead to identity switches and inconsistent motion estimation.  
+
+> •
+
+Uncertainty–optimization mismatch . Motion uncertainty cannot be consistently incorporated into trajectory op-timization, resulting in overly conservative or insuffi-ciently safe behaviors. Existing studies have attempted to mitigate perception instability. Event camera-based approaches [5]–[7] provide promising alternatives but are often cost-prohibitive for prac-tical robotics. Traditional vision-based methods [8]–[12] are 
+
+All authors are with Dalian University of Technology, Dalian 116024.China. *Corresponding author: Dong Wang, wdice@dlut.edu.cn. This work is supported by the National Natural Science Foundation of China (Nos. U23A20384, 62293542, and 62476044), the Dalian Outstanding Science and Technology Talent Project (No. 2025RJ01), the Liaoning Science and Technology Joint Program Project (No. 2024011188-JH2/1026), the Open Research Fund from Guangdong Laboratory of Artificial Intelli-gence and Digital Economy (SZ) (No. GML-KF-24-19), as well as the Open Research Fund from National Key Laboratory of China Space Intelligent Control Technology (No. HTKJ2024KL502016). Perception Planning      
+
+> Error! Error! Lost! Error!
+> Collision!
+> Collision!
+> (a) (b)
+> Static Obs Dynamic Obs (Curr. Time)
+> Dynamic Obs (Prev. Time) Detected Obs Robot Predicted State Optimized Trajectory
+> Perception Planning
+
+Fig. 1. Comparison between the existing methods and the proposed UCON. (a) Limitations of existing dynamic navigation approaches. (b) The proposed UCON maintains identity continuity via historical re-association and embeds anisotropic motion uncertainty in trajectory optimization. 
+
+susceptible to motion blur and illumination variations. In contrast, LiDARs are widely adopted due to their robust and high-precision geometric sensing capabilities across diverse lighting conditions and ranges. However, existing LiDAR-based methods [13]–[16] predominantly rely on object-level association, which can lead to perception instability in cases of partial occlusion or sparse point clouds. Furthermore, from a planning perspective, these methods optimize trajectories based solely on average predicted states and fixed safety mar-gins, neglecting uncertainty-optimization mismatch. There-fore, existing systems have not yet established a principled and tightly coupled mechanism that bridges perception un-certainty and trajectory optimization. This structural decou-pling between perception and planning fundamentally limits navigation performance in dense dynamic environments. To address the aforementioned challenges, we propose UCON, an UnCertainty-aware navigati ON algorithm. As illustrated in Fig. 1, unlike previous methods, UCON simul-taneously mitigates perception instability and resolves the uncertainty-optimization mismatch. To alleviate perception instability, UCON introduces a point-level historical re-association mechanism that leverages historical point cloud fragments to recover lost objects and maintain identity con-tinuity under occlusion and clustering. By reconstructing motion states from temporally consistent observations, it improves perception stability. Subsequently, a Kalman filter-arXiv:2609.29419v1 [cs.RO] 24 Sep 2026 Stable Perception Inputs 
+
+> Odometry
+
+Uncertainty-aware Planning 
+
+> Trajectory
+
+Output  
+
+> LiDAR Scan
+> Dynamic Obstacle Avoidance Cost Object-level Association Uncertainty Estimation and Sector Modeling Point-level Historical Re-association
+> Uncertainty-aware Optimization Energy Cost Static Obstacle Avoidance Constraint Kinematic Constraints Fig. 2. Overview of the proposed UCON. UCON integrates stable perception with uncertainty-aware trajectory optimization. Taking LiDAR point clouds and robot pose as inputs, the system first distinguishes between dynamic and static obstacles. The stable perception module initially employs an object-level association mechanism to detect dynamic objects, followed by a point-level historical re-association mechanism to recover lost objects, thereby ensuring perception stability. The uncertainty-aware planning module estimates the motion prediction covariance of dynamic objects and generates uncertainty sectors. During the trajectory optimization stage, these sectors are explicitly converted into differentiable cost functions for dynamic obstacle avoidance, ultimately producing a smooth and safe trajectory.
+
+ing framework provides motion state estimation along with anisotropic covariance propagation. To address the uncer-tainty–optimization mismatch, UCON transforms predicted obstacle states and their covariances into uncertainty sectors. These sectors explicitly encode anisotropic motion uncer-tainty and are embedded as differentiable cost terms within a trajectory optimization framework. This modeling strategy enables principled and uncertainty-aware obstacle avoidance. By tightly coupling stable perception with differentiable and uncertainty-aware optimization, UCON establishes a con-sistent pipeline from dynamic state estimation to trajectory generation, as shown in Fig. 2. To validate the proposed UCON, we conduct extensive simulations and real-world experiments in dynamic cluttered environments. Experimental results demonstrate that UCON significantly improves perception stability, achieving an ac-curacy of 85.2% with an average processing latency of 17.78 ms, while markedly reducing identity switches compared to state-of-the-art methods [15], [17]. Furthermore, in dense dynamic scenarios with up to 110 moving obstacles, UCON consistently achieves higher navigation success rates without introducing noticeable computational or energy overhead. Finally, experiments conducted in real-world dynamic en-vironments further demonstrated the practicality of UCON. In summary, the major contributions of this paper are:  
+
+> •
+
+A historical re-association mechanism to mitigate the perception instability.  
+
+> •
+
+An uncertainty-aware sector modeling strategy to re-solve the uncertainty–optimization mismatch.  
+
+> •
+
+A tightly coupled perception–planning pipeline for navi-gation in dynamic environments, supported by extensive experimental validation. II. R ELATED WORK 
+
+A. Attempts to Mitigate Perception Instability 
+
+Stable perception is a prerequisite for reliable navigation in dynamic environments. With the advancement of neural net-works, learning-based methods [18]–[20] have demonstrated satisfactory perception accuracy. However, their substantial computational overhead prevents these methods from achiev-ing real-time inference on low-power embedded devices of robotic systems. Mainstream LiDAR-based perception methods [13]–[16] adopt object-level association strategies that depend on bounding box overlap or centroid proximity. However, these approaches are highly vulnerable to identity switches or target loss when encountering sparse point clouds or overlapping object clusters, which can subsequently lead to perception failures. Therefore, maintaining identity con-sistency to alleviate perception instability under deteriorating observation conditions remains an unsolved problem. 
+
+B. Uncertainty–optimization Mismatch in Planning 
+
+Trajectory planning in dynamic environments has been ex-tensively studied. Classical velocity-obstacle methods [21]– [23] provide collision constraints but typically assume deter-ministic obstacle motion, which is often unrealistic. Model predictive control [17], [24] is widely utilized for obstacle avoidance in dynamic environments. However, this method only optimizes the control quantity in the local time domain, making it difficult to achieve global trajectory optimality and easily getting trapped in local optima. Learning-based approaches [25]–[27] attempt to model interactive behaviors and multi-modal predictions. Although these methods im-prove prediction realism, uncertainty is frequently treated implicitly or approximated through fixed safety margins. Optimization-based planners [28]–[30] incorporate predicted trajectories but often rely on isotropic safety inflation to compensate for uncertainty. Even when probabilistic motion estimates are available, the associated covariance information is rarely consistently integrated into trajectory optimization. Therefore, trajectory planning is conducted under simplified or mismatched representations of uncertainty. Consequently, a structural gap persists between probabilistic perception out-puts and deterministic trajectory optimization frameworks. III. M ITIGATING PERCEPTION INSTABILITY 
+
+To mitigate dynamic perception instability, we design a two-stage data association framework. It integrates object-level association and point-level historical re-association. 
+
+A. Object-level Association 
+
+Following the previous work FAPP [15], dynamic objects are first extracted from raw LiDAR point clouds through geometric clustering and motion-based filtering. In the data association phase, unlike the FAPP, which is based on a single metric, we employ a two-stage association strategy. First, we establish high-confidence state continuity through object-level association, and then recover targets lost through a point-level historical re-association mechanism. Let C denote the set of objects detected at the current time, and H denote the set of objects tracked in the previous frame. We model object-level association as a bipartite graph matching problem, with C and H as the vertex sets. The cost function between c ∈ C and h ∈ H is defined as 
+
+f (c, h ) = μ1(1 −u(c, h ))+ μ2(1 −ˆvc ˆvh)+ μ3
+
+∥δ(c, h )∥∥sh∥ , (1) where u(c, h ) represents the intersection-over-union ratio of the projections of the bounding boxes of c and h onto the 
+
+x-y plane, ˆvi denotes the unit motion direction vector of object i, δ(c, h ) = sc − sh, si denotes the size vector of the projection of the bounding box of object i onto the x-y plane, and μ1, μ2, and μ3 are hyperparameters used to balance the various terms. Besides, we project the bounding boxes onto the x-y plane during the data association stage. This dimensionality reduction effectively filters out noise from sensor observations along the z-axis. 
+
+B. Point-level Historical Re-association 
+
+The object-level association becomes fragile in cluttered environments. When objects partially occlude one another or experience temporary detection loss, the matching process may incorrectly assign identities or prematurely terminate trajectories. These errors accumulate over time, leading to identity switches and fragmented motion histories. This instability arises because object-level matching treats each frame independently and relies solely on aggregated geo-metric representations. The absence of fine-grained temporal memory hinders recovery after association failures, thereby directly contributing to perception instability. To mitigate perception instability, we explicitly leverage historical point cloud fragments to restore identity continuity, as illustrated in Fig. 3. The detailed process of point-level historical re-association algorithm is outlined in Appendix A. Specifically, let ˆC denote the set of objects in C that were not successfully matched by the object-level association. For each object c ∈ ˆC, we extract its point cloud set Tc, and let 
+
+Nc represent the number of points in Tc. Then, we construct a K-D tree for the current environment point cloud set P
+
+combined with the point clouds of all unmatched objects in 
+
+ˆC. For each object c ∈ ˆC, we traverse the points p ∈ TcLost! Error! Recover! Recover!           
+
+> Wall
+> Continuous tracking!
+> Wall Wall Wall
+> ID 1
+> LiDAR Points (Curr. Time) LiDAR Points (Prev. Time) Detected Dynamic Obs (a) (b) (c) (d)
+> ID 2
+> ID 3
+> ID 1
+> ID 1
+> ID 4ID 2
+> ID 3
+> ID 3
+> ID 2
+> Fig. 3. Illustration of point-level historical re-association. (a) The per-ception module needs to identify three dynamic objects and a static wall. (b) Traditional object-level association methods suffer from perception instability when dynamic objects are close to static objects or when two dynamic objects are close to each other. (c) The proposed point-level historical re-association mechanism re-associates points based on historical information. (d) The three dynamic objects are successfully detected, and their identities remain consistent.
+
+and use the K-D tree to find the nearest point q to p in P ,calculating the distance 
+
+d = ∥p + vcτ − q∥, (2) where τ is the time interval between two observations, and vc
+
+is the predicted velocity of c. If d is less than a preset thresh-old d0, we determine that point p is successfully matched. After traversing all points, if the number of successfully matched points exceeds γN c, we update the point cloud of object c with the successfully matched points in P , where 
+
+γ ∈ (0 , 1) is a hyperparameter. IV. U NCERTAINTY –AWARE TRAJECTORY OPTIMIZATION 
+
+A. Uncertainty Estimation 
+
+To provide uncertainty-aware inputs to the trajectory op-timization module, we adopt a Kalman filter for recursive motion state estimation. The state of an object is defined as xt = [ p⊤ 
+
+> t
+
+, v⊤ 
+
+> t
+
+]⊤ ∈ R6, where pt, vt ∈ R3 denote the position and velocity at time step t, respectively. The system model of each object can be formulated as 
+
+xt+1 = Fx t + wt, F =
+
+ I τ IO I
+
+
+
+, (3) where I and O represent the identity matrix and the zero matrix, respectively, and wt ∼ N (0, Q) is the normally distributed process noise with covariance matrix Q, which characterizes the incremental prediction risk arising from deviations in motion patterns. Let Pt denote the error covariance matrix at step t, and set the measurement matrix to the identity matrix, thereby simplifying the Kalman gain during the prediction phase to 
+
+Kt+1 =  FP tF⊤ + Q   FP tF⊤ + Q + R−1 , (4) where R is measurement noise covariance matrix. Subse-quently, the error covariance matrix is updated to 
+
+Pt+1 = ( I − Kt+1 )  FP tF⊤ + Q . (5) Let Σt denote the 3 × 3 upper-left submatrix of the error covariance matrix Pt, which describes the position uncertainty of a dynamic obstacle. It will be used to enable uncertainty-aware dynamic obstacle avoidance. 
+
+B. Uncertainty-aware Sector Geometry Modeling 
+
+To achieve precise dynamic obstacle avoidance, we pro-pose an uncertainty-aware sector to represent the potential future occupancy zones of a dynamic obstacle, as illustrated in Fig. 4. The geometry of this sector is adaptively de-termined by the obstacle’s motion state and its associated motion uncertainty. Unlike the existing method [15], which uses ellipsoidal modeling and generates overly conservative occupied regions that make optimization prone to failure, the proposed sector modeling method effectively releases the lateral feasible region while fully preserving the high-confidence main direction of motion, thereby enhancing the success rate of trajectory optimization. Let vi(t) denote the projection of the velocity of dynamic object i at time t onto the x-y plane, ri(t) represent the diagonal length of the projection of the bounding box of object i onto the x-y plane at time t, and Σi(t) be the top-left 2×2 submatrix of the position error covariance matrix of the object i at time t. The radius of the sector is determined by the magnitude of the dynamic object’s velocity and its position error covariance, defined as 
+
+Ri(t) = ∥vi(t)∥h + k
+
+q
+
+ˆvi(t)⊤Σi(t)ˆ vi(t) + ri(t)2 + s, (6) where h and k are hyperparameters used to balance velocity estimation and position uncertainty, respectively, ˆvi(t) is the unit direction vector of vi(t), and s is the hyperparameter representing the safe distance between robot and obstacles. The central angle characterizing lateral uncertainty is 
+
+θi(t) = 2 arctan κpˆui(t)⊤Σi(t)ˆ ui(t)
+
+∥vi(t)∥h
+
+!
+
+, (7) where κ is a hyperparameter, ˆui(t) is a unit direction vector perpendicular to vi(t).
+
+C. Sector-based Dynamic Obstacle Avoidance 
+
+To incorporate uncertainty-aware sectors into trajectory optimization, we design a cost function that is differentiable with respect to both the robot’s position and time, enabling the quantification of the collision probability between the robot and dynamic obstacles. Specifically, let p(t) denote the robot’s position at time t, and let μi(t) represent the position of dynamic obstacle i at time t. The dynamic obstacle avoidance cost consists of radial distance cost ri and lateral risk cost li, which are defined as 
+
+ri(p, t ) = Ri(t) − di(t), (8) 
+
+li(p, t ) = cos θi(t)2 − cos ⟨δi(t), vi(t)⟩ , (9) Robot  
+
+> Static Obs Dynamic Obs (Curr. Time)
+> Dynamic Obs (Prev. Time) Risk Sector Init Path Opt Traj
+> Fig. 4. Illustration of uncertainty-aware sectors. Each sector is constructed based on the predicted state and covariance matrix of dynamic obstacles.
+
+where δi(t) = p(t) − μi(t) represents the robot’s position relative to dynamic obstacle i, di(t) = ∥δi(t)∥ denotes the distance from the robot to dynamic obstacle i, and ⟨a, b⟩
+
+represents the angle between vectors a and b.The dynamic obstacle avoidance cost is formulated as 
+
+Jd(p, t ) = X
+
+> i∈C
+
+σα (ri(p, t )) · σβ (li(p, t )) , (10) where C denotes the set of dynamic objects, α and β are hyperparameters, and σζ is the sigmoid smoothing function used to map values to the interval (0 , 1) , defined as 
+
+σζ (z) = 11 + exp( −ζz ) . (11) Each term in the summation (10) represents the probability that the robot will collide with a dynamic obstacle. During trajectory optimization, minimizing Jd enables uncertainty-aware avoidance of dynamic obstacles. 
+
+D. Uncertainty-aware Trajectory Optimization 
+
+To obtain a smooth, kinematically feasible, and collision-free trajectory from the starting point to the endpoint, we use the line segment between the two points as the initial path. Then, we uniformly select N + 1 points along this path and parameterize these points into a third-order MINCO trajectory [31] for optimization, as shown in Fig. 4. The n-th segment of the trajectory is represented as 
+
+pn(t) = C⊤ 
+
+> n
+
+β(t), t ∈ [0 , t n], (12) where Cn contains the coefficients for the trajectory seg-ment, and β(t) = (1 , t, t 2, t 3, t 4, t 5)⊤ is the natural basis. The uncertainty-aware trajectory optimization problem is formulated as 
+
+min 
+
+> C,t
+> N
+
+X
+
+> n=1
+
+Z tn
+
+> 0
+
+
+
+λdJd(pn, t ) + ∥p(3)  
+
+> n
+
+(t)∥2 + ρ
+
+
+
+dt (13a) 
+
+s.t. tn > 0, (13b) 
+
+Ξ( pn(t)) ≥ s, (13c) 
+
+p(j) 
+
+> n
+
+(t) ≤ vj , ∀j ∈ { 1, 2}, (13d) 
+
+p(j)
+
+> n−1
+
+(tn−1) = p(j) 
+
+> n
+
+(0) , ∀j ∈ { 0, 1, 2}, (13e) where C = ( C1, C2, · · · , Cn), vector t = ( t1, t 2, · · · , t n)⊤
+
+denotes the duration of each trajectory segment, λd is the weight for uncertainty-aware dynamic obstacle avoidance, and ρ is the weight for time regularization. Smoothness is achieved by minimizing the third-order derivatives of the trajectory. Constraint (13b) ensures that the vector t lies within the time manifold RN 
+
+> +
+
+, thereby providing physical meaning. Constraint (13c) guarantees that the robot avoids collisions with static obstacles, where Ξ( p) represents the distance from point p to the nearest static obstacle boundary, which can be computed with linear time complexity [1]. Constraint (13d) enforces kinematic feasibility, with v1 and 
+
+v2 representing the velocity and acceleration limits of the robot, respectively. Constraint (13e) ensures the high-order continuity of the segmented trajectory. To achieve efficient trajectory optimization, we eliminate constraint (13b) through a differential homeomorphism and construct a time-integral penalty function to address con-straints (13c) and (13d), while constraint (13e) is inherently satisfied by the properties of the MINCO trajectory. Further-more, the integrals and derivatives of the higher-order deriva-tives of the trajectory can be calculated analytically [31]. For the uncertainty-aware dynamic obstacle avoidance cost, we calculate it through numerical integration 
+
+In =
+
+Z tn
+
+> 0
+
+Jd(pn, t )d t ≈
+
+> L
+
+X
+
+> j=0
+
+tn
+
+wj L Jd
+
+
+
+pn, jt n
+
+L
+
+
+
+, (14) where w = (2 , 1, 1, · · · , 1, 2) ⊤, and L represents the number of samples for numerical integration. The derivative of the numerical integration In with respect to coefficients Cn and time tn can be calculated as 
+
+∂I n
+
+∂Cn
+
+=
+
+> L
+
+X
+
+> j=0
+
+tn
+
+wj L∂J d
+
+∂Cn
+
+, (15) 
+
+∂I n
+
+∂t n
+
+=
+
+> L
+
+X
+
+> j=0
+
+ Jd
+
+wj L + jt n
+
+wj L2
+
+∂J d
+
+∂t n
+
+
+
+. (16) To calculate the gradients of the cost function Jd, we present the derivative of the function σζ as 
+
+σ′ 
+
+> ζ
+
+(z) = ζσ ζ (z) (1 − σζ (z)) . (17) According to the chain rule, for ξ ∈ { Cn, t n}, the gradient of the cost function Jd can be calculated as 
+
+∂J d
+
+∂ξ = X
+
+> i∈C
+
+
+
+σβ (li)σ′
+
+> α
+
+(ri) ∂r i
+
+∂ξ + σα(ri)σ′ 
+
+> β
+
+(li) ∂l i
+
+∂ξ
+
+
+
+. (18) The derivatives of the radial distance cost ri is given by 
+
+∂r i
+
+∂Cn
+
+= − 1
+
+di(t) β(t)δ⊤ 
+
+> i
+
+(t), (19) 
+
+∂r i
+
+∂t n
+
+= R′
+
+> i
+
+(t) − δ⊤ 
+
+> i
+
+(t)δ′
+
+> i
+
+(t)
+
+di(t) , (20) where R′
+
+> i
+
+(t) can be calculated using the difference approxi-mation, and δ′
+
+> i
+
+(t) = p′(t) − vi(t). Similarly, the derivatives of the lateral risk cost li is given by 
+
+∂l i
+
+∂Cn
+
+= −β(t)
+
+ ∂ cos ⟨δi(t), vi(t)⟩
+
+∂p
+
+⊤
+
+, (21) 
+
+∂l i
+
+∂t n
+
+= − θ′
+
+> i
+
+(t)2 sin θi(t)2 − ∂ cos ⟨δi(t), vi(t)⟩
+
+∂t n
+
+, (22) where θ′
+
+> i
+
+(t) can be calculated using the difference approx-imation, and the partial derivatives of cos ⟨δi(t), vi(t)⟩ are given in Appendix B due to their complexity. Thus, the original problem (13a) can be efficiently solved using the gradient-based optimization algorithm [32]. V. E XPERIMENTS AND BENCHMARKS 
+
+A. Implementation Details 
+
+To verify the stability of perception and the effectiveness of uncertainty-aware trajectory optimization in the proposed UCON, we conduct a series of experiments in both simu-lation and real-world environments, benchmarking it against state-of-the-art methods [15], [17]. Real-world experiments are conducted using an omnidirectional robot equipped with Mecanum wheels and a Livox Mid-360 LiDAR, as shown in Fig. 5. The LiDAR features a field of view of 360 ◦ ×59 ◦ and publishes point clouds at a frequency of 50 Hz. During the experiment, the robot relies exclusively on this LiDAR for environmental perception. Additionally, the robot is equipped with a Jetson AGX Orin edge computing device, and all simulations and benchmarks are performed on this platform to ensure fairness. The hyperparameters of UCON are set as follows: μ1 = 0 .3, μ2 = 0 .3 and μ3 = 0 .4 for object-level association, d0 = 0 .6 and γ = 0 .35 for point-level historical re-association, h = 0 .02 , k = 2 and κ = 0 .05 
+
+for sector modeling, α = 15 and β = 25 for uncertainty-aware dynamic obstacle avoidance, λd = 5 × 10 3 to balance optimization terms, and ρ = 10 for time regularization. Jetson AGX Orin Mecanum Wheel Livox Mid-360 LiDAR                
+
+> Fig. 5. The omnidirectional robot used in real-world experiments. The LiDAR is mounted upside down at the top to fully perceive the robot’s surrounding environment. All computations are performed on the onboard Jetson AGX Orin platform. Point Clouds Dynamic Object Predicted Motion State
+> (b) FAPP
+> (a) UCON Fig. 6. Keyframes from the perception stability benchmark in a real-world environment. (a) Thanks to the proposed point-level historical re-association mechanism, UCON effectively prevents target loss and ensures that the target’s identity remains unchanged, thereby greatly mitigating perception instability. (b) The previous method FAPP relies solely on a single-metric object-level association mechanism, frequently resulting in target loss and frequent identity switching, causing perception instability. TABLE I COMPARISON OF PERCEPTION STABILITY
+> Intent-MPC FAPP UCON (ours) MOTA 66.4% 70.3% 85.2%
+> Identity Switch 17 16 3
+
+B. Evaluation of Perception Stability 
+
+To verify the ability of the proposed UCON to mitigate perception instability, we benchmark it against state-of-the-art methods in a real-world environment. The comparison in-cludes FAPP [15], which is based on LiDAR clustering, and Intent-MPC [17], which relies on vision and neural networks. The experimental environment consists of several static ob-stacles and three pedestrians moving at random speeds, with each experiment lasting 243 seconds. Keyframes from the experiments are shown in Fig. 6. We adopt MOTA [33] as the accuracy metric for perception. Additionally, we count the number of identity switching events for the same dynamic object to further evaluate perception stability. During the experiments, the average number of input points per LiDAR scan reaches 4,922, while the UCON achieves an average perception time of 17.78 ms per frame, demonstrating real-time performance. Furthermore, UCON achieves a false negative rate of 4.2%, a false positive rate of 4.8%, and a mismatch rate of 5.8%, resulting in a final MOTA of 85.2%, as shown in Tab. I. Due to the complexity of the environment and the interactions among dynamic objects, the compared methods frequently exhibit identity switching. In contrast, UCON effectively manages interactive target segmentation and re-association in dynamic and complex environments, thereby reducing identity switching and achieving stable perception performance. Static Obstacle Dynamic Obstacle Uncertainty-aware sector and Predicted Motion State Optimized Trajectory  
+
+> Collision! Collision! Collision!
+> Fig. 7. Comparison of trajectories generated in a simulation environment with 80 dynamic obstacles. (a) Due to the incomplete modeling of stability uncertainty for dynamic obstacles, the trajectories generated by FAPP fail to reserve sufficient safety margins, leading to collisions. (b) The trajectory generated by the learning-based Intent-MPC is not ideal due to its low generalization ability. (c) The trajectory generated by the ablation method is unsafe because it does not consider the motion uncertainty of dynamic obstacles. (d) The complete UCON generates a safe and smooth trajectory.
+
+C. Evaluation of Uncertainty-aware Trajectory Optimization 
+
+To verify the effectiveness of uncertainty-aware trajectory optimization, we benchmark UCON against state-of-the-art methods in a 50 m × 50 m simulation environment, where 160 static obstacles are randomly placed. Additionally, sepa-rate scenarios include Nd ∈ { 50 , 80 , 110 } dynamic obstacles with random radii (0.2–0.5 m) exhibiting random constant velocity, constant acceleration, or sinusoidal motion. Further-more, to demonstrate the superiority of the proposed sector-based uncertainty-aware trajectory optimization module, we conduct ablation experiments. Under each dynamic obstacle quantity setting, we inde-pendently execute each method fifty times. The trajectories generated by the four methods are visualized in Fig. 7. Thanks to the carefully designed uncertainty-aware dynamic obstacle avoidance objective function, UCON achieves safer trajectories than other methods. Furthermore, we summarize the average energy cost E of the trajectory, the average planning time tp, and the planning success rate η in Tab. II, where the average energy cost 
+
+E is defined as the average jerk over the entire trajectory, and the planning success rate η represents the proportion of trajectories that do not collide with any obstacle. The experi-mental results demonstrate that, compared to other methods, the complete UCON achieves the highest success rate while exhibiting less performance degradation as the number of TABLE II COMPARISON OF TRAJECTORY OPTIMIZATION                                               
+
+> Scenario Method E(m/s 3)tp(ms) η(%) Low Density
+> Nd= 50
+> Intent-MPC 8.01 40.23 78 FAPP 1.39 2.33 88 UCON (Ablation) 1.28 1.87 84 UCON (Complete) 1.57 2.24 90
+> Mid Density
+> Nd= 80
+> Intent-MPC 12.70 58.51 62 FAPP 1.65 2.59 78 UCON (Ablation) 1.40 2.03 74 UCON (Complete) 1.59 2.67 86
+> High Density
+> Nd= 110
+> Intent-MPC 16.93 70.47 44 FAPP 2.06 3.27 66 UCON (Ablation) 1.96 2.85 60 UCON (Complete) 1.78 3.02 74
+
+obstacles increases. Moreover, its planning efficiency and en-ergy cost remain comparable to the best method, supporting the uncertainty-aware trajectory optimization module. 
+
+D. Navigation in Real-world Dynamic Environments 
+
+To validate the practicality of the proposed UCON, we conduct a series of experiments in real-world dynamic envi-ronments. In these scenarios, we employ Faster-LIO [34] for autonomous localization without prior maps. Fig. 8 presents two representative experiments. First, we conduct an experiment in an environment that simultaneously contains dynamic and static obstacles with diverse geometries, as shown in Fig. 8(a). The experimental results demonstrate that UCON can reliably distinguish ob-stacles of different geometries and generate safe and smooth trajectories, thereby achieving robust dynamic navigation. Furthermore, as shown in Fig. 8(b), four volunteers (not affiliated with this work) move simultaneously and intention-ally block the robot’s trajectory. Thanks to a stable percep-tion algorithm, the proposed UCON successfully identifies and predicts the movement trajectories of these pedestrians. Subsequently, the uncertainty-aware trajectory optimization module constructs risk areas based on the perception results, ultimately generating a collision-free trajectory, enabling the robot to actively avoid pedestrians during navigation. VI. C ONCLUSIONS AND LIMITATIONS 
+
+In this paper, we propose UCON, a unified framework for robust autonomous navigation in dynamic environments, which mitigates perception instability and the uncertainty-optimization mismatch. To mitigate perception instability, we propose a point-level historical re-association mecha-nism that utilizes historical point clouds to restore iden-tity continuity and improve perceptual stability. To ad-dress the uncertainty-optimization mismatch, we propose an uncertainty-aware sector modeling method that integrates anisotropic covariance estimation into a differentiable dy-namic obstacle avoidance cost function, thereby establishing a unified pipeline from perception to trajectory optimization. Extensive simulations and real-world experiments demon-strate that UCON improves perception stability and enhances Uncertainty-aware Sector Dynamic Object Optimized Trajectory  
+
+> Fig. 8. Visualization of real-world experiments. The images on the left illustrate the challenges faced by the robot in experimental environments, while the images on the right display the optimized trajectories of the robot. For privacy protection, visible faces are anonymized in the figures.
+
+navigation success rates in dense and dynamic scenarios without incurring significant computational overhead. A limitation of UCON is its omission of semantic-level information, which occasionally causes it to underperform learning-based methods. Future work will address this by incorporating dynamic objects’ motion intent. APPENDIX 
+
+A. Detailed Process of Point-level Historical Re-association 
+
+The detailed process of the proposed point-level historical re-association mechanism is outlined below: 
+
+Input : Unmatched set ˆC, Point set P , K-D tree K
+
+Output: Point sets of re-associated objects R 
+
+> 1
+
+Initialize an empty array R; 
+
+> 2
+
+foreach c ∈ ˆC do  
+
+> 3
+
+Tc ← ExtractPointCloud( c);  
+
+> 4
+
+Nc ← | Tc|, n ← 0, P c ← ∅; 
+
+> 5
+
+foreach p ∈ Tc do  
+
+> 6
+
+q ← K.FindNearest( p, P );  
+
+> 7
+
+if ∥p + vcτ − q∥ < d 0 then  
+
+> 8
+
+n ← n + 1 ; 
+
+> 9
+
+Pc ← Pc ∪ { q}; 
+
+> 10
+
+end  
+
+> 11
+
+end  
+
+> 12
+
+if n ≤ γN c then  
+
+> 13
+
+Pc ← ∅; 
+
+> 14
+
+end  
+
+> 15
+
+R.add( Pc);  
+
+> 16
+
+end B. Detailed Expression of Partial Derivative 
+
+Let ui(t) = ∥vi(t)∥. The cosine of the angle between the vectors δi(t) and vi(t) can be calculated by 
+
+ci(p, t ) = cos ⟨δi(t), vi(t)⟩ = δ⊤ 
+
+> i
+
+(t)vi(t)
+
+di(t)ui(t) . (23) According to the chain rule for fractional differentiation, the partial derivative of ci(p, t ) with respect to position p is 
+
+∂c i
+
+∂p = 1
+
+di(t)ui(t)
+
+
+
+vi(t) − δi(t)v⊤ 
+
+> i
+
+(t)δi(t)
+
+δ⊤ 
+
+> i
+
+(t)δi(t)
+
+
+
+. (24) Similarly, the partial derivative of ci(p, t ) with respect to tn
+
+can be expressed as 
+
+∂c i
+
+∂t n
+
+= pi(t) − qi(t)
+
+di(t)ui(t) , (25) where the components pi(t) and qi(t) are defined as 
+
+pi(t) = δ⊤ 
+
+> i
+
+(t)v′
+
+> i
+
+(t) + v⊤ 
+
+> i
+
+(t)δ′
+
+> i
+
+(t), (26) 
+
+qi(t) = δ⊤ 
+
+> i
+
+(t)vi(t) δi⊤(t)δi′(t)
+
+δi⊤(t)δi(t) + v⊤ 
+
+> i
+
+(t)v′
+
+> i
+
+(t)
+
+v⊤ 
+
+> i
+
+(t)vi(t)
+
+!
+
+. (27) Thus, the derivatives of the lateral risk cost li can be derived from these results. REFERENCES [1] B. Zhou, F. Gao, L. Wang, C. Liu, and S. Shen, “Robust and efficient quadrotor trajectory generation for fast autonomous flight,” IEEE Robotics and Automation Letters , 2019. [2] X. Zhou, Z. Wang, H. Ye, C. Xu, and F. Gao, “EGO-planner: An ESDF-free gradient-based local planner for quadrotors,” IEEE Robotics and Automation Letters , 2020. [3] M. Zhang, N. Chen, H. Wang, J. Qiu, Z. Han, Q. Ren, C. Xu, F. Gao, and Y. Cao, “Universal trajectory optimization framework for differential drive robot class,” IEEE Transactions on Automation Science and Engineering , 2025. [4] Q. Wang, Z. Wang, M. Wang, J. Ji, Z. Han, T. Wu, R. Jin, Y. Gao, C. Xu, and F. Gao, “Fast iterative region inflation for computing large 2-d/3-d convex regions of obstacle-free space,” IEEE Transactions on Robotics , 2025. [5] D. Falanga, K. Kleber, and D. Scaramuzza, “Dynamic obstacle avoid-ance for quadrotors with event cameras,” Science Robotics , 2020. [6] W. Guan, F. Lin, P. Chen, and P. Lu, “Deio: Deep event inertial odometry,” in Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV) Workshops , 2025. [7] S. Zhu, Z. Tang, M. Yang, E. Learned-Miller, and D. Kim, “Event camera-based visual odometry for dynamic motion tracking of a legged robot using adaptive time surface,” in IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2023. [8] Z. Xu, X. Zhan, B. Chen, Y. Xiu, C. Yang, and K. Shimada, “A real-time dynamic obstacle tracking and mapping system for UAV navigation and collision avoidance with an RGB-D camera,” in IEEE International Conference on Robotics and Automation (ICRA) , 2023. [9] F. Liu, S. Yuan, T.-M. Nguyen, and R. Su, “Autonomous 3D moving target encirclement and interception with range measurement,” in 
+
+IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) , 2025. [10] Z. Xu, X. Zhan, Y. Xiu, C. Suzuki, and K. Shimada, “Onboard dynamic-object detection and tracking for autonomous robot naviga-tion with RGB-D camera,” IEEE Robotics and Automation Letters ,2023. [11] H. Wang, F. Zhou, and Q. Wu, “A robust and intelligent obstacle avoid-ance method for uavs under the complex and dynamic environment,” 
+
+IEEE Transactions on Vehicular Technology , 2025. [12] Y. Zhang, Z. Ning, and S. Zhao, “Observability-enhanced target motion estimation via bearing-box: Theory and MAV applications,” 
+
+arXiv preprint arXiv:2601.06887 , 2026. [13] H. Wu, Y. Li, W. Xu, F. Kong, and F. Zhang, “Moving event detection from LiDAR point streams,” Nature Communications , 2024. [14] B. Xu, Z. Yan, M. L. Member, X. Fan, Y. Luo, Y. Lin, Z. Chen, Y. Chen, Q. Qiao, and P. Lu, “Flow-aided flight through dynamic clutters from point to motion,” IEEE Robotics and Automation Letters ,2025. [15] M. Lu, X. Fan, H. Chen, and P. Lu, “FAPP: Fast and adaptive perception and planning for uavs in dynamic cluttered environments,” 
+
+IEEE Transactions on Robotics , 2024. [16] F. Zhu, Y. Ren, L. Yin, F. Kong, Q. Liu, R. Xue, W. Liu, Y. Cai, G. Lu, H. Li et al. , “Swarm-LIO2: Decentralized, efficient LiDAR-inertial odometry for UAV swarms,” IEEE Transactions on Robotics ,2024. [17] Z. Xu, H. Jin, X. Han, H. Shen, and K. Shimada, “Intent prediction-driven model predictive control for UAV planning and navigation in dynamic environments,” IEEE Robotics and Automation Letters , 2025. [18] S. K. Ravipati, E. Latif, R. Parasuraman, and S. M. Bhandarkar, “Object-oriented material classification and 3D clustering for improved semantic perception and mapping in mobile robots,” in IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) ,2024. [19] D. Tabernik, J. Muhoviˇ c, M. Urbas, and D. Skoˇ caj, “Center direction network for grasping point localization on cloths,” IEEE Robotics and Automation Letters , 2024. [20] S. K. Ghanta and R. Parasuraman, “SPACE: 3D spatial co-operation and exploration framework for robust mapping and coverage with multi-robot systems,” IEEE Robotics and Automation Letters , 2025. [21] P. Fiorini and Z. Shiller, “Motion planning in dynamic environments using velocity obstacles,” The International Journal of Robotics Re-search , 1998. [22] H. Chen and P. Lu, “Real-time identification and avoidance of si-multaneous static and dynamic obstacles on point cloud for UAVs navigation,” Robotics and Autonomous Systems , 2022. [23] R. Han, S. Chen, S. Wang, Z. Zhang, R. Gao, Q. Hao, and J. Pan, “Re-inforcement learned distributed multi-robot navigation with reciprocal velocity obstacle shaped rewards,” IEEE Robotics and Automation Letters , 2022. [24] Z. Xu, D. Deng, Y. Dong, and K. Shimada, “DPMPC-Planner: A real-time UAV trajectory planning framework for complex static envi-ronments with dynamic obstacles,” in IEEE International Conference on Robotics and Automation (ICRA) , 2022. [25] A. Loquercio, E. Kaufmann, R. Ranftl, M. M¨ uller, V. Koltun, and D. Scaramuzza, “Learning high-speed flight in the wild,” Science Robotics , 2021. [26] Z. Xie and P. Dames, “DRL-VO: Learning to navigate through crowded dynamic scenes using velocity obstacles,” IEEE Transactions on Robotics , 2023. [27] J. Tordesillas and J. P. How, “Deep-panther: Learning-based perception-aware trajectory planner in dynamic environments,” IEEE Robotics and Automation Letters , 2023. [28] Y. Wang, J. Ji, Q. Wang, C. Xu, and F. Gao, “Autonomous flights in dynamic environments with onboard vision,” in IEEE/RSJ Interna-tional Conference on Intelligent Robots and Systems (IROS) , 2021. [29] M. Lu, H. Chen, and P. Lu, “Perception and avoidance of multiple small fast moving objects for quadrotors with only low-cost RGBD camera,” IEEE Robotics and Automation Letters , 2022. [30] Y. Zhang, N. Fan, H. Zheng, J. Liang, Z. Pan, Q. Chen, and X. Lyu, “Threat-aware UAV dodging of human-thrown projectiles with an RGB-D camera,” IEEE Robotics and Automation Letters , 2025. [31] Z. Wang, X. Zhou, C. Xu, and F. Gao, “Geometrically constrained tra-jectory optimization for multicopters,” IEEE Transactions on Robotics ,2022. [32] D. C. Liu and J. Nocedal, “On the limited memory BFGS method for large scale optimization,” Mathematical Programming , 1989. [33] K. Bernardin, A. Elbs, and R. Stiefelhagen, “Multiple object tracking performance metrics and evaluation in a smart room environment,” in 
+
+IEEE International Workshop on Visual Surveillance , 2006. [34] C. Bai, T. Xiao, Y. Chen, H. Wang, F. Zhang, and X. Gao, “Faster-LIO: Lightweight tightly coupled LiDAR-inertial odometry using parallel sparse incremental voxels,” IEEE Robotics and Automation Letters ,2022.

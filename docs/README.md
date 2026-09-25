@@ -6,70 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-24
-- 运行时间：2026-09-24 22:11:20 UTC
+- 最新运行日期：2026-09-25
+- 运行时间：2026-09-25 22:42:23 UTC
 - 运行状态：成功
-- 本次总论文数：16
-- 精读区：5
+- 本次总论文数：17
+- 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 16 篇机器人前沿论文，聚焦多智能体避障与人形机器人复杂环境下的物体搬运。
-重点关注激励感知运动规划与人形机器人全身协同控制，这两项技术显著提升了机器人在动态环境中的协作与作业能力。
-建议关注多智能体协同与复杂环境适应性研究，这些成果正加速机器人从实验室走向真实物理世界的步伐。
-- 详情：[/202609/24/README](/202609/24/README)
+今日精选 17 篇机器人前沿论文，重点聚焦实时控制与多智能体协同优化。
+Koopman 算子加速扩散模型在实时机器人控制中表现卓越，水下编队控制方案亦具参考价值。
+建议优先研读 Koopman 加速控制相关论文，深入理解其在提升系统实时性方面的技术突破。
+- 详情：[/202609/25/README](/202609/25/README)
 
 ### 精读区论文标签
-1. [Paying for Space: Incentive-Aware Motion Planning for Multi-Agent Collision Avoidance](/202609/24/2609.23256v1-paying-for-space-incentive-aware-motion-planning-for-multi-agent-collision-avoidance)  
+1. [Koopman-Accelerated Model-Based Diffusion for Real-Time Robot Control](/202609/25/2609.28920v1-koopman-accelerated-model-based-diffusion-for-real-time-robot-control)  
+   标签：评分：9.0/10、query:profile-1
+   evidence：利用 Koopman 加速扩散进行实时机器人控制和轨迹优化
+2. [Vision-based Underwater Formation Control With Input Saturations via Barrier Lyapunov Functions](/202609/25/2609.25917v1-vision-based-underwater-formation-control-with-input-saturations-via-barrier-lyapunov-functions)  
+   标签：评分：8.0/10、query:q2
+   evidence：屏障李雅普诺夫函数与二次规划控制
+3. [Predict Before You Step: Auditable Occupancy Forecasting for Dynamic Obstacle Avoidance under Sparse Guidance](/202609/25/2609.25969v1-predict-before-you-step-auditable-occupancy-forecasting-for-dynamic-obstacle-avoidance-under-sparse-guidance)  
    标签：评分：8.0/10、query:q1
-   evidence：多智能体避障的运动规划框架
-2. [HOTICE: Whole-Body Humanoid Object Transportation in Cluttered Environments](/202609/24/2609.25363v1-hotice-whole-body-humanoid-object-transportation-in-cluttered-environments)  
+   evidence：50Hz频率下的动态障碍物局部避障策略
+4. [CAMP: Cooperative Arm-Hand Motion Planning in Constrained Spaces](/202609/25/2609.29021v1-camp-cooperative-arm-hand-motion-planning-in-constrained-spaces)  
+   标签：评分：8.0/10、query:q4
+   evidence：受限空间内的臂手协同运动规划
+5. [Markerless Multi-Modal Autonomous Robotic Inspection of Large Space Structures](/202609/25/2609.29644v1-markerless-multi-modal-autonomous-robotic-inspection-of-large-space-structures)  
    标签：评分：8.0/10、query:profile-1
-   evidence：带有避障势场的人形机器人全身运动规划
-3. [Safety-Filtered Distributed Koopman-MPC](/202609/24/2609.27463v1-safety-filtered-distributed-koopman-mpc)  
-   标签：评分：8.0/10、query:q2
-   evidence：带有碰撞约束的分布式模型预测控制
-4. [Motoneuron-Inspired Sampling for Model Predictive Path Integral Control](/202609/24/2609.28325v1-motoneuron-inspired-sampling-for-model-predictive-path-integral-control)  
-   标签：评分：8.0/10、query:q2
-   evidence：模型预测路径积分控制随机轨迹采样
-5. [Amplify: A Lightweight Library for Reproducible Nonlinear Programming Problems in Robotics](/202609/24/2609.28377v1-amplify-a-lightweight-library-for-reproducible-nonlinear-programming-problems-in-robotics)  
-   标签：评分：8.0/10、query:q3
-   evidence：轨迹优化问题库
+   evidence：使用机械臂对大型空间结构进行自主机器人巡检
+6. [Body-Grounded Replanning for Physically Adaptive Manipulation](/202609/25/2609.30024v1-body-grounded-replanning-for-physically-adaptive-manipulation)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：利用内部物理状态进行自适应操作的高层重规划
 
 ### 速读区论文标签
-1. [Shared Execution-Clock Drifting Policy for Dynamic Precision Manipulation](/202609/24/2609.23305v1-shared-execution-clock-drifting-policy-for-dynamic-precision-manipulation)  
+1. [ReVAMP: Vector-Accelerated Motion Planning for Kinematically-Constrained Systems via Reparameterization](/202609/25/2609.30213v1-revamp-vector-accelerated-motion-planning-for-kinematically-constrained-systems-via-reparameterization)  
+   标签：评分：8.0/10、query:q4
+   evidence：运动学约束系统的向量加速运动规划
+2. [Diverse and Adaptable Arm Coordination for Octopus-Crawling via Diffusion-Based Uncertainty-Aware Optimization](/202609/25/2609.21138v1-diverse-and-adaptable-arm-coordination-for-octopus-crawling-via-diffusion-based-uncertainty-aware-optimization)  
    标签：评分：7.0/10、query:q6
-   evidence：时间约束下的操纵与动作序列
-2. [Anytime-Feasible Gradient Descent for Constrained Optimization Under Gradient Uncertainty](/202609/24/2609.23848v1-anytime-feasible-gradient-descent-for-constrained-optimization-under-gradient-uncertainty)  
-   标签：评分：7.0/10、query:q5
-   evidence：针对有限计算预算实时场景的随时可行优化算法
-3. [A Switched Adaptive Control Framework for Aerial Manipulators Under Dynamic Transitions](/202609/24/2609.24761v1-a-switched-adaptive-control-framework-for-aerial-manipulators-under-dynamic-transitions)  
-   标签：评分：7.0/10、query:q5
-   evidence：空中机械臂的切换自适应控制
-4. [Minimum Time Trajectories for a Car-Like Mobile Robot Moving with Rigid Wheels Under Non-Sliding Constraints](/202609/24/2609.24832v1-minimum-time-trajectories-for-a-car-like-mobile-robot-moving-with-rigid-wheels-under-non-sliding-constraints)  
+   evidence：接触丰富环境下软体多臂机器人的优化控制
+3. [TRACS: A Geometry-Aware Framework for Scalable Multi-Agent Path Finding in Warehouses](/202609/25/2609.23137v1-tracs-a-geometry-aware-framework-for-scalable-multi-agent-path-finding-in-warehouses)  
+   标签：评分：7.0/10、query:q1
+   evidence：结构化环境中的多智能体路径查找与避障
+4. [DynaForge: Planning-Guided Residual Learning for Dynamic Manipulation Demonstration Generation](/202609/25/2609.25631v1-dynaforge-planning-guided-residual-learning-for-dynamic-manipulation-demonstration-generation)  
+   标签：评分：7.0/10、query:q6
+   evidence：用于动态操作的规划引导框架
+5. [Induced Riemannian Metrics for Motion Planning with Constraints](/202609/25/2609.25695v1-induced-riemannian-metrics-for-motion-planning-with-constraints)  
+   标签：评分：7.0/10、query:q4
+   evidence：流形上具有任务和闭环约束的运动规划
+6. [Fast Direction-Conditioned Reachability for Motion Prediction Under Model Uncertainty](/202609/25/2609.27077v1-fast-direction-conditioned-reachability-for-motion-prediction-under-model-uncertainty)  
+   标签：评分：7.0/10、query:q1
+   evidence：模型不确定性下用于避障的快速可达性分析
+7. [Optimal Trajectory Generation for Improved Magnetic Navigation](/202609/25/2609.27553v1-optimal-trajectory-generation-for-improved-magnetic-navigation)  
    标签：评分：7.0/10、query:q3
-   evidence：移动机器人的最短时间轨迹优化
-5. [JAMB: Joint Action-Motion Diffusion for Bimanual Manipulation](/202609/24/2609.25322v1-jamb-joint-action-motion-diffusion-for-bimanual-manipulation)  
-   标签：评分：7.0/10、query:q6
-   evidence：双臂操作的联合动作-运动扩散模型
-6. [PhyVisGen: Physically and Visually High-Fidelity Robotic Manipulation Data Generation](/202609/24/2609.25653v1-phyvisgen-physically-and-visually-high-fidelity-robotic-manipulation-data-generation)  
-   标签：评分：7.0/10、query:q6
-   evidence：机器人操作数据生成
-7. [Control Synthesis against LTL Specifications with Long-Run Visit Proportion Objectives](/202609/24/2609.24865v1-control-synthesis-against-ltl-specifications-with-long-run-visit-proportion-objectives)  
-   标签：评分：6.0/10、query:q4
-   evidence：系统的路径规划问题
-8. [MotionForge: A Data Generation Pipeline and Large-Scale Benchmark for Long-Horizon Manipulation of Dynamic Objects with Domain Shifts](/202609/24/2609.25689v1-motionforge-a-data-generation-pipeline-and-large-scale-benchmark-for-long-horizon-manipulation-of-dynamic-objects-with-domain-shifts)  
+   evidence：将最优轨迹生成建模为最优控制问题
+8. [UCON: Uncertainty-aware Navigation with Historical Re-association in Dynamic Environments](/202609/25/2609.29419v1-ucon-uncertainty-aware-navigation-with-historical-re-association-in-dynamic-environments)  
+   标签：评分：7.0/10、query:q3
+   evidence：将运动不确定性纳入轨迹优化
+9. [Potential-Field Action Representation for Reinforcement Learning in Contact-Rich Manipulation](/202609/25/2609.21609v1-potential-field-action-representation-for-reinforcement-learning-in-contact-rich-manipulation)  
    标签：评分：6.0/10、query:q6
-   evidence：动态操纵与实时执行协议
-9. [Planning Trajectories that Bounce: Reflection Classes for Collision-Tolerant Robots](/202609/24/2609.27145v1-planning-trajectories-that-bounce-reflection-classes-for-collision-tolerant-robots)  
-   标签：评分：6.0/10、query:q4
-   evidence：利用反射原理的耐碰撞机器人运动规划
-10. [AeRSoM: An Aerial Rigid-Soft Integrated Manipulator for Contact-Rich Manipulation](/202609/24/2609.28044v1-aersom-an-aerial-rigid-soft-integrated-manipulator-for-contact-rich-manipulation)  
+   evidence：接触密集型操作中的强化学习
+10. [CRISP: Contact-Rich Robotic Simulation Platform with Extensive Geometries and Contact Solvers](/202609/25/2609.21761v1-crisp-contact-rich-robotic-simulation-platform-with-extensive-geometries-and-contact-solvers)  
    标签：评分：6.0/10、query:q6
-   evidence：用于操作的空中刚柔结合机械臂
-11. [Tractable Reinforcement Learning for Full Class of Signal Temporal Logic Specifications Using Spatiotemporal Tube Reward](/202609/24/2609.28396v1-tractable-reinforcement-learning-for-full-class-of-signal-temporal-logic-specifications-using-spatiotemporal-tube-reward)  
-   标签：评分：6.0/10、query:q5
-   evidence：严格限制下机器人系统的实时控制
+   evidence：机器人操作仿真平台
+11. [Safe Formation Control of Open Multi-Robot Systems with Connectivity-Preserving Reconfiguration](/202609/25/2609.29939v1-safe-formation-control-of-open-multi-robot-systems-with-connectivity-preserving-reconfiguration)  
+   标签：评分：6.0/10、query:q1
+   evidence：受机器人间避障约束的编队控制
 
 
 <div class="dpr-home-promo-card">
