@@ -1,0 +1,504 @@
+Title: Steering Through Contact: A Finite-Support Motion Model for Single-Track Center-Articulated Robots
+
+URL Source: https://arxiv.org/pdf/2609.23271v1
+
+Published Time: Tue, 22 Sep 2026 01:10:40 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Steering Through Contact: A Finite-Support Motion Model for Single-Track Center-Articulated Robots 
+
+Mohamed Dhia Ounally 1,2, Nicolas Samson 1, Mathis Turgeon-Roy 1,Veronica Vannini 1, Johann Laconte 2, and Franc ¸ois Pomerleau 1
+
+Abstract — Trajectory planning and control in field robotics rely on predicting how propulsion and steering affect vehicle motion when contact points undergo slip. For articulated vehicles, the point-contact kinematic model (PCK) accounts for the linkage geometry but neglects the rotational resistance distributed along the contacts. We propose a finite-support quadratic model (FSQ) for single-track, center-articulated vehicles that incorporates this resistance through a quasi-static balance of lateral slip. Our approach generalizes the standard PCK formulation by relaxing the contact-point assumption. An exact reduction of the quadratic slip cost to contact moments gives a compact closed-form solution for real-time prediction of lateral velocity and yaw rate. We evaluate the proposed method in real-world experiments across asphalt, grass, ice, and mixed routes, using more than 7 km of data. For five-second predictions, FSQ reduces the weighted median translation and yaw errors by 53.5 % and 68.9 %, respectively, relative to PCK. 
+
+I. I NTRODUCTION 
+
+Planning, control, and state estimation in field robotics rely on motion models that relate propulsion and steering to changes in position and orientation [1]. Such models are needed when robots haul loads over snow or through narrow passages between trees. These terrain and space constraints motivate a design that combines extended ground contact with a narrow powered unit. Single-track articulated robots offer this combination and can tow interchangeable trailers or sleds suited to the load and terrain. Unlike conventional skid-steered tracked vehicles, they steer through hitch articulation rather than the differential motion of two independently driven tracks. In the configuration shown in Fig. 1, one driven front track pulls a passive four-wheel trailer through an actuated hydraulic hitch. The tractor’s position and heading, together with the articulation angle, define the vehicle’s four planar degrees of freedom. However, the robot has only two actuation channels: one for track propulsion and one for hitch articulation. The vehicle is therefore underactuated, and the sideways motion and turning produced by these inputs depend on the ground reactions acting on both bodies. A point-contact kinematic model (PCK) predicts this motion by imposing zero lateral velocity at one reference point on each body. With vehicle dimensions as its only parameters, this model supports motion-primitive planning demonstrated on a full-scale articulated harvester [2]. Its simplicity comes from the no-slip assumption at those two points, whereas field experiments show how sliding on deformable or slippery terrain limits geometric motion prediction [1]. During a turn,      
+
+> 1Norlab, Universit´ e Laval, Qu´ ebec, QC, Canada.
+> 2TSCF, INRAE, Clermont-Ferrand, France. mohamed.ounally@inrae.fr. Hydraulic hitch Kinematic model prediction Reference trajectory Single track
+> Fig. 1. Articulated motion prediction during a field turn. The purple point-contact prediction, based on pointwise no-slip constraints, deviates markedly from the black traveled path. Blue annotations show longitudinal body velocity vband articulation φin the overhead view, while the lower-left inset identifies the two actuation mechanisms: the driven track and hydraulic hitch.
+
+a contact patch’s front and rear move sideways even if its center has no lateral motion. The resulting reactions on the tractor and trailer resist rotation and interact through the hitch. Replacing each contact patch by one point retains the body-to-body lever arms, but omits the resistance to rotation produced across it. The prediction task is therefore to recover both lateral velocity and yaw rate from these coupled contacts. To account for this distributed resistance, our finite-support quadratic model (FSQ) allows both bodies to move sideways as they turn. It predicts their motion by balancing lateral sliding over both ground-contact regions while neglecting inertia. We show that the effect of these extended contacts can be retained in a compact motion predictor. The model combines the vehicle and contact geometry with one pa-rameter identified offline, which sets the relative influence of the front and rear contacts. In the limit of vanishing contact extent around the reference points, the model recovers the complete point-contact baseline. This connection also defines the comparison: both models receive the same realized longitudinal velocity, articulation angle, and articulation rate. Their predicted trajectories are evaluated against recorded field motion. Our contributions are  
+
+> •
+
+a finite-support articulated motion model that couples front and rear slip through the hitch and reduces the distributed quadratic cost exactly to a 2×2 linear system,  
+
+> •
+
+its analytical connection to complete point-contact kine-matics, including the point-support limit and distinct steady and transient responses, and arXiv:2609.23271v1 [cs.RO] 20 Sep 2026 • a field evaluation spanning over 7 km on asphalt, grass, and ice, demonstrating the benefits of accounting for distributed contact resistance. II. R ELATED WORK 
+
+Motion models represent ground contact at different levels, from rolling constraints at individual points to contact laws distributed over a wheel or track. Under ideal rolling constraints, point-contact kinematics (PCK) relates the motion of two articulated bodies by imposing zero lateral velocity at one reference point on each body [3]. The resulting steering law depends on vehicle dimensions, articulation angle, and articulation rate. These same geometric relations provide a basis for path tracking, where a geometric criterion can regulate the lateral distances of both axle midpoints from a reference path [4]. A geometric state-space formulation similarly permits feedback on displacement, heading, and curvature errors for load-haul-dump vehicles [5]. Because the rolling constraints are imposed at points, these models retain the distances between the hitch and the reference points while omitting the extent of each contact patch. Once sliding permits lateral motion at those points, the geometric prediction must be corrected to follow the observed path. Off-road guidance can compensate for this deviation while anticipating curvature transitions, as demonstrated in full-scale agricultural path-tracking experiments [6]. For a vehicle–trailer system, estimated sideslip angles describe the departure from the rolling direction and allow the towing vehicle to correct the trailer’s path [7]. To accommodate variations in slip on articulated vehicles, switching model predictive control uses models around different nominal slip angles, with performance evaluated in simulation [8]. The slip description therefore supplies the correction needed for control, leaving the prediction of slip from contact properties as a separate modeling task. To provide that physical explanation, terramechanics starts with the stresses developed at the ground. For a towed wheel, it relates the force needed to pull it and its resulting skid to the normal and tangential stresses distributed over the wheel–soil contact [9]. A steady skid-steering theory similarly relates tracked-vehicle turning to the shear stress generated as the tracks slide over firm ground [10]. Experiments on natural snow further show that longitudinal tire response changes with slip, load, and the terrain disturbed by a preceding wheel [11]. Consequently, using these physical descriptions in a predictor requires soil and contact parameters as well as vehicle geometry. Online estimation addresses this requirement for wheeled rovers by identifying soil cohesion and internal friction angle from onboard measurements [12]. When the objective is a compact motion predictor, an alternative is to identify the effect of slip directly from ob-served motion. For skid-steering vehicles, identified equivalent track instantaneous centers of rotation (ICRs) incorporate terrain-dependent slip into geometric prediction [13]. To learn this input–motion relation from data, an exploration protocol characterizes vehicle input limits and gathers training data for a learned slip model [14]. Building on this characterization, the extended protocol maps velocity commands to steady slip and compares commanded and realized motion to quantify command unpredictability [15]. For an articulated vehicle, the front and rear contact regions change orientation relative to each other as the joint moves. The two bodies must assign the same velocity to their common hitch, but this condition alone does not determine their lateral velocities and yaw rates. A mechanical model must therefore explain how the two contact responses combine to produce motion consistent with this geometric constraint. To account for this inter-body coupling, mechanical steering models describe the ground reactions on each body and the forces transmitted at their connection. An early steering analysis considers a tracked tractor and a tracked towed unit joined by a drawbar fixed to the towed unit [16]. For articulated tracked vehicles, the influence of contact forces and load distribution has also been examined with a model compared against scale-model tests [17]. A more recent steady steering model combines inter-unit coupling with load transfer and a shear-based contact description on firm ground [18]. Beyond steady steering, a nonlinear model with eight degrees of freedom includes planar motion of both units, track rotation, and hydraulic steering [19]. Its linearization describes steady and transient cornering only at small lateral accelerations, and the analysis and hitch-angle controllers are tested in simulation. However, using this model requires mass distribution, yaw inertias, cornering stiffnesses, and hydraulic parameters. Here, we use realized longitudinal velocity and articulation history as inputs, so actuator dynamics need not be identified. The remaining lateral velocity and yaw rate follow from a quasi-static contact balance, with one identified parameter setting the rear contact’s effective resistance to lateral slip relative to the front. In this quasi-static setting, determining the remaining velocities requires a contact law that accounts for resistance to both translation and rotation. For a finite contact, a limit surface describes the combinations of friction force and torque that it can sustain [20]. For motion prediction, the power-dissipation method selects velocities that minimize frictional dissipation for prescribed actuation [21]. Applied to a rigid two-track vehicle, this method predicts motion over continuous or discrete contacts and stairs, improving on kinematic baselines in experiments [22]. Its flat-ground closed form uses a fitted quadratic approximation of distributed Coulomb dissipation, but does not account for moving articulation. Our FSQ instead combines hitch compatibility with a quadratic lateral slip law for the front and rear contacts. The quadratic law is a modeling assumption, while its reduction to contact moments is exact. This reduction retains distributed rotational resistance without integrating over the contacts during prediction. We use complete PCK [3] as the baseline because both models describe the same articulated vehicle using the same realized inputs, including articulation rate. PCK requires only the vehicle dimensions, while FSQ adds the contact geometry and one identified weight ratio. For centered contact weightings, vanishing contact extents recover PCK, establishing a direct analytical connection between the two predictors. This comparison therefore tests whether retaining finite contact extent improves the prediction of both position and heading over time. III. T HEORY 
+
+The proposed finite-support quadratic model (FSQ) predicts tractor lateral velocity vy, 1 and yaw rate ω1 from the realized longitudinal velocity vb, articulation angle φ, and articulation rate ˙φ. To relate the motion of the two bodies, we require both to assign the same velocity to their common hitch. We first combine this compatibility with point-contact constraints to recover the point-contact kinematic model (PCK), then replace these constraints with a distributed slip cost that reduces to a two-dimensional linear system. 
+
+A. Geometry and hitch compatibility 
+
+To express how the hitch couples the two bodies, we use the geometry of the driven tractor ( i = 1 , in teal) and passive-wheel trailer ( i = 2 , in plum) shown in Fig. 2. The body frames Fi originate at the nominal geometric centers Pi of the front contact and rear axle group (right and left insets, respectively), with xi forward, yi lateral to the left, and zi normal to the plane. The hitch H lies a distance ℓ1 behind P1 and ℓ2 ahead of P2. Headings θi are measured counterclockwise from the fixed world axis xW ,giving articulation φ = θ2 − θ1.ICR ↑ rPCK                          
+
+> P2P1
+> H
+> ϕ
+> x1
+> y1
+> F1
+> x2
+> y2
+> F2
+> vb
+> ℓ1
+> ℓ2
+> xW
+> yW
+> FW
+> θ1
+> θ2
+> x1
+> y1
+> s⊥,1
+> P1
+> P1
+> ω1
+> x2
+> y2
+> s⊥,2
+> P2
+> P2
+> ω2
+> Fig. 2. Articulated geometry and lateral contact slip. The tractor is depicted in teal and the trailer in plum, with body frames Ficentered at Pi. Distances
+> ℓiconnect these origins to hitch H,φis articulation, and vbis tractor longitudinal velocity. Headings θiare measured from the world xWdirection. Dashed lines perpendicular to xilead to the off-frame instantaneous center of rotation (ICR), with turning radius rPCK for steady point-contact motion. Gray guides locate the contact domains Pienlarged below, with both inset frames oriented alike. In the insets, curved arrows indicate positive yaw rates ωi, and straight arrows show the contribution of rotation about Pito lateral slip s⊥,i .
+
+Let TW i ∈ SE(2) map body coordinates into the world frame. The kinematic state X = ( TW 1, φ ) ∈ SE(2) × S1
+
+contains the tractor pose and the independent articulation coordinate. The body twist collects the linear velocity of 
+
+Pi and the yaw rate of body i, relative to the world and expressed in Fi:
+
+ξW i = vx,i vy,i ωi
+
+⊤ , T−1 
+
+> W i
+
+˙TW i = ξ∧
+
+> W i
+
+. (1) Here ωi = ˙θi, and (·)∧ maps twist coordinates into the Lie algebra se (2) [23]. An overdot denotes a time derivative. With the realized signed body velocity vx, 1 = vb and articulation history (φ, ˙φ) given, the model determines vy, 1 and ω1.To relate the body twists through the hitch, we first express the relative pose using the lever arms in Fig. 2. With ℓφ =
+
+ℓ1 cos φ + ℓ2, the transform from tractor to trailer coordinates is 
+
+T21 (φ) = T−1 
+
+> W2
+
+TW 1 =
+
+
+
+cos φ sin φ ℓφ
+
+− sin φ cos φ −ℓ1 sin φ
+
+0 0 1
+
+ . (2) Differentiating TW 2 = TW 1T−121 then expresses the trailer twist in terms of the tractor twist and the changing articulation: 
+
+ξW 2 = Ad( T21 )ξW 1 + ξ12 ,
+
+ξ∧ 
+
+> 12
+
+= − ˙T21 T−121 . (3) Here Ad( T21 ) transports the tractor twist to the origin and axes of F2 [24]. For the hitch geometry in Fig. 2, the relative twist expressed in F2 is 
+
+ξ12 = ˙ φ 0 −ℓ2 1⊤ . (4) Its lateral term −ℓ2 ˙φ is induced at P2 by rotation about the hitch. Hitch compatibility therefore determines the trailer twist once vy, 1 and ω1 are known. A contact law is still needed to determine these two tractor velocities. 
+
+B. Point-contact kinematics 
+
+Using this hitch relation, the point-contact kinematic model (PCK) determines motion by imposing zero lateral velocity at both reference points [3]. To apply these constraints, we use the lateral and yaw components of Eq. (3): 
+
+vy, 2 = cos φ v y, 1 − ℓφω1 − vb sin φ − ℓ2 ˙φ, ω2 = ω1 + ˙ φ. (5) For the PCK baseline, setting vy, 1 = vy, 2 = 0 in Eq. (5) gives 
+
+vy, 1 = 0 , ω1 = − vb sin φ + ℓ2 ˙φℓφ
+
+, ℓφ̸ = 0 . (6) Kinematically, the numerator separates advance at fixed articulation from joint rotation, which can produce yaw even at vb = 0 . For forward steady turns with |φ| < π/ 2, positive articulation therefore produces negative tractor yaw. At fixed articulation and nonzero vb sin φ, the turning radius in Fig. 2 is rPCK = |ℓφ/ sin φ|. This geometric model retains the hitch lever arms but no contact extent. 
+
+C. Finite-support quadratic closure 
+
+PCK’s point constraints omit slip away from the contact centers. During rotation, a contact patch’s front and rear slip laterally in opposite directions even when its center has no lateral velocity, as illustrated in Fig. 2. Our FSQ model allows center motion to balance this distributed slip. We assume rigid bodies and quasi-static contact with fixed weightings, neglecting inertia and slip memory. Let Pi ⊂ R2 denote body i’s contact region, with coordinates (x, y ) measured from Pi in Fi. At longitudinal coordinate x, the lateral slip velocity s⊥,i (x) is the contact material’s velocity relative to stationary ground along yi:
+
+s⊥,i (x) = vy,i + ωix. (7) The center velocity vy,i adds uniform lateral motion, while the rotational term ωix varies linearly and reverses sign across 
+
+Pi.To account for resistance over each contact, FSQ penalizes the squared lateral slip in Eq. (7). This treats both slip direc-tions equally and permits evaluation from contact moments. For the front track, we use a uniformly weighted rectangle 
+
+P1 of length lt > 0, centered at P1 and aligned with F1. The rear contact comprises two equally weighted axles separated longitudinally by dr, at x2q = ±dr /2 relative to P2, with 
+
+c2q = c2/2. The unknown coefficients ci > 0 set each body’s total effective resistance weight. Since s⊥,1(x) is independent of y, integration across the track width cancels that width from the area normalization. The front and rear contact costs are 
+
+d1(ξW 1) = c1
+
+2|P1|
+
+Z
+
+> P1
+
+s⊥,1(x)2 dx dy
+
+= c1
+
+2lt
+
+Z lt/2
+
+> −lt/2
+
+(vy, 1 + ω1x)2 dx, d2(ξW 2) = 12
+
+X
+
+> q
+
+c2q s⊥,2(x2q )2
+
+= c2
+
+4
+
+"
+
+vy, 2 − dr
+
+2 ω2
+
+2
+
++
+
+
+
+vy, 2 + dr
+
+2 ω2
+
+2#
+
+.
+
+(8) Here x2q and c2q ≥ 0 denote the longitudinal position and weight of rear axle q, with total weight c2 = P 
+
+> q
+
+c2q > 0. In 
+
+d2, we express vy, 2 and ω2 in terms of the tractor velocities and prescribed inputs using the hitch relations in Eq. (5). Each contact cost is independent of vx,i and therefore cannot recover the full body twist on its own. With vx, 1 = vb
+
+supplied, we minimize over y = ( vy, 1, ω 1)⊤, while Eq. (3) determines the trailer twist. The tractor twist is 
+
+ξW 1 = ξ◦ + By , ξ◦ =
+
+
+
+vb
+
+00
+
+ , B =
+
+
+
+0 01 00 1
+
+ . (9) Here ξ◦ contains the prescribed advance, and B inserts the two unknown velocities. The individual contact weights ci
+
+cannot be identified from motion alone, since a common positive scaling leaves the minimizing velocities unchanged. We therefore divide the combined cost by c1 and retain only the ratio α = c2/c 1 > 0. We learn this ratio from experimental data rather than estimating the individual weights, as described in Section IV-C. Using the twists from Eqs. (3) and (9), the normalized cost is 
+
+jα(y) = d1(ξW 1(y)) 
+
+c1
+
++ α d2(ξW 2(y)) 
+
+c2
+
+. (10) Following quasi-static dissipation minimization [21], we use this quadratic cost to select the velocities compatible with the prescribed inputs: 
+
+y⋆ = arg min 
+
+> y∈R2
+
+jα(y). (11) Increasing α gives greater weight to rear slip. At α = 1 the contacts have equal total weight, and as α tends to zero the rear contribution vanishes. To avoid contact integration during prediction, we use the longitudinal centroid offset ai and squared spread ρ2 
+
+> i
+
+. These are the weighted means of x and (x − ai)2, respectively. Expanding the squared slip in either the continuous or discrete cost gives 
+
+di(ξW i ) = ci
+
+2
+
+h
+
+(vy,i + aiωi)2 + ρ2 
+
+> i
+
+ω2
+
+> i
+
+i
+
+. (12) For the centered front track and equally weighted rear axle pair, the contact moments are 
+
+a1 = a2 = 0 , ρ21 = l2
+
+> t
+
+12 , ρ22 = d2
+
+> r
+
+4 . (13) We retain ai below so the derivation also covers noncentered contact weightings. In Eq. (12), the first term penalizes lateral slip at the weighted centroid, while the second retains the rotational contribution illustrated in Fig. 2. A zero spread removes the second term, while a larger spread increases the rotational penalty at fixed total weight. For FSQ, we assume at least one positive contact spread, which ensures a unique solution to Eq. (11). To assemble both contacts in one linear system, we write Eq. (12) as a quadratic form in the body twist. Normalizing by c1 gives the contact matrix Qi:
+
+di(ξ)/c 1 = 12 ξ⊤Qiξ,
+
+Qi = ci
+
+c1
+
+
+
+0 0 00 1 ai
+
+0 ai a2 
+
+> i
+
++ ρ2
+
+> i
+
+ . (14) Here Q2 includes α, while the zero first row and column reflect the restriction to lateral slip. To combine the contact costs, we use Eqs. (3) and (9) to express both twists in the same unknowns y. The Hessian matrix H describes the coupled penalty on lateral velocity and yaw. With g denoting the gradient of jα at y = 0 and const collecting terms independent of y, the cost is 
+
+jα(y) = 12 y⊤Hy + g⊤y + const . (15) To obtain the two velocities, we differentiate Eq. (15) with respect to y and set the gradient to zero: 
+
+∇yjα(y) = Hy + g = 0. (16) Collecting the quadratic and linear terms in y gives the coefficients needed to solve Eq. (16): 
+
+H = B⊤ Q1 + Ad( T21 )⊤Q2Ad( T21 ) B,
+
+g = B⊤Ad( T21 )⊤Q2(Ad( T21 )ξ◦ + ξ12 ). (17) Since Q1ξ◦ = 0, the prescribed motion contributes to g only through the rear contact. To show that this balance determines a unique motion, we write the quadratic form of H as a sum of squares. For a velocity variation δy = ( δv y, 1, δω 1)⊤,
+
+δy⊤Hδy = ( δv y, 1 + a1δω 1)2
+
++ α[cos φ δv y, 1 + ( a2 − ℓφ)δω 1]2
+
++ ( ρ21 + αρ 22)δω 21 .
+
+(18) A positive spread forces δω 1 = 0 and then δv y, 1 = 0
+
+whenever this sum vanishes. Hence H is positive definite even for noncentered weightings, and the unique solution of Eq. (11) is 
+
+y⋆ = −H−1g. (19) With the contact moments fixed and α identified, Eqs. (17) and (19) give both tractor velocities at each input sample. The trailer twist then follows from Eq. (3). To predict the vehicle pose over time, we insert this velocity solution into Eqs. (1) and (9), giving the state dynamics: 
+
+˙X = ( TW 1(ξ◦ + By ⋆)∧, ˙φ) ,
+
+TW 2 = TW 1T21 (φ)−1. (20) Starting from TW 1,0, we integrate on SE(2) by composing increments from the mean twist between consecutive samples. For intervals ∆tk = tk+1 − tk, the pose after n steps is 
+
+ξW 1,k = 12
+
+ ξW 1,k + ξW 1,k +1 
+
+,
+
+TW 1,n = TW 1,0
+
+> n−1
+
+Y
+
+> k=0
+
+exp 
+
+
+
+∆tk ξ∧ 
+
+> W1,k
+
+
+
+. (21) Because we use body twists, increments multiply on the right in chronological order [23]. The updated tractor pose and supplied articulation then determine the trailer pose through Eq. (20). Using Eq. (19) for FSQ or Eq. (6) for PCK advances the predicted poses with the same update in either travel direction. 
+
+D. Connection to point-contact prediction 
+
+We first establish how FSQ recovers PCK as the modeled contact extents tend to zero, then explain how finite contact changes the predicted yaw. The limit removes the positive-spread assumption in Eq. (18), so we check that H remains invertible. Setting a1 = a2 = 0 in Eq. (17) gives its determinant, 
+
+det H = αℓ 2 
+
+> φ
+
++ (1 + α cos 2 φ)( ρ21 + αρ 22). (22) As both spreads vanish, det H → αℓ 2 
+
+> φ
+
+> 0 for fixed α > 0
+
+and ℓφ̸ = 0 . The limiting cost in Eq. (12) is minimized by 
+
+vy, 1 = vy, 2 = 0 , so the velocities converge to the complete PCK law in Eq. (6), including its articulation-rate term. To see how finite contact extent modifies the predicted yaw rate, we compare FSQ and PCK under the same measured inputs, first at fixed articulation and then during joint motion. For centered contacts with at least one positive spread and 
+
+ℓφ̸ = 0 , we eliminate vy, 1 from Eq. (16). At fixed articulation ( ˙φ = 0 ), the resulting yaw rate is the PCK rate in Eq. (6) multiplied by the dimensionless scalar gain 
+
+γ(φ) = αℓ 2
+
+> φ
+
+det H , 0 < γ (φ) < 1. (23) In a steady turn, PCK therefore predicts a larger yaw-rate magnitude than FSQ in either travel direction, while γ(φ) → 1
+
+as the modeled contact extents tend to zero. When articulation changes, the rear rotational penalty in Eq. (12) involves ω2 =
+
+ω1 + ˙ φ from Eq. (5). Repeating the elimination while retaining 
+
+˙φ gives the PCK rate scaled by γ(φ), plus a correction due to rear contact extent: 
+
+ω1 = − γ(φ) vb sin φ + ℓ2 ˙φℓφ
+
+− α(1 + α cos 2 φ)ρ22
+
+det H ˙φ. 
+
+(24) FSQ therefore changes both the yaw at fixed articulation and its response to joint motion, rather than applying a constant correction to PCK. IV. M ETHODOLOGY 
+
+To test whether finite contact extent improves trajectory prediction, we compare PCK and FSQ using the same realized inputs and initial poses. 
+
+A. Platform, reference, and common inputs 
+
+We use the platform in Fig. 3 with the measured geometry in Table I. For its uniformly weighted front track and equally weighted rear axles, we use the centered contact moments derived in Section III-C. Only the relative contact weight α
+
+is fitted from motion. A B                   
+
+> CD
+> Fig. 3. Field platform and instrumentation over a lidar map. Green labels identify (A) the RS Airy lidar, (B) the Hesai XT-32 lidar, (C) the Xsens MTi-100 inertial measurement unit (IMU), and (D) the ZED 2i camera. Aprovides articulation and trailer pose estimates in SE(3) , while measurements from
+> B,C, and Dare combined to estimate tractor odometry. Blue insets locate the driven track and hydraulic hitch, with body velocity vband articulation angle φ.
+
+To construct the motion reference, we first estimate lidar poses offline by iterative closest point (ICP) registration using libpointmatcher [25]. A factor-graph smoother combines these poses, inertial measurements, and visual odometry to recover tractor motion at 100 Hz . Rigid sensor transforms express reference poses and velocities at P1, including the rotational lever-arm contribution. In the main comparison, both predictors receive the realized longitudinal body velocity 
+
+vb from this reference and the encoder angle φ. To obtain 
+
+˙φ, a centered third-order Savitzky–Golay filter differentiates 
+
+φ offline over a 0.21 s window without crossing timestamp gaps. TABLE I PLATFORM GEOMETRY AND CONTACT PARAMETERS . O NLY THE REAR /FRONT CONTACT -WEIGHT RATIO IS FITTED FROM MOTION DATA .                               
+
+> Characteristic Symbol Value Unit Robot
+> Tractor mass m1365 kg
+> Trailer mass m275 kg
+> Front center–hitch distance ℓ10.83 m
+> Hitch–rear center distance ℓ21.51 m
+> Front contact length lt1.23 m
+> Rear axle separation dr0.46 m
+> Contact  Front spread ρ10.35 m
+> Rear spread ρ20.23 m
+> Rear/front contact weight α≃0.20 —
+
+B. Prediction segments 
+
+The main comparison uses trajectory segments from nine field runs: three on asphalt, two on grass, two on ice, and two on mixed routes alternating between asphalt and grass around campus. We select usable data independently of prediction scores, checking reference validity, initialization confidence, and articulation feedback. Linear input interpolation bridges excluded stretches up to 0.5 s , affecting 288 five-second segments. Longer exclusions and timestamp gaps interrupt prediction. We extract disjoint segments separately at 100 
+
+horizons from 0.1 to 10 s , requiring at least 0.2 m of travel per segment. The segment population therefore varies with horizon and includes forward, reverse, and changing-direction motion. The selection yields 1690 five-second segments and 
+
+992 ten-second segments, the latter covering 7.46 km when each segment’s reference travel is counted once. Within each segment, both models start at the same reference pose and use the SE(2) update in Eq. (21), which averages the twists of consecutive samples (nominally 0.01 s apart), without subsequent pose correction. 
+
+C. Contact identification 
+
+Before prediction, we fit α to reference lateral velocity and yaw rate from three of the nine runs, one each on grass, ice, and asphalt. Multiplying yaw-rate residuals by ℓ1 + ℓ2
+
+puts both residuals on a common velocity scale. To prevent densely sampled maneuvers from dominating the fit, we group straight motion, steady turns, and articulation changes by travel direction. Weights then balance runs, groups within each run, their segments, and observations. We apply a soft-
+
+L1 loss with scale 0.10 m s −1 to the square-root-weighted residuals and optimize over ln α ∈ [−4, 1] . The resulting 
+
+α ≃ 0.20 remains fixed in the main comparison and campus examples. To assess whether terrain-specific weights improve predic-tion, we also fit a separate ratio on each terrain’s evaluated runs. To test both calibrations on other runs, we fit one global and four terrain-specific ratios to 19 ,780 observations from the three calibration runs plus one mixed-route run, with the same objective and bounds. The five remaining runs provide 567 five-second segments, evaluated with the global and matching terrain ratios. All ratios remain fixed during prediction. V. R ESULTS AND DISCUSSION 
+
+We compare predicted and reference poses at the tractor’s front contact center P1 using translation and yaw relative pose errors (RPE) [26]. With the common initial pose, translation RPE is the endpoint distance, and yaw RPE is the absolute wrapped heading difference. 
+
+A. Prediction error over the horizon 
+
+We first compare prediction errors over horizons h from 
+
+0.1 s to 10 s in Fig. 4. To give runs equal influence within each horizon or terrain group, we weight segments inversely to their number per run. 00.2 0.4 0.6 0.8 Translation RPE [m]            
+
+> 0246810 Horizon h[s] 036912 Yaw RPE [deg]
+> PCK FSQ (ours)
+> Fig. 4. Prediction error versus horizon. Lines and bands show weighted medians and the interquartile range (IQR) of translation relative pose error (RPE) at P1(top) and tractor yaw RPE (bottom), with equal weight per run. Triangles mark bands extending beyond the view.
+
+FSQ yields lower weighted medians over most horizons. At five seconds, the translation median falls from 0.23 m 
+
+for PCK to 0.11 m for FSQ, while yaw falls from 6.2◦ to 
+
+1.9◦. These correspond to reductions of 53 .5 % and 68 .9 % 
+
+in the weighted median levels. Both five-second median errors decrease in all nine runs, including the six not used to fit the global ratio. At ten seconds, the translation upper quartile decreases from 2.1 m to 0.63 m . These results support retaining contact extent for multi-second prediction without pose correction. The benefit is not confined to the calibration runs, and the lower translation upper quartile shows that it is not limited to median errors. 
+
+B. Variation across recorded environments 
+
+To check whether the overall improvement holds across ground conditions, Fig. 5 separates the five-second prediction errors by environment. With a global ratio, FSQ lowers both weighted median errors relative to PCK in every displayed group. Large errors nevertheless remain on ice, with a five-second translation upper quartile of 1.8 m for FSQ versus 3.5 m for PCK. In one ice-rink run, ten-second translation medians reach 7.5 m for PCK and 3.0 m for FSQ. 0.01 0.1 110 Translation RPE [m] Asphalt Grass Ice All terrains 0.1 110 100 Yaw RPE [deg] PCK FSQ (ours), global α FSQ (ours), terrain α   
+
+> Fig. 5. Five-second prediction errors and contact calibration. The violins show translation RPE (top) and yaw RPE (bottom) on logarithmic axes, with width representing error density. White marks, boxes, and whiskers indicate weighted medians, IQRs, and fifth to 95 th percentiles, with equal total weight per run within each group. Triangles mark individual segment errors outside the view. FSQ uses a global rear/front contact-weight ratio α
+> or a separate ratio fitted on each terrain’s evaluated runs.
+
+To assess whether these residuals call for terrain-specific weights, Fig. 5 also compares global and per-terrain cali-bration. Separate ratios have little effect on the asphalt and grass medians, while on ice the translation median decreases slightly and the yaw median increases. To check whether these findings extend beyond the fitting runs, we evaluate both calibrations on five runs excluded from fitting, using ratios identified on the other four. The global fit again gives α ≃ 0.20 . Global and per-terrain calibration yield similar five-second weighted medians: 0.13 m and 0.14 m ,respectively, in translation, and approximately 2.1◦ in yaw for both. The similarity of the errors on runs excluded from fitting supports using one global contact-weight ratio across the evaluated environments. Terrain-specific calibration provides no consistent additional benefit and does not remove the substantial errors on ice. 
+
+C. Prediction across longitudinal velocities 
+
+To assess how prediction accuracy varies with speed and direction, we add 433 five-second segments from 12 runs with lidar-derived articulation. Fig. 6 groups all 2123 segments from 21 runs by their starting longitudinal velocity. Both models receive the same realized inputs, and FSQ uses the fixed global contact ratio. Within the slow region marked by the dashed lines ( |vb| <
+
+1 m s −1), the translation medians are close, whereas the yaw medians remain lower for FSQ. In the neighborhood centered at −2 m s −1, translation decreases from 0.73 m for PCK to 0.43 m for FSQ, while yaw decreases from 14 ◦ to 10 ◦.At 2 m s −1, the corresponding medians fall from 1.4 m to 
+
+0.39 m and from 16 ◦ to 4.9◦. Some jumps in the curves also 02468Translation RPE [m]              
+
+> −2024010 20 30 40 50 Yaw RPE [deg] Fast reverse Slow reverse Slow forward Fast forward Longitudinal velocity vb[m/s] PCK FSQ (ours)
+> Fig. 6. Five-second prediction errors grouped by longitudinal velocity. At each plotted velocity, lines and bands summarize the weighted medians and IQRs of segments whose starting velocity lies within ±0.75 m s −1of that value, with equal total weight per run in that neighborhood. Direction and speed may change during prediction. Dashed lines mark zero and
+> |vb|= 1 m s −1, while triangles indicate IQRs extending beyond the vertical limits.
+
+reflect changes in which maneuvers and runs contribute to each velocity neighborhood. These gains are obtained with the same contact calibration in both travel directions. The translation benefit is clearest for segments starting at higher speeds, whereas the lower-speed groups mainly show an improvement in yaw. 
+
+D. Interpretation and limits 
+
+Three five-second predictions from a separate campus run in Fig. 7 illustrate these differences along individual paths. 50 m 
+
+(a) (b) (c) 
+
+5 m 
+
+(a) 
+
+5 m 
+
+(b) 
+
+5 m 
+
+(c) Reference PCK FSQ (ours)      
+
+> Fig. 7. Campus trajectory with three five-second prediction examples. Boxes on the mapped reference route locate (a) a near-straight segment, (b) a sharp turn, (c) a milder turn. Background point colors indicate height. Insets use a common metric scale, with dashed black for the reference, purple for the point-contact model (PCK), and orange for the finite-support quadratic model (FSQ). Hollow circles mark the common starts and arrowheads the endpoints. Scale bars show 50 m above and 5 m below.
+
+The near-straight segment in panel (a) gives similar endpoint translation errors, 1.0 m for PCK and 0.89 m for FSQ. In panel (b), PCK cuts inside the 157 ◦ turn, giving 
+
+4.8 m of error versus 1.3 m for FSQ. The milder 57 ◦ turn in panel (c) gives 2.9 m for PCK and 1.3 m for FSQ. In these examples, the improvement is more pronounced in turns than in near-straight travel. The wider turn predicted by FSQ in Fig. 7(b) is consistent with the rotational resistance retained in Eq. (12). Relative to PCK, finite contact extent reduces the yaw-rate magnitude at fixed articulation and changes the response to joint motion, as described by Eqs. (23) and (24). These changes affect the path together with lateral slip at the contact centers, since yaw redirects subsequent travel while slip displaces the vehicle sideways. Through Eq. (20), these differences also carry over to the predicted trailer pose, which matters in narrow passages but is not evaluated here. Despite these gains, we hypothesize that neglected inertial effects contribute to the large residual errors on ice. Changing loads and reference or input errors may also contribute, but their effects are not separated here. Extending the model to include these effects is left for future work. VI. C ONCLUSION 
+
+In this paper, we present a finite-support quadratic model (FSQ) that extends the point-contact kinematic model (PCK) for single-track center-articulated vehicles. An exact reduction to contact moments yields lateral velocity and yaw rate from a compact system, retaining distributed rotational resistance with a single identified rear/front weight ratio. We show that the model generalizes PCK by recovering its complete equations as centered contact extents vanish. Retaining their extent instead reduces the steady-turn yaw-rate magnitude relative to PCK and changes the response to joint motion. We evaluate our method on asphalt, grass, ice, and mixed routes using measured inputs in forward, reverse, and changing-direction motion. The results show that FSQ predicts the vehicle motion more accurately than PCK across the evaluated conditions. Future work will develop control laws based on this model and extend it to account for vehicle dynamics. We will also investigate whether adapting the contact-weight ratio improves prediction when the payload changes. ACKNOWLEDGMENT 
+
+Supported by ANR (Johann Laconte’s Junior Research Chair), I-SITE CAP 20-25 (“Innovation Transportation and Production Systems”), and IID, Universit´ e Laval (Excellence Scholarships to Mohamed Dhia Ounally). REFERENCES [1] D. Baril et al. , “Evaluation of skid-steering kinematic models for subarctic environments,” in CRV , 2020, pp. 198–205. [2] J. Hu, F. Yang, F. Nan, and M. Hutter, “Motion primitives planning for center-articulated vehicles,” in IROS , 2024, pp. 12 702–12 709. [3] P. I. Corke and P. Ridley, “Steering kinematics for a center-articulated mobile robot,” IEEE Transactions on Robotics and Automation ,vol. 17, no. 2, pp. 215–218, 2001. [4] C. Altafini, “A path-tracking criterion for an LHD articulated vehicle,” 
+
+The International Journal of Robotics Research , vol. 18, no. 5, pp. 435–441, 1999. [5] P. R. Ridley and P. I. Corke, “Load haul dump vehicle kinematics and control,” Journal of Dynamic Systems, Measurement, and Control ,vol. 125, no. 1, pp. 54–59, 2003. [6] R. Lenain, B. Thuilot, C. Cariou, and P. Martinet, “High accuracy path tracking for vehicles in presence of sliding: Application to farm vehicle automatic guidance for agricultural tasks,” Autonomous Robots , vol. 21, no. 1, pp. 79–97, 2006. [7] C. Cariou, R. Lenain, B. Thuilot, and P. Martinet, “Path following of a vehicle-trailer system in presence of sliding: Application to automatic guidance of a towed agricultural implement,” in IROS ,Taipei: IEEE, Oct. 2010, pp. 4976–4981. [8] T. Nayl, G. Nikolakopoulos, and T. Gustafsson, “Switching model predictive control for an articulated vehicle under varying slip angle,” in MED , Jul. 2012, pp. 890–895. [9] J.-Y. Wong and A. R. Reece, “Prediction of rigid wheel performance based on the analysis of soil-wheel stresses: Part II. Performance of towed rigid wheels,” Journal of Terramechanics , vol. 4, no. 2, pp. 7–25, 1967. [10] J. Y. Wong and C. F. Chiang, “A general theory for skid steering of tracked vehicles on firm ground,” Proceedings of the Institution of Mechanical Engineers, Part D: Journal of Automobile Engineering ,vol. 215, no. 3, pp. 343–355, 2001. [11] J. H. Lee, D. Huang, T. H. Johnson, S. Meurer, A. A. Reid, and B. R. Meldrum, “Slip-based experimental studies of a vehicle interacting with natural snowy terrain,” Journal of Terramechanics , vol. 49, no. 5, pp. 233–244, Oct. 2012. [12] K. Iagnemma, S. Kang, H. Shibly, and S. Dubowsky, “Online terrain parameter estimation for wheeled mobile robots with application to planetary rovers,” IEEE Transactions on Robotics , vol. 20, no. 5, pp. 921–927, 2004. [13] J. L. Mart´ ınez, A. Mandow, J. Morales, S. Pedraza, and A. Garc´ ıa-Cerezo, “Approximating kinematics for tracked mobile robots,” The International Journal of Robotics Research , vol. 24, no. 10, pp. 867– 878, 2005. [14] D. Baril et al. , “DRIVE: Data-driven Robot Input Vector Exploration,” in ICRA , 2024, pp. 5829–5836. [15] N. Samson et al. , “DRIVE through the unpredictability: From a pro-tocol investigating slip to a metric estimating command uncertainty,” 
+
+IEEE Transactions on Field Robotics , vol. 2, pp. 380–399, 2025. [16] F. F. Alhimdani, “Steering analysis of articulated tracked vehicles,” 
+
+Journal of Terramechanics , vol. 19, no. 3, pp. 195–209, 1982. [17] K. Watanabe and M. Kitano, “Study on steerability of articulated tracked vehicles — Part 1: Theoretical and experimental analysis,” 
+
+Journal of Terramechanics , vol. 23, no. 2, pp. 69–83, 1986. [18] N. Li, X. Liu, H. Chen, and Y. Zhang, “Modeling and analysis of the turning performance of an articulated tracked vehicle that considers the inter-unit coupling forces,” Machines , vol. 13, no. 2, Feb. 4, 2025, Art. no. 118. [19] A. Tota, E. Galvagno, and M. Velardocchia, “Analytical study on the cornering behavior of an articulated tracked vehicle,” Machines ,vol. 9, no. 2, Feb. 9, 2021, Art. no. 38. [20] S. Goyal, A. Ruina, and J. Papadopoulos, “Planar sliding with dry friction. Part 1: Limit surface and moment function,” Wear , vol. 143, no. 2, pp. 307–330, 1991. [21] T. D. Murphey and J. W. Burdick, “The power dissipation method and kinematic reducibility of multiple-model robotic systems,” IEEE Transactions on Robotics , vol. 22, no. 4, pp. 694–710, 2006. [22] A. Dixit and J. W. Burdick, “The kinematics of tracked vehicles via the power dissipation method,” arXiv preprint arXiv:2004.05176 ,2020. [23] T. D. Barfoot, State Estimation for Robotics . Cambridge University Press, 2017. [24] R. M. Murray, Z. Li, and S. S. Sastry, A Mathematical Introduction to Robotic Manipulation . CRC Press, 1994. [25] F. Pomerleau, F. Colas, R. Siegwart, and S. Magnenat, “Comparing ICP variants on real-world data sets: Open-source library and exper-imental protocol,” Autonomous Robots , vol. 34, no. 3, pp. 133–148, 2013. [26] J. Sturm, N. Engelhard, F. Endres, W. Burgard, and D. Cremers, “A benchmark for the evaluation of RGB-D SLAM systems,” in IROS ,2012, pp. 573–580.
