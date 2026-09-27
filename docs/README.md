@@ -6,58 +6,61 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-26
-- 运行时间：2026-09-26 21:33:50 UTC
+- 最新运行日期：2026-09-27
+- 运行时间：2026-09-27 22:19:59 UTC
 - 运行状态：成功
-- 本次总论文数：12
-- 精读区：4
-- 速读区：8
+- 本次总论文数：13
+- 精读区：2
+- 速读区：11
 
 ### 今日简报（AI）
-今日聚焦机器人安全控制前沿，精选 12 篇论文深度解析运动辅助与约束系统优化。
-重点关注基于控制障碍函数（CBF）的行走辅助机器人安全控制，以及约束线性系统的自适应采样框架。
-建议优先研读安全约束控制相关论文，为机器人复杂环境下的鲁棒性设计积累理论基础。
-- 详情：[/202609/26/README](/202609/26/README)
+今日精选 13 篇机器人前沿论文，聚焦具身智能与动作模型的前沿突破。
+重点关注 AR-WAM 与 KeyGen 两项研究，它们在视觉条件下的动作生成及对象级策略泛化方面表现卓越。
+建议优先研读这两篇高分论文，深入理解视觉表征如何赋能机器人实现更精准的复杂操作。
+- 详情：[/202609/27/README](/202609/27/README)
 
 ### 精读区论文标签
-1. [Safety-Constrained Model Predictive Control for an Omnidirectional Walking Assistive Robot Using Control Barrier Function](/202609/26/2609.25994v1-safety-constrained-model-predictive-control-for-an-omnidirectional-walking-assistive-robot-using-control-barrier-function)  
-   标签：评分：9.0/10、query:q2
-   evidence：结合控制障碍函数的模型预测控制用于避障
-2. [An Adaptive-Sampling Control Framework for Constrained Linear Systems with Robust Safety Guarantees](/202609/26/2609.22703v1-an-adaptive-sampling-control-framework-for-constrained-linear-systems-with-robust-safety-guarantees)  
-   标签：评分：8.0/10、query:q2
-   evidence：受约束线性系统的自适应采样模型预测控制
-3. [From Semantic Decisions to Feasible Trajectories: Self-Evolving LLM-Guided Optimal Control for Narrow-Space Parking](/202609/26/2609.24631v1-from-semantic-decisions-to-feasible-trajectories-self-evolving-llm-guided-optimal-control-for-narrow-space-parking)  
-   标签：评分：8.0/10、query:profile-1
-   evidence：窄空间泊车的碰撞约束最优控制
-4. [Relative Contact Velocity-Controlled Hand-Object Mechanism for Dexterous Tool Manipulation](/202609/26/2609.25619v1-relative-contact-velocity-controlled-hand-object-mechanism-for-dexterous-tool-manipulation)  
+1. [AR-WAM: A Visual-Conditioned Agent-Ready World Action Model for Robotic Manipulation](/202609/27/2609.23578v1-ar-wam-a-visual-conditioned-agent-ready-world-action-model-for-robotic-manipulation)  
    标签：评分：8.0/10、query:q6
-   evidence：使用多指机器人手进行灵巧工具操作
+   evidence：用于机器人操纵的世界动作模型
+2. [KeyGen: Unsupervised Keypoint based Object-Centric Representations for Category-Level Policy Generalization](/202609/27/2609.28818v1-keygen-unsupervised-keypoint-based-object-centric-representations-for-category-level-policy-generalization)  
+   标签：评分：8.0/10、query:q6
+   evidence：预测机器人操作的操纵轨迹
 
 ### 速读区论文标签
-1. [EmbodiedSWE: Coding Agents for Long Horizon Dexterous Robotics](/202609/26/2609.27308v1-embodiedswe-coding-agents-for-long-horizon-dexterous-robotics)  
+1. [H-VLA: Hierarchical Vision-Language-Action Model with Key-Action Reasoning and Motion Planning in a Unified Action Space](/202609/27/2609.22895v1-h-vla-hierarchical-vision-language-action-model-with-key-action-reasoning-and-motion-planning-in-a-unified-action-space)  
    标签：评分：7.0/10、query:q6
-   evidence：灵巧机器人操作中编码智能体的仿真基准
-2. [Faster Visuomotor Policy Learning on Action Manifolds via Riemannian MeanFlow](/202609/26/2609.30127v1-faster-visuomotor-policy-learning-on-action-manifolds-via-riemannian-meanflow)  
+   evidence：机器人操作的分层运动规划
+2. [Scenario MPC with STL Specifications and Pareto-Based Feasibility Repair](/202609/27/2609.23263v1-scenario-mpc-with-stl-specifications-and-pareto-based-feasibility-repair)  
+   标签：评分：7.0/10、query:q2
+   evidence：带有STL规范的MPC用于控制综合
+3. [Stability-Aware Imitation Learning from Model Predictive Control for Autonomous Vehicle Lateral Control: Exact Q-Loss and a Novel Training Procedure](/202609/27/2609.23506v1-stability-aware-imitation-learning-from-model-predictive-control-for-autonomous-vehicle-lateral-control-exact-q-loss-and-a-novel-training-procedure)  
+   标签：评分：7.0/10、query:q2
+   evidence：近似模型预测控制 (MPC) 策略
+4. [Opt2VLA: Force-Aware Vision-Language-Action for Contact-Rich Humanoid Whole-Body Manipulation](/202609/27/2609.23968v1-opt2vla-force-aware-vision-language-action-for-contact-rich-humanoid-whole-body-manipulation)  
+   标签：评分：7.0/10、query:q6
+   evidence：类人机器人全身操作与力感知控制
+5. [ARSTAG: An Agentic Real2Sim2Real System for Task-Specific Robot Data Generation](/202609/27/2609.24563v1-arstag-an-agentic-real2sim2real-system-for-task-specific-robot-data-generation)  
+   标签：评分：7.0/10、query:q6
+   evidence：用于操作任务的机器人策略学习数据
+6. [DualWAM: Dual-System World Action Models for Asynchronous Global Planning and Local Refinement](/202609/27/2609.24868v1-dualwam-dual-system-world-action-models-for-asynchronous-global-planning-and-local-refinement)  
    标签：评分：7.0/10、query:q5
-   evidence：流形上机器人动作序列的高速控制率
-3. [Coding Agents for Generalized Task and Motion Planning Problems](/202609/26/2609.30233v1-coding-agents-for-generalized-task-and-motion-planning-problems)  
-   标签：评分：7.0/10、query:q4
-   evidence：机器人的任务与运动规划
-4. [KnowDemo: Knowledge-Guided Robot Demonstration Generation from Human Videos](/202609/26/2609.21229v1-knowdemo-knowledge-guided-robot-demonstration-generation-from-human-videos)  
-   标签：评分：6.0/10、query:q6
-   evidence：机器人操作演示生成
-5. [Proximal Residual Value Functions for Consistent Planning and Real-Time Execution](/202609/26/2609.23242v1-proximal-residual-value-functions-for-consistent-planning-and-real-time-execution)  
-   标签：评分：6.0/10、query:q5
-   evidence：实时执行与优化层
-6. [Steering Through Contact: A Finite-Support Motion Model for Single-Track Center-Articulated Robots](/202609/26/2609.23271v1-steering-through-contact-a-finite-support-motion-model-for-single-track-center-articulated-robots)  
+   evidence：高频闭环动作更新与全局规划
+7. [Commonsense-Grounded Path Planning from Abstract Instructions](/202609/27/2609.22813v1-commonsense-grounded-path-planning-from-abstract-instructions)  
+   标签：评分：6.0/10、query:q1
+   evidence：遵循常识以规避障碍物的路径规划器
+8. [FeasibleFlow: One-Step Joint Transport of Configuration Feasibility and Trajectories for End-to-End Driving](/202609/27/2609.23488v1-feasibleflow-one-step-joint-transport-of-configuration-feasibility-and-trajectories-for-end-to-end-driving)  
    标签：评分：6.0/10、query:q3
-   evidence：带接触模型的关节式机器人轨迹规划
-7. [Touch2Robot: Robot Touch in the Human Demonstration Loop](/202609/26/2609.24660v2-touch2robot-robot-touch-in-the-human-demonstration-loop)  
+   evidence：配置空间可行性和轨迹的生成式框架
+9. [Anticipatory Robot Goalkeeping via Monotone Optimal Stopping](/202609/27/2609.23976v1-anticipatory-robot-goalkeeping-via-monotone-optimal-stopping)  
+   标签：评分：6.0/10、query:q5
+   evidence：动态机器人拦截的实时决策
+10. [The Cartesian Hand: In-Hand Manipulation with All-Linear Fingers](/202609/27/2609.25696v1-the-cartesian-hand-in-hand-manipulation-with-all-linear-fingers)  
    标签：评分：6.0/10、query:q6
-   evidence：基于人类演示的实时机器人操作
-8. [WRAP: Fixtureless Wrench-aware Multi-Robot Assembly Planning](/202609/26/2609.29407v1-wrap-fixtureless-wrench-aware-multi-robot-assembly-planning)  
-   标签：评分：6.0/10、query:q6
-   evidence：多机器人装配规划与力矩感知操作
+   evidence：机器人手内操纵
+11. [MultiPush: Learning to Rearrange with Teams of Car-Like Pushers](/202609/27/2609.27005v1-multipush-learning-to-rearrange-with-teams-of-car-like-pushers)  
+   标签：评分：6.0/10、query:q4
+   evidence：类车机器人物体重新排列的运动规划
 
 
 <div class="dpr-home-promo-card">
