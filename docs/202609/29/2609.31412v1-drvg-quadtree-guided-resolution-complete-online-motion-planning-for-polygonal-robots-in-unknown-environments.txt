@@ -1,0 +1,915 @@
+Title: dRVG: Quadtree-Guided, Resolution-Complete Online Motion Planning for Polygonal Robots in Unknown Environments
+
+URL Source: https://arxiv.org/pdf/2609.31412v1
+
+Published Time: Mon, 28 Sep 2026 01:18:41 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# dRVG: Quadtree-Guided, Resolution-Complete Online Motion Planning for Polygonal Robots in Unknown Environments 
+
+Duo Zhang Hechen Zhang Junshan Huang Jingjin Yu 
+
+Abstract — We present the dynamic rotation-stacked visibility graph (dRVG), an online motion planner that guides polygonal robots to specified goals in initially unknown, static environ-ments. It merges local roadmaps from successive observations to plan collision-free translations and rotations without a uniform position grid. A spatial quadtree schedules sensing goals across regions to reduce repeated visits while retaining all orientation configurations for routing. Under exact sensing and geometric computation and star-shaped robot and envelope assumptions, dRVG with center scans is resolution-complete relative to full-map RVG at the same angular resolution. In experiments using footprint scans, dRVG solves all 140 cases across 20 difficult maps and seven angular resolutions within a 20 s planning budget, with a median planning time of 1.18 s at 360 orientation layers. Six microMVP demonstrations illustrate the complete online planning loop on a physical robot. 
+
+I. I NTRODUCTION 
+
+Autonomous navigation in unfamiliar environments en-ables robotic inspection and delivery before a complete map is available. Deployments at Fukushima demonstrated the value of accessing areas too dangerous for human in-spection [1]. Indoor service robots may likewise need to reach a specified room while discovering the surrounding layout [2]. These applications require reaching a known destination while discovering obstacles and a feasible route through sensing and motion. Robot shape makes this task more demanding: an elongated or nonconvex body may need to rotate to pass between furniture or debris. We develop an online motion planner that guides a robot with a polygonal footprint to a specified position and orientation among initially unknown, static obstacles. It selects collision-free motions and sensing locations to reveal routes toward the goal. Figure 1 shows goal arrival before full workspace observation. Our method, the dynamic rotation-stacked visibility graph 
+
+(dRVG), builds a graph of feasible motions as observations arrive. It extends the full-map rotation-stacked visibility graph (RVG) [3], which represents translation and rota-tion across discrete orientation intervals without imposing a uniform position grid. At each sensing location, dRVG constructs a local graph inside observed free space and merges it with earlier graphs. When the final goal is not yet reachable, the robot follows a known-free route to a temporary sensing goal. A spatial quadtree groups candidate sensing locations into regions and defers a region after it        
+
+> D. Zhang, H. Zhang, J. Huang, and J. Yu are with the Department of Com-puter Science, Rutgers, the State University of New Jersey, Piscataway, NJ, USA. E-Mails: {duo.zhang, hechen.zhang, junshan.huang, jingjin.yu }@rutgers.edu .(a) Setup (b) Initial observation (c) Next sensing goal
+> (d) Reorientation (e) Goal approach (f) Goal reached
+
+Fig. 1: Online dRVG execution on microMVP: (a) setup; (b–f) navigation. Temporary sensing goals (magenta) guide translation and reorientation until the robot reaches its goal. Blue is the executed trajectory, green the planned path, and black the space not yet observed. 
+
+supplies a target, reducing repeated visits to nearby locations. All orientation configurations remain available for motion planning. Under exact sensing and the stated star-shaped robot and envelope assumptions, we prove that dRVG with center scans reaches the goal whenever full-map RVG at the same angular resolution contains a path. Quadtree scheduling preserves this guarantee while eventually serving every persistent reachable candidate. The proof uses center scans to establish a finite set of candidate sensing sites. Experiments use scans from the robot’s center and footprint vertices to support more general shapes. A non-star-shaped counterexample shows that this guarantee does not extend to all polygonal robots. On 20 difficult maps at seven angular resolutions, dRVG solves all 140 cases within a 20 s planning budget. At 360 orientation layers, its median planning time is 1.18 s, and it solves 20/20 maps; repeated A* [4], D* Lite [5], 
+
+RRT X [6], and EIT* [7] solve at most 18, 10, 1, and 5 maps, respectively, across their tested grid or collision-check reso-lutions under the protocol in Section VI. Quadtree scheduling improves success from 93/140 for naive greedy selection to 140/140; on jointly solved cases, greedy requires 5.51 × the planning time in geometric mean. Hardware demonstrations further illustrate the complete online planning loop on a physical robot. We make the following contributions:  
+
+> •
+
+We develop an incremental rotation-stacked visibility graph that integrates local observations into a persis-tent roadmap for collision-free polygonal-robot motion in 
+
+SE (2) . 
+
+> •
+
+We design a quadtree-guided sensing policy that reduces repeated visits to nearby sites while retaining all orienta-tion configurations for motion planning.  
+
+> •
+
+We prove fixed-resolution completeness relative to full-map RVG for center scans under exact sensing and star-shaped robot and envelope assumptions, and establish its geometric limits through a non-star-shaped counterexam-ple.  
+
+> •
+
+We evaluate dRVG against lattice and sampling-based planners, isolate the benefit of spatial scheduling through ablation, and demonstrate the online planning loop in hardware. II. R ELATED WORK 
+
+a) Geometric Planning and Replanning: 
+
+Configuration-space and visibility-graph methods encode robot geometry [8], [9]. Classical treatments address rigid polygonal bodies among polygonal barriers [10] and disc motion through retraction methods [11]; state lattices and RVG capture orientation-dependent feasibility [3], [12]. Alternatives include any-angle search [13], sampling-based planning [14]–[16], and potential-based control [17], [18]. As obstacles are discovered, repeated A* [4] recomputes routes, whereas D* [19], LPA* [20], D* Lite [5], AD* [21], and lazy incremental search [22] reuse search information. Dynamic RRT [23] and RRT X [6] repair sampling-based structures; fast planners such as EIT* also support replanning from scratch [7], [24]. These planning techniques address how to find or update a route in the current map. Navigation through unknown space also requires choosing where to observe when that map does not yet contain a route to the goal. Our approach couples incremental geometric planning with this sensing decision. 
+
+b) Sensor-Based Roadmaps: Visibility, Voronoi, and gap representations support navigation as geometry is re-vealed [25]–[28]. Lee and Choset construct sensor-based roadmaps for convex and multi-convex rigid bodies in 
+
+SE (2) [29], [30]. SP 2ATM combines topological mapping with intermediate-goal selection [31], and FAR Planner up-dates visibility graphs online [32]. Chen et al. select short-term goals and address dead ends through a starshaped roadmap for a disk-shaped robot [33]. SE(2) NavMesh builds heading-dependent traversable regions from observa-tions [34]. We focus on preserving connections between successive local roadmaps for a polygonal robot whose feasible motions depend on orientation. dRVG combines online rotation-layered visibility graphs with spatial sensing scheduling. Its completeness guarantee is relative to full-map RVG at the same angular resolution, under the stated center-scan and geometric assumptions. 
+
+c) Sensing for Goal Navigation: Bug algorithms and TangentBug pursue goals through local sensing and bound-ary following [35], [36], while frontier-based planners ex-pand observed space [37]–[39]. Janson et al. formulate safe policies and information-aware optimality benchmarks [40]. Learning over Subgoals predicts the consequences of ex-ploratory actions [2]; subsequent work learns their infor-mation value [41]. UPEN and CogniPlan predict unseen occupancy or layouts to guide exploration and point-goal navigation [42], [43]. The sensing objective in our setting is to reveal a feasible route to a specified goal; complete workspace coverage is unnecessary. We use observed ge-ometry to generate reachable sensing candidates, without a learned model of unseen space. dRVG schedules these sites across quadtree regions to reduce repeated regional visits while retaining all orientation configurations for routing. This separation allows the sensing policy to defer a region without removing configurations needed to pass through it. Under the analysis assumptions, every persistent reachable candidate is eventually served. III. P RELIMINARIES 
+
+Let W ⊂ R2 be a compact polygonal workspace with finitely many initially unknown, static, pairwise interior-disjoint polygonal obstacles, whose union is O. A holonomic robot has a compact simple polygonal footprint R and reference and rotation point c ∈ R. At pose q = ( p, θ ) ∈
+
+SE (2) , with p = ( x, y ) and planar rotation Rθ , its footprint is R(q) = p + Rθ (R − c). The collision-free space is 
+
+Cfree = {q : R(q) ⊆ W , int R(q) ∩ O = ∅} . (1) Boundary contact is allowed. Given qs, q g ∈ C free , we seek a path τ : [0 , 1] → C free from qs to qg with low executed cost 
+
+J(τ ) = α∫︂ 
+
+> 10
+
+√︁ dx 2 + dy 2 + β∫︂ 
+
+> 10
+
+|dθ |, α, β > 0, (2) which weights translation length and cumulative rotation. 
+
+A. Rotation-Stacked Visibility Graphs 
+
+RVG [3] uses N orientation layers with intervals and representative angles ( k = 0 , . . . , N − 1)
+
+Ik =[︃ 2πk N , 2π(k + 1) 
+
+N]︃ , ˆθk = (2 k + 1) πN , (3) modulo 2π. A conservative polygonal envelope Bk contains the robot throughout Ik:⋃︂ 
+
+> θ∈Ik
+
+Rθ (R − c) ⊆ B k. (4) As N → ∞ , the envelope converges to the exact swept region over Ik.In each layer, RVG grows obstacles by a Minkowski construction using Bk and builds a reduced visibility graph in the free translation domain at angle ˆθk. Within-layer edges encode translations; same-position links between adjacent layers encode collision-free rotations. Edge weights follow Eq. (2). Let Gfull = ( VN , E N ) be the full-map RVG after connecting qs and qg by collision-free query edges. 
+
+B. Observation Model 
+
+Let Vis( z) denote closed free-space visibility from z, with workspace-wide range and no robot self-occlusion. Center and vertex scans are 
+
+Sc(q) = Vis( p), SV (q) = ⋃︂ 
+
+> z∈vert( R(q))
+
+Vis( z). (5) The footprint scan is S(q) = Sc(q) ∪ SV (q). At a fixed po-sition, only vertex scans depend on orientation. Unobserved obstacle geometry remains unknown. At a collision-free pose, R(q) ⊆ SV (q) ⊆ S(q): triangu-lating R(q) places every footprint point in a triangle of robot qs                     
+
+> qg
+> qt(a) Select asensing goal qs
+> qg
+> qt
+> (b) Add RVG sites qs
+> qg
+> qt
+> qt+ 1 (c) Select next goal
+> Fig. 2: Two consecutive sensing-goal selections ( N= 36 ). (a) The quadtree built from the start observation selects qt(purple diamond), with its known-free route from qsshown in blue. (b) After reaching qt, the robot scans and builds a local RVG patch: blue dots are existing sites and orange dots are newly added sites. (c) The quadtree incorporates both sets before selecting qt+1 ; the region served at qtremains deferred during the current epoch. Diamonds denote leaf representatives; purple highlights selected representatives and served regions. The blue curve in (c) connects the two sensing goals.
+> (a) Single origin (b) Footprint scan
+> Fig. 3: For a robot that is not star-shaped about its sensing center, a center scan can leave part of the footprint unobserved. (a) The obstacle in the U-shaped robot’s concavity hides the hatched part of the footprint from a single origin (orange). (b) Scans from the footprint vertices (blue) collectively cover both arms and the connecting body, providing the full-footprint coverage missing from the single-origin scan. Green denotes observed free space; gray denotes obstacles.
+
+vertices, from which it is visible. In contrast, an obstacle can hide part of a nonconvex footprint from a center scan, as illustrated by the U-shaped robot in Fig. 3. IV. D YNAMIC RVG 
+
+A. Sense–Construct–Merge–Move 
+
+We maintain observed free space K, roadmap G, scanned sites E, and sensing quadtree T .
+
+Sense. At pose q, initially qs, the robot takes a center scan 
+
+Sc(q) or footprint scan S(q). We add the observation S to 
+
+K and the current site to E.
+
+Construct. We build Gloc in the scan domain S at fixed N .Layer envelopes grow obstacles by Minkowski sums; visi-bility edges and same-position links between adjacent layers encode collision-free translations and rotations. We insert q
+
+and, when feasible, qg through collision-free query edges. Goal-position visibility alone does not establish configuration feasibility. 
+
+Merge. We merge Gloc into the accumulated roadmap G,retaining existing vertices and edges as well as local com-ponents that are not yet reachable. Under Assumption V.1, a reached temporary goal is shared by the accumulated and new local graphs: its layer envelope lies in both observed domains (Lemma V.2). Its local component therefore joins the accumulated start component. Routes combine edges from multiple scans; static obstacles keep earlier edges valid. 
+
+Move. A shortest-path search checks whether qg is reach-able in G. If so, the robot follows that route and finishes. Otherwise, the quadtree selects a reachable configuration at an unscanned site as a temporary sensing goal. The robot executes its route and senses again on arrival. Algorithm 1 repeats these four steps until the goal is reached, no reachable unscanned site remains, or the planning-time budget expires. The last two outcomes return failure and timeout, respec-tively; the completeness analysis concerns the loop without a time limit. 
+
+B. Quadtree-Based Selection of Temporary Sensing Goals 
+
+RVG can place multiple orientation configurations at one position. Selecting sensing goals independently by configu-ration may repeatedly favor the same region. We first group configurations at the same position into a spatial site s. The list Q(s) keeps all of its orientation configurations, and site( v) gives the site of configuration v.Once the robot reaches and scans one configuration, its site enters E and is no longer a sensing target. Its configurations remain in G, so later routes can still pass through that position at different orientations. For center scans, all configurations at one position share the same observation. For the footprint-scan experiments, observations may vary with orientation, so scanning each site once is a scheduling choice. We store sites in a quadtree T over W. To prevent new sites from immediately drawing the robot back to a recently scanned region, we schedule leaves in rounds called epochs .A leaf is eligible when it contains a reachable, unscanned site. After a leaf supplies a sensing goal, it is marked served and set aside while other eligible leaves remain unserved. When every eligible leaf has been served, a new epoch makes them available again. Scanned sites remain in E across epochs; revisiting a region requires a new site. Exploration stops when none is reachable. The default policy scores each reachable candidate v by its position and orientation relative to the goal: 
+
+h(v) = α∥pv − pg ∥2 + β | wrap( θv − θg )|, (6) where pv , p g and θv , θ g are the candidate and goal positions and orientations, α, β are the cost weights in Eq. (2), and 
+
+wrap gives the angular difference in [−π, π ]. Each avail-able leaf nominates its lowest-score reachable configuration, considering all orientations at its unscanned sites; the best nominee becomes the temporary goal. The score ranks sensing goals; execution follows a shortest path in G. The 
+
+g + h variant also accounts for this route cost. For Algorithm 2, Dijkstra search from q provides graph distances d(v) and predecessors π, with d(v) = ∞ for unreachable configurations; an absent goal vertex also has infinite distance. Let C contain the unscanned sites, excluding the current site. Algorithm 1: Online dRVG ( qs, q g , N ) 
+
+> 1
+
+q ← qs; K, G, E ← ∅ ; T ← Quadtree( W); 
+
+> 2
+
+while q̸ = qg and planning time remains do  
+
+> 3
+
+S ← Sense( q); K ← K ∪ S; 
+
+> 4
+
+E ← E ∪ { site( q)}; 
+
+> 5
+
+Gloc ← RVG( S, N ; q, q g ); 
+
+> 6
+
+G ← Merge( G, Gloc ); 
+
+> 7
+
+(q′, π ) ← QUADTREE TARGET (G, T , q, q g , E ); 
+
+> 8
+
+if planning budget exhausted then return timeout;  
+
+> 9
+
+if q′ = ⊥ then  
+
+> 10
+
+return failure;  
+
+> 11
+
+q ← Execute(RecoverPath( π, q ′)) ; 
+
+> 12
+
+if q = qg then return the executed path;  
+
+> 13
+
+return timeout; 
+
+Algorithm 2: QUADTREE TARGET (G, T , q, q g , E ) 
+
+> 1
+
+(d, π ) ← Dijkstra( G, q ); 
+
+> 2
+
+if d(qg ) < ∞ then  
+
+> 3
+
+return (qg , π ); 
+
+> 4
+
+C ← UnscannedSites( G, E ∪ { site( q)}); 
+
+> 5
+
+T .UpdateSites( C); 
+
+> 6
+
+Compute Aℓ for each leaf using Eq. (7);  
+
+> 7
+
+Lelig ← { ℓ ∈ Leaves( T ) : Aℓ̸ = ∅} ; 
+
+> 8
+
+L ← { ℓ ∈ L elig : ℓ is unserved }; 
+
+> 9
+
+if L = ∅ and Lelig ̸ = ∅ then  
+
+> 10
+
+T .NewEpoch() ; L ← L elig ; 
+
+> 11
+
+if L = ∅ then  
+
+> 12
+
+return (⊥, π ); 
+
+> 13
+
+foreach ℓ ∈ L do  
+
+> 14
+
+rℓ ← arg min v∈A ℓ h(v); 
+
+> 15
+
+q′ ← arg min v∈{ rℓ:ℓ∈L} h(v); 
+
+> 16
+
+T .MarkServed(leaf( q′)) ; 
+
+> 17
+
+return (q′, π );
+
+Let ℓ denote the square region of a quadtree leaf. The reachable candidates in this region are 
+
+Aℓ = {v ∈ Q (s) : s ∈ C , p v ∈ ℓ, d (v) < ∞} . (7) The set Lelig collects leaves with nonempty Aℓ, and L keeps those not yet served in the current epoch. For the g + h
+
+variant, both nomination steps use d(v) + h(v).If the goal is not yet reachable, we update the quadtree with the current unscanned sites and their orientation config-urations, retaining served status across updates. When a leaf splits, the child containing its previously selected sensing site inherits its served status. The algorithms denote the selected configuration by q′. Figure 2 shows successive goals qt and 
+
+qt+1 , with the region served at qt deferred after incorporating the new scan. V. R ESOLUTION -C OMPLETENESS ANALYSIS 
+
+We analyze dRVG with center scans, fixed N , and no time limit. All lemmas assume Assumption V.1; local roadmaps use Sc(q).
+
+Definition V.1 (Relative resolution completeness) . For fixed 
+
+N and no time limit, a planner is resolution-complete relative to RVG if it reaches qg in finitely many steps whenever Gfull 
+
+contains a qs–qg path. Let Gs 
+
+> full
+
+= ( V sN , E sN ) be the connected component of 
+
+Gfull containing qs. A full-map vertex is represented when its configuration is reachable from qs in the accumulated graph. p ∉ S(qs)
+
+Fig. 4: Geometric limit at N = 8 . Static RVG can rotate the non-star-shaped hook from the blue start footprint to the orange goal footprint. The initial footprint scan leaves the marked goal-footprint point unobserved and offers no temporary goal. Green is observed free space. This example lies outside Assumption V.1. 
+
+A full-map edge is represented by an accumulated-graph path between its endpoints; storing this path alone does not imply reachability from qs.
+
+Assumption V.1 (Star-shaped exact setting) . The robot is star-shaped about c: cr ⊆ R for every r ∈ R. Every layer envelope Bk is star-shaped about the origin. Sensing, geometry, collision tests, RVG construction, and merging are exact in the bounded static polygonal workspace. Local and full-map RVGs use the same orientation layers, conservative envelopes, visibility construction, and vertex propagation [3]. Thus, a full-map edge has a corresponding local path whenever its entire conservative sweep is con-tained in the observed domain. The center observation is shared by all orientations at the scanned position, so the local graph can include connections for configurations not yet reachable from qs. Merge retains these disconnected components for later use; each site is scanned at most once. 
+
+Lemma V.1 (Neighbor Reachability after Sensing) . Let u ∈
+
+V sN be represented, and suppose its spatial site has been scanned. Every full-map neighbor w of u is then represented and connected to u.Proof. A layer-k translation from position p by displacement 
+
+d sweeps points z = p + b + λd , with b ∈ B k and λ ∈ [0 , 1] .For μ ∈ [0 , 1] ,
+
+p + μ(z − p) = p + μb + ( μλ )d ∈⋃︂ 
+
+> t∈[0 ,1]
+
+(p + Bk + td ) , (8) because μb ∈ B k and μλ ∈ [0 , 1] . Thus the translation sweep is star-shaped about p. A same-position rotation between adjacent layers uses (p + Bk) ∪ (p + Bk+1 ). Both envelopes are star-shaped about p, so their union is as well. For RVG’s layer-based query insertion [3], a query at pa with orientation in Ik connects through that layer. It can rotate to ˆθk at pa
+
+and translate to pb; a goal attachment reverses this order. Both motions lie in ⋃︁ t∈[0 ,1] (pa + Bk + t(pb − pa)) , since the query footprint and within-layer rotation lie in pa + Bk. This sweep is star-shaped about either endpoint by the translation argument. Thus these attachments satisfy the same visibility certificate. For a full-map edge (u, w ) with u at p, the collision-free conservative sweep is therefore visible from p. A center scan contains this sweep at any scanning orientation, so the local graph contains a path joining u and w. Merge retains this path even if u is initially unreachable. Once u becomes reachable, so does w, without another scan. 
+
+Lemma V.2 (Reachability Preservation) . Initialization es-tablishes the start component. Each reached temporary goal joins its new local component to it. Observed free space and reachability are nondecreasing, but may remain unchanged after a scan. Proof. If a full-map solution exists, its first query attachment has a sweep visible from qs by the preceding argument, so its query configuration is feasible in the initial scan. Now let 
+
+q be a reached temporary goal in layer k, at p. The incoming roadmap motion’s conservative sweep contains the endpoint envelope p + Bk and lies in Kold . Since this envelope is collision-free and star-shaped about p, it is visible from p.Hence p + Bk ⊆ K old ∩ Sc(q), so q is feasible in the new local layer. Merging its local and accumulated copies joins the new component to the start. Earlier vertices and edges remain valid and are retained, preserving reachability. A scan need not add new space or connections. 
+
+Lemma V.3 (Quadtree Reordering) . The quadtree changes only sensing order. Every persistent reachable unscanned site is selected after finitely many successful temporary-goal moves unless the true goal is reached first. Proof. A center scan can create new boundary vertices where visibility rays meet the interior of straight edges. The observed free-space angle at each such intersection is at most 
+
+180 ◦, so it is not a reflex vertex. Every reflex vertex therefore coincides with an obstacle corner or a corner of the outer workspace boundary. Convex corners of the grown comple-ment require convex corners of both Minkowski summands; otherwise a translated input contains a segment through the corner. For fixed N , these finite sets of map and envelope vertices yield finitely many roadmap positions across all center scans. Propagation preserves positions; query insertion uses the fixed start and goal or previously selected sites. Each temporary-goal move scans a previously unscanned site. If an eligible leaf remains, Algorithm 2 selects a site, resetting the epoch when needed. Finite candidates and monotone reachability preclude indefinite deferral of persistent reach-able sites. 
+
+Lemma V.4 (Start-Component Representation) . Unless the goal is reached first, every vertex of Gs 
+
+> full
+
+becomes reachable from qs after finitely many temporary-goal moves. Proof. Induct on full-map edge distance from qs, initially represented and scanned. Each vertex w at the next level has a represented neighbor u.If u’s site has been scanned, Lemma V.1 makes w reach-able using the stored connections. Otherwise, u remains a reachable sensing candidate, so Lemma V.3 ensures that its site is scanned after finite delay. The same neighbor lemma then makes w reachable. Lemma V.2 keeps the vertices from earlier levels reachable. The finite number of distance levels completes the induction. 
+
+Theorem V.1 (Fixed-resolution RVG-relative completeness) .
+
+Under Assumption V.1, quadtree-guided dRVG with center scans is resolution-complete relative to RVG. If the goal remains unreachable, exhausting all reachable unscanned sites certifies that qs and qg are disconnected in Gfull .Proof. A full-map solution places qg in V sN . Lemma V.4 makes it reachable after finitely many moves, and the goal test in Algorithm 2 returns its collision-free route. Exhaustive failure in the presence of such a path would contradict this result. The certificate concerns fixed-resolution RVG disconnection, not continuous-space infeasibility; timeout provides no certificate. 
+
+Corollary V.1 (Resolution completeness) . If Assumption V.1 holds under angular refinement, a feasible query satisfying static RVG’s clearance and envelope-convergence condi-tions [3] admits a finite N at which dRVG with center scans reaches qg after finitely many temporary-goal moves. Proof. Static RVG supplies a full-map path at finite N ;Theorem V.1 then ensures goal arrival. The geometric condition includes convex robots with a reference point in the robot and star-shaped nonconvex robots with suitable interval envelopes. Figure 4 demonstrates a failure of relative completeness at N = 8 : full-map RVG finds a solution, whereas the footprint-scan variant of dRVG does not. In this example, finer angular resolutions allow additional sensing poses and a solution. dRVG supports non-star-shaped polygonal robots, including those in Figures 3 and 4, although the completeness guarantee does not ap-ply to them. Footprint scans may also introduce boundary intersections absent from center scans; the finite-candidate argument above does not establish completeness for that sensing variant. VI. E VALUATION 
+
+We evaluate scaling with angular resolution on difficult maps, the benefit of spatial scheduling, and physical execu-tion of the online planning loop. 
+
+A. Protocol and Metrics 
+
+The 20 test maps each span 30 × 30 workspace units, and the robot is a rectangle measuring 1 × 1.5 units. Let ∆x denote the cell size of the planar R2 occupancy grid used by repeated A* [4] and D* Lite [5]. We test 
+
+∆x ∈ { 0.05 , 0.1, 0.2} and N ∈ { 8, 18 , 36 , 72 , 90 , 180 , 360 }
+
+orientation layers. Static RVG [3] solves every tested map– resolution case. The main comparison contains 2,100 runs. Static RVG, default dRVG, and dRVG with the g + h selector each have 140 runs: one for every map and angular resolution. Repeated A*, D* Lite, RRT X [6], and replanning from scratch with EIT* [7], [24] each have 420 runs: every map and angular resolution is tested at each of the three ∆x values. dRVG scans at the start and at each reached temporary goal. The online experiments use the footprint-scan model; path costs and sensing-goal scores use α = 1 and β = 0 .1.(a) (b) (c) (d) (e) (f) (g) (h) (i) (j) 
+
+Fig. 5: Ten hard cases at N = 360 : executed dRVG routes (blue) and full-map RVG routes (gray dashed). Footprints show robot orientation; green and orange mark start and goal. 
+
+(a) dRVG (b) g + h (c) A* (d) D* Lite (e) RRT X (f) EIT* (g) Static RVG 
+
+Fig. 6: Compared planners on one case at N = 72 . The occupancy-grid cell size is ∆x = 0 .10 ; EIT* receives 100 ms per fresh query. Colored footprints show execution; static RVG has the complete map. Success (%) Planning time (ms) Cost J/J RVG Nodes / states 
+
+> ∆x = 0 .20
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states ∆x = 0 .10
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states ∆x = 0 .05
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states
+
+020 40 60 80 100 
+
+> Success (\%)
+
+10 2
+
+10 3
+
+10 4
+
+10 5
+
+> Median time (ms)
+
+12510 
+
+> Median  J/JRVG
+
+8 18 36 72 90 180 360 
+
+Orientation bins, N
+
+10 2
+
+10 4
+
+10 6
+
+10 8
+
+> Median nodes / states
+
+Orientation bins, NdRVG dRVG g + h A* D* Lite RRTx EIT* Static RVG 
+
+Fig. 7: Comparison on 20 hard maps with a 20 s planning budget. Rows correspond to occupancy-grid cell sizes ∆x; columns show success, planning time, cost relative to full-map RVG, and the number of graph nodes or grid states. Success rates use all runs. For runtime, cost, and the counts in the last column, markers show medians over successful runs and bars span the 25th–75th percentiles; missing markers indicate no success. Here ∆x denotes the occupancy-grid cell size; it also sets collision-check spacing for continuous planners. 
+
+Success (%) 8 18 36 72 90 180 360   
+
+> Orientation bins, N
+> 40 60 80 100
+> Success (%)
+> Naive greedy Quadtree
+
+Runtime (s) 8 18 36 72 90 180 360   
+
+> Orientation bins, N
+> 10 −1
+> 10 0
+> Median runtime (s)
+
+Cost J/J RVG 8 18 36 72 90 180 360  
+
+> Orientation bins, N
+> 12510
+> Median  J/JRVG
+
+Fig. 8: Quadtree dRVG and naive greedy dRVG without quadtree scheduling. Success rates use all runs. Runtime and normalized cost summarize successful runs with medians and interquartile ranges. 
+
+dRVG splits leaves with over 32 sites if each child is at least one robot diameter wide. Each run has a 20 s cumulative planning-time budget. Success requires goal arrival without exhausting this budget and complete-map collision validation. EIT* receives at most 100 ms per planning query, following the setting with the highest success rate in Sabbadini et al.’s query-budget comparison [24]. The normalized path cost is J/J RVG , where 
+
+JRVG is the shortest-path cost in the full-map RVG for the same map and N . We compute success rates over all runs. Figure 7 reports medians of planning time, normalized executed cost, and graph-node or grid-state counts over each method’s successful runs; error bars span the 25th–75th per-centiles. These subsets may differ across methods. For cases solved by both sensing selectors, we report the geometric mean and median of their runtime ratios. Experiments run on an Intel Core i9-14900KF. Repeated A* and D* Lite use 24 threads for grid construction; all methods use one for graph search. Sampling-based planners use seed 1. 
+
+Baseline planning and execution. Repeated A* and D* Lite use conservative SE (2) lattices covering each posi-tion cell and orientation interval. They accumulate visible obstacle-boundary segments and treat unseen space opti-mistically. RRT X and EIT* use continuous SE (2) and receive complete obstacle polygons when any part becomes visible. For these continuous planners, ∆x controls collision checking. Steps are ∆x/ 4 and 2π/ (4 N ) during planning, and ∆x/ 40 and 2π/ (40 N ) for final validation. All online planners follow a scan–plan–move–scan cy-cle; their chosen motions produce different observation se-quences. Each planner incorporates the latest observation, computes a route, and executes a portion of it before scanning again at the reached pose. If no path is returned for the next move, the run fails: the robot cannot advance to obtain a new observation. We use the OMPL implementation of EIT* [44], rejecting approximate solutions and applying no smoothing. 
+
+B. Planner Comparison 
+
+Default dRVG succeeds in all 140 map–resolution cases; its optional g + h selector succeeds in 139/140. Figure 7 shows the results separately for each occupancy-grid cell size 
+
+∆x. At N = 360 , default dRVG’s median planning time is 1.18 s. Using each baseline’s lowest median runtime across the three grid cell sizes, repeated A*, D* Lite, and RRT X
+
+take 4.40 ×, 11 .15 ×, and 5.09 × as long, respectively. Among successful runs, EIT* has lower median runtimes of 0.49, 0.47, and 0.45 s for ∆x = 0 .05 , 0.1, and 0.2, but it succeeds in only 4/20, 5/20, and 5/20 cases, respectively. Across all angular resolutions and grid cell sizes, EIT* succeeds in 101 of the 420 runs; 10 additional reported solutions fail the final collision check. The fourth column of Figure 7 reports the number of graph nodes or occupancy-grid states. At N = 360 , the default dRVG and g + h graphs contain medians of 40,358 and 49,115 vertices, versus 87,370 for static RVG. The lattice planners allocate 129.6, 32.4, and 8.1 million states at ∆x =0.05 , 0.1, and 0.2, respectively. At this angular resolution, the lattices contain approximately 201–3,211 times as many states as the median default dRVG roadmap, illustrating the compactness of its geometric representation. The one successful RRT X tree per cell size contains 440 nodes. For EIT*, we count nodes in each query graph and retain the largest count during a run. The medians over successful runs are 422.5, 262, and 262 nodes for ∆x = 0 .05 , 0.1, and 0.2,respectively. The tested online runs incur higher executed cost than full-map planning. At N = 360 , median J/J RVG is 1.477 for default dRVG and 1.306 for g + h; baseline medians across the grid cell sizes range from 1.122 to 1.457. Cost medians may cover different maps because successful subsets vary. Finer grids increase spatial resolution but can reduce success under the planning-time budget. At N = 360 ,repeated A* solves no case at ∆x = 0 .05 ; it solves 10/20 at 0.1 and 18/20 at 0.2, with median runtimes of 16.02 and 5.19 s over successful runs. D* Lite solves no case at 0.05 
+
+or 0.1 and 10/20 at 0.2, with a median runtime of 13.15 s over successful runs. RRT X solves 1/20 at every collision-check resolution, with runtimes from 6.00 to 6.46 s for those successful runs. dRVG has no translation-cell parameter. We also vary the EIT* query budget at ∆x = 0 .1 and 
+
+N = 72 . Budgets of 10, 50, and 100 ms yield 0/20, 3/20, and 7/20 successful runs, respectively. 
+
+C. Naive Selector Reference 
+
+Figure 8 compares 140 runs per selector using the same footprint-scan model, maps, and angular resolutions. Both selectors exclude previously scanned positions, regardless of orientation. Naive greedy minimizes Eq. (6) over all reach-able configurations at unscanned sites; quadtree selection additionally defers served regions. Quadtree dRVG solves 140/140 cases, whereas naive greedy solves 93/140; all 47 naive-greedy failures are time-outs at the 20 s planning budget. Across jointly solved cases, greedy requires 5.51 × the runtime and 2.75 × as many scan– plan–move iterations in geometric mean; the paired median runtime ratio is 3.94 ×. At N = 360 , quadtree solves 20/20 versus greedy’s 6/20, with a 3.84 × paired geometric-mean runtime ratio. Considering each method’s successful runs separately, median runtimes are 1.18 s for quadtree and 2.36 s for greedy, and median J/J RVG values are 1.477 and 1.170, respectively. At N = 360 , the greedy cost median uses six successful runs, whereas the quadtree median uses all 20. 
+
+D. Real-Robot Demonstration 
+
+We use the microMVP platform [45] to demonstrate dRVG. At each planning iteration, we compute footprint-scan observations and visible obstacle geometry from an overhead-camera image. We use N = 36 orientations with 
+
+α = 1 .0 and β = 0 .1.We demonstrate navigation in six arrangements of polyg-onal obstacles. In each recorded run, the robot reaches its re-quested goal pose through successive translation and rotation motions. Figure 1 shows a representative sequence: dRVG visits temporary sensing goals, incorporates newly observed space, and reorients the robot around obstacles until a route to the final goal becomes available. Parts of the workspace remain unobserved at goal arrival. The supplementary video presents all six runs at their original speed. VII. C ONCLUSION 
+
+dRVG merges local RVGs and uses quadtree sensing to navigate polygonal robots among unknown static obstacles. Under the stated assumptions and without a time limit, center-scan dRVG reaches any goal connected in full-map RVG at the same angular resolution. The analysis does not establish this guarantee for arbitrary polygonal robots or footprint scans. In footprint-scan experiments, default dRVG solved all 140 map–resolution cases within the plan-ning budget; the ablation supports quadtree scheduling over naive greedy selection. Six microMVP demonstrations use overhead-camera observations. Integrating dRVG with simultaneous localization and map-ping (SLAM) would update the roadmap as pose and map estimates change. Frontier selection could then balance goal progress, information gain, and localization uncertainty. Loop closures would require revising roadmap geometry and revalidating affected connections. Other directions include adapting spatial scheduling to finite-range sensing and as-sessing how map uncertainty affects collision margins. These extensions would support navigation with onboard sensing. REFERENCES [1] K. Nagatani, S. Kiribayashi, Y. Okada, K. Otake, K. Yoshida, S. Ta-dokoro, T. Nishimura, T. Yoshida, E. Koyanagi, M. Fukushima, and S. Kawatsuma, “Emergency response to the nuclear accident at the Fukushima Daiichi Nuclear Power Plants using mobile rescue robots,” 
+
+JFR , vol. 30, no. 1, pp. 44–63, 2013. [2] G. J. Stein, C. Bradley, and N. Roy, “Learning over subgoals for efficient navigation of structured, unknown environments,” in CoRL ,2018, pp. 213–222. [3] D. Zhang, Z. Ye, and J. Yu, “Asymptotically-optimal multi-query path planning for a polygonal robot,” in ICRA , 2025, pp. 1780–1786. [4] P. E. Hart, N. J. Nilsson, and B. Raphael, “A formal basis for the heuristic determination of minimum cost paths,” TSSC , vol. 4, no. 2, pp. 100–107, 1968. [5] S. Koenig and M. Likhachev, “D* Lite,” in AAAI , 2002, pp. 476–483. [6] M. W. Otte and E. Frazzoli, “ RRT X : Asymptotically optimal single-query sampling-based motion planning with quick replanning,” IJRR ,vol. 35, no. 7, pp. 797–822, 2016. [7] M. P. Strub and J. D. Gammell, “Adaptively informed trees (AIT*) and effort informed trees (EIT*): Asymmetric bidirectional sampling-based path planning,” IJRR , vol. 41, no. 4, pp. 390–417, 2022. [8] T. Lozano-P´ erez, “Spatial planning: A configuration space approach,” 
+
+TC , vol. C-32, no. 2, pp. 108–120, 1983. [9] T. Lozano-P´ erez and M. A. Wesley, “An algorithm for planning collision-free paths among polyhedral obstacles,” CACM , vol. 22, no. 10, pp. 560–570, 1979. [10] J. T. Schwartz and M. Sharir, “On the piano movers’ problem I: The case of a two-dimensional rigid polygonal body moving amidst polygonal barriers,” CPAM , vol. 36, no. 3, pp. 345–398, 1983. [11] C. ´ O’D´ unlaing and C.-K. Yap, “A retraction method for planning the motion of a disc,” J. Algorithms , vol. 6, no. 1, pp. 104–111, 1985. [12] M. Pivtoraiko, R. A. Knepper, and A. Kelly, “Differentially constrained mobile robot motion planning in state lattices,” JFR , vol. 26, no. 3, pp. 308–333, 2009. [13] K. Daniel, A. Nash, S. Koenig, and A. Felner, “Theta*: Any-angle path planning on grids,” JAIR , vol. 39, pp. 533–579, 2010. [14] L. E. Kavraki, P. ˇ Svestka, J.-C. Latombe, and M. H. Overmars, “Prob-abilistic roadmaps for path planning in high-dimensional configuration spaces,” TR-A , vol. 12, no. 4, pp. 566–580, 1996. [15] S. M. LaValle, “Rapidly-exploring random trees: A new tool for path planning,” Iowa State University, Tech. Rep. TR 98-11, 1998. [16] S. Karaman and E. Frazzoli, “Sampling-based algorithms for optimal motion planning,” IJRR , vol. 30, no. 7, pp. 846–894, 2011. [17] O. Khatib, “Real-time obstacle avoidance for manipulators and mobile robots,” IJRR , vol. 5, no. 1, pp. 90–98, 1986. [18] E. Rimon and D. E. Koditschek, “Exact robot navigation using artificial potential functions,” TR-A , vol. 8, no. 5, pp. 501–518, 1992. [19] A. Stentz, “Optimal and efficient path planning for partially-known environments,” in ICRA , vol. 4, 1994, pp. 3310–3317. [20] S. Koenig, M. Likhachev, and D. Furcy, “Lifelong planning A*,” AIJ ,vol. 155, no. 1–2, pp. 93–146, 2004. [21] M. Likhachev, D. Ferguson, G. Gordon, A. Stentz, and S. Thrun, “Anytime dynamic A*: An anytime, replanning algorithm,” in ICAPS ,2005, pp. 262–271. [22] J. Lim, M. Ghanei, R. C. Lawson, S. Srinivasa, and P. Tsiotras, “Lazy incremental search for efficient replanning with bounded suboptimality guarantees,” IJRR , vol. 43, no. 8, pp. 1175–1207, 2024. [23] D. Ferguson, N. Kalra, and A. Stentz, “Replanning with RRTs,” in 
+
+ICRA , 2006, pp. 1243–1248. [24] M. E. C. Sabbadini, A. H. Liu, J. Ruan, T. S. Wilson, Z. Kingston, and J. D. Gammell, “Revisiting replanning from scratch: Real-time incremental planning with fast almost-surely asymptotically optimal planners,” in ICRA , Vienna, Austria, June 2026. [25] B. J. Oommen, S. S. Iyengar, N. S. V. Rao, and R. L. Kashyap, “Robot navigation in unknown terrains using learned visibility graphs. Part I: The disjoint convex obstacle case,” JRA , vol. 3, no. 6, pp. 672–681, 1987. [26] N. S. V. Rao, “Robot navigation in unknown generalized polygonal terrains using vision sensors,” SMC , vol. 25, no. 6, pp. 947–962, 1995. [27] B. Tovar, L. Guilamo, and S. M. LaValle, “Gap navigation trees: Minimal representation for visibility-based tasks,” in Algorithmic Foundations of Robotics VI . Springer, 2005. [28] H. Choset, S. Walker, K. Eiamsa-Ard, and J. Burdick, “Sensor-based exploration: Incremental construction of the hierarchical generalized voronoi graph,” IJRR , vol. 19, no. 2, pp. 126–148, 2000. [29] J. Y. Lee and H. Choset, “Sensor-based exploration for convex bodies: A new roadmap for a convex-shaped robot,” TR-O , vol. 21, no. 2, pp. 240–247, 2005. [30] ——, “Sensor-based planning for planar multi-convex rigid bodies,” in ICRA , 2005, pp. 3470–3477. [31] S. S. Ge, Q. Zhang, A. T. Abraham, and B. Rebsamen, “Simultaneous path planning and topological mapping (SP 2ATM) for environment exploration and goal oriented navigation,” RAS , vol. 59, no. 3–4, pp. 228–242, 2011. [32] F. Yang, C. Cao, H. Zhu, J. Oh, and J. Zhang, “FAR planner: Fast, attemptable route planner using dynamic visibility update,” in IROS ,2022, pp. 9–16. [33] K. Chen, H. Liu, Y. Li, J. Duan, L. Zhu, and J. Ma, “Robot navigation in unknown and cluttered workspace with dynamical system modula-tion in starshaped roadmap,” in ICRA , 2025, pp. 10 140–10 146. [34] S. Shi, K. Qu, C. Chen, I. Kast, Y. Ma, and M. Hutter, “SE(2) navigation mesh,” arXiv preprint arXiv:2607.01454 , 2026. [35] V. J. Lumelsky and A. A. Stepanov, “Path-planning strategies for a point mobile automaton moving amidst unknown obstacles of arbitrary shape,” Algorithmica , vol. 2, pp. 403–430, 1987. [36] I. Kamon, E. Rimon, and E. Rivlin, “TangentBug: A range-sensor-based navigation algorithm,” IJRR , vol. 17, no. 9, pp. 934–953, 1998. [37] B. Yamauchi, “A frontier-based approach for autonomous exploration,” in CIRA , 1997, pp. 146–151. [38] P. G. C. N. Senarathne and D. Wang, “Incremental algorithms for safe and reachable frontier detection for robot exploration,” RAS , vol. 72, pp. 189–206, 2015. [39] B. Zhou, Y. Zhang, X. Chen, and S. Shen, “FUEL: Fast UAV explo-ration using incremental frontier structure and hierarchical planning,” 
+
+RA-L , vol. 6, no. 2, pp. 779–786, 2021. [40] L. Janson, T. Hu, and M. Pavone, “Safe motion planning in unknown environments: Optimality benchmarks and tractable policies,” in RSS ,2018. [41] R. I. Arnob and G. J. Stein, “Active information gathering for long-horizon navigation under uncertainty by learning the value of information,” in IROS , 2024. [42] G. Georgakis, B. Bucher, A. Arapin, K. Schmeckpeper, N. Matni, and K. Daniilidis, “Uncertainty-driven planner for exploration and navigation,” in ICRA , 2022, pp. 11 295–11 302. [43] Y. Wang, H. He, J. Liang, Y. Cao, R. Chakraborty, and G. A. Sartoretti, “CogniPlan: Uncertainty-guided path planning with conditional gen-erative layout prediction,” in CoRL , 2025, pp. 1382–1396. [44] I. A. S ¸ ucan, M. Moll, and L. E. Kavraki, “The Open Motion Planning Library,” RAM , vol. 19, no. 4, pp. 72–82, 2012. [45] J. Yu, S. D. Han, W. N. Tang, and D. Rus, “A portable, 3d-printing enabled multi-vehicle platform for robotics research and education,” in ICRA , 2017, pp. 1475–1480.

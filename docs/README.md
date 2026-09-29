@@ -6,61 +6,73 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-27
-- 运行时间：2026-09-27 22:19:59 UTC
+- 最新运行日期：2026-09-29
+- 运行时间：2026-09-29 00:26:12 UTC
 - 运行状态：成功
-- 本次总论文数：13
-- 精读区：2
+- 本次总论文数：17
+- 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-今日精选 13 篇机器人前沿论文，聚焦具身智能与动作模型的前沿突破。
-重点关注 AR-WAM 与 KeyGen 两项研究，它们在视觉条件下的动作生成及对象级策略泛化方面表现卓越。
-建议优先研读这两篇高分论文，深入理解视觉表征如何赋能机器人实现更精准的复杂操作。
-- 详情：[/202609/27/README](/202609/27/README)
+今日精选 17 篇机器人前沿论文，聚焦空间模拟器控制、非光滑优化及多机器人协同规划。
+重点关注 PINGU 空间模拟器与 DualManip 智能体操作，它们在复杂接触与语义推理任务中表现出色。
+建议优先阅读 PINGU 与 DualManip，深入理解机器人如何通过学习型控制与双路径推理应对高难度物理交互。
+- 详情：[/202609/29/README](/202609/29/README)
 
 ### 精读区论文标签
-1. [AR-WAM: A Visual-Conditioned Agent-Ready World Action Model for Robotic Manipulation](/202609/27/2609.23578v1-ar-wam-a-visual-conditioned-agent-ready-world-action-model-for-robotic-manipulation)  
-   标签：评分：8.0/10、query:q6
-   evidence：用于机器人操纵的世界动作模型
-2. [KeyGen: Unsupervised Keypoint based Object-Centric Representations for Category-Level Policy Generalization](/202609/27/2609.28818v1-keygen-unsupervised-keypoint-based-object-centric-representations-for-category-level-policy-generalization)  
-   标签：评分：8.0/10、query:q6
-   evidence：预测机器人操作的操纵轨迹
+1. [PINGU: Extending Air-Bearing Spacecraft Emulators with Open-Source Actuators and Learned Control for Contact-Rich Proximity Operations](/202609/29/2609.23554v1-pingu-extending-air-bearing-spacecraft-emulators-with-open-source-actuators-and-learned-control-for-contact-rich-proximity-operations)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：带有机械臂进行操作的空间飞行器仿真器
+2. [Discrete-time feedback linearization control for nonsmooth constrained optimization](/202609/29/2609.29799v1-discrete-time-feedback-linearization-control-for-nonsmooth-constrained-optimization)  
+   标签：评分：8.0/10、query:q2
+   evidence：约束优化的反馈线性化控制
+3. [Memory-Aware Multi-Sensor Perception for Efficient and Safe Navigation in Dynamic Environments](/202609/29/2609.30495v1-memory-aware-multi-sensor-perception-for-efficient-and-safe-navigation-in-dynamic-environments)  
+   标签：评分：8.0/10、query:q1
+   evidence：在保持向目标前进的同时避免碰撞
+4. [Aerial Manipulation in the Wild with Onboard Perception, Policy Learning, and Whole-Body Control](/202609/29/2609.30521v1-aerial-manipulation-in-the-wild-with-onboard-perception-policy-learning-and-whole-body-control)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：空中操作全身模型预测控制
+5. [Learning-Accelerated Narrow-Phase Collision Detection via Check Ordering for Sampling-Based Motion Planning](/202609/29/2609.30599v1-learning-accelerated-narrow-phase-collision-detection-via-check-ordering-for-sampling-based-motion-planning)  
+   标签：评分：8.0/10、query:q1
+   evidence：基于采样的运动规划中的碰撞检测
+6. [Certificate-Carrying Distributed Model Predictive Control on Product Manifolds with $\mathrm{SO}(3)$](/202609/29/2609.30655v1-certificate-carrying-distributed-model-predictive-control-on-product-manifolds-with-mathrmso3)  
+   标签：评分：8.0/10、query:q2
+   evidence：带约束证明的分布式模型预测控制
 
 ### 速读区论文标签
-1. [H-VLA: Hierarchical Vision-Language-Action Model with Key-Action Reasoning and Motion Planning in a Unified Action Space](/202609/27/2609.22895v1-h-vla-hierarchical-vision-language-action-model-with-key-action-reasoning-and-motion-planning-in-a-unified-action-space)  
+1. [MR. POP: Multi-Robot Parallel Optimizing Planner for Almost-Surely Asymptotically Optimal Planning](/202609/29/2609.30644v1-mr-pop-multi-robot-parallel-optimizing-planner-for-almost-surely-asymptotically-optimal-planning)  
+   标签：评分：8.0/10、query:q4
+   evidence：多机器人运动规划与路径优化
+2. [FRAM: Trajectory-Guided Visual Feature Selection for Compact Language-Conditioned Robot Manipulation](/202609/29/2609.30965v1-fram-trajectory-guided-visual-feature-selection-for-compact-language-conditioned-robot-manipulation)  
+   标签：评分：8.0/10、query:q8
+   evidence：机器人操作中轨迹引导的视觉特征选择
+3. [DualManip: Agentic Dynamic Manipulation via Dual-Path Semantic Reasoning and Geometric Adaptation](/202609/29/2609.31112v1-dualmanip-agentic-dynamic-manipulation-via-dual-path-semantic-reasoning-and-geometric-adaptation)  
+   标签：评分：8.0/10、query:profile-1
+   evidence：带位姿优化和几何自适应的动态操作
+4. [dRVG: Quadtree-Guided, Resolution-Complete Online Motion Planning for Polygonal Robots in Unknown Environments](/202609/29/2609.31412v1-drvg-quadtree-guided-resolution-complete-online-motion-planning-for-polygonal-robots-in-unknown-environments)  
+   标签：评分：8.0/10、query:q1
+   evidence：规划无碰撞平移和旋转的在线运动规划器
+5. [Dexterous Robot Manipulation from Human Demonstrations via Contact-Anchored Retargeting and Residual Policy Learning](/202609/29/2609.24093v1-dexterous-robot-manipulation-from-human-demonstrations-via-contact-anchored-retargeting-and-residual-policy-learning)  
    标签：评分：7.0/10、query:q6
-   evidence：机器人操作的分层运动规划
-2. [Scenario MPC with STL Specifications and Pareto-Based Feasibility Repair](/202609/27/2609.23263v1-scenario-mpc-with-stl-specifications-and-pareto-based-feasibility-repair)  
-   标签：评分：7.0/10、query:q2
-   evidence：带有STL规范的MPC用于控制综合
-3. [Stability-Aware Imitation Learning from Model Predictive Control for Autonomous Vehicle Lateral Control: Exact Q-Loss and a Novel Training Procedure](/202609/27/2609.23506v1-stability-aware-imitation-learning-from-model-predictive-control-for-autonomous-vehicle-lateral-control-exact-q-loss-and-a-novel-training-procedure)  
-   标签：评分：7.0/10、query:q2
-   evidence：近似模型预测控制 (MPC) 策略
-4. [Opt2VLA: Force-Aware Vision-Language-Action for Contact-Rich Humanoid Whole-Body Manipulation](/202609/27/2609.23968v1-opt2vla-force-aware-vision-language-action-for-contact-rich-humanoid-whole-body-manipulation)  
+   evidence：灵巧机器人操作与物理一致的轨迹生成
+6. [Mixed-integer flow formulations for motion planning and decision-making of networked multi-agent systems](/202609/29/2609.24474v1-mixed-integer-flow-formulations-for-motion-planning-and-decision-making-of-networked-multi-agent-systems)  
+   标签：评分：7.0/10、query:q3
+   evidence：混合整数线性规划轨迹规划与收缩时界策略
+7. [TANDEM: Task and Motion Planning with As-Needed Demonstrations for Efficient Vision-Language-Action Model Fine-tuning](/202609/29/2609.28314v1-tandem-task-and-motion-planning-with-as-needed-demonstrations-for-efficient-vision-language-action-model-fine-tuning)  
+   标签：评分：7.0/10、query:q4
+   evidence：用于操纵的任务与运动规划
+8. [EgoSpeedUp: Transferring Human Manipulation Tempo to Robot Policies](/202609/29/2609.29310v1-egospeedup-transferring-human-manipulation-tempo-to-robot-policies)  
    标签：评分：7.0/10、query:q6
-   evidence：类人机器人全身操作与力感知控制
-5. [ARSTAG: An Agentic Real2Sim2Real System for Task-Specific Robot Data Generation](/202609/27/2609.24563v1-arstag-an-agentic-real2sim2real-system-for-task-specific-robot-data-generation)  
-   标签：评分：7.0/10、query:q6
-   evidence：用于操作任务的机器人策略学习数据
-6. [DualWAM: Dual-System World Action Models for Asynchronous Global Planning and Local Refinement](/202609/27/2609.24868v1-dualwam-dual-system-world-action-models-for-asynchronous-global-planning-and-local-refinement)  
-   标签：评分：7.0/10、query:q5
-   evidence：高频闭环动作更新与全局规划
-7. [Commonsense-Grounded Path Planning from Abstract Instructions](/202609/27/2609.22813v1-commonsense-grounded-path-planning-from-abstract-instructions)  
-   标签：评分：6.0/10、query:q1
-   evidence：遵循常识以规避障碍物的路径规划器
-8. [FeasibleFlow: One-Step Joint Transport of Configuration Feasibility and Trajectories for End-to-End Driving](/202609/27/2609.23488v1-feasibleflow-one-step-joint-transport-of-configuration-feasibility-and-trajectories-for-end-to-end-driving)  
-   标签：评分：6.0/10、query:q3
-   evidence：配置空间可行性和轨迹的生成式框架
-9. [Anticipatory Robot Goalkeeping via Monotone Optimal Stopping](/202609/27/2609.23976v1-anticipatory-robot-goalkeeping-via-monotone-optimal-stopping)  
-   标签：评分：6.0/10、query:q5
-   evidence：动态机器人拦截的实时决策
-10. [The Cartesian Hand: In-Hand Manipulation with All-Linear Fingers](/202609/27/2609.25696v1-the-cartesian-hand-in-hand-manipulation-with-all-linear-fingers)  
+   evidence：机器人操作策略与执行节奏
+9. [CompVLA: A Variable Compliance Vision-Language-Action Model for Contact-rich Manipulation](/202609/29/2609.23614v1-compvla-a-variable-compliance-vision-language-action-model-for-contact-rich-manipulation)  
    标签：评分：6.0/10、query:q6
-   evidence：机器人手内操纵
-11. [MultiPush: Learning to Rearrange with Teams of Car-Like Pushers](/202609/27/2609.27005v1-multipush-learning-to-rearrange-with-teams-of-car-like-pushers)  
-   标签：评分：6.0/10、query:q4
-   evidence：类车机器人物体重新排列的运动规划
+   evidence：用于机器人操作的视觉-语言-动作模型
+10. [Manipulation with Stability Guarantees: Linear Deformable Objects with Non-negligible Physical Response Grasped at Multiple Location](/202609/29/2609.26004v1-manipulation-with-stability-guarantees-linear-deformable-objects-with-non-negligible-physical-response-grasped-at-multiple-location)  
+   标签：评分：6.0/10、query:q6
+   evidence：可变形物体的操纵
+11. [DUGM-R: Uncertainty-Aware Dynamic Grid Mapping and Risk-Triggered Recovery for Learned Local Navigation](/202609/29/2609.27338v1-dugm-r-uncertainty-aware-dynamic-grid-mapping-and-risk-triggered-recovery-for-learned-local-navigation)  
+   标签：评分：6.0/10、query:q1
+   evidence：学习型局部导航与动态障碍物表征
 
 
 <div class="dpr-home-promo-card">

@@ -1,0 +1,434 @@
+Title: Learning-Accelerated Narrow-Phase Collision Detection via Check Ordering for Sampling-Based Motion Planning
+
+URL Source: https://arxiv.org/pdf/2609.30599v1
+
+Published Time: Mon, 28 Sep 2026 00:19:59 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+> JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 1
+
+# Learning-Accelerated Narrow-Phase Collision Detection via Check Ordering for Sampling-Based Motion Planning 
+
+Hao Jiang, Yinghan Wang, Jianping He, Xiaoming Duan 
+
+Abstract —Collision detection is critical for ensuring the safety of planned paths in sampling-based motion planning. However, it imposes a non-negligible computational burden on motion planners, motivating extensive studies on collision-detection ac-celeration. In commonly used phase-based collision-detection methods, the broad phase employs hierarchical structures to rapidly discard object pairs that are clearly collision-free, while the subsequent narrow phase performs detailed collision checks on the remaining object pairs whose collision status cannot be determined by the broad phase. Although these methods effectively reduce the number of detailed checks through broad-phase pruning, the narrow phase is usually executed in the default order returned by the broad phase, with little explicit optimization of the check order. This leaves room for further acceleration, especially in cluttered environments where many object pairs may remain after the broad phase and the narrow phase can account for a significant portion of the total detection time. In this work, we propose a learning-based method to accelerate phase-based collision detection by optimizing the check order in the narrow phase. We first formulate the expected time cost of the narrow phase and derive an optimal check-ordering criterion that minimizes this expectation. Since the priors required by this criterion are difficult to obtain in advance, we design a hypernetwork-based model to predict collision probabilities, which are then used to approximate the optimal check order. The resulting order guides the execution of exact mesh checks in the narrow phase, thereby reducing detection time without replacing the underlying geometric collision checker. Simulation results show that our method effectively accelerates phase-based collision detection and improves the efficiency and success rate of sampling-based motion planning, especially in cluttered environments. 
+
+Index Terms —Sampling-based motion planning, phase-based collision detection, narrow-phase detection, optimal check order, hypernetwork-based model. 
+
+I. I NTRODUCTION 
+
+Sampling-based motion planning constructs feasible paths by sampling the robot’s configuration space and connecting collision-free configurations [1]. Among its key processes, collision detection determines whether the robot collides with surrounding obstacles at each sampled configuration, serving as a basis for ensuring the safety of the generated paths. In typical geometric collision detection, the surface geometry of each object is represented as a mesh composed of numerous 
+
+The authors are with the Department of Automation, Shanghai Jiao Tong University, and Key Laboratory of System Control and Informa-tion Processing, Ministry of Education of China, Shanghai, China. Email: 
+
+{mouse826612011, wyhboos, jphe, xduan }@sjtu.edu.cn. 
+
+triangles. This applies to both robot components and environ-mental obstacles, where each triangle defines a small region of the object’s surface. Therefore, a direct collision check between two objects, referred to as a mesh check, involves a large number of triangle-triangle intersection computations [2], making it computationally expensive. Since each sampled configuration may require checking many object pairs, col-lision detection often accounts for a substantial portion of the total computational cost in sampling-based motion plan-ning [3]. Consequently, numerous studies have been conducted to accelerate collision detection [4], and several studies have shown that such acceleration can improve the performance of sampling-based motion planners [5] [6]. Among these studies, phase-based collision detection is one of the most widely used acceleration paradigms, including methods based on Bounding Volume Hierarchies (BVH) [7], Octrees [8], and Spatial Hashing [9]. These methods divide the detection into two phases: the broad phase and the narrow phase. In the broad phase, coarse geometric representations, such as bounding volumes or spatial partitions, are used to perform efficient overlap tests and quickly discard object pairs that are clearly collision-free. Then, in the subsequent narrow phase, mesh checks are performed only on the remaining object pairs whose collision status cannot be determined by the broad phase. Therefore, phase-based methods achieve acceleration primarily through broad-phase pruning, and their differences mainly lie in the coarse representations and exclu-sion strategies used in the broad phase. Compared with the broad phase, the narrow phase has received relatively limited attention in existing phase-based methods. In most implementations, mesh checks are performed on the remaining object pairs from the broad phase one by one, following the default order returned by the broad-phase traversal, without explicit check-order optimization. In cluttered environments, the robot is often in close proximity to obstacles, which limits the ability of the coarse broad phase to exclude object pairs. As a result, many object pairs still need to be processed during the narrow phase. Due to the high computational complexity of the mesh check, the narrow phase can account for a significant portion of the overall detection time, as shown in Fig. 1. This indicates that optimizing the narrow phase can provide further acceleration for phase-based collision detection. Therefore, in this work, we aim to accelerate the narrow 
+
+0000–0000/00$00.00 © 2021 IEEE arXiv:2609.30599v1 [cs.RO] 24 Sep 2026 JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 2 
+
+> Fig. 1. Overview of this research. As the environment becomes increasingly cluttered, collision detection accounts for a growing proportion of the total computational cost in sampling-based motion planning, with the narrow phase becoming a major bottleneck. To address this issue, we propose a learning-based method to accelerate the narrow phase by optimizing its check order. Specifically, a hypernetwork-based model predicts collision probabilities for object pairs, which are used to approximate the optimal check order and enable earlier termination in collision cases, thereby improving the efficiency of the overall detection process.
+
+phase by adjusting the order of mesh checks, so that object pairs more likely to collide are examined earlier. This en-ables earlier termination once a collision is detected, thereby reducing the expected detection time. However, constructing an effective check order requires prior information about the object pairs, such as their collision probabilities, which is difficult to obtain in advance. To address this, we propose a hypernetwork-based learning model to predict the required priors and use them to guide narrow-phase check ordering. Importantly, the proposed method does not replace exact mesh checks with learning-based predictions; instead, it only reorders exact checks, preserving the reliability of the un-derlying geometric collision detector. In summary, our main contributions are:  
+
+> •
+
+We propose to accelerate the phase-based collision de-tection by optimizing the check order in the narrow phase. By modeling the expected time cost of the narrow phase, we derive an optimal check-ordering criterion that minimizes this expectation.  
+
+> •
+
+We design a hypernetwork-based model to predict the priors required for constructing an approximate optimal check order, with an emphasis on generalization and low computational complexity.  
+
+> •
+
+Simulation results show that the proposed method ac-celerates phase-based collision detection in cluttered en-vironments, thereby improving both the efficiency and success rate of sampling-based motion planners. II. B ACKGROUND 
+
+Collision detection determines whether the meshes of robot components intersect with those of environmental obstacles. A straightforward implementation is to perform mesh checks on all object pairs. However, since mesh checks are com-putationally expensive, collision detection can become time-consuming, motivating extensive research on acceleration methods. Existing approaches can be broadly categorized into phase-based methods, which reduce the number of mesh checks, and learning-based methods, which reduce the com-putational cost of individual checks. Phase-based methods divide collision detection into two phases: the broad phase and the narrow phase. Acceleration is primarily achieved in the broad phase, where coarse geometric representations are used to enclose objects and enable simple overlap tests. Object pairs that clearly do not collide can then be quickly discarded without performing detailed mesh checks. For example, BVH [7] organizes objects or geometric primitives into a hierarchy of bounding volumes. Since these volumes are usually simple shapes, such as boxes or spheres, their overlap can be tested much more efficiently than mesh intersections. If two bounding volumes do not overlap, the object pairs contained in them can be directly excluded from further mesh checks. Similarly, Octrees [8] recursively divide the environment into octants and construct a hierarchical spatial index, thereby reducing the number of object pairs requiring mesh checks by excluding non-intersecting nodes. Spatial Hashing [9] partitions the workspace into grid cells and checks only object pairs mapped to the same or neighboring cells, efficiently filtering out pairs that are guaranteed to be collision-free. In addition, some studies have explored parallel or hardware-friendly implementations of phase-based collision detection [10]. Although these methods differ in their broad-phase representations and exclusion strategies, their subsequent narrow phase is usually similar: mesh checks are performed on the remaining object pairs in the order returned by the broad phase, without explicit optimization of the check order. In contrast, learning-based methods aim to approximate mesh-check results using data-driven models, achieving faster predictions at the cost of possible prediction errors. Early studies used multilayer perceptrons [11] and Support Vector Machines (SVMs) [12] to learn collision boundaries, but these methods were mainly limited to relatively simple objects and JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 3
+
+offered limited advantages in prediction efficiency. To improve efficiency, Pan et al. [13] proposed a method that stores prior collision results and uses them to predict collisions for new robot poses, based on the observation that nearby poses may share similar collision states. Das et al. [14] learned a collision proxy using a perceptron classifier with a compu-tationally efficient kernel, and further showed that a forward-kinematics kernel is more suitable for measuring the similarity between two robot poses [15]. Verghese et al. [16] and Han et al. [17] further decomposed the configuration space into multiple subspaces, each associated with a separate predictor, thereby improving prediction accuracy and reducing prediction time. These methods mainly focus on the trade-off between prediction accuracy and computational complexity. However, they are typically designed for fixed environments and may suffer from limited generalization. Moreover, when learning-based predictions are used to replace exact mesh checks, false predictions may waste computational resources or even compromise path safety. Therefore, deterministic phase-based methods remain widely used in motion planning systems. Although learning-based predictors could be applied to the narrow phase, directly replacing mesh checks still introduces the risks of incorrect predictions and limited generalization. To further accelerate phase-based collision detection while preserving deterministic collision-checking results, this paper focuses on optimizing the check order in the narrow phase. Some heuristic strategies, such as the surface-area-based [18] and distance-based [19] rules, use geometric features as indi-rect proxies for collision likelihood and can be used to adjust the check order. However, these heuristics do not explicitly model the expected time cost of the narrow phase or provide an optimality criterion for check ordering. Therefore, we formulate the expected narrow-phase time cost and derive an optimal check-ordering criterion. Instead of replacing exact mesh checks, the proposed hypernetwork-based model predicts the priors required to approximate this criterion and uses them only to reorder mesh checks in the narrow phase. III. N ARROW -P HASE OPTIMIZATION IN 
+
+PHASE -BASED COLLISION DETECTION 
+
+In this section, we first introduce the principle of phase-based collision detection using BVH as an example, and discuss the potential for optimization in the narrow phase. Then, we formulate a time cost model for the narrow phase and derive an optimal check-ordering criterion that minimizes the expected time cost. Next, we propose a hypernetwork-based model to learn and predict the priors required to approximate the optimal check order. Finally, we summarize the proposed learning-accelerated phase-based collision detection method for sampling-based motion planning. 
+
+A. Phase-based Collision Detection 
+
+Phase-based methods divide the collision detection process into the broad phase and the narrow phase. The basic idea is to use bounding volumes and hierarchical structures in the broad phase to quickly exclude object pairs that are clearly collision-free, thereby reducing the number of remaining object pairs that require detailed mesh checks in the narrow phase. In this way, phase-based methods avoid performing mesh checks on all object pairs and thus accelerate collision detection. We use the widely adopted BVH as an example, as shown in Fig. 2. Suppose BVH is applied to detect collisions between the robot component link1 and four obstacles.  
+
+> •
+
+Broad phase: As illustrated in Fig. 2b, bounding volumes are constructed for link1 and each obstacle, and a hierar-chy, i.e., a BVH tree, is built for the bounding volumes of all obstacles. Since bounding volumes are usually simple shapes, such as the Axis-Aligned Bounding Boxes (AABBs) used in Fig. 2b, testing whether two boxes overlap, referred to as a box check, is much simpler than performing a mesh check. Moreover, if two boxes do not overlap, the objects enclosed by them cannot collide. Therefore, based on the BVH tree in Fig. 2c, if a parent box does not overlap with the box of link1, its child boxes can be directly excluded. Otherwise, box checks are further performed for its child boxes until the leaf nodes of the tree are reached.  
+
+> •
+
+Narrow phase: Since the bounding-volume hierarchy used in the broad phase is coarse, an overlap between a leaf node in the BVH tree and the box of link1 does not necessarily indicate an actual collision. As a result, in the narrow phase shown in Fig. 2c, mesh checks are still required for the object pairs remaining from the broad phase, because their collision status cannot be determined by the box check alone. The default check order in the narrow phase is determined by the order in which the remaining object pairs are generated during broad-phase traversal, and this order is not explicitly optimized for narrow-phase collision checking. Existing phase-based methods mainly differ in the hierar-chical structures, bounding volumes, and exclusion strategies used in the broad phase. However, the remaining object pairs after the broad phase are typically checked one by one using mesh checks in the narrow phase. This leaves room for further acceleration, especially in cluttered environments. In such environments, the robot may be close to obstacles, limiting the ability of the broad phase to exclude object pairs and leaving many pairs to be processed in the narrow phase. Since mesh checks are much more expensive than box checks, the narrow phase can account for a large portion of the overall detection time. Therefore, phase-based collision detection can be further improved by optimizing the narrow phase. 
+
+B. Narrow Phase Modeling and Optimal Check Order 
+
+In the narrow phase of phase-based collision detection, mesh checks are performed on object pairs whose collision status cannot be determined by the broad phase. Since collision de-tection only needs to determine whether at least one collision occurs, the narrow phase terminates either after all object pairs are verified as collision-free or immediately once a collision is detected. Therefore, to reduce the expected time cost of the narrow phase, object pairs with higher collision probabilities and lower check costs should be examined earlier. This enables earlier termination of the narrow phase. Building on this idea, JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 4
+
+(a) Robot model (b) Bounding boxes (c) Phases in BVH 
+
+Fig. 2. Collision detection based on BVH. (a) The Franka Emika Panda robot model, which consists of nine components. (b) An environment with four obstacles, where AABBs are used as the bounding volumes to construct the hierarchy. A root box encloses all obstacles; box1 and box2 enclose the left and right obstacle groups, respectively; and box3 to box6 enclose individual obstacles. (c) The broad phase forms a BVH tree and performs box checks along the tree. If a parent node, such as box1, does not overlap with link1 box, then its child nodes, box3 and box4, can be excluded. In the subsequent narrow phase, leaf nodes that still overlap with link1 box, such as box5 and box6, are checked by mesh checks on the corresponding object pairs, pair1 and pair2, to determine whether an actual collision occurs. 
+
+we formulate the time cost of the narrow phase and derive an optimal check-ordering criterion. Suppose there are n ≥ 2 object pairs {m1, m 2, . . . , m n}
+
+that require mesh checks in the narrow phase. For each object pair mi, let pi denote its collision probability and ti denote the time cost of its mesh check. A check order is denoted by a permutation σ = [ s1, s 2, . . . , s n], where si is the index of the object pair checked at the i-th position. Assuming that collision events of different object pairs are independent, the expected time cost E(Tσ ) of the narrow phase under the order 
+
+σ is 
+
+E(Tσ ) = ts1 + (1 − ps1 )ts2 + (1 − ps1 )(1 − ps2 )ts3
+
++ · · · + (1 − ps1 ) · · · (1 − psn−1 )tsn
+
+=
+
+> n
+
+X
+
+> i=1
+
+(
+
+> i−1
+
+Y
+
+> j=1
+
+(1 − psj )) tsi .
+
+(1) In the following, we show that the expected time cost is minimized by sorting object pairs in nonincreasing order of  
+
+> pi
+> ti
+
+.
+
+Theorem 1: Assume that collision events of different object pairs are independent. An optimal check order that minimizes the expected time cost E(Tσ ) in (1) is given by σo =[so
+
+> 1
+
+, s o
+
+> 2
+
+, . . . , s on], where for any i < j , psoi
+
+> tsoi
+
+≥ psoj
+
+> tsoj
+
+.
+
+Proof : Consider an arbitrary check order 
+
+σa = [s1, . . . , s l, s l+1 . . . , s n] and another order 
+
+σb = [s1, . . . , s l+1 , s l . . . , s n] obtained by swapping the adjacent elements sl and sl+1 of σa, where 
+
+l ∈ { 1, 2, . . . , n − 1}.According to (1), the expected time costs of the narrow phase under σa and σb are 
+
+E(Tσa ) = 
+
+> l−1
+
+X
+
+> i=1
+
+(
+
+> i−1
+
+Y
+
+> j=1
+
+(1 − psj )) tsi
+
++
+
+> l−1
+
+Y
+
+> j=1
+
+(1 − psj )( tsl + (1 − psl )tsl+1 )+
+
+> n
+
+X
+
+> i=l+2
+
+(
+
+> i−1
+
+Y
+
+> j=1
+
+(1 − psj )) tsi ,
+
+(2) and 
+
+E(Tσb ) = 
+
+> l−1
+
+X
+
+> i=1
+
+(
+
+> i−1
+
+Y
+
+> j=1
+
+(1 − psj )) tsi
+
++
+
+> l−1
+
+Y
+
+> j=1
+
+(1 − psj )( tsl+1 + (1 − psl+1 )tsl )+
+
+> n
+
+X
+
+> i=l+2
+
+(
+
+> i−1
+
+Y
+
+> j=1
+
+(1 − psj )) tsi .
+
+(3) Subtracting (3) from (2), we obtain the time difference as 
+
+E(Tσa ) − E(Tσb )=
+
+> l−1
+
+Y
+
+> j=1
+
+(1 − psj )( tsl + (1 − psl )tsl+1 − tsl+1 − (1 − psl+1 )tsl )=
+
+> l−1
+
+Y
+
+> j=1
+
+(1 − psj )( psl+1 tsl − psl tsl+1 ).
+
+Thus, it follows that E(Tσa ) > E(Tσb ) if and only if psl
+
+> tsl
+
+<
+
+> psl+1
+> tsl+1
+
+. In other words, if psl
+
+> tsl
+
+< psl+1 
+
+> tsl+1
+
+, then swapping sl and 
+
+sl+1 results in a check order with a lower expected time cost in the narrow phase. Moreover, for any check order whose elements are not in nonincreasing order of pi 
+
+> ti
+
+, we can swap neighboring elements to construct a better check order that JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 5
+
+reduces the expected time cost of the narrow phase, until the optimal check order σo is achieved. 
+
+C. Hypernetwork-based model 
+
+Although the optimal check-ordering criterion is derived in Theorem 1, the priors (pi, t i) required to construct the optimal order are difficult to obtain in advance. We address this issue using a learning-based method, with the following considerations. First, since prediction and check-order con-struction introduce additional operations into phase-based col-lision detection, the learning model should maintain a balance between prediction accuracy and computational complexity. Second, the model should generalize well to environments and object meshes beyond those used during training. Third, since the check time ti is difficult to predict accurately and may vary across hardware platforms, we use the predicted collision probability ˆpi as a practical proxy for the optimal score pi/t i.This approximation is motivated by the empirical observation in Fig. 3, where the check order obtained by sorting object pairs in descending order of ˆpi is highly similar to the optimal order σo computed using ˆpi/t i, where ˆp is predicted by our model. To further validate this approximation, we collect statistics from extensive computations on different hardware platforms, involving 10000 narrow phase cases, 100000 object pairs, and more than 2000 meshes of varying shapes. The results are summarized in Table I. On the one hand, using 
+
+ˆp as a proxy for ˆp/t produces a check order with high correlation and order similarity to that obtained from ˆp/t . On the other hand, although the distribution of ti varies across hardware platforms, its variation is relatively small and does not substantially change the ordering induced by ˆp/t . Since                                    
+
+> Fig. 3. Spearman rank correlation [20] between the check order obtained by sorting object pairs by ˆpiin descending order and the optimal check order
+> σo. The correlation remains above 0.98 across 10000 randomly generated narrow-phase cases on Apple M3. TABLE I
+> [V ALIDATION OF APPROXIMATING ˆp/t WITH ˆp] A VERAGE VARIABLE CORRELATION AND ORDER SIMILARITY ACROSS DIFFERENT CPU S.
+> CPU Variable correlation
+> (Pearson coefficient [21])
+> Order similarity
+> (Spearman rank correlation [20] )
+> 1/t vs. ˆp/t ˆpvs. ˆp/t 1/t vs. ˆp/t ˆpvs. ˆp/t
+> Intel i7-11800H 0.265 0.883 0.605 0.998
+> AMD 9950X3D 0.171 0.799 0.495 0.994
+> Apple M3 0.323 0.841 0.469 0.997
+
+our study focuses on the ordering rather than the exact values of ˆp/t , using ˆp as a practical proxy is reasonable. Then, we propose a hypernetwork-based model to predict the collision probability of each object pair in the narrow phase, as shown in Fig. 4. The model consists of a MeshFea-tureNet (MFN) and a CollisionPredictionNet (CPN), where the network parameters of CPN are generated by MFN. The rationale behind this design is that object pairs differ in two aspects: the meshes of the two objects and their relative pose. In sampling-based motion planning, the meshes of the robot and obstacles usually remain fixed, while their relative poses change frequently. As a result, during collision-probability prediction, the component related to relative poses is invoked much more frequently than the component related to meshes. Moreover, since meshes are much more complex than relative poses, using a single shared network to process both mesh geometry and relative pose makes it difficult to balance computational complexity and generalization. Most existing collision-prediction methods rely on such shared structure, which often prioritizes low complexity at the cost of generalization [13] [15]. Inspired by hypernetworks [23], which generate the parameters of a target network using another network, we use MFN to generate the parameters of CPN. In this way, mesh-related information and pose-related information are handled separately, enabling a better balance between efficiency and generalization. Specifically, the two components are designed as follows:  
+
+> •
+
+MeshFeatureNet: MFN uses two MeshNets [22] and one Multilayer Perceptron (MLP) to extract features from two input meshes. It outputs the parameters of CPN and a set of key points that compactly encode the geometry of the object pair. In this way, MFN focuses on the mesh-related information and transfers this information to CPN through its outputs. After training, the outputs of MFN are stored in memory, and a library is maintained for object pairs with known meshes. It is worth noting that, although MFN has a more complex architecture than CPN, its forward pass is only required when an object pair with previously unknown meshes appears during prediction.  
+
+> •
+
+CollisionPredictionNet: CPN loads the parameters gen-erated by MFN and predicts the collision probability. Although its external input is only the relative pose, the loaded parameters and the key points transformed by the relative pose implicitly encode mesh-related informa-tion. Therefore, CPN only needs to model the collision probability under different relative poses for two specific meshes, making it possible to use a compact network structure for efficient prediction. When the environment remains unchanged, the proposed model can directly use the CPN with loaded parameters to make predictions. When unknown obstacles appear, object pairs with new meshes only need to pass through MFN once to obtain the corresponding CPN parameters and key points. Afterward, predictions for new poses are still made by the loaded CPN. Therefore, although MFN is more computation-ally expensive than CPN, its impact on the overall detection time is negligible due to its infrequent use. As a result, the JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 6 
+
+> Fig. 4. Structure of the hypernetwork-based model. MeshNet* is a lightweight variant of MeshNet [22], where only one MeshConv layer is retained and the dimensions of its three outputs are reduced to 32 for lower computational complexity. This simplification is feasible because MeshNet* is used for compact mesh-feature extraction rather than the original shape-classification task.
+
+proposed MFN-CPN structure maintains low computational complexity while improving generalization. The hypernetwork-based model is trained in a supervised manner using labeled collision-check samples of the form 
+
+{(mrob i , m obs j , T i,j,k , c i,j,k )}k=1 ,...,N i,j for each object pair 
+
+(i, j ), where Ni,j is the number of relative poses, mrob i
+
+denotes the mesh of the i-th robot component, mobs j denotes the mesh of the j-th obstacle, Ti,j,k is the k-th relative pose be-tween the two meshes, and ci,j,k ∈ { 0, 1} is the corresponding mesh-check label. During training, (mrob i , m obs j , T i,j,k ) are used as inputs, and ci,j,k is used as the supervised signal. Since the parameters of CPN are generated by MFN, the trainable parameters are those of MFN. The forward propagation of the model is 
+
+
+
+(φi,j , P i,j ) ← MFN( mrob i , m obs j ; θ),P ′ 
+
+> i,j,k
+
+= Ri,j,k · Pi,j + vi,j,k ,
+
+ˆpi,j,k ← CPN( P ′
+
+> i,j,k
+
+; φi,j ),
+
+(4) where θ denotes the parameters of MFN, φi,j denotes the generated parameters of CPN, and Pi,j denotes the key points generated by the MFN, P ′ 
+
+> i,j,k
+
+denotes the key points trans-formed according to the relative pose Ti,j,k , and Ri,j,k and 
+
+vi,j,k are the rotation matrix and translation vector induced by 
+
+Ti,j,k . The model is trained using the cross-entropy loss 
+
+l(θ) = − X
+
+> i,j Ni,j
+
+X
+
+> k=1
+
+(ci,j,k ln ˆ pi,j,k + (1 − ci,j,k ) ln(1 − ˆpi,j,k )) .
+
+(5) In summary, the proposed acceleration method for phase-based collision detection in sampling-based motion planning is illustrated in Fig. 5. The method focuses on the narrow phase and accelerates collision detection by adjusting the check order of mesh checks. First, the hypernetwork-based model predicts the collision probability of each object pair remaining after the broad phase. Then, these object pairs are sorted in descending order of their predicted collision probabilities to approximate the optimal check order. Finally, exact mesh checks are performed according to the constructed check order.  
+
+> Fig. 5. The proposed learning-accelerated method for phase-based collision detection in sampling-based motion planning.
+
+IV. S IMULATIONS 
+
+The simulations are built using MoveIt! in Robot Operating System (ROS). The robot model is the Franka Emika Panda, and the obstacle models are selected from ModelNet40 [24]. BVH-based collision detection, including both the broad and narrow phases, is implemented using the Flexible Collision Library (FCL) [25] with default parameters in the source code. The sampling-based motion planners are implemented using the Open Motion Planning Library (OMPL) [26]. All simulations are conducted on the same computer platform with Ubuntu 20.04, an Intel Core i7-11800H CPU, 32GB RAM, and an NVIDIA RTX 3090 GPU. For training the hypernetwork-based model, we construct the dataset using 9 components of the Panda robot model and 252 obstacle models randomly selected from ModelNet40, forming 9 × 252 mesh pairs. For each mesh pair, 100000 
+
+relative poses are randomly generated to create collision-check samples. The ground-truth labels, i.e., collision or non-collision, are obtained by mesh checks using FCL. During training, we use the Adaptive Moment Estimation (Adam) optimizer with 1000 epochs and a learning rate of 10 −6. At test time, the mesh information and relative pose, represented by a rotation matrix and a translation vector, are directly available from the simulation environment and used as inputs JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 7
+
+for network prediction. 
+
+A. Performance of Hypernetwork-based Model 
+
+In this subsection, we evaluate the prediction performance of the hypernetwork-based model, using Fastron [14] as the baseline. Fastron is implemented using the provided code [14] with default parameters and evaluated on the same testing data as our model. The testing dataset is divided into two parts. The seen part contains 2160 mesh pairs, consisting of 
+
+9 robot components and 240 obstacles used during training, with 2000 randomly generated relative poses for each mesh pair. The unseen part contains 432 mesh pairs, consisting of 9 robot components and 48 obstacles not used during training, with 2000 randomly generated relative poses for each mesh pair. Each relative pose, together with the corresponding mesh pair, forms a collision-check sample. We compare the proposed model with Fastron in terms of accuracy, True Positive Rate (TPR), True Negative Rate (TNR), and average prediction time. Since the collision label of each sample is binary, the predicted collision probability is binarized using a threshold of 0.5, where values greater than 0.5 are classified as collision and values no greater than 0.5 as non-collision. The comparison results are shown in Table II: com-pared with Fastron, the proposed hypernetwork-based model achieves higher prediction accuracy on both seen and un-seen object pairs, while requiring less prediction time. This 
+
+(a) Panda (b) UR5                                                   
+
+> Fig. 6. Simulation models of the robots. The Panda robot is used during training, while the UR5 robot is treated as an unseen robot to further evaluate the generalization capability of the proposed hypernetwork-based model.
+> Fig. 7. Representative meshes from the ModelNet40 dataset. TABLE II
+> [P REDICTION COMPARISON ON SEEN AND UNSEEN OBJECT PAIRS ]THE PREDICTION PERFORMANCE OF EACH PREDICTOR WITH PANDA
+> Predictor Obstacles Accuracy TPR TNR Time
+> Fastron seen 0.866 0.816 0.917 5.693 μs
+> unseen 0.723 0.802 0.644 Hypernetwork-based model seen 0.938 0.972 0.880 1.966 μs
+> unseen 0.926 0.965 0.861
+> TABLE III
+> [P REDICTION OF THE UR5 WITHOUT ADDITIONAL TRAINING ]
+> PREDICTION ACCURACY AND RUNTIME IN EACH DATASET PART
+> Robot Obstacles Accuracy TPR TNR Time
+> UR5 (unseen) seen 0.893 0.912 0.851 1.977 μs
+> unseen 0.878 0.907 0.823 1.993 μs
+
+result is consistent with our design motivation of improv-ing generalization while maintaining high accuracy and low computational complexity. Moreover, the hypernetwork-based model achieves a higher TPR than Fastron, with only aslightly lower TNR. This indicates that our model tends to be more conservative, prioritizing the detection of potential collisions over the exclusion of non-collision cases. In contrast, Fastron adopts a support-vector-based model, which tends to form larger prediction margins around non-collision sam-ples. Overall, the proposed model demonstrates advantages in prediction accuracy, prediction speed, and generalization ability. In addition, the results also show that learning-based predictions are not always perfectly accurate. However, in our method, the predicted collision probabilities are used only to optimize the check order in the narrow phase, rather than to replace exact mesh checks. Therefore, prediction errors do not directly change the final collision-detection result, but only affect the efficiency of the checking process. This allows our method to benefit from learning-based prediction while preserving the reliability of the underlying geometric collision detector. It is also worth noting that, although the hypernetwork-based model is designed for object pairs in the narrow phase, its underlying design idea may inspire future research on collision prediction with more complex inputs, such as predicting collisions involving multiple objects simultaneously. To evaluate whether the proposed model can generalize to other robot arms without additional training, we test it on an unseen robotic arm, the Universal Robots UR5. Specifi-cally, we use the same obstacle set as that in Table II, but replace the Panda links with the seven links of the UR5 to construct new robot-obstacle mesh pairs. For each mesh pair, we randomly sample 2000 relative poses to generate collision-check samples for prediction. As shown in Table III, the model effectively predicts collisions for UR5 with both seen and unseen obstacles, demonstrating its generalization capability across environments and robot arms. 
+
+B. Acceleration on Phase-based Collision Detection 
+
+The proposed method accelerates phase-based collision detection by optimizing the order of exact mesh checks in JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 8
+
+the narrow phase, without modifying the underlying collision detector. This is achieved by using the collision probabilities predicted by the hypernetwork-based model to approximate the optimal check order. In this subsection, we evaluate whether the proposed method can reduce the time cost of phase-based collision detection.                     
+
+> TABLE IV
+> [P HASE -BASED COLLISION DETECTION IN THE ENVIRONMENTS ]AVERAGE DETECTION TIME OF OCTREE -BASED COLLISION DETECTION WITH AND WITHOUT OUR METHOD
+> Environment Method Time Acceleration ratio
+> vs. Octree 50 obstacles Octree 33 .19 μs-Octree + our method 25 .23 μs23 .98%
+> 70 obstacles Octree 52 .01 μs-Octree + our method 36 .68 μs29 .47%
+
+First, we construct 9 simulated environments with different clutter levels, where the number of obstacles ranges from 10 to 
+
+90 . In each environment, the obstacle positions are randomly generated during initialization and then kept fixed, and we randomly sample 100000 poses of the Panda robot for collision detection. For each pose, we perform two collision detection operations: one using BVH alone and the other using BVH combined with our method. The average detection time and its decomposition in each environment are shown in Fig. 8. We have the following observations: (i) over all detections, BVH combined with our method reduces the average detection time compared with BVH alone. The acceleration effect is generally more evident in cluttered environments, achieving a 37% speedup in the scenario with 60 obstacles. Moreover, as environmental clutteredness increases, a higher proportion of detection time is spent on collision cases. (ii) in collision cases, BVH combined with our method incurs additional costs for probability prediction and check-order construction, but it reduces the time spent on mesh checks by examining more likely colliding pairs earlier and enabling earlier termination. (iii) in non-collision cases, all object pairs in the narrow phase must be checked. Therefore, check-order optimization does not reduce mesh-check time and may slightly increase the total detection time. Overall, although our method introduces additional operations, it reduces the narrow-phase mesh-check time in collision cases by adjusting the check order, thereby accelerating phase-based collision detection. The improvement is substantial in cluttered environments. Since the proposed method accelerates collision detection by reordering mesh checks in the narrow phase, it can also be applied to other phase-based methods. As shown in Table IV, our method sub-stantially reduces the detection time of Octree-based collision detection in the environments with 50 and 70 obstacles shown in Fig. 8. The generalization capability of the proposed model across robot arms has been evaluated in Sec. IV-A. We further validate whether the proposed method can accelerate phase- 
+
+> Fig. 8. Average detection time and its decomposition for all sampled poses in each environment: BVH alone vs. BVH combined with our method. The average time is calculated for all detection operations of both approaches, and further separately for the collision and non-collision cases. Within the decomposition for collision and non-collision cases: “mesh checks” refers to the time cost of executing the narrow phase; for BVH-only, “others” corresponds to the time cost of broad phase; for BVH combined with our method, “others” includes the time costs of the broad phase, prediction based on the hypernetwork-based model, and check-order construction based on the predictions. JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 9
+
+based collision detection for the unseen UR5 without any additional training. The experiments are conducted in two more complex environments containing 100 and 120 obstacles. As shown in Table V, our method effectively reduces the detection time for UR5, indicating that the proposed check-ordering strategy can generalize to other robot arms.                       
+
+> TABLE V
+> [C OLLISION DETECTION TIME OF UR5] AVERAGE DETECTION TIME OF UR5 WITH AND WITHOUT OUR METHOD
+> Environment Collision detection Average time Acceleration ratio
+> vs. BVH 100 obstacles BVH 245 .86 μs-BVH + our method 175 .15 μs28 .76%
+> 120 obstacles BVH 257 .19 μs-BVH + our method 186 .99 μs27 .29%
+
+Finally, we compare our method with the surface area heuristic (SAH) and the distance-based heuristic (DBH), which use geometric metrics as coarse proxies for collision likeli-hood to adjust the check order. In the environment with 50 
+
+obstacles shown in Fig. 8, we randomly resample 1000 robot poses and perform collision detection with the two heuristics and our method. The results are shown in Table VI. Both SAH and DBH can accelerate BVH-based collision detection. However, because these heuristics are simple but coarse, their resulting check orders show noticeable discrepancies from those produced by our model, leading to inferior acceleration performance.                     
+
+> TABLE VI
+> [C OMPARISON WITH THE HEURISTIC CHECK -ORDERING METHODS ]TIME COST IN THE ENVIRONMENT WITH 50 OBSTACLES
+> Method Time Acceleration ratio
+> vs. BVH
+> Order similarity
+> Spearman coefficient vs. our method BVH 33 .65 μs--BVH + DBH 31 .19 μs7.31% 0.587 BVH + SAH 29 .75 μs11.58% 0.595 BVH + our method 25 .68 μs23.69% -
+
+C. Acceleration for Sampling-based Motion Planning 
+
+As mentioned earlier, sampling-based motion planning in-volves numerous collision detection operations, which are typ-ically accelerated by phase-based collision detection methods. In this subsection, we evaluate whether the proposed collision-detection acceleration method can improve the performance of sampling-based motion planners. Three planners, RRT [27], RRT-Connect [28], and BIT* [29], are implemented using OMPL. For each planner, we compare two collision detection settings: BVH alone and BVH combined with our method. The simulation environment with 50 obstacles is the same as that shown in Fig. 8. For each planner, we generate 100 random start-goal configuration pairs in the environment and set a time budget of 5 seconds for finding a feasible solution. Each planner is run 50 times for each configuration pair and stops                      
+
+> TABLE VII
+> [P ERFORMANCE COMPARISON IN MOTION PLANNING ]AVERAGE PLANNING TIME AND SUCCESS RATE OF EACH PLANNER WITH AND WITHOUT OUR METHOD
+> Motion planner Collision detection method Time cost Success rate
+> RRT BVH 1.703 s 78.34% BVH + our method 1.558 s 81.10% RRT-Connect BVH 0.321 s 98.51% BVH + our method 0.251 s 99.46% BIT* BVH 0.737 s 93.02% BVH + our method 0.635 s 96.50%
+
+when either a feasible solution is found or the time budget is exhausted. The execution results are shown in Table VII. For all three planners, combining BVH with our method reduces the average time cost required to find a feasible solution, with RRT-Connect achieving about 22% acceleration. Since the proposed method improves the efficiency of phase-based collision detection, the planners can perform more sampling and collision-checking operations within the same time budget. This enables more thorough exploration of the configuration space, resulting in improved planning success rates for all three planners in the cluttered environment. Furthermore, it is worth emphasizing that the planner-level acceleration reported above is achieved under CPU-only inference during planning. GPU support is only required when MFN is invoked to process previously unseen object meshes. After the corresponding CPN parameters are generated, they can be reused for subsequent predictions. This design avoids retraining the entire collision predictor when new object meshes appear. V. C ONCLUSION 
+
+In this paper, we propose a learning-based method to accelerate phase-based collision detection in sampling-based motion planning by optimizing the check order in the narrow phase. First, we formulate the expected time cost of the narrow phase and derive an optimal check-ordering crite-rion that minimizes this expectation. Second, we design a hypernetwork-based model to learn and predict the priors required to construct an approximate optimal check order, while maintaining low computational complexity and good generalization capability. Simulation results demonstrate that the proposed method substantially reduces the time cost of phase-based collision detection in cluttered environments, and further improves the efficiency and success rate of sampling-based motion planners. In practical applications, the proposed method can be seam-lessly integrated into existing phase-based collision detection frameworks, since it only adjusts the check order in the narrow phase without modifying the underlying collision detector. This non-intrusive design enables straightforward deployment in a wide range of sampling-based motion planning sys-tems with minimal implementation effort. Furthermore, since collision detection often dominates the computational cost of motion planning in cluttered environments, the proposed JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 10 
+
+acceleration strategy has the potential to provide substan-tial performance gains in real-world robotic applications that require frequent collision checking, such as manipulation, navigation, and motion planning in confined spaces. REFERENCES [1] M. Elbanhawi and M. Simic, “Sampling-based robot motion planning: A review,” IEEE Access , vol. 2, pp. 56–77, 2014. [2] P. Jim´ enez, F. Thomas, and C. Torras, “3D collision detection: a survey,” 
+
+Computers & Graphics , vol. 25, no. 2, pp. 269–285, 2001. [3] M. Duguleana, F. G. Barbuceanu, A. Teirelbar, and G. Mogan, “Obstacle avoidance of redundant manipulators using neural networks based rein-forcement learning,” Robotics and Computer-Integrated Manufacturing ,vol. 28, no. 2, pp. 132–146, 2012. [4] Z. Wu, Z. Wang, and H. Zhang, “GPU-accelerated optimization-based collision avoidance,” in 2024 IEEE International Conference on Robotics and Automation . IEEE, 2024, pp. 7561–7567. [5] J. Huh and D. D. Lee, “Learning high-dimensional mixture models for fast collision detection in rapidly-exploring random trees,” in 2016 IEEE International Conference on Robotics and Automation . IEEE, 2016, pp. 63–69. [6] T. Lai, W. Zhi, T. Hermans, and F. Ramos, “Parallelised diffeomorphic sampling-based motion planning,” in Conference on Robot Learning .PMLR, 2022, pp. 81–90. [7] J. T. Klosowski, M. Held, J. S. Mitchell, H. Sowizral, and K. Zikan, “Efficient collision detection using bounding volume hierarchies of k-dops,” IEEE Transactions on Visualization and Computer Graphics ,vol. 4, no. 1, pp. 21–36, 1998. [8] D. Jung and K. K. Gupta, “Octree-based hierarchical distance maps for collision detection,” Journal of Robotic Systems , vol. 14, no. 11, pp. 789–806, 1997. [9] M. Teschner, B. Heidelberger, M. M¨ uller, D. Pomeranets, and M. H. Gross, “Optimized spatial hashing for collision detection of deformable objects.” in VMV , vol. 3, 2003, pp. 47–54. [10] C. W. Ramsey, Z. Kingston, W. Thomason, and L. E. Kavraki, “Collision-affording point trees: SIMD-amenable nearest neighbors for fast collision checking,” in Robotics: Science and Systems , 2024. [11] I. Garc´ ıa, J. D. Mart´ ın-Guerrero, E. Soria-Olivas, R. J. Mart´ ınez, S. Rueda, and R. Magdalena, “A neural network approach for real-time collision detection,” in IEEE International Conference on Systems, Man and Cybernetics . IEEE, 2002. [12] J. v. Pan and D. Manocha, “Efficient configuration space construction and optimization for motion planning,” Engineering , vol. 1, no. 1, pp. 046–057, 2015. [13] J. Pan and D. Manocha, “Fast probabilistic collision checking for sampling-based motion planning using locality-sensitive hashing,” The International Journal of Robotics Research , vol. 35, no. 12, pp. 1477– 1496, 2016. [14] N. Das and M. Yip, “Learning-based proxy collision detection for robot motion planning applications,” IEEE Transactions on Robotics , vol. 36, no. 4, pp. 1096–1114, 2020. [15] N. Das and M. C. Yip, “Forward kinematics kernel for improved proxy collision checking,” IEEE Robotics and Automation Letters , vol. 5, no. 2, pp. 2349–2356, 2020. [16] M. Verghese, N. Das, Y. Zhi, and M. Yip, “Configuration space decomposition for scalable proxy collision checking in robot planning and control,” IEEE Robotics and Automation Letters , vol. 7, no. 2, pp. 3811–3818, 2022. [17] Y. Han, W. Zhao, J. Pan, and Y.-J. Liu, “Configuration space decomposi-tion for learning-based collision checking in high-DOF robots,” in 2020 IEEE/RSJ International Conference on Intelligent Robots and Systems ,2020, pp. 5678–5684. [18] J. Goldsmith and J. Salmon, “Automatic creation of object hierarchies for ray tracing,” IEEE Computer Graphics and Applications , vol. 7, no. 5, pp. 14–20, 1987. [19] J. Gunther, S. Popov, H.-P. Seidel, and P. Slusallek, “Realtime ray tracing on GPU with BVH-based packet traversal,” in 2007 IEEE Symposium on Interactive Ray Tracing . IEEE, 2007, pp. 113–118. [20] C. Spearman, “The proof and measurement of association between two things,” The American Journal of Psychology , vol. 15, no. 1, pp. 72–101, 1904. [21] J. Benesty, J. Chen, Y. Huang, and I. Cohen, “Pearson correlation coefficient,” in Noise Reduction in Speech Processing . Springer, 2009, pp. 1–4. [22] Y. Feng, Y. Feng, H. You, X. Zhao, and Y. Gao, “Meshnet: Mesh neural network for 3D shape representation,” in Proceedings of the AAAI Conference on Artificial Intelligence , vol. 33, no. 01, 2019, pp. 8279– 8286. [23] V. K. Chauhan, J. Zhou, P. Lu, S. Molaei, and D. A. Clifton, “A brief review of hypernetworks in deep learning,” Artificial Intelligence Review , vol. 57, no. 9, p. 250, 2024. [24] Z. Wu, S. Song, A. Khosla, F. Yu, L. Zhang, X. Tang, and J. Xiao, “3D shapenets: A deep representation for volumetric shapes,” in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition ,2015, pp. 1912–1920. [25] J. Pan, S. Chitta, and D. Manocha, “Fcl: A general purpose library for collision and proximity queries,” in 2012 IEEE International Conference on Robotics and Automation . IEEE, 2012, pp. 3859–3866. [26] I. A. Sucan, M. Moll, and L. E. Kavraki, “The open motion planning library,” IEEE Robotics & Automation Magazine , vol. 19, no. 4, pp. 72–82, 2012. [27] S. M. LaValle et al. , “Rapidly-exploring random trees: A new tool for path planning,” 1998. [28] J. J. Kuffner and S. M. LaValle, “RRT-connect: An efficient approach to single-query path planning,” in IEEE International Conference on Robotics and Automation , 2000, pp. 995–1001. [29] J. D. Gammell, S. S. Srinivasa, and T. D. Barfoot, “Batch informed trees (BIT): Sampling-based optimal planning via the heuristically guided search of implicit random geometric graphs,” in IEEE International Conference on Robotics and Automation , 2015, pp. 3067–3074.
